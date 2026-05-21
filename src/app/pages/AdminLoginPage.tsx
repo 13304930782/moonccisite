@@ -6,6 +6,20 @@ import { clearAuthCache } from '../lib/authToken';
 
 const DEFAULT_REDIRECT = '/admin/comments?status=pending';
 
+async function clearServerAuthCookie() {
+  try {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    });
+  } catch {
+    // The local cache is still cleared below. A failed logout request should not hide the role error.
+  }
+}
+
 export default function AdminLoginPage() {
   const [params] = useSearchParams();
   const redirect = safeAdminRedirect(params.get('redirect'));
@@ -35,6 +49,7 @@ export default function AdminLoginPage() {
 
       const res = await fetch('/api/auth/login', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
@@ -52,11 +67,11 @@ export default function AdminLoginPage() {
       }
 
       if (!['owner', 'admin'].includes(data.user?.role)) {
+        await clearServerAuthCookie();
         clearAuthCache();
         setMessage('这个账号不是站长或管理员账号，不能进入审核后台。请使用站长或管理员账号登录。');
         return;
       }
-
 
       const target = redirect.includes('?')
         ? `${redirect}&admin_login=${Date.now()}`
