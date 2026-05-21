@@ -66,6 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await api('/auth/logout', { method: 'POST' });
+    } catch {
+      // Local auth state must still be cleared even if the network request fails.
     } finally {
       clearAuthCache();
       setUser(null);
