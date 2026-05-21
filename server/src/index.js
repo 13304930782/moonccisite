@@ -14,6 +14,12 @@ const commentRoutes = require('./routes/comments');
 const app = express();
 app.set('trust proxy', 1);
 
+const defaultOrigins = 'https://mooncci.site,https://www.mooncci.site';
+const corsOrigins = String(process.env.CORS_ORIGINS || defaultOrigins)
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 // 安全响应头
 app.use(helmet({
   contentSecurityPolicy: {
@@ -36,7 +42,7 @@ app.use(helmet({
 
 // CORS 白名单
 app.use(cors({
-  origin: ['https://mooncci.site', 'https://www.mooncci.site'],
+  origin: corsOrigins,
   credentials: true,
 }));
 
@@ -45,7 +51,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use('/api/uploads', express.static(uploadRoutes.uploadDir));
 
 const trustedRequestOrigins = new Set(
-  String(process.env.CSRF_TRUSTED_ORIGINS || process.env.CORS_ORIGINS || 'https://mooncci.site,https://www.mooncci.site')
+  String(process.env.CSRF_TRUSTED_ORIGINS || process.env.CORS_ORIGINS || defaultOrigins)
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean)
