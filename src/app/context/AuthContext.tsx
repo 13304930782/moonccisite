@@ -17,7 +17,7 @@ type AuthContextValue = {
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
   register: (username: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
 };
 
@@ -63,9 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const logout = () => {
-    clearAuthCache();
-    setUser(null);
+  const logout = async () => {
+    try {
+      await api('/auth/logout', { method: 'POST' });
+    } finally {
+      clearAuthCache();
+      setUser(null);
+    }
   };
 
   return (
