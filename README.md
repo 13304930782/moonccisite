@@ -1,8 +1,8 @@
-# Mooncci Site
+# mooncci Site
 
 > 中文 | [English](#english)
 
-Mooncci Site 是一个基于 React、Vite、TypeScript、Node.js、Express 和 MySQL 的个人内容站点与后台管理系统。项目包含文章发布、评论审核、媒体库、站点设置、邮件通知、用户角色权限等功能，适合长期维护的个人博客或内容管理站点。
+mooncci Site 是一个基于 React、Vite、TypeScript、Node.js、Express 和 MySQL 的个人内容站点与后台管理系统。项目包含文章发布、评论审核、媒体库、站点设置、邮件通知、用户角色权限等功能，适合长期维护的个人博客或内容管理站点。
 
 ## 功能特性
 
