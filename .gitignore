@@ -1,0 +1,20 @@
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
+node_modules/
+server/node_modules/
+dist/
+server/uploads/
+*.log
+
+# Database backups
+server/database/backups/
+database/backups/
+
+# Local backup files
+*.bak
+*.bak_*
+*.backup

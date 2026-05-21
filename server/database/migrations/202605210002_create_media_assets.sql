@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS `media_assets` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `filename` varchar(255) NOT NULL,
+  `original_name` varchar(255) DEFAULT '',
+  `display_name` varchar(255) DEFAULT '',
+  `alt_text` varchar(255) DEFAULT '',
+  `url` varchar(500) NOT NULL,
+  `mime` varchar(100) DEFAULT '',
+  `ext` varchar(20) DEFAULT '',
+  `size` int(11) DEFAULT 0,
+  `width` int(11) DEFAULT NULL,
+  `height` int(11) DEFAULT NULL,
+  `quality` varchar(20) DEFAULT '',
+  `status` enum('active','trashed') NOT NULL DEFAULT 'active',
+  `uploaded_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_media_filename` (`filename`),
+  KEY `idx_media_status` (`status`),
+  KEY `idx_media_uploaded_by` (`uploaded_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
