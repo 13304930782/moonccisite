@@ -1,23 +1,12 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const db = require('../db');
-const { authRequired, editorOrAdmin, isAdminLike } = require('../middleware/auth');
+const { authRequired, editorOrAdmin, isAdminLike, getUserFromRequest } = require('../middleware/auth');
 
 const router = express.Router();
 
 async function optionalUser(req) {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-
-  if (!token) return null;
-
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const [rows] = await db.query(
-      'SELECT id, username, email, role, status, can_comment FROM users WHERE id=? LIMIT 1',
-      [payload.id]
-    );
-    const user = rows[0];
+    const user = await getUserFromRequest(req);
 
     if (!user || user.status === 'disabled') return null;
 
@@ -49,7 +38,6 @@ function clampInt(value, fallback, min, max) {
 
   return Math.min(max, Math.max(min, number));
 }
-
 
 function cleanString(value) {
   return value == null ? '' : String(value).trim();
