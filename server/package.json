@@ -4,7 +4,9 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "node src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "migrate": "node scripts/migrate.js",
+    "migrate:dry-run": "node scripts/migrate.js --dry-run"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
