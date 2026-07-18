@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { MarkdownContent } from '../components/MarkdownContent';
 import { CommentSection } from '../components/CommentSection';
+import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -175,7 +176,7 @@ export default function ArticlePage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+    <div className="neo-page">
       <Header />
 
       <main className="px-6 pt-32 pb-20">
@@ -244,6 +245,7 @@ export default function ArticlePage() {
 
         {post && <CommentSection postId={post.id} />}
 </main>
+      <SiteFooter />
     </div>
   );
 }

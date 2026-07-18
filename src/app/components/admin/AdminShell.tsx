@@ -42,18 +42,18 @@ function getRoleName(role?: string) {
 
 function getRoleBadgeClass(role?: string) {
   if (role === 'owner') {
-    return 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-purple-500/30';
+    return 'border-2 border-black bg-[#ffe17c] text-black shadow-[3px_3px_0_#000]';
   }
 
   if (role === 'admin') {
-    return 'bg-blue-600 text-white shadow-blue-500/30';
+    return 'border-2 border-black bg-[#b7c6c2] text-black shadow-[3px_3px_0_#000]';
   }
 
   if (role === 'editor') {
-    return 'bg-emerald-600 text-white shadow-emerald-500/30';
+    return 'border-2 border-black bg-white text-black shadow-[3px_3px_0_#000]';
   }
 
-  return 'bg-white/10 text-white';
+  return 'border-2 border-white bg-[#171e19] text-white';
 }
 
 function isManager(role?: string) {
@@ -182,7 +182,7 @@ export function AdminShell({ children }: AdminShellProps) {
         onClick={() => mobile && closeMobile()}
         className="flex shrink-0 items-center gap-3 px-2"
       >
-        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600">
+        <div className="h-11 w-11 shrink-0 overflow-hidden border-2 border-black bg-[#171e19]">
           <img
             src="/api/uploads/logo.png"
             alt="logo"
@@ -194,12 +194,12 @@ export function AdminShell({ children }: AdminShellProps) {
         </div>
 
         <div className="min-w-0">
-          <div className="truncate font-bold text-gray-900">计算机博客</div>
-          <div className="truncate text-xs text-gray-500">Control Center</div>
+          <div className="neo-heading truncate text-lg text-black">MOONCCI</div>
+          <div className="truncate font-mono text-[10px] font-bold uppercase tracking-wider text-black/55">Control Center</div>
         </div>
       </Link>
 
-      <div className="mt-8 shrink-0 rounded-3xl bg-gradient-to-br from-gray-950 to-blue-950 p-5 text-white shadow-lg">
+      <div className="mt-8 shrink-0 rounded-[12px] border-2 border-black bg-[#171e19] p-5 text-white shadow-[6px_6px_0_#000]">
         <div className="text-sm text-white/70">当前用户</div>
 
         <div className="mt-3 truncate font-bold">
@@ -207,7 +207,7 @@ export function AdminShell({ children }: AdminShellProps) {
         </div>
 
         <div className="mt-3">
-          <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold shadow-lg ${getRoleBadgeClass(role)}`}>
+          <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${getRoleBadgeClass(role)}`}>
             {role === 'owner' && <Crown className="h-3.5 w-3.5" />}
             {getRoleName(role)}
           </span>
@@ -226,10 +226,10 @@ export function AdminShell({ children }: AdminShellProps) {
               onClick={() => mobile && closeMobile()}
               className={({ isActive }) =>
                 [
-                  'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition',
+                  'flex items-center gap-3 rounded-[10px] border-2 px-4 py-3 text-sm font-bold transition',
                   isActive
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                    ? 'border-black bg-[#ffe17c] text-black shadow-[3px_3px_0_#000]'
+                    : 'border-transparent text-black/60 hover:border-black hover:bg-[#b7c6c2] hover:text-black',
                 ].join(' ')
               }
             >
@@ -242,7 +242,7 @@ export function AdminShell({ children }: AdminShellProps) {
         <Link
           to="/"
           onClick={() => mobile && closeMobile()}
-          className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
+          className="flex items-center gap-3 rounded-[10px] border-2 border-transparent px-4 py-3 text-sm font-bold text-black/60 transition hover:border-black hover:bg-[#b7c6c2] hover:text-black"
         >
           <Home className="h-4 w-4 shrink-0" />
           <span>返回首页</span>
@@ -251,7 +251,7 @@ export function AdminShell({ children }: AdminShellProps) {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm text-red-600 transition hover:bg-red-50"
+          className="flex w-full items-center gap-3 rounded-[10px] border-2 border-transparent px-4 py-3 text-sm font-bold text-black/60 transition hover:border-black hover:bg-[#ffe17c] hover:text-black"
         >
           <LogOut className="h-4 w-4 shrink-0" />
           <span>退出登录</span>
@@ -261,15 +261,15 @@ export function AdminShell({ children }: AdminShellProps) {
   );
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-gray-100 text-gray-900 lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
-      <aside className="hidden min-h-0 overflow-hidden border-r border-gray-200/70 bg-white/75 p-5 backdrop-blur-xl lg:flex">
+    <div className="fixed inset-0 overflow-hidden bg-[#b7c6c2] text-black lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <aside className="hidden min-h-0 overflow-hidden border-r-2 border-black bg-white p-5 lg:flex">
         <MenuContent />
       </aside>
 
-      <header className="fixed left-0 right-0 top-0 z-50 border-b border-gray-200/70 bg-white/90 px-4 py-3 backdrop-blur-xl lg:hidden">
+      <header className="fixed left-0 right-0 top-0 z-50 border-b-2 border-black bg-[#ffe17c] px-4 py-3 lg:hidden">
         <div className="flex items-center justify-between gap-3">
           <Link to="/" className="flex min-w-0 items-center gap-3">
-            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600">
+            <div className="h-10 w-10 shrink-0 overflow-hidden border-2 border-black bg-[#171e19]">
               <img
                 src="/api/uploads/logo.png"
                 alt="logo"
@@ -293,7 +293,7 @@ export function AdminShell({ children }: AdminShellProps) {
           <div className="flex shrink-0 items-center gap-2">
             <Link
               to="/"
-              className="inline-flex items-center gap-1 rounded-2xl bg-gray-100 px-3 py-2 text-xs text-gray-700"
+              className="inline-flex items-center gap-1 rounded-[8px] border-2 border-black bg-white px-3 py-2 text-xs font-bold text-black shadow-[2px_2px_0_#000]"
             >
               <Home className="h-4 w-4" />
               首页
@@ -302,7 +302,7 @@ export function AdminShell({ children }: AdminShellProps) {
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="inline-flex items-center gap-1 rounded-2xl bg-blue-600 px-3 py-2 text-xs text-white"
+              className="inline-flex items-center gap-1 rounded-[8px] border-2 border-black bg-[#171e19] px-3 py-2 text-xs font-bold text-white shadow-[2px_2px_0_#000]"
             >
               <Menu className="h-4 w-4" />
               菜单
@@ -320,13 +320,13 @@ export function AdminShell({ children }: AdminShellProps) {
             onClick={closeMobile}
           />
 
-          <aside className="absolute inset-y-0 left-0 flex w-80 max-w-[86vw] flex-col overflow-hidden bg-white p-5 shadow-2xl">
+          <aside className="absolute inset-y-0 left-0 flex w-80 max-w-[86vw] flex-col overflow-hidden border-r-2 border-black bg-white p-5 shadow-[8px_0_0_#000]">
             <div className="mb-5 flex shrink-0 items-center justify-between">
               <div className="text-sm font-semibold text-gray-500">后台菜单</div>
               <button
                 type="button"
                 onClick={closeMobile}
-                className="rounded-xl bg-gray-100 p-2 text-gray-600"
+                className="rounded-[8px] border-2 border-black bg-[#ffe17c] p-2 text-black"
               >
                 <X className="h-5 w-5" />
               </button>

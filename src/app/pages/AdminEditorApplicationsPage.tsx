@@ -40,7 +40,7 @@ export default function AdminEditorApplicationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 px-6 py-16">
+    <div className="min-h-full bg-transparent px-6 py-10">
       <div className="max-w-6xl mx-auto rounded-3xl bg-white/80 backdrop-blur border border-white/40 p-8 shadow-xl">
         <Link to="/admin" className="text-sm text-blue-600 hover:underline">返回后台</Link>
 

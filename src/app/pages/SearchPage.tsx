@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { BlogCard } from '../components/BlogCard';
+import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
 
 export default function SearchPage() {
@@ -27,7 +28,7 @@ export default function SearchPage() {
     setLoading(true);
 
     api(`/posts?search=${encodeURIComponent(q)}`)
-      .then(setPosts)
+      .then((data) => setPosts(Array.isArray(data) ? data : []))
       .catch(() => setPosts([]))
       .finally(() => setLoading(false));
   }, [q]);
@@ -43,7 +44,7 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+    <div className="neo-page">
       <Header />
 
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
@@ -122,6 +123,7 @@ export default function SearchPage() {
           })}
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

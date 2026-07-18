@@ -1,25 +1,22 @@
-import { Menu, Search, Sun, Moon } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Search, Zap } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { CardNav, CardNavItem } from './CardNav';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { initialSiteSettings } from '../config/initialSiteSettings';
 import { safeImageSrc } from '../lib/safeUrl';
 
 const defaultBrand = {
-  site_title: '个人博客网站设计',
-  nav_title: '计算机博客',
+  site_title: 'Mooncci Blog',
+  nav_title: 'MOONCCI',
   logo_url: '',
   favicon_url: '',
 };
 
 export function Header() {
-  const [isDark, setIsDark] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [brand, setBrand] = useState({ ...defaultBrand, ...(initialSiteSettings.brand || {}) });
-
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const logoUrl = safeImageSrc(brand.logo_url);
@@ -29,179 +26,85 @@ export function Header() {
 
   useEffect(() => {
     api('/settings/site')
-      .then((data) => {
-        setBrand({ ...defaultBrand, ...(data.brand || {}) });
-      })
+      .then((data) => setBrand({ ...defaultBrand, ...(data.brand || {}) }))
       .catch(() => {});
   }, []);
 
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle('dark');
-  };
-
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
-
     const value = keyword.trim();
-
     if (!value) return;
-
     navigate(`/search?q=${encodeURIComponent(value)}`);
     setKeyword('');
-    setIsMenuOpen(false);
   };
 
-  const navLinks = [
-    { label: '首页', to: '/' },
-    { label: '文章', to: '/articles' },
-    { label: '分类', to: '/categories' },
-    { label: '标签', to: '/tags' },
+  const items: CardNavItem[] = [
+    {
+      eyebrow: '01 / READ',
+      label: '阅读',
+      bgColor: '#b7c6c2',
+      textColor: '#000000',
+      links: [
+        { label: '返回首页', ariaLabel: '前往网站首页', to: '/' },
+        { label: '全部文章', ariaLabel: '浏览全部文章', to: '/articles' },
+      ],
+      extra: (
+        <form className="card-nav-search" onSubmit={submitSearch}>
+          <Search aria-hidden="true" />
+          <input
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder="搜索文章"
+            aria-label="搜索文章"
+          />
+          <button type="submit">搜索</button>
+        </form>
+      ),
+    },
+    {
+      eyebrow: '02 / EXPLORE',
+      label: '探索',
+      bgColor: '#ffe17c',
+      textColor: '#000000',
+      links: [
+        { label: '内容分类', ariaLabel: '按分类浏览文章', to: '/categories' },
+        { label: '热门标签', ariaLabel: '按标签浏览文章', to: '/tags' },
+      ],
+    },
+    {
+      eyebrow: user ? `@${user.username}` : '03 / ACCOUNT',
+      label: user ? '我的账户' : '加入社区',
+      bgColor: '#171e19',
+      textColor: '#ffffff',
+      links: user
+        ? [
+            { label: '控制台', ariaLabel: '进入内容控制台', to: adminEntryPath },
+            { label: '退出登录', ariaLabel: '退出当前账户', onClick: logout },
+          ]
+        : [
+            { label: '登录账户', ariaLabel: '登录 Mooncci Blog', to: '/login' },
+            { label: '注册账号', ariaLabel: '注册 Mooncci Blog 账号', to: '/register' },
+            { label: '申请成为编辑', ariaLabel: '申请成为网站编辑', to: '/admin/editor-apply' },
+          ],
+    },
   ];
 
   return (
-    <motion.header
-      initial={{ y: -100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed top-0 left-0 right-0 z-50"
-    >
-      <div className="mx-4 mt-4 rounded-2xl bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-gray-200/20 dark:border-gray-700/20 shadow-lg shadow-black/5">
-        <nav className="px-6 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <Link to="/" className="flex items-center gap-3 shrink-0">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
-                {logoUrl ? (
-                  <img
-                    src={logoUrl}
-                    alt={brand.nav_title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-white font-semibold text-sm">
-                    {(brand.nav_title || 'CS').slice(0, 2)}
-                  </span>
-                )}
-              </div>
-
-              <span className="text-lg font-medium text-gray-900 dark:text-white tracking-tight">
-                {brand.nav_title || '计算机博客'}
-              </span>
-            </Link>
-
-            <div className="hidden lg:flex items-center gap-7">
-              {navLinks.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-
-            <div className="hidden md:block flex-1 max-w-sm">
-              <form onSubmit={submitSearch} className="flex items-center gap-2 rounded-full bg-gray-100 dark:bg-gray-800 px-4 py-2">
-                <Search className="w-4 h-4 text-gray-400" />
-                <input
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
-                  placeholder="搜索文章..."
-                  className="w-full bg-transparent outline-none text-sm text-gray-900 dark:text-white"
-                />
-              </form>
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              >
-                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
-
-              {user ? (
-                <div className="hidden sm:flex items-center gap-2">
-                  <Link to={adminEntryPath} className="rounded-full bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
-                    后台
-                  </Link>
-                  <button onClick={logout} className="rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
-                    退出
-                  </button>
-                </div>
-              ) : (
-                <div className="hidden sm:flex items-center gap-2">
-                  <Link to="/login" className="rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
-                    登录
-                  </Link>
-                  <Link to="/register" className="rounded-full bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
-                    注册
-                  </Link>
-                </div>
-              )}
-
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="lg:hidden p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
-              >
-                <Menu className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {isMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="lg:hidden mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50"
-            >
-              <form onSubmit={submitSearch} className="mb-3 flex items-center gap-2 rounded-full bg-gray-100 dark:bg-gray-800 px-4 py-2">
-                <Search className="w-4 h-4 text-gray-400" />
-                <input
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
-                  placeholder="搜索文章..."
-                  className="w-full bg-transparent outline-none text-sm text-gray-900 dark:text-white"
-                />
-              </form>
-
-              {navLinks.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setIsMenuOpen(false)}
-                  className="block py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  {item.label}
-                </Link>
-              ))}
-
-              <div className="mt-3 flex gap-2">
-                {user ? (
-                  <>
-                    <Link to={adminEntryPath} className="rounded-full bg-blue-600 px-4 py-2 text-sm text-white">
-                      后台
-                    </Link>
-                    <button onClick={logout} className="rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-700">
-                      退出
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link to="/login" className="rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-700">
-                      登录
-                    </Link>
-                    <Link to="/register" className="rounded-full bg-blue-600 px-4 py-2 text-sm text-white">
-                      注册
-                    </Link>
-                  </>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </nav>
-      </div>
-    </motion.header>
+    <CardNav
+      brand={brand.nav_title || 'MOONCCI'}
+      logo={logoUrl}
+      logoFallback={<Zap className="h-5 w-5 fill-current" />}
+      items={items}
+      cta={
+        user ? (
+          <Link to={adminEntryPath} className="neo-button neo-button-dark">控制台</Link>
+        ) : (
+          <>
+            <Link to="/login" className="neo-button card-nav-login-button">登录</Link>
+            <Link to="/register" className="neo-button neo-button-dark">加入社区</Link>
+          </>
+        )
+      }
+    />
   );
 }

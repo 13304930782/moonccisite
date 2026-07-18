@@ -1,0 +1,135 @@
+.folder {
+  display: grid;
+  width: 156px;
+  height: 130px;
+  place-items: end center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 220ms ease;
+}
+
+.folder:hover,
+.folder:focus-visible,
+.folder.is-open {
+  transform: translateY(-7px) rotate(-1deg);
+}
+
+.folder:focus-visible {
+  outline: 3px solid #000;
+  outline-offset: 4px;
+}
+
+.folder-back {
+  position: relative;
+  display: block;
+  width: 142px;
+  height: 95px;
+  border: 2px solid #000;
+  border-radius: 4px 12px 10px 10px;
+  background: var(--folder-back-color);
+  box-shadow: 6px 6px 0 #000;
+}
+
+.folder-back::before {
+  position: absolute;
+  bottom: calc(100% - 2px);
+  left: -2px;
+  width: 48px;
+  height: 18px;
+  border: 2px solid #000;
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  background: var(--folder-back-color);
+  content: '';
+}
+
+.folder-paper {
+  position: absolute;
+  z-index: 2;
+  bottom: 12px;
+  left: 50%;
+  display: grid;
+  width: 72%;
+  height: 72%;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid #000;
+  border-radius: 7px;
+  background: #fff;
+  color: #000;
+  font-size: 11px;
+  font-weight: 900;
+  transform: translate(-50%, 9%);
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), height 320ms ease;
+}
+
+.folder-paper-2 {
+  width: 80%;
+  height: 66%;
+  background: #dfe7e4;
+}
+
+.folder-paper-3 {
+  width: 88%;
+  height: 58%;
+  background: #fff8d9;
+}
+
+.folder:hover .folder-paper-1,
+.folder.is-open .folder-paper-1 {
+  transform: translate(-116%, -55%) rotate(-12deg);
+}
+
+.folder:hover .folder-paper-2,
+.folder.is-open .folder-paper-2 {
+  transform: translate(8%, -58%) rotate(11deg);
+}
+
+.folder:hover .folder-paper-3,
+.folder.is-open .folder-paper-3 {
+  transform: translate(-50%, -90%) rotate(2deg);
+}
+
+.folder-front {
+  position: absolute;
+  z-index: 3;
+  bottom: -2px;
+  width: 52%;
+  height: 88%;
+  border: 2px solid #000;
+  background: var(--folder-color);
+  transform-origin: bottom;
+  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.folder-front-left {
+  left: -2px;
+  border-right: 0;
+  border-radius: 5px 0 0 9px;
+}
+
+.folder-front-right {
+  right: -2px;
+  border-left: 0;
+  border-radius: 0 10px 9px 0;
+}
+
+.folder:hover .folder-front-left,
+.folder.is-open .folder-front-left {
+  transform: skew(13deg) scaleY(0.72);
+}
+
+.folder:hover .folder-front-right,
+.folder.is-open .folder-front-right {
+  transform: skew(-13deg) scaleY(0.72);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .folder,
+  .folder-paper,
+  .folder-front {
+    transition: none;
+  }
+}

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { BlogCard } from '../components/BlogCard';
+import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
 
 export default function ArticlesPage() {
@@ -11,13 +12,13 @@ export default function ArticlesPage() {
 
   useEffect(() => {
     api('/posts')
-      .then(setPosts)
+      .then((data) => setPosts(Array.isArray(data) ? data : []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+    <div className="neo-page">
       <Header />
 
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
@@ -98,6 +99,7 @@ export default function ArticlesPage() {
           })}
         </motion.div>
       </main>
+      <SiteFooter />
     </div>
   );
 }
