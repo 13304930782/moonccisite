@@ -2,10 +2,11 @@ import { ArrowRight, Lock, Mail, User } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthShell } from '../components/AuthShell';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { useAuth } from '../context/AuthContext';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -33,6 +34,20 @@ export default function RegisterPage() {
       setTimeout(() => navigate('/login'), 700);
     } catch (err: any) {
       setMessage(err.message || '注册失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUpWithGoogle = async (credential: string) => {
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const user = await googleLogin(credential);
+      navigate(['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/');
+    } catch (err: any) {
+      setMessage(err.message || 'Google 注册失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -127,6 +142,14 @@ export default function RegisterPage() {
           <ArrowRight aria-hidden="true" className="h-4 w-4" />
         </button>
       </form>
+
+      <div className="auth-oauth-divider"><span>或直接创建账号</span></div>
+      <GoogleSignInButton
+        context="signup"
+        disabled={loading}
+        onCredential={signUpWithGoogle}
+        onError={setMessage}
+      />
     </AuthShell>
   );
 }

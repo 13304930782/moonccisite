@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const db = require('../db');
 const { AUTH_COOKIE_NAME, authRequired } = require('../middleware/auth');
 const { sendMail, getMailConfig } = require('../lib/mailer');
+const { verifyGoogleCredential } = require('../lib/googleIdentity');
 
 const router = express.Router();
 
@@ -68,6 +69,7 @@ const PASSWORD_RULE_MESSAGE = '密码至少 8 位，并且需要同时包含字�
 const MAX_LOGIN_FAILURES = 5;
 const LOGIN_LOCK_MINUTES = 15;
 const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+const DEFAULT_GOOGLE_CLIENT_ID = '614401761904-4g7soo2d1clsnui71h5tb9ia4j1t530m.apps.googleusercontent.com';
 
 function escapeHtml(value) {
   return String(value || '')
@@ -163,6 +165,29 @@ function safeSiteUrl(value) {
   } catch {
     return fallback;
   }
+}
+
+function googleIsAuthoritativeForEmail(payload) {
+  const email = String(payload.email || '').toLowerCase();
+  return email.endsWith('@gmail.com') || Boolean(payload.hd);
+}
+
+function truncateUsername(value, maxLength = 30) {
+  return Array.from(String(value || '').replace(/\s+/g, ' ').trim()).slice(0, maxLength).join('');
+}
+
+async function createAvailableUsername(preferredName, email) {
+  const emailName = String(email || '').split('@')[0];
+  const base = truncateUsername(preferredName) || truncateUsername(emailName) || 'Google 用户';
+
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const suffix = attempt === 0 ? '' : ` ${attempt + 1}`;
+    const candidate = `${truncateUsername(base, 30 - Array.from(suffix).length)}${suffix}`;
+    const [rows] = await db.query('SELECT id FROM users WHERE username=? LIMIT 1', [candidate]);
+    if (!rows[0]) return candidate;
+  }
+
+  return `Google用户${crypto.randomBytes(4).toString('hex')}`;
 }
 
 router.post('/register', authRateLimit({ name: 'register', windowMs: 60 * 60 * 1000, max: 8 }), async (req, res) => {
@@ -279,6 +304,73 @@ router.post('/login', authRateLimit({ name: 'login', windowMs: 15 * 60 * 1000, m
   } catch (err) {
     console.error('[auth/login]', err);
     res.status(500).json({ message: '登录失败，请稍后再试。' });
+  }
+});
+
+router.post('/google', authRateLimit({ name: 'google-login', windowMs: 15 * 60 * 1000, max: 20 }), async (req, res) => {
+  try {
+    const credential = String(req.body.credential || '').trim();
+    if (!credential) return res.status(400).json({ message: '缺少 Google 登录凭证。' });
+
+    const googleClientId = String(process.env.GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID).trim();
+    const payload = await verifyGoogleCredential(credential, googleClientId);
+    const googleSub = String(payload.sub);
+    const email = String(payload.email).trim().toLowerCase();
+
+    const [subRows] = await db.query('SELECT * FROM users WHERE google_sub=? LIMIT 1', [googleSub]);
+    let user = subRows[0];
+
+    if (!user) {
+      const [emailRows] = await db.query('SELECT * FROM users WHERE email=? LIMIT 1', [email]);
+      user = emailRows[0];
+
+      if (user) {
+        if (user.google_sub && user.google_sub !== googleSub) {
+          return res.status(409).json({ message: '该邮箱已经绑定其他 Google 账号。' });
+        }
+
+        if (!googleIsAuthoritativeForEmail(payload)) {
+          return res.status(409).json({ message: '请先使用邮箱和密码登录，再绑定这个 Google 账号。' });
+        }
+
+        await db.query('UPDATE users SET google_sub=? WHERE id=? AND google_sub IS NULL', [googleSub, user.id]);
+        user.google_sub = googleSub;
+      } else {
+        if (!googleIsAuthoritativeForEmail(payload)) {
+          return res.status(400).json({ message: '目前 Google 快捷注册仅支持 Gmail 或 Google Workspace 邮箱。' });
+        }
+
+        const username = await createAvailableUsername(payload.name, email);
+        const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
+        const [result] = await db.query(
+          `
+          INSERT INTO users
+          (username, email, google_sub, password_hash, role, status, can_comment)
+          VALUES (?, ?, ?, ?, 'user', 'active', 1)
+          `,
+          [username, email, googleSub, passwordHash]
+        );
+
+        const [createdRows] = await db.query('SELECT * FROM users WHERE id=? LIMIT 1', [result.insertId]);
+        user = createdRows[0];
+      }
+    }
+
+    if (!user) return res.status(500).json({ message: 'Google 登录未能创建账号。' });
+    if (user.status === 'disabled') return res.status(403).json({ message: '该账号已被禁用。' });
+
+    await db.query('UPDATE users SET login_attempts=0, locked_until=NULL WHERE id=?', [user.id]);
+    setAuthCookie(req, res, signToken(user));
+
+    res.json({ message: 'Google 登录成功。', user: publicUser(user) });
+  } catch (err) {
+    console.error('[auth/google]', err);
+
+    if (err && err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ message: '该 Google 账号或邮箱已经绑定，请重试。' });
+    }
+
+    res.status(401).json({ message: 'Google 登录凭证无效或已过期，请重新选择账号。' });
   }
 });
 

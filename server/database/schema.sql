@@ -163,6 +163,7 @@ CREATE TABLE `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL,
   `email` varchar(120) NOT NULL,
+  `google_sub` varchar(255) DEFAULT NULL,
   `password_hash` varchar(255) NOT NULL,
   `role` enum('owner','admin','editor','user') NOT NULL DEFAULT 'user',
   `status` enum('active','disabled') NOT NULL DEFAULT 'active',
@@ -174,6 +175,7 @@ CREATE TABLE `users` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `uniq_users_google_sub` (`google_sub`),
   KEY `idx_users_locked_until` (`locked_until`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;

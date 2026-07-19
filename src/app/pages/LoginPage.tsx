@@ -2,15 +2,20 @@ import { ArrowRight, Lock, Mail } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthShell } from '../components/AuthShell';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const finishLogin = (user: { role: string }) => {
+    navigate(['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/');
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -22,9 +27,23 @@ export default function LoginPage() {
 
     try {
       const user = await login(email, password);
-      navigate(['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/');
+      finishLogin(user);
     } catch (err: any) {
       setMessage(err.message || '登录失败，请检查邮箱和密码');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithGoogle = async (credential: string) => {
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const user = await googleLogin(credential);
+      finishLogin(user);
+    } catch (err: any) {
+      setMessage(err.message || 'Google 登录失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -86,6 +105,13 @@ export default function LoginPage() {
           <ArrowRight aria-hidden="true" className="h-4 w-4" />
         </button>
       </form>
+
+      <div className="auth-oauth-divider"><span>或使用快捷登录</span></div>
+      <GoogleSignInButton
+        disabled={loading}
+        onCredential={signInWithGoogle}
+        onError={setMessage}
+      />
     </AuthShell>
   );
 }
