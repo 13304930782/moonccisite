@@ -1,7 +1,8 @@
 const express = require('express');
 const db = require('../db');
 const { authRequired, adminOnly } = require('../middleware/auth');
-const { getMailConfig, sendMail } = require('../lib/mailer');
+const { getMailConfig, safeHttpsUrl, sendMail } = require('../lib/mailer');
+const { renderBrandedEmail } = require('../lib/mailTemplate');
 
 const router = express.Router();
 const CUSTOM_MAIL_DAILY_LIMIT = Number(process.env.CUSTOM_MAIL_DAILY_LIMIT || 20);
@@ -54,6 +55,7 @@ const defaultMail = {
   smtp_from: process.env.SMTP_FROM || '',
   notify_to: process.env.COMMENT_NOTIFY_TO || '',
   site_url: process.env.SITE_URL || 'https://mooncci.site',
+  early_access_download_url: process.env.EARLY_ACCESS_DOWNLOAD_URL || '',
 };
 
 function safeParse(value, fallback) {
@@ -62,16 +64,6 @@ function safeParse(value, fallback) {
   } catch {
     return fallback;
   }
-}
-
-function escapeHtml(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-    .replace(/\n/g, '<br>');
 }
 
 function cleanMailHeader(value) {
@@ -224,6 +216,10 @@ router.put('/mail', authRequired, adminOnly, async (req, res) => {
     nextConfig.smtp_pass = oldConfig.smtp_pass || '';
   }
 
+  if (nextConfig.early_access_download_url && !safeHttpsUrl(nextConfig.early_access_download_url)) {
+    return res.status(400).json({ message: 'Early Access 下载地址必须是有效的 HTTPS URL。' });
+  }
+
   await saveSetting('mail', nextConfig);
 
   res.json({
@@ -239,18 +235,22 @@ router.post('/mail/test', authRequired, adminOnly, async (_req, res) => {
     return res.status(400).json({ message: 'Please configure a notification recipient first.' });
   }
 
-  await sendMail({
+  const result = await sendMail({
     to: config.notify_to,
     subject: '[Mooncci] Mail notification test',
     text: 'This is a test email from Mooncci Blog. If you receive it, mail notifications are configured correctly.',
-    html: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.8; color: #111827;">
-        <h2>Mooncci Blog mail notification test</h2>
-        <p>If you receive this email, mail notifications are configured correctly.</p>
-        <p>Future pending comments can send review notifications to this mailbox.</p>
-      </div>
-    `,
+    html: renderBrandedEmail({
+      eyebrow: 'MOONCCI / MAIL TEST',
+      title: '品牌邮件配置成功',
+      intro: '如果你看到这封邮件，说明 SMTP 与接收提醒邮箱已经正确配置。',
+      paragraphs: ['评论审核与 PromptDock Early Access 申请都会使用同一套黄黑品牌邮件。'],
+      callout: { title: '兼容性说明', body: '邮件使用 table 布局和内联样式，以兼容 Apple Mail、Gmail 与 Outlook。' },
+    }),
   });
+
+  if (!result.sent) {
+    return res.status(400).json({ message: result.reason || '测试邮件未发送。' });
+  }
 
   res.json({ message: 'Test email sent.' });
 });
@@ -299,12 +299,20 @@ router.post('/mail/send-custom', authRequired, adminOnly, async (req, res) => {
     }
 
     try {
-      await sendMail({
+      const result = await sendMail({
         to,
         subject,
         text: content,
-        html: `<div style="font-family: Arial, sans-serif; line-height: 1.8; color: #111827;">${escapeHtml(content)}</div>`,
+        html: renderBrandedEmail({
+          eyebrow: 'MOONCCI / MESSAGE',
+          title: subject,
+          paragraphs: [content],
+        }),
       });
+
+      if (!result.sent) {
+        throw new Error(result.reason || 'Mail was not sent.');
+      }
 
       await logCustomMail({
         senderId: req.user.id,

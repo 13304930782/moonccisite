@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const db = require('../db');
 const { AUTH_COOKIE_NAME, authRequired } = require('../middleware/auth');
 const { sendMail, getMailConfig } = require('../lib/mailer');
+const { renderBrandedEmail } = require('../lib/mailTemplate');
 const { verifyGoogleCredential } = require('../lib/googleIdentity');
 
 const router = express.Router();
@@ -70,15 +71,6 @@ const MAX_LOGIN_FAILURES = 5;
 const LOGIN_LOCK_MINUTES = 15;
 const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_GOOGLE_CLIENT_ID = '614401761904-4g7soo2d1clsnui71h5tb9ia4j1t530m.apps.googleusercontent.com';
-
-function escapeHtml(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
 
 function sha256(input) {
   return crypto.createHash('sha256').update(input).digest('hex');
@@ -418,27 +410,22 @@ router.post('/forgot-password', authRateLimit({ name: 'forgot-password', windowM
     const config = await getMailConfig();
     const siteUrl = safeSiteUrl(config.site_url || process.env.SITE_URL);
     const resetUrl = `${siteUrl}/reset-password?token=${rawToken}`;
-    const htmlResetUrl = escapeHtml(resetUrl);
-    const displayName = escapeHtml(user.username || user.email);
-
-    await sendMail({
+    const mailResult = await sendMail({
       to: user.email,
       subject: '[Mooncci] Reset your password',
       text: `You requested to reset your Mooncci Blog password. This link is valid for 30 minutes:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.8; color: #111827;">
-          <h2>Reset your password</h2>
-          <p>Hello, ${displayName}.</p>
-          <p>You requested to reset your Mooncci Blog password. This link is valid for 30 minutes.</p>
-          <p>
-            <a href="${htmlResetUrl}" style="display:inline-block;background:#2563eb;color:white;padding:10px 18px;border-radius:999px;text-decoration:none;">
-              Reset password
-            </a>
-          </p>
-          <p style="color:#6b7280;font-size:13px;">If you did not request this, you can ignore this email.</p>
-        </div>
-      `,
+      html: renderBrandedEmail({
+        eyebrow: 'MOONCCI / ACCOUNT SECURITY',
+        title: '重置你的账户密码',
+        intro: `${user.username || user.email}，我们收到了你的密码重置请求。`,
+        paragraphs: ['这个链接将在 30 分钟后失效。如果不是你本人发起，可以忽略这封邮件。'],
+        cta: { label: '重置密码', url: resetUrl },
+      }),
     });
+
+    if (!mailResult.sent) {
+      throw new Error(mailResult.reason || 'Password reset email was not sent.');
+    }
 
     res.json({ message: GENERIC_RESET_MESSAGE });
   } catch (err) {

@@ -45,6 +45,7 @@ export function SiteFooter() {
             <Link to="/articles" className="block hover:text-[#ffe17c]">全部文章</Link>
             <Link to="/categories" className="block hover:text-[#ffe17c]">内容分类</Link>
             <Link to="/tags" className="block hover:text-[#ffe17c]">标签索引</Link>
+            <Link to="/early-access" className="block hover:text-[#ffe17c]">Early Access Program</Link>
           </div>
         </div>
 

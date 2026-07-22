@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const db = require('../db');
+const { renderBrandedEmail, safeHttpUrl } = require('./mailTemplate');
 
 function bool(value) {
   return String(value || '').toLowerCase() === 'true';
@@ -13,32 +14,30 @@ function safeParse(value, fallback) {
   }
 }
 
-function escapeHtml(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function htmlLines(value) {
-  return escapeHtml(value).replace(/\n/g, '<br>');
-}
-
 function cleanMailHeader(value) {
   return String(value || '').replace(/[\r\n]/g, ' ').trim();
 }
 
 function safeSiteUrl(value) {
   const fallback = 'https://mooncci.site';
-  const input = String(value || fallback).trim();
+  const url = safeHttpUrl(value, fallback);
 
   try {
-    const parsed = new URL(input);
-    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.origin : fallback;
+    return new URL(url).origin;
   } catch {
     return fallback;
+  }
+}
+
+function safeHttpsUrl(value) {
+  const url = safeHttpUrl(value);
+  if (!url) return '';
+
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' ? parsed.toString() : '';
+  } catch {
+    return '';
   }
 }
 
@@ -52,6 +51,7 @@ const defaultMail = {
   smtp_from: process.env.SMTP_FROM || '',
   notify_to: process.env.COMMENT_NOTIFY_TO || '',
   site_url: process.env.SITE_URL || 'https://mooncci.site',
+  early_access_download_url: process.env.EARLY_ACCESS_DOWNLOAD_URL || '',
 };
 
 async function getMailConfig() {
@@ -59,7 +59,7 @@ async function getMailConfig() {
     'SELECT setting_value FROM site_settings WHERE setting_key = "mail" LIMIT 1'
   );
 
-  if (!rows[0]) return defaultMail;
+  if (!rows[0]) return { ...defaultMail };
 
   return {
     ...defaultMail,
@@ -68,7 +68,7 @@ async function getMailConfig() {
 }
 
 function isMailEnabled(config) {
-  return (
+  return Boolean(
     bool(config.enabled) &&
     config.smtp_host &&
     config.smtp_user &&
@@ -88,17 +88,17 @@ function createTransporter(config) {
   });
 }
 
-async function sendMail({ to, subject, text, html }) {
-  const config = await getMailConfig();
+async function sendMail({ to, subject, text, html, config: providedConfig }) {
+  const config = providedConfig || await getMailConfig();
 
   if (!isMailEnabled(config)) {
     console.log('[mail] Mail is disabled or SMTP config is incomplete.');
-    return;
+    return { sent: false, reason: '邮件功能未启用或 SMTP 配置不完整。' };
   }
 
   if (!to) {
     console.log('[mail] Missing recipient. Mail was not sent.');
-    return;
+    return { sent: false, reason: '邮件收件人未配置。' };
   }
 
   const transporter = createTransporter(config);
@@ -112,125 +112,206 @@ async function sendMail({ to, subject, text, html }) {
   });
 
   console.log('[mail] Mail sent successfully.');
+  return { sent: true };
 }
 
 async function sendCommentNotification(comment) {
   const config = await getMailConfig();
 
-  if (!isMailEnabled(config) || !config.notify_to) {
-    console.log('[mail] Comment notification is disabled or notify_to is missing.');
-    return;
+  if (!config.notify_to) {
+    console.log('[mail] Comment notification recipient is missing.');
+    return { sent: false, reason: '评论通知收件人未配置。' };
   }
 
   const siteUrl = safeSiteUrl(config.site_url);
   const adminUrl = `${siteUrl}/admin-login?redirect=${encodeURIComponent('/admin/comments?status=pending')}`;
   const postTitle = cleanMailHeader(comment.postTitle || 'Post comment');
+  const text = [
+    'Your site received a new comment waiting for review.',
+    '',
+    `Post: ${comment.postTitle || '-'}`,
+    `User: ${comment.authorName || '-'}`,
+    `Email: ${comment.authorEmail || '-'}`,
+    `IP: ${comment.ip || '-'}`,
+    '',
+    'Comment:',
+    comment.content || '',
+    '',
+    `Review: ${adminUrl}`,
+  ].join('\n');
 
-  const text = `
-Your site received a new comment waiting for review.
+  const html = renderBrandedEmail({
+    eyebrow: 'MOONCCI / COMMENT REVIEW',
+    title: '有一条新评论等待审核',
+    intro: '网站刚刚收到一条新评论。登录后台查看完整上下文后，再决定是否公开。',
+    details: [
+      { label: '文章', value: comment.postTitle || '-' },
+      { label: '用户', value: comment.authorName || '-' },
+      { label: '邮箱', value: comment.authorEmail || '-' },
+      { label: 'IP', value: comment.ip || '-' },
+    ],
+    callout: { title: '评论内容', body: comment.content || '-' },
+    cta: { label: '登录并审核', url: adminUrl },
+  });
 
-Post: ${comment.postTitle || '-'}
-User: ${comment.authorName || '-'}
-Email: ${comment.authorEmail || '-'}
-IP: ${comment.ip || '-'}
-
-Comment:
-${comment.content || ''}
-
-Review:
-${adminUrl}
-`;
-
-  const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.8; color: #111827;">
-      <h2>Your site received a new comment</h2>
-      <p>Status: <strong style="color:#2563eb;">Pending review</strong></p>
-      <p><strong>Post:</strong> ${escapeHtml(comment.postTitle || '-')}</p>
-      <p><strong>User:</strong> ${escapeHtml(comment.authorName || '-')}</p>
-      <p><strong>Email:</strong> ${escapeHtml(comment.authorEmail || '-')}</p>
-      <p><strong>IP:</strong> ${escapeHtml(comment.ip || '-')}</p>
-      <div style="margin-top: 16px; padding: 16px; background: #f3f4f6; border-radius: 12px;">
-        <strong>Comment:</strong>
-        <p>${htmlLines(comment.content || '')}</p>
-      </div>
-      <p style="margin-top: 24px;">
-        <a href="${escapeHtml(adminUrl)}" style="display:inline-block;background:#2563eb;color:white;padding:10px 18px;border-radius:999px;text-decoration:none;">
-          Log in and review
-        </a>
-      </p>
-    </div>
-  `;
-
-  await sendMail({
+  return sendMail({
     to: config.notify_to,
     subject: `[Mooncci] New comment pending review: ${postTitle}`,
     text,
     html,
+    config,
   });
 }
 
 async function sendCommentReviewNotification(comment, status) {
   const config = await getMailConfig();
 
-  if (!isMailEnabled(config)) {
-    console.log('[mail] Comment review notification is disabled.');
-    return;
-  }
-
   if (!comment.authorEmail) {
     console.log('[mail] Comment author has no email. Review notification was not sent.');
-    return;
+    return { sent: false, reason: '评论作者没有邮箱。' };
   }
 
   const siteUrl = safeSiteUrl(config.site_url);
   const articleUrl = `${siteUrl}/article/${encodeURIComponent(comment.postId)}`;
   const passed = status === 'visible';
-  const resultText = passed
-    ? 'approved and visible'
-    : 'rejected and not visible';
+  const resultText = passed ? 'approved and visible' : 'rejected and not visible';
   const subject = passed
     ? '[Mooncci] Your comment was approved'
     : '[Mooncci] Your comment was rejected';
+  const text = [
+    `Your comment was ${resultText}.`,
+    '',
+    `Post: ${comment.postTitle || '-'}`,
+    'Comment:',
+    comment.content || '',
+    '',
+    `Article: ${articleUrl}`,
+  ].join('\n');
+  const html = renderBrandedEmail({
+    eyebrow: 'MOONCCI / COMMENT STATUS',
+    title: passed ? '你的评论已通过审核' : '你的评论未通过审核',
+    intro: passed
+      ? '评论现在已经显示在文章页面中。感谢你参与讨论。'
+      : '这条评论本次没有公开，感谢你的理解。',
+    details: [
+      { label: '文章', value: comment.postTitle || '-' },
+      { label: '结果', value: resultText },
+    ],
+    callout: { title: '评论内容', body: comment.content || '-' },
+    cta: { label: '查看文章', url: articleUrl },
+  });
 
-  const text = `
-Your comment was ${resultText}.
-
-Post: ${comment.postTitle || '-'}
-Comment:
-${comment.content || ''}
-
-Article:
-${articleUrl}
-`;
-
-  const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.8; color: #111827;">
-      <h2>${passed ? 'Your comment was approved' : 'Your comment was rejected'}</h2>
-      <p>Post: <strong>${escapeHtml(comment.postTitle || '-')}</strong></p>
-      <p>Result: <strong style="color:${passed ? '#16a34a' : '#dc2626'};">${escapeHtml(resultText)}</strong></p>
-      <div style="margin-top: 16px; padding: 16px; background: #f3f4f6; border-radius: 12px;">
-        <strong>Comment:</strong>
-        <p>${htmlLines(comment.content || '')}</p>
-      </div>
-      <p style="margin-top: 24px;">
-        <a href="${escapeHtml(articleUrl)}" style="display:inline-block;background:#2563eb;color:white;padding:10px 18px;border-radius:999px;text-decoration:none;">
-          View article
-        </a>
-      </p>
-    </div>
-  `;
-
-  await sendMail({
+  return sendMail({
     to: comment.authorEmail,
     subject,
     text,
     html,
+    config,
+  });
+}
+
+async function sendEarlyAccessOwnerNotification(application) {
+  const config = await getMailConfig();
+
+  if (!config.notify_to) {
+    return { sent: false, reason: '接收提醒邮箱未配置。' };
+  }
+
+  const siteUrl = safeSiteUrl(config.site_url);
+  const reviewPath = `/admin/early-access/${application.id}`;
+  const reviewUrl = `${siteUrl}/admin-login?redirect=${encodeURIComponent(reviewPath)}`;
+  const features = Array.isArray(application.desiredFeatures)
+    ? application.desiredFeatures.join(', ')
+    : String(application.desiredFeatures || '-');
+  const text = [
+    'PromptDock received a new Early Access application.',
+    '',
+    `Name: ${application.name}`,
+    `Email: ${application.email}`,
+    `Occupation: ${application.occupation}`,
+    `Device: ${application.device}`,
+    `macOS: ${application.macOSVersion}`,
+    `Desired features: ${features}`,
+    '',
+    `Review: ${reviewUrl}`,
+  ].join('\n');
+  const html = renderBrandedEmail({
+    eyebrow: 'PROMPTDOCK / EARLY ACCESS',
+    title: '收到一份新的 Early Access 申请',
+    intro: '申请已经安全保存。请登录后台查看使用场景和申请理由，再决定是否批准。',
+    details: [
+      { label: '姓名', value: application.name },
+      { label: '邮箱', value: application.email },
+      { label: '职业身份', value: application.occupation },
+      { label: '设备', value: application.device },
+      { label: 'macOS', value: application.macOSVersion },
+      { label: '希望体验', value: features },
+    ],
+    cta: { label: '审核申请', url: reviewUrl },
+    footer: 'PromptDock Early Access · Secure owner review',
+  });
+
+  return sendMail({
+    to: config.notify_to,
+    subject: `[PromptDock] Early Access 申请 #${application.id}`,
+    text,
+    html,
+    config,
+  });
+}
+
+async function sendEarlyAccessApprovalEmail(application) {
+  const config = await getMailConfig();
+  const downloadUrl = safeHttpsUrl(config.early_access_download_url);
+
+  if (!downloadUrl) {
+    return { sent: false, reason: 'Early Access HTTPS 下载地址未配置。' };
+  }
+
+  const text = [
+    `Hi ${application.name},`,
+    '',
+    'Your PromptDock Early Access application has been approved.',
+    'PromptDock currently supports macOS only.',
+    '',
+    `Download PromptDock: ${downloadUrl}`,
+    '',
+    'Thank you for helping us build a better AI prompt and workflow tool.',
+  ].join('\n');
+  const html = renderBrandedEmail({
+    eyebrow: 'PROMPTDOCK / WELCOME',
+    title: '你已加入 PromptDock Early Access',
+    intro: `${application.name}，你的申请已经通过。欢迎成为 PromptDock 的首批体验用户。`,
+    paragraphs: [
+      '当前 Early Access 版本仅支持 macOS。你可以通过下方按钮下载安装，并在真实工作流中体验 Prompt 管理、菜单栏工具和桌面能力。',
+      '你的使用反馈会直接帮助我们决定后续产品方向。',
+    ],
+    callout: {
+      title: '当前支持平台',
+      body: 'macOS ✓\nWindows、iPhone 与 iPad：Coming Soon',
+    },
+    cta: { label: '下载 PromptDock', url: downloadUrl },
+    footer: 'PromptDock Early Access · Local-first AI productivity for macOS',
+  });
+
+  return sendMail({
+    to: application.email,
+    subject: '[PromptDock] 你的 Early Access 申请已通过',
+    text,
+    html,
+    config,
   });
 }
 
 module.exports = {
+  defaultMail,
   getMailConfig,
+  isMailEnabled,
+  safeHttpsUrl,
+  safeSiteUrl,
   sendMail,
   sendCommentNotification,
   sendCommentReviewNotification,
+  sendEarlyAccessOwnerNotification,
+  sendEarlyAccessApprovalEmail,
 };
