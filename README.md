@@ -14,6 +14,7 @@ mooncci site 是一个基于 React、Vite、TypeScript、Node.js、Express 和 M
 - 站点设置、Logo、favicon、备案和首页内容配置
 - 图片上传、格式校验、压缩、媒体库、回收站和批量操作
 - SMTP 邮件配置、评论提醒和后台邮件发送
+- PromptDock Early Access 招募、owner 专属审核、申请通知和通过邮件
 - 后台管理页和移动端 / 平板端适配
 - Nginx 反向代理、PM2 后端运行、Vite 静态部署
 
@@ -119,6 +120,8 @@ server/database/
 
 执行迁移前建议先备份数据库。迁移脚本支持先 dry-run 再执行，避免误操作。
 
+部署 Early Access 功能时，先执行最新数据库迁移，再在后台“邮件设置”中配置接收提醒邮箱、SMTP 和有效的 HTTPS PromptDock 下载地址。下载地址未配置时，系统会阻止批准申请，避免发送不完整的通过邮件。
+
 ## 部署说明
 
 生产环境建议：
@@ -179,6 +182,7 @@ mooncci site is a personal content website and admin dashboard built with React,
 - Site settings, logo, favicon, footer, and homepage configuration
 - Image upload, validation, compression, media library, recycle bin, and batch actions
 - SMTP configuration, comment notifications, and admin email sending
+- PromptDock Early Access applications, owner-only review, and branded approval emails
 - Admin dashboard with mobile and tablet support
 - Nginx reverse proxy, PM2 backend process, and Vite static deployment
 

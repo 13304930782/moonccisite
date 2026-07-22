@@ -10,6 +10,7 @@ const uploadRoutes = require('./routes/upload');
 const applicationRoutes = require('./routes/applications');
 const settingsRoutes = require('./routes/settings');
 const commentRoutes = require('./routes/comments');
+const earlyAccessRoutes = require('./routes/early-access');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -114,6 +115,14 @@ const mailLimiter = rateLimit({
   message: { message: '邮件发送过于频繁，请稍后重试' },
 });
 
+const earlyAccessLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: '申请提交过于频繁，请稍后再试。' },
+});
+
 app.get('/api/health', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json({ ok: true });
@@ -121,10 +130,18 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/comments', commentRoutes);
+app.use('/api/early-access', earlyAccessLimiter, earlyAccessRoutes.publicRouter);
 app.use('/api/upload', uploadRoutes.router);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/admin/early-access', earlyAccessRoutes.adminRouter);
 app.use('/api/admin', adminRoutes);
+
+app.use((error, _req, res, _next) => {
+  console.error('[api] Unhandled request error:', error?.code || error?.message);
+  if (res.headersSent) return;
+  res.status(500).json({ message: '服务器暂时无法处理请求，请稍后再试。' });
+});
 
 const port = Number(process.env.PORT || 3001);
 app.listen(port, () => console.log(`server running on ${port}`));

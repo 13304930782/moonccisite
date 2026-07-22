@@ -88,6 +88,14 @@ function adminOnly(req, res, next) {
   next();
 }
 
+function ownerOnly(req, res, next) {
+  if (req.user?.role !== 'owner') {
+    return res.status(403).json({ message: 'Owner permission is required.' });
+  }
+
+  next();
+}
+
 function editorOrAdmin(req, res, next) {
   if (!isEditorLike(req.user)) {
     return res.status(403).json({ message: 'Owner, admin or editor permission is required.' });
@@ -100,6 +108,7 @@ module.exports = {
   AUTH_COOKIE_NAME,
   authRequired,
   adminOnly,
+  ownerOnly,
   editorOrAdmin,
   getAuthTokenFromRequest,
   getUserFromRequest,

@@ -11,6 +11,7 @@ const defaultMail = {
   smtp_from: '',
   notify_to: '',
   site_url: 'https://mooncci.site',
+  early_access_download_url: '',
   has_smtp_pass: false,
 };
 
@@ -76,7 +77,7 @@ export default function AdminMailSettingsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">邮件提醒设置</h1>
           <p className="mt-2 text-sm text-gray-500">
-            配置评论审核提醒。以后有人发表评论，会发邮件通知你审核。
+            配置评论审核、Early Access 申请提醒与统一品牌邮件。
           </p>
         </div>
 
@@ -200,6 +201,20 @@ export default function AdminMailSettingsPage() {
                   className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="https://mooncci.site"
                 />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block mb-2 text-sm font-medium text-gray-700">Early Access 下载地址</label>
+                <input
+                  value={mail.early_access_download_url}
+                  onChange={(e) => update('early_access_download_url', e.target.value)}
+                  type="url"
+                  className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="https://downloads.example.com/PromptDock.dmg"
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  必须使用 HTTPS。未配置时，Early Access 申请可以查看和拒绝，但无法批准。
+                </p>
               </div>
             </div>
           </div>
