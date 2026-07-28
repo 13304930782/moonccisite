@@ -34,13 +34,13 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950 px-6 py-10 flex items-center justify-center">
-      <div className="w-full max-w-md rounded-[2rem] bg-white/95 p-8 shadow-2xl">
-        <Link to="/login" className="text-sm text-blue-600 hover:underline">
+    <div className="neo-dot-grid flex min-h-screen items-center justify-center px-6 py-10">
+      <div className="w-full max-w-md rounded-[12px] border-2 border-black bg-white p-8 shadow-[8px_8px_0_#000]">
+        <Link to="/login" className="text-sm font-black text-black hover:underline">
           返回登录
         </Link>
 
-        <h1 className="mt-5 text-3xl font-bold text-gray-900">
+        <h1 className="neo-heading mt-5 text-4xl text-black">
           忘记密码
         </h1>
 
@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
             <label className="block mb-2 text-sm font-medium text-gray-700">
               邮箱
             </label>
-            <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 focus-within:ring-2 focus-within:ring-blue-500">
+            <div className="neo-input flex items-center gap-3 px-4 py-3">
               <Mail className="w-5 h-5 text-gray-400" />
               <input
                 value={email}
@@ -73,7 +73,7 @@ export default function ForgotPasswordPage() {
 
           <button
             disabled={loading}
-            className="w-full rounded-2xl bg-blue-600 px-5 py-3 text-white font-medium hover:bg-blue-700 disabled:opacity-60"
+            className="neo-button neo-button-dark w-full px-5 py-3 disabled:opacity-60"
           >
             {loading ? '发送中...' : '发送重置邮件'}
           </button>

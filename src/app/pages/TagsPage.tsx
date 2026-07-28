@@ -3,6 +3,7 @@ import { Tag } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
+import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
 
 export default function TagsPage() {
@@ -10,12 +11,12 @@ export default function TagsPage() {
 
   useEffect(() => {
     api('/posts/meta/tags')
-      .then(setTags)
+      .then((data) => setTags(Array.isArray(data) ? data : []))
       .catch(() => setTags([]));
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+    <div className="neo-page">
       <Header />
 
       <main className="max-w-6xl mx-auto px-6 pt-32 pb-20">
@@ -57,6 +58,7 @@ export default function TagsPage() {
           )}
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

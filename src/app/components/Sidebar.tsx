@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { BookOpen, Github, Mail, Tag, Twitter, User } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Github, Mail, Tag, Twitter, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
@@ -25,150 +25,102 @@ export function Sidebar() {
   const emailUrl = safeMailto(profile.email);
 
   useEffect(() => {
-    api('/settings/site')
-      .then((data) => setProfile({ ...defaultProfile, ...(data.profile || {}) }))
-      .catch(() => {});
-
-    api('/posts/meta/categories')
-      .then(setCategories)
-      .catch(() => setCategories([]));
-
-    api('/posts/meta/tags')
-      .then(setTags)
-      .catch(() => setTags([]));
+    api('/settings/site').then((data) => setProfile({ ...defaultProfile, ...(data.profile || {}) })).catch(() => {});
+    api('/posts/meta/categories').then((data) => setCategories(Array.isArray(data) ? data : [])).catch(() => setCategories([]));
+    api('/posts/meta/tags').then((data) => setTags(Array.isArray(data) ? data : [])).catch(() => setTags([]));
   }, []);
+
+  const socials = [
+    { href: githubUrl, label: 'GitHub', icon: Github, external: true },
+    { href: twitterUrl, label: 'Twitter', icon: Twitter, external: true },
+    { href: emailUrl, label: 'Email', icon: Mail, external: false },
+  ].filter((item) => item.href);
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, x: 30 }}
+      <motion.section
+        initial={{ opacity: 0, x: 24 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="rounded-3xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-8 shadow-lg shadow-black/5 text-center"
+        className="rounded-[12px] border-2 border-black bg-[#b7c6c2] p-6 shadow-[6px_6px_0_#000]"
       >
-        <div className="relative inline-block">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-1">
-            <div className="w-full h-full rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={profile.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User className="w-10 h-10 text-gray-400" />
-              )}
-            </div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex h-20 w-20 items-center justify-center overflow-hidden border-2 border-black bg-white shadow-[4px_4px_0_#000]">
+            {avatarUrl ? <img src={avatarUrl} alt={profile.name} className="h-full w-full object-cover" /> : <User className="h-8 w-8" />}
           </div>
-          <div className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-green-500 border-4 border-white dark:border-gray-900" />
+          <span className="border-2 border-black bg-[#ffe17c] px-2 py-1 text-[10px] font-black uppercase">About me</span>
         </div>
 
-        <h3 className="mt-5 text-xl font-semibold text-gray-900 dark:text-white">
-          {profile.name}
-        </h3>
+        <h3 className="neo-heading mt-7 text-3xl text-black">{profile.name}</h3>
+        <p className="mt-2 text-xs font-black uppercase tracking-wider text-black/60">{profile.title}</p>
+        <p className="mt-5 text-sm font-bold leading-7 text-black/75">{profile.bio}</p>
 
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {profile.title}
-        </p>
+        {socials.length > 0 && (
+          <div className="mt-6 flex gap-2 border-t-2 border-black pt-5">
+            {socials.map(({ href, label, icon: Icon, external }) => (
+              <a
+                key={label}
+                href={href}
+                target={external ? '_blank' : undefined}
+                rel={external ? 'noreferrer' : undefined}
+                aria-label={label}
+                className="flex h-10 w-10 items-center justify-center border-2 border-black bg-white shadow-[3px_3px_0_#000] transition hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none"
+              >
+                <Icon className="h-4 w-4" />
+              </a>
+            ))}
+          </div>
+        )}
+      </motion.section>
 
-        <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 leading-7">
-          {profile.bio}
-        </p>
-
-        <div className="mt-6 flex justify-center gap-3">
-          {githubUrl && (
-            <a
-              href={githubUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-blue-600 transition-colors"
-            >
-              <Github className="w-4 h-4" />
-            </a>
-          )}
-
-          {twitterUrl && (
-            <a
-              href={twitterUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-blue-600 transition-colors"
-            >
-              <Twitter className="w-4 h-4" />
-            </a>
-          )}
-
-          {emailUrl && (
-            <a
-              href={emailUrl}
-              className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-blue-600 transition-colors"
-            >
-              <Mail className="w-4 h-4" />
-            </a>
-          )}
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, x: 30 }}
+      <motion.section
+        initial={{ opacity: 0, x: 24 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-        className="rounded-3xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-6 shadow-lg shadow-black/5"
+        transition={{ delay: 0.08 }}
+        className="rounded-[12px] border-2 border-black bg-white p-5 shadow-[6px_6px_0_#000]"
       >
-        <div className="flex items-center gap-2 mb-5">
-          <BookOpen className="w-5 h-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            分类
-          </h3>
+        <div className="flex items-center gap-3 border-b-2 border-black pb-4">
+          <span className="flex h-10 w-10 items-center justify-center border-2 border-black bg-[#b7c6c2]"><BookOpen className="h-5 w-5" /></span>
+          <h3 className="neo-heading text-xl">热门分类</h3>
         </div>
 
-        <div className="space-y-3">
-          {categories.length === 0 && (
-            <p className="text-sm text-gray-500">暂无分类</p>
-          )}
-
-          {categories.slice(0, 8).map((item) => (
+        <div className="mt-3 divide-y-2 divide-black/15">
+          {categories.length === 0 && <p className="py-4 text-sm font-bold text-black/50">暂无分类</p>}
+          {categories.slice(0, 7).map((item) => (
             <Link
               key={item.category}
               to={`/category/${encodeURIComponent(item.category)}`}
-              className="flex items-center justify-between rounded-2xl px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="group flex items-center justify-between py-3 text-sm font-black"
             >
-              <span>{item.category}</span>
-              <span className="text-xs text-gray-400">{item.count}</span>
+              <span className="group-hover:underline">{item.category}</span>
+              <span className="flex items-center gap-2 text-xs text-black/50">{item.count}<ArrowUpRight className="h-3.5 w-3.5" /></span>
             </Link>
           ))}
         </div>
-      </motion.div>
+      </motion.section>
 
-      <motion.div
-        initial={{ opacity: 0, x: 30 }}
+      <motion.section
+        initial={{ opacity: 0, x: 24 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="rounded-3xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-6 shadow-lg shadow-black/5"
+        transition={{ delay: 0.16 }}
+        className="rounded-[12px] border-2 border-black bg-[#ffe17c] p-5 shadow-[6px_6px_0_#000]"
       >
-        <div className="flex items-center gap-2 mb-5">
-          <Tag className="w-5 h-5 text-purple-600" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            热门标签
-          </h3>
+        <div className="flex items-center gap-3">
+          <Tag className="h-5 w-5" />
+          <h3 className="neo-heading text-xl">标签索引</h3>
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          {tags.length === 0 && (
-            <p className="text-sm text-gray-500">暂无标签</p>
-          )}
-
+        <div className="mt-5 flex flex-wrap gap-2">
+          {tags.length === 0 && <p className="text-sm font-bold text-black/50">暂无标签</p>}
           {tags.slice(0, 12).map((item) => (
             <Link
               key={item.tag}
               to={`/tag/${encodeURIComponent(item.tag)}`}
-              className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-300 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 transition-colors"
+              className="border-2 border-black bg-white px-2.5 py-1.5 text-[11px] font-black shadow-[2px_2px_0_#000] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none"
             >
-              {item.tag}
+              #{item.tag}
             </Link>
           ))}
         </div>
-      </motion.div>
+      </motion.section>
     </div>
   );
 }

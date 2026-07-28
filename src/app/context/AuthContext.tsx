@@ -16,6 +16,7 @@ type AuthContextValue = {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
+  googleLogin: (credential: string) => Promise<User>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<User | null>;
@@ -63,13 +64,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const googleLogin = async (credential: string) => {
+    const data = await api('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    });
+
+    clearAuthCache();
+    setUser(data.user);
+    return data.user;
+  };
+
   const logout = () => {
     clearAuthCache();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, googleLogin, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

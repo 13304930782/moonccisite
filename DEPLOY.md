@@ -29,3 +29,31 @@ server {
     }
 }
 ```
+
+## Google 登录
+
+1. 在 Google Auth Platform 创建 Web OAuth 客户端，并将正式域名加入“已获授权的 JavaScript 来源”。弹窗回调模式不需要填写重定向 URI。
+2. 在 `server/.env` 配置：
+
+```dotenv
+GOOGLE_CLIENT_ID=your_web_client_id.apps.googleusercontent.com
+GOOGLE_CERTS_URL=https://your-google-certificate-proxy.example.com/google-certs
+```
+
+`GOOGLE_CERTS_URL` 必须返回 Google 官方 `https://www.googleapis.com/oauth2/v1/certs` 的原始 JSON。境外网络可直连的服务器也可以直接填写官方地址；网络受限环境建议使用固定上游地址的 Cloudflare Worker，禁止实现任意 URL 代理。
+
+3. 部署数据库迁移前先备份数据库并预览全部待执行文件：
+
+```bash
+cd /www/wwwroot/mooncci-source/server
+node scripts/migrate.js --dry-run
+node scripts/migrate.js
+```
+
+4. 更新后端代码或 `.env` 后重启 PM2：
+
+```bash
+su -s /bin/bash mooncci -c "cd /www/wwwroot/mooncci-source/server && pm2 startOrReload ecosystem.config.cjs --update-env"
+```
+
+5. 重新构建前端并将 `dist` 内容上传到 Nginx 站点根目录。Google 客户端 ID 会出现在浏览器代码中，这是 OAuth Web 客户端的公开标识；客户端密钥不得写入前端、仓库或日志。

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { BlogCard } from '../components/BlogCard';
+import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
 
 export default function CategoryPage() {
@@ -13,12 +14,12 @@ export default function CategoryPage() {
 
   useEffect(() => {
     api(`/posts?category=${encodeURIComponent(name)}`)
-      .then(setPosts)
+      .then((data) => setPosts(Array.isArray(data) ? data : []))
       .catch(() => setPosts([]));
   }, [name]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+    <div className="neo-page">
       <Header />
 
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
@@ -73,6 +74,7 @@ export default function CategoryPage() {
           })}
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }
