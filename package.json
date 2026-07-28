@@ -66,10 +66,10 @@
     "react-router-dom": "7.6.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.12",
-    "@vitejs/plugin-react": "4.7.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@vitejs/plugin-react": "6.0.4",
     "tailwindcss": "4.1.12",
-    "vite": "6.3.5"
+    "vite": "8.1.5"
   },
   "peerDependencies": {
     "react": "18.3.1",
@@ -85,7 +85,7 @@
   },
   "pnpm": {
     "overrides": {
-      "vite": "6.3.5"
+      "vite": "8.1.5"
     }
   }
 }
