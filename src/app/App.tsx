@@ -38,6 +38,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { AdminShell } from './components/admin/AdminShell';
 import { SiteMeta } from './components/SiteMeta';
 import { ArrowRight, BookMarked, Code2, Compass, Lightbulb } from 'lucide-react';
+import { ThemeProvider } from './context/ThemeContext';
 
 function Home() {
   const [blogPosts, setPosts] = useState<any[]>([]);
@@ -264,10 +265,11 @@ function Guard({
 
 export default function App() {
   return (
-    <AuthProvider>
-      <SiteMeta />
-      <BrowserRouter>
-        <Routes>
+    <ThemeProvider>
+      <AuthProvider>
+        <SiteMeta />
+        <BrowserRouter>
+          <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/articles" element={<ArticlesPage />} />
           <Route path="/tag/:tag" element={<TagPage />} />
@@ -301,8 +303,9 @@ export default function App() {
           <Route path="/admin/early-access/:id" element={<Guard ownerOnly><AdminShell><AdminEarlyAccessDetailPage /></AdminShell></Guard>} />
 
           <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

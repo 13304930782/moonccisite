@@ -1,11 +1,44 @@
 const express = require('express');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
 const db = require('../db');
-const { authRequired, adminOnly } = require('../middleware/auth');
+const { authRequired, adminOnly, ownerOnly } = require('../middleware/auth');
 const { getMailConfig, safeHttpsUrl, sendMail } = require('../lib/mailer');
 const { renderBrandedEmail } = require('../lib/mailTemplate');
+const {
+  RELEASE_FILENAME,
+  isAllowedDmgMetadata,
+  hasUdifFooter,
+  buildReleaseDownloadUrl,
+} = require('../lib/earlyAccessRelease');
 
 const router = express.Router();
 const CUSTOM_MAIL_DAILY_LIMIT = Number(process.env.CUSTOM_MAIL_DAILY_LIMIT || 20);
+const configuredEarlyAccessUploadMaxMb = Number(process.env.EARLY_ACCESS_UPLOAD_MAX_MB || 512);
+const EARLY_ACCESS_UPLOAD_MAX_MB = Number.isFinite(configuredEarlyAccessUploadMaxMb) && configuredEarlyAccessUploadMaxMb > 0
+  ? Math.floor(configuredEarlyAccessUploadMaxMb)
+  : 512;
+const earlyAccessReleaseDir = path.join(__dirname, '../../uploads/releases');
+const earlyAccessReleaseTmpDir = path.join(earlyAccessReleaseDir, '.tmp');
+let earlyAccessReleaseUploadBusy = false;
+
+for (const directory of [earlyAccessReleaseDir, earlyAccessReleaseTmpDir]) {
+  fs.mkdirSync(directory, { recursive: true });
+}
+
+const earlyAccessReleaseUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, callback) => callback(null, earlyAccessReleaseTmpDir),
+    filename: (_req, _file, callback) => callback(null, `${Date.now()}-${crypto.randomUUID()}.dmg`),
+  }),
+  limits: {
+    files: 1,
+    fileSize: EARLY_ACCESS_UPLOAD_MAX_MB * 1024 * 1024,
+  },
+  fileFilter: (_req, file, callback) => callback(null, isAllowedDmgMetadata(file)),
+}).single('file');
 
 const defaultBrand = {
   site_title: 'Mooncci Blog',
@@ -161,6 +194,37 @@ function publicMailConfig(config) {
   };
 }
 
+async function pathExists(filePath) {
+  try {
+    await fs.promises.access(filePath, fs.constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function removeFile(filePath) {
+  if (!filePath) return;
+  try {
+    await fs.promises.rm(filePath, { force: true });
+  } catch (error) {
+    console.error('[early-access-upload] temporary file cleanup failed:', error.message);
+  }
+}
+
+function uploadErrorResponse(error) {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return { status: 413, message: `安装包不能超过 ${EARLY_ACCESS_UPLOAD_MAX_MB} MB。` };
+    }
+    if (error.code === 'LIMIT_FILE_COUNT' || error.code === 'LIMIT_UNEXPECTED_FILE') {
+      return { status: 400, message: '每次只能上传一个 DMG 安装包。' };
+    }
+  }
+
+  return { status: 400, message: '安装包上传失败，请检查文件后重试。' };
+}
+
 router.get('/site', async (_req, res) => {
   const brand = await getSetting('brand', defaultBrand);
   const profile = await getSetting('profile', defaultProfile);
@@ -199,6 +263,87 @@ router.put('/site', authRequired, adminOnly, async (req, res) => {
 router.get('/mail', authRequired, adminOnly, async (_req, res) => {
   const config = await getMailConfig();
   res.json(publicMailConfig(config));
+});
+
+router.post('/mail/early-access-upload', authRequired, ownerOnly, (req, res) => {
+  if (earlyAccessReleaseUploadBusy) {
+    return res.status(409).json({ message: '另一个安装包正在上传，请稍后重试。' });
+  }
+
+  earlyAccessReleaseUploadBusy = true;
+  const reply = (status, body) => {
+    earlyAccessReleaseUploadBusy = false;
+    return res.status(status).json(body);
+  };
+
+  earlyAccessReleaseUpload(req, res, async (uploadError) => {
+    if (uploadError) {
+      const response = uploadErrorResponse(uploadError);
+      return reply(response.status, { message: response.message });
+    }
+
+    if (!req.file) {
+      return reply(400, { message: '请选择有效的 DMG 安装包。' });
+    }
+
+    const temporaryPath = req.file.path;
+    const releasePath = path.join(earlyAccessReleaseDir, RELEASE_FILENAME);
+    const backupPath = path.join(earlyAccessReleaseTmpDir, `${RELEASE_FILENAME}.${Date.now()}.backup`);
+    let hasBackup = false;
+    let installedNewRelease = false;
+
+    try {
+      if (!(await hasUdifFooter(temporaryPath))) {
+        await removeFile(temporaryPath);
+        return reply(400, { message: 'DMG 内容校验失败：未找到有效的 UDIF 文件签名。' });
+      }
+
+      const currentMail = await getMailConfig();
+      const downloadUrl = buildReleaseDownloadUrl(currentMail.site_url || process.env.SITE_URL);
+      if (!safeHttpsUrl(downloadUrl)) {
+        await removeFile(temporaryPath);
+        return reply(400, { message: '请先在邮件设置中保存有效的 HTTPS 站点地址。' });
+      }
+
+      if (await pathExists(releasePath)) {
+        await fs.promises.rename(releasePath, backupPath);
+        hasBackup = true;
+      }
+
+      await fs.promises.rename(temporaryPath, releasePath);
+      installedNewRelease = true;
+
+      const nextMail = {
+        ...defaultMail,
+        ...currentMail,
+        early_access_download_url: downloadUrl,
+      };
+      await saveSetting('mail', nextMail);
+
+      if (hasBackup) await removeFile(backupPath);
+
+      return reply(200, {
+        message: 'PromptDock DMG 上传成功，下载地址已自动更新。',
+        url: downloadUrl,
+        mail: publicMailConfig(nextMail),
+      });
+    } catch (error) {
+      console.error('[early-access-upload] failed:', error?.code || error?.message);
+
+      if (installedNewRelease) await removeFile(releasePath);
+      await removeFile(temporaryPath);
+
+      if (hasBackup && await pathExists(backupPath)) {
+        try {
+          await fs.promises.rename(backupPath, releasePath);
+        } catch (restoreError) {
+          console.error('[early-access-upload] release rollback failed:', restoreError.message);
+        }
+      }
+
+      return reply(500, { message: '安装包保存失败，旧版本（如有）已恢复，请稍后重试。' });
+    }
+  });
 });
 
 router.put('/mail', authRequired, adminOnly, async (req, res) => {

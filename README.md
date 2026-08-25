@@ -313,6 +313,7 @@ Recommended production setup:
 - Comment moderation for normal users
 - Clear admin/editor/owner permission boundaries
 - Secrets managed through environment variables
+- Owner-only PromptDock DMG release upload with size and UDIF signature validation
 
 ## Roles
 
