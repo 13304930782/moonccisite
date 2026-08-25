@@ -21,6 +21,11 @@ server {
     }
 
     location /api/ {
+        # PromptDock Early Access 安装包最大允许 512 MB。
+        client_max_body_size 512m;
+        proxy_request_buffering off;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
         proxy_pass http://127.0.0.1:3001/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -29,6 +34,36 @@ server {
     }
 }
 ```
+
+## PromptDock Early Access
+
+1. 更新后端前先备份数据库，并预览待执行迁移：
+
+```bash
+cd /www/wwwroot/mooncci-source/server
+node scripts/migrate.js --dry-run
+```
+
+新版至少需要执行 `202607220001_create_early_access_applications.sql`。如果 dry-run 同时显示之前暂缓的迁移（例如视频训练记录），不要直接执行；先将暂缓文件改回 `.pending` 后再次 dry-run，确认列表正确，再运行：
+
+```bash
+node scripts/migrate.js
+```
+
+2. 在 `server/.env` 设置上传上限（需与 Nginx 的 `client_max_body_size` 一致）：
+
+```dotenv
+EARLY_ACCESS_UPLOAD_MAX_MB=512
+```
+
+3. `server/uploads/releases/` 必须可由运行 PM2 的 `mooncci` 用户写入。安装包不会进入 Git 仓库；更新服务器时不要删除 `server/uploads`。
+
+4. 重载 Nginx 与 PM2 后，在后台“邮件提醒设置”中：
+   - 保存正式 HTTPS 站点地址；
+   - 配置并测试 SMTP；
+   - 使用站长账号上传 `PromptDock.dmg`。
+
+上传接口会校验 `.dmg` 扩展名、MIME 类型、512 MB 上限和 UDIF `koly` 文件尾签名。上传成功后下载地址会自动保存为 `https://你的域名/api/uploads/releases/PromptDock.dmg`。
 
 ## Google 登录
 

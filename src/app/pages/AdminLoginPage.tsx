@@ -9,10 +9,11 @@ const DEFAULT_REDIRECT = '/admin/comments?status=pending';
 export default function AdminLoginPage() {
   const [params] = useSearchParams();
   const redirect = safeAdminRedirect(params.get('redirect'));
+  const ownerRequired = redirect.startsWith('/admin/early-access');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('为了审核评论，请登录管理员账号。');
+  const [message, setMessage] = useState(ownerRequired ? '请使用站长账号审核 Early Access 申请。' : '为了审核评论，请登录管理员账号。');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -57,6 +58,12 @@ export default function AdminLoginPage() {
         return;
       }
 
+      if (ownerRequired && data.user?.role !== 'owner') {
+        clearAuthCache();
+        setMessage('Early Access 申请包含个人资料，仅站长账号可以查看和审核。');
+        return;
+      }
+
 
       const target = redirect.includes('?')
         ? `${redirect}&admin_login=${Date.now()}`
@@ -86,7 +93,7 @@ export default function AdminLoginPage() {
               管理员审核登录
             </h1>
             <p className="mt-1 text-sm text-gray-500">
-              仅站长或管理员账号可以进入评论审核页面。
+              {ownerRequired ? 'Early Access 申请仅允许站长账号审核。' : '仅站长或管理员账号可以进入评论审核页面。'}
             </p>
           </div>
         </div>

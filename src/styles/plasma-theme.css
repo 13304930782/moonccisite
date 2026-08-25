@@ -1,0 +1,764 @@
+/* Two deliberately independent systems: the original paper theme and a modern Plasma UI. */
+:root {
+  --plasma-bg: #07090d;
+  --plasma-surface: rgba(12, 15, 21, 0.78);
+  --plasma-surface-strong: rgba(15, 18, 25, 0.94);
+  --plasma-surface-soft: rgba(255, 255, 255, 0.055);
+  --plasma-accent: #ff6b35;
+  --plasma-accent-soft: #ff9a72;
+  --plasma-text: #f7f8fa;
+  --plasma-muted: #a9afba;
+  --plasma-line: rgba(255, 255, 255, 0.13);
+  --plasma-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+}
+
+#root {
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+.moon-theme-backdrop {
+  position: fixed;
+  z-index: -2;
+  inset: 0;
+  overflow: hidden;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 320ms ease, background-color 320ms ease;
+}
+
+.moon-app-layer {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+.moon-theme-toggle {
+  position: fixed;
+  z-index: 100;
+  right: 18px;
+  bottom: 18px;
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 13px 7px 7px;
+  border: 2px solid #000;
+  border-radius: 12px;
+  background: #fff;
+  color: #000;
+  box-shadow: 5px 5px 0 #000;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 250ms ease, color 250ms ease;
+}
+
+.moon-theme-toggle:hover,
+.moon-theme-toggle:focus-visible {
+  transform: translate(3px, 3px);
+  box-shadow: 2px 2px 0 #000;
+}
+
+.moon-theme-toggle:focus-visible {
+  outline: 3px solid var(--moon-yellow);
+  outline-offset: 3px;
+}
+
+.moon-theme-toggle-orb {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 2px solid #000;
+  border-radius: 8px;
+  background: #171e19;
+  color: #ffe17c;
+}
+
+.moon-theme-toggle-orb svg {
+  width: 18px;
+  height: 18px;
+}
+
+.moon-theme-toggle-copy {
+  display: grid;
+  justify-items: start;
+  line-height: 1;
+}
+
+.moon-theme-toggle-copy small {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  opacity: 0.55;
+}
+
+.moon-theme-toggle-copy strong {
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+html[data-moon-theme='plasma'] {
+  --moon-yellow: var(--plasma-accent);
+  --moon-charcoal: #0c0f15;
+  --moon-sage: #242933;
+  --moon-paper: #11151d;
+  --moon-ink: var(--plasma-text);
+  --background: var(--plasma-bg);
+  --foreground: var(--plasma-text);
+  --card: #11151d;
+  --card-foreground: var(--plasma-text);
+  --popover: #11151d;
+  --popover-foreground: var(--plasma-text);
+  --primary: var(--plasma-accent);
+  --primary-foreground: #150803;
+  --secondary: #252a34;
+  --secondary-foreground: var(--plasma-text);
+  --muted: #21262f;
+  --muted-foreground: var(--plasma-muted);
+  --accent: var(--plasma-accent);
+  --accent-foreground: #150803;
+  --border: var(--plasma-line);
+  --input-background: rgba(4, 6, 10, 0.58);
+  --ring: var(--plasma-accent-soft);
+  --sidebar: #10141b;
+  --sidebar-foreground: var(--plasma-text);
+  --sidebar-accent: #20252e;
+  --sidebar-accent-foreground: var(--plasma-text);
+  --sidebar-border: var(--plasma-line);
+}
+
+html[data-moon-theme='plasma'] body {
+  background: var(--plasma-bg);
+  color: var(--plasma-text);
+}
+
+html[data-moon-theme='plasma'] ::selection {
+  background: var(--plasma-accent);
+  color: #140803;
+}
+
+html[data-moon-theme='plasma'] .moon-theme-backdrop {
+  background:
+    radial-gradient(circle at 70% 0%, rgba(255, 107, 53, 0.12), transparent 42%),
+    var(--plasma-bg);
+  opacity: 1;
+}
+
+html[data-moon-theme='plasma'] .moon-theme-backdrop::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(7, 9, 13, 0.12), rgba(7, 9, 13, 0.6));
+  content: '';
+}
+
+html[data-moon-theme='plasma'] .moon-theme-toggle {
+  border: 1px solid var(--plasma-line);
+  border-radius: 999px;
+  background: rgba(12, 15, 21, 0.78);
+  color: var(--plasma-text);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+
+html[data-moon-theme='plasma'] .moon-theme-toggle:hover,
+html[data-moon-theme='plasma'] .moon-theme-toggle:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(255, 107, 53, 0.6);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.42), 0 0 0 4px rgba(255, 107, 53, 0.1);
+}
+
+html[data-moon-theme='plasma'] .moon-theme-toggle:focus-visible {
+  outline: none;
+}
+
+html[data-moon-theme='plasma'] .moon-theme-toggle-orb {
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ff9a72, var(--plasma-accent));
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(255, 107, 53, 0.34);
+}
+
+/* Modern shared language: translucent layers, hairline borders, generous radii, no offset shadows. */
+html[data-moon-theme='plasma'] .neo-page,
+html[data-moon-theme='plasma'] .neo-dot-grid {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: var(--plasma-text);
+}
+
+html[data-moon-theme='plasma'] .neo-heading,
+html[data-moon-theme='plasma'] .neo-page main h1,
+html[data-moon-theme='plasma'] .neo-page main h2,
+html[data-moon-theme='plasma'] .neo-page main h3 {
+  font-weight: 780;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+html[data-moon-theme='plasma'] .neo-card,
+html[data-moon-theme='plasma'] .neo-card-lg,
+html[data-moon-theme='plasma'] .neo-page main .rounded-3xl {
+  border: 1px solid var(--plasma-line) !important;
+  border-radius: 24px !important;
+  background: var(--plasma-surface) !important;
+  color: var(--plasma-text) !important;
+  box-shadow: var(--plasma-shadow) !important;
+  backdrop-filter: blur(22px) saturate(130%) !important;
+}
+
+html[data-moon-theme='plasma'] .neo-card-lg {
+  box-shadow: 0 32px 100px rgba(0, 0, 0, 0.44) !important;
+}
+
+html[data-moon-theme='plasma'] .neo-dot-grid > [class*='shadow-'] {
+  border: 1px solid var(--plasma-line) !important;
+  border-radius: 24px !important;
+  background: var(--plasma-surface-strong) !important;
+  color: var(--plasma-text) !important;
+  box-shadow: var(--plasma-shadow) !important;
+  backdrop-filter: blur(22px) saturate(130%);
+}
+
+html[data-moon-theme='plasma'] .neo-button {
+  min-height: 46px;
+  border: 1px solid var(--plasma-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--plasma-text);
+  box-shadow: none;
+  font-weight: 700;
+  transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+html[data-moon-theme='plasma'] .neo-button:hover,
+html[data-moon-theme='plasma'] .neo-button:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(255, 107, 53, 0.55);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+html[data-moon-theme='plasma'] .neo-button-dark,
+html[data-moon-theme='plasma'] .neo-button-yellow {
+  border-color: transparent;
+  background: linear-gradient(135deg, #ff9a72, var(--plasma-accent));
+  color: #170904;
+}
+
+html[data-moon-theme='plasma'] .neo-input,
+html[data-moon-theme='plasma'] input,
+html[data-moon-theme='plasma'] textarea,
+html[data-moon-theme='plasma'] select {
+  border-color: var(--plasma-line);
+  background-color: rgba(4, 6, 10, 0.58);
+  color: var(--plasma-text);
+}
+
+html[data-moon-theme='plasma'] input::placeholder,
+html[data-moon-theme='plasma'] textarea::placeholder {
+  color: rgba(247, 248, 250, 0.4);
+}
+
+html[data-moon-theme='plasma'] .neo-input:focus-within,
+html[data-moon-theme='plasma'] .neo-input:focus,
+html[data-moon-theme='plasma'] input:focus,
+html[data-moon-theme='plasma'] textarea:focus,
+html[data-moon-theme='plasma'] select:focus {
+  outline-color: rgba(255, 107, 53, 0.38);
+}
+
+html[data-moon-theme='plasma'] .neo-kicker {
+  border: 1px solid var(--plasma-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--plasma-accent-soft);
+  box-shadow: none;
+  font-weight: 700;
+}
+
+html[data-moon-theme='plasma'] .neo-outline-text {
+  padding: 0;
+  color: var(--plasma-text);
+  background: linear-gradient(90deg, #fff 0%, #ffcfbd 52%, var(--plasma-accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+html[data-moon-theme='plasma'] .neo-outline-text::before {
+  display: none;
+}
+
+/* Normalize legacy Tailwind colors without carrying over their old visual language. */
+html[data-moon-theme='plasma'] .moon-app-layer [class~='bg-white'],
+html[data-moon-theme='plasma'] .moon-app-layer [class*='bg-white/'],
+html[data-moon-theme='plasma'] .moon-app-layer [class*='dark:bg-gray-9'] {
+  background-color: var(--plasma-surface) !important;
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer [class~='bg-[#ffe17c]'] {
+  background-color: rgba(255, 107, 53, 0.86) !important;
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer [class~='bg-[#b7c6c2]'] {
+  background-color: rgba(255, 255, 255, 0.075) !important;
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer [class~='bg-[#171e19]'] {
+  background-color: rgba(8, 11, 16, 0.88) !important;
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer [class~='text-black'],
+html[data-moon-theme='plasma'] .moon-app-layer [class*='text-black/'],
+html[data-moon-theme='plasma'] .moon-app-layer [class*='text-gray-9'] {
+  color: var(--plasma-text) !important;
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer [class*='text-gray-5'],
+html[data-moon-theme='plasma'] .moon-app-layer [class*='text-gray-6'],
+html[data-moon-theme='plasma'] .moon-app-layer [class*='text-gray-7'] {
+  color: var(--plasma-muted) !important;
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer [class*='text-blue-'],
+html[data-moon-theme='plasma'] .moon-app-layer [class*='text-purple-'],
+html[data-moon-theme='plasma'] .moon-app-layer [class*='text-pink-'] {
+  color: var(--plasma-accent-soft) !important;
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer [class*='border-black'],
+html[data-moon-theme='plasma'] .moon-app-layer [class*='border-gray-'],
+html[data-moon-theme='plasma'] .moon-app-layer [class*='dark:border-gray-'] {
+  border-color: var(--plasma-line) !important;
+  border-width: 1px !important;
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer [class*='bg-blue-6'],
+html[data-moon-theme='plasma'] .moon-app-layer [class*='bg-purple-6'] {
+  background-color: var(--plasma-accent) !important;
+  color: #170904 !important;
+}
+
+/* Navigation becomes a floating glass command bar. */
+html[data-moon-theme='plasma'] .card-nav {
+  overflow: hidden;
+  border: 1px solid var(--plasma-line);
+  border-radius: 24px;
+  background: rgba(10, 13, 18, 0.72);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(24px) saturate(150%);
+}
+
+html[data-moon-theme='plasma'] .card-nav-menu,
+html[data-moon-theme='plasma'] .card-nav-login-button {
+  border: 1px solid var(--plasma-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--plasma-text);
+  box-shadow: none;
+  font-weight: 650;
+}
+
+html[data-moon-theme='plasma'] .card-nav-menu:hover {
+  background: rgba(255, 107, 53, 0.12);
+}
+
+html[data-moon-theme='plasma'] .card-nav-brand {
+  color: var(--plasma-text);
+}
+
+html[data-moon-theme='plasma'] .card-nav-brand-name {
+  font-weight: 720;
+  letter-spacing: -0.025em;
+}
+
+html[data-moon-theme='plasma'] .card-nav-logo {
+  border: 0;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #ff9a72, var(--plasma-accent));
+  color: #1b0a04;
+  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.25);
+}
+
+html[data-moon-theme='plasma'] .card-nav-card {
+  min-height: 200px;
+  border: 1px solid var(--plasma-line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--plasma-text) !important;
+  box-shadow: none;
+}
+
+html[data-moon-theme='plasma'] .card-nav-card:nth-child(2) {
+  background: rgba(255, 107, 53, 0.08) !important;
+}
+
+html[data-moon-theme='plasma'] .card-nav-card:nth-child(3) {
+  background: rgba(255, 255, 255, 0.035) !important;
+}
+
+html[data-moon-theme='plasma'] .card-nav-card-heading,
+html[data-moon-theme='plasma'] .card-nav-search {
+  border-color: var(--plasma-line);
+}
+
+html[data-moon-theme='plasma'] .card-nav-search {
+  border-width: 1px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.24);
+  color: var(--plasma-text);
+}
+
+html[data-moon-theme='plasma'] .card-nav-search input,
+html[data-moon-theme='plasma'] .card-nav-search button {
+  color: var(--plasma-text);
+}
+
+/* Homepage, cards and footer */
+html[data-moon-theme='plasma'] .neo-marquee-track {
+  opacity: 0.82;
+}
+
+html[data-moon-theme='plasma'] .neo-page main > section[class*='border-'] {
+  border-color: var(--plasma-line) !important;
+  border-width: 1px !important;
+}
+
+html[data-moon-theme='plasma'] .neo-page main article[class*='shadow-'],
+html[data-moon-theme='plasma'] .neo-page main [class*='shadow-xl'],
+html[data-moon-theme='plasma'] .neo-page main [class*='shadow-lg'],
+html[data-moon-theme='plasma'] .neo-page main [class*='shadow-['] {
+  border-radius: 24px !important;
+  box-shadow: var(--plasma-shadow) !important;
+}
+
+html[data-moon-theme='plasma'] .neo-card-lg {
+  transform: none !important;
+}
+
+html[data-moon-theme='plasma'] footer {
+  border-color: var(--plasma-line) !important;
+  background: rgba(7, 9, 13, 0.86) !important;
+  backdrop-filter: blur(22px);
+}
+
+html[data-moon-theme='plasma'] footer a[class*='shadow-'] {
+  border: 1px solid transparent !important;
+  border-radius: 999px;
+  background: var(--plasma-accent) !important;
+  color: #170904 !important;
+  box-shadow: none !important;
+}
+
+/* Folder illustrations keep their affordance but adopt modern materials. */
+html[data-moon-theme='plasma'] .folder,
+html[data-moon-theme='plasma'] .folder-paper,
+html[data-moon-theme='plasma'] .folder-front {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+html[data-moon-theme='plasma'] .folder-paper {
+  background: #20252e !important;
+  color: var(--plasma-text) !important;
+}
+
+html[data-moon-theme='plasma'] .folder-front {
+  background: linear-gradient(145deg, #ff986f, var(--plasma-accent)) !important;
+}
+
+/* Authentication is a clean split glass panel, not a brutalist card. */
+html[data-moon-theme='plasma'] .auth-shell {
+  overflow: hidden;
+  border: 1px solid var(--plasma-line);
+  border-radius: 28px;
+  background: rgba(9, 12, 17, 0.76);
+  box-shadow: 0 38px 120px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(26px) saturate(135%);
+}
+
+html[data-moon-theme='plasma'] .auth-story {
+  border-color: var(--plasma-line);
+  border-width: 0 1px 0 0;
+  background:
+    radial-gradient(circle at 82% 24%, rgba(255, 107, 53, 0.17), transparent 38%),
+    rgba(4, 7, 11, 0.62);
+  color: var(--plasma-text);
+}
+
+html[data-moon-theme='plasma'] .auth-story::before {
+  border: 1px solid rgba(255, 107, 53, 0.38);
+  box-shadow: 0 0 80px rgba(255, 107, 53, 0.12);
+}
+
+html[data-moon-theme='plasma'] .auth-story::after {
+  height: 1px;
+  background: rgba(255, 107, 53, 0.7);
+  box-shadow: 0 12px 0 rgba(255, 107, 53, 0.3), 0 24px 0 rgba(255, 107, 53, 0.12);
+}
+
+html[data-moon-theme='plasma'] .auth-brand,
+html[data-moon-theme='plasma'] .auth-story-copy h1 {
+  color: var(--plasma-text);
+}
+
+html[data-moon-theme='plasma'] .auth-brand-icon {
+  border: 0;
+  border-radius: 12px;
+  background: var(--plasma-accent);
+  color: #170904;
+  box-shadow: none;
+}
+
+html[data-moon-theme='plasma'] .auth-kicker,
+html[data-moon-theme='plasma'] .auth-index {
+  border-color: rgba(255, 107, 53, 0.4);
+  color: var(--plasma-accent-soft);
+}
+
+html[data-moon-theme='plasma'] .auth-kicker {
+  border-width: 1px;
+  background: rgba(255, 107, 53, 0.08);
+}
+
+html[data-moon-theme='plasma'] .auth-story-copy p,
+html[data-moon-theme='plasma'] .auth-form-heading p,
+html[data-moon-theme='plasma'] .auth-alternate,
+html[data-moon-theme='plasma'] .auth-oauth-divider {
+  color: var(--plasma-muted);
+}
+
+html[data-moon-theme='plasma'] .auth-story-copy h1,
+html[data-moon-theme='plasma'] .auth-form-heading h2 {
+  font-weight: 760;
+  letter-spacing: -0.045em;
+}
+
+html[data-moon-theme='plasma'] .auth-field-note {
+  border: 1px solid var(--plasma-line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--plasma-text);
+  box-shadow: none;
+  transform: none;
+}
+
+html[data-moon-theme='plasma'] .auth-field-note-head,
+html[data-moon-theme='plasma'] .auth-field-note-tags span {
+  border-color: var(--plasma-line);
+  border-width: 1px;
+}
+
+html[data-moon-theme='plasma'] .auth-field-note-tags span {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-moon-theme='plasma'] .auth-form-side {
+  background: rgba(12, 15, 21, 0.72);
+  color: var(--plasma-text);
+}
+
+html[data-moon-theme='plasma'] .auth-form-meta,
+html[data-moon-theme='plasma'] .auth-back-link,
+html[data-moon-theme='plasma'] .auth-field-label {
+  border-color: var(--plasma-line);
+  color: var(--plasma-text);
+}
+
+html[data-moon-theme='plasma'] .auth-form-meta {
+  border-width: 0 0 1px;
+}
+
+html[data-moon-theme='plasma'] .auth-form-heading > span,
+html[data-moon-theme='plasma'] .auth-alternate a {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 107, 53, 0.12);
+  color: var(--plasma-accent-soft);
+  box-shadow: none;
+}
+
+html[data-moon-theme='plasma'] .auth-field-control,
+html[data-moon-theme='plasma'] .auth-google-button {
+  border: 1px solid var(--plasma-line);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.24);
+  box-shadow: none;
+}
+
+html[data-moon-theme='plasma'] .auth-field-control:focus-within {
+  border-color: rgba(255, 107, 53, 0.72);
+  background: rgba(0, 0, 0, 0.34);
+  transform: none;
+  box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.11);
+}
+
+html[data-moon-theme='plasma'] .auth-field-control input,
+html[data-moon-theme='plasma'] .auth-field-control svg,
+html[data-moon-theme='plasma'] .auth-inline-link,
+html[data-moon-theme='plasma'] .auth-google-loading {
+  color: var(--plasma-text);
+}
+
+html[data-moon-theme='plasma'] .auth-inline-link {
+  text-decoration-color: var(--plasma-accent);
+}
+
+html[data-moon-theme='plasma'] .auth-oauth-divider::before,
+html[data-moon-theme='plasma'] .auth-oauth-divider::after {
+  height: 1px;
+  background: var(--plasma-line);
+}
+
+html[data-moon-theme='plasma'] .auth-submit {
+  border: 0;
+  background: linear-gradient(135deg, #ff9a72, var(--plasma-accent));
+  color: #170904;
+}
+
+@media (min-width: 521px) {
+  .auth-alternate {
+    padding-right: 104px;
+  }
+}
+
+/* Control center: modern application shell with the same glass surfaces. */
+html[data-moon-theme='plasma'] .moon-app-layer > .fixed.inset-0 {
+  background: rgba(7, 9, 13, 0.34) !important;
+  color: var(--plasma-text) !important;
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer aside,
+html[data-moon-theme='plasma'] .moon-app-layer header[class*='bg-[#ffe17c]'] {
+  border-color: var(--plasma-line) !important;
+  border-width: 1px !important;
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer aside[class*='bg-white'] {
+  background: rgba(10, 13, 18, 0.88) !important;
+  backdrop-filter: blur(26px) saturate(135%);
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer main [class*='shadow-'] {
+  border-color: var(--plasma-line) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28) !important;
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer nav a,
+html[data-moon-theme='plasma'] .moon-app-layer nav button {
+  border-radius: 12px;
+  box-shadow: none !important;
+}
+
+html[data-moon-theme='plasma'] .moon-app-layer table,
+html[data-moon-theme='plasma'] .moon-app-layer [role='dialog'],
+html[data-moon-theme='plasma'] .moon-app-layer [role='menu'] {
+  color: var(--plasma-text);
+}
+
+html[data-moon-theme='plasma'] .markdown-body,
+html[data-moon-theme='plasma'] .prose {
+  color: var(--plasma-text);
+}
+
+html[data-moon-theme='plasma'] .markdown-body pre,
+html[data-moon-theme='plasma'] .markdown-body code,
+html[data-moon-theme='plasma'] .prose pre,
+html[data-moon-theme='plasma'] .prose code {
+  border-color: var(--plasma-line);
+  background: rgba(3, 5, 8, 0.72);
+  color: #ffd2c1;
+}
+
+@media (max-width: 880px) {
+  html[data-moon-theme='plasma'] .auth-story {
+    border-width: 0 0 1px;
+  }
+}
+
+@media (max-width: 720px) {
+  .moon-theme-toggle {
+    right: 12px;
+    bottom: 12px;
+    min-height: 46px;
+    padding: 5px;
+  }
+
+  .moon-theme-toggle-orb {
+    width: 34px;
+    height: 34px;
+  }
+
+  .moon-theme-toggle-copy {
+    display: none;
+  }
+
+  .auth-page {
+    padding-bottom: 72px;
+  }
+
+  html[data-moon-theme='plasma'] .card-nav {
+    border-radius: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moon-theme-backdrop,
+  .moon-theme-toggle {
+    transition: none;
+  }
+}
+
+/* The switch previews its destination theme, making the action unambiguous. */
+html .moon-theme-toggle[data-target-theme='plasma'] {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(12, 15, 21, 0.9);
+  color: var(--plasma-text);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(255, 107, 53, 0.08);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+
+html .moon-theme-toggle[data-target-theme='plasma']:hover,
+html .moon-theme-toggle[data-target-theme='plasma']:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(255, 107, 53, 0.62);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.42), 0 0 0 4px rgba(255, 107, 53, 0.11);
+}
+
+html .moon-theme-toggle[data-target-theme='plasma'] .moon-theme-toggle-orb {
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ff9a72, var(--plasma-accent));
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(255, 107, 53, 0.34);
+}
+
+html .moon-theme-toggle[data-target-theme='paper'] {
+  border: 2px solid #000;
+  border-radius: 12px;
+  background: #fff;
+  color: #000;
+  box-shadow: 5px 5px 0 #000;
+  backdrop-filter: none;
+}
+
+html .moon-theme-toggle[data-target-theme='paper']:hover,
+html .moon-theme-toggle[data-target-theme='paper']:focus-visible {
+  transform: translate(3px, 3px);
+  border-color: #000;
+  box-shadow: 2px 2px 0 #000;
+}
+
+html .moon-theme-toggle[data-target-theme='paper'] .moon-theme-toggle-orb {
+  border: 2px solid #000;
+  border-radius: 8px;
+  background: #171e19;
+  color: #ffe17c;
+  box-shadow: none;
+}

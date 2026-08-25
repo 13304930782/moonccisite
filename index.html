@@ -2,6 +2,11 @@
   <!DOCTYPE html>
   <html lang="en">
     <head>
+      <script>
+        try {
+          document.documentElement.dataset.moonTheme = localStorage.getItem('mooncci-theme') === 'plasma' ? 'plasma' : 'paper';
+        } catch (_) {}
+      </script>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>个人博客网站设计</title>
@@ -13,4 +18,3 @@
       <script type="module" src="/src/main.tsx"></script>
     </body>
   </html>
-  

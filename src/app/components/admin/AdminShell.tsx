@@ -7,6 +7,7 @@ import {
   FileText,
   Home,
   Image,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Mail,
@@ -71,6 +72,7 @@ export function AdminShell({ children }: AdminShellProps) {
   const role = user?.role || 'user';
   const manager = isManager(role);
   const writer = canWrite(role);
+  const owner = role === 'owner';
 
   useEffect(() => {
     const html = document.documentElement;
@@ -123,6 +125,12 @@ export function AdminShell({ children }: AdminShellProps) {
       to: '/admin/editor-applications',
       icon: UserRoundCheck,
       show: manager,
+    },
+    {
+      title: 'Early Access 审核',
+      to: '/admin/early-access',
+      icon: Inbox,
+      show: owner,
     },
     {
       title: '评论管理',

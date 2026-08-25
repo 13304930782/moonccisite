@@ -31,10 +31,14 @@ import TagsPage from './pages/TagsPage';
 import CategoryPage from './pages/CategoryPage';
 import CategoriesPage from './pages/CategoriesPage';
 import SearchPage from './pages/SearchPage';
+import EarlyAccessPage from './pages/EarlyAccessPage';
+import AdminEarlyAccessPage from './pages/AdminEarlyAccessPage';
+import AdminEarlyAccessDetailPage from './pages/AdminEarlyAccessDetailPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AdminShell } from './components/admin/AdminShell';
 import { SiteMeta } from './components/SiteMeta';
 import { ArrowRight, BookMarked, Code2, Compass, Lightbulb } from 'lucide-react';
+import { ThemeProvider } from './context/ThemeContext';
 
 function Home() {
   const [blogPosts, setPosts] = useState<any[]>([]);
@@ -226,13 +230,19 @@ function isWriterRole(role?: string) {
   return role === 'owner' || role === 'admin' || role === 'editor';
 }
 
+function isOwnerRole(role?: string) {
+  return role === 'owner';
+}
+
 function Guard({
   children,
   adminOnly = false,
+  ownerOnly = false,
   writerOnly = false,
 }: {
   children: any;
   adminOnly?: boolean;
+  ownerOnly?: boolean;
   writerOnly?: boolean;
 }) {
   const { user, loading } = useAuth();
@@ -246,6 +256,7 @@ function Guard({
   }
 
   if (!user) return <Navigate to="/login" />;
+  if (ownerOnly && !isOwnerRole(user.role)) return <Navigate to="/admin" />;
   if (adminOnly && !isAdminRole(user.role)) return <Navigate to="/admin" />;
   if (writerOnly && !isWriterRole(user.role)) return <Navigate to="/admin/editor-apply" />;
 
@@ -254,10 +265,11 @@ function Guard({
 
 export default function App() {
   return (
-    <AuthProvider>
-      <SiteMeta />
-      <BrowserRouter>
-        <Routes>
+    <ThemeProvider>
+      <AuthProvider>
+        <SiteMeta />
+        <BrowserRouter>
+          <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/articles" element={<ArticlesPage />} />
           <Route path="/tag/:tag" element={<TagPage />} />
@@ -266,6 +278,7 @@ export default function App() {
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/article/:id" element={<ArticlePage />} />
+          <Route path="/early-access" element={<EarlyAccessPage />} />
 
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin-login" element={<AdminLoginPage />} />
@@ -286,10 +299,13 @@ export default function App() {
           <Route path="/admin/site-settings" element={<Guard adminOnly><AdminShell><AdminSiteSettingsPage /></AdminShell></Guard>} />
           <Route path="/admin/mail-settings" element={<Guard adminOnly><AdminShell><AdminMailSettingsPage /></AdminShell></Guard>} />
           <Route path="/admin/send-mail" element={<Guard adminOnly><AdminShell><AdminSendMailPage /></AdminShell></Guard>} />
+          <Route path="/admin/early-access" element={<Guard ownerOnly><AdminShell><AdminEarlyAccessPage /></AdminShell></Guard>} />
+          <Route path="/admin/early-access/:id" element={<Guard ownerOnly><AdminShell><AdminEarlyAccessDetailPage /></AdminShell></Guard>} />
 
           <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

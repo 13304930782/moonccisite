@@ -107,6 +107,37 @@ CREATE TABLE `editor_applications` (
   CONSTRAINT `fk_editor_app_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `early_access_applications`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `early_access_applications` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(254) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email_normalized` varchar(254) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `occupation` enum('student','teacher','developer','creator','enterprise','other') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `use_case` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `device` enum('macbook','imac','mac_mini','mac_studio') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `macos_version` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `desired_features` json NOT NULL,
+  `reason` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` enum('pending','approved','rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `reviewer_id` int DEFAULT NULL,
+  `review_note` text COLLATE utf8mb4_unicode_ci,
+  `reviewed_at` datetime DEFAULT NULL,
+  `owner_notification_sent_at` datetime DEFAULT NULL,
+  `owner_notification_error` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `approval_email_sent_at` datetime DEFAULT NULL,
+  `approval_email_error` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_early_access_email` (`email_normalized`),
+  KEY `idx_early_access_status_created` (`status`,`created_at`),
+  KEY `idx_early_access_reviewer` (`reviewer_id`),
+  CONSTRAINT `fk_early_access_reviewer` FOREIGN KEY (`reviewer_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `password_resets`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
