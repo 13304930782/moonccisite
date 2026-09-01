@@ -5,7 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { SiteFooter } from './components/SiteFooter';
 import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { api } from './lib/api';
 import LoginPage from './pages/LoginPage';
 import AdminLoginPage from './pages/AdminLoginPage';
@@ -39,6 +39,13 @@ import { AdminShell } from './components/admin/AdminShell';
 import { SiteMeta } from './components/SiteMeta';
 import { ArrowRight, BookMarked, Code2, Compass, Lightbulb } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext';
+
+const ElectricityPage = lazy(() => import('./pages/ElectricityPage'));
+const AdminElectricityPage = lazy(() => import('./pages/AdminElectricityPage'));
+
+function RouteLoader() {
+  return <div className="min-h-screen grid place-items-center font-bold">正在加载页面…</div>;
+}
 
 function Home() {
   const [blogPosts, setPosts] = useState<any[]>([]);
@@ -279,6 +286,7 @@ export default function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/article/:id" element={<ArticlePage />} />
           <Route path="/early-access" element={<EarlyAccessPage />} />
+          <Route path="/electricity" element={<Suspense fallback={<RouteLoader />}><ElectricityPage /></Suspense>} />
 
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin-login" element={<AdminLoginPage />} />
@@ -301,6 +309,7 @@ export default function App() {
           <Route path="/admin/send-mail" element={<Guard adminOnly><AdminShell><AdminSendMailPage /></AdminShell></Guard>} />
           <Route path="/admin/early-access" element={<Guard ownerOnly><AdminShell><AdminEarlyAccessPage /></AdminShell></Guard>} />
           <Route path="/admin/early-access/:id" element={<Guard ownerOnly><AdminShell><AdminEarlyAccessDetailPage /></AdminShell></Guard>} />
+          <Route path="/admin/electricity" element={<Guard ownerOnly><AdminShell><Suspense fallback={<RouteLoader />}><AdminElectricityPage /></Suspense></AdminShell></Guard>} />
 
           <Route path="*" element={<Navigate to="/" />} />
           </Routes>

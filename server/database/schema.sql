@@ -138,6 +138,46 @@ CREATE TABLE `early_access_applications` (
   CONSTRAINT `fk_early_access_reviewer` FOREIGN KEY (`reviewer_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `electricity_snapshots`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `electricity_snapshots` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `snapshot_date` date NOT NULL,
+  `recorded_at` datetime NOT NULL,
+  `room_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `meter_id` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `device_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `meter_status` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `today_use` decimal(12,3) DEFAULT NULL,
+  `purchased_remaining` decimal(12,3) DEFAULT NULL,
+  `subsidy_remaining` decimal(12,3) DEFAULT NULL,
+  `total_remaining` decimal(12,3) DEFAULT NULL,
+  `price` decimal(12,4) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_electricity_snapshot_date` (`snapshot_date`),
+  KEY `idx_electricity_recorded_at` (`recorded_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `electricity_monitor_state`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `electricity_monitor_state` (
+  `id` tinyint unsigned NOT NULL,
+  `low_alert_active` tinyint(1) NOT NULL DEFAULT '0',
+  `last_low_alert_at` datetime DEFAULT NULL,
+  `last_recovered_at` datetime DEFAULT NULL,
+  `last_daily_email_date` date DEFAULT NULL,
+  `last_success_at` datetime DEFAULT NULL,
+  `last_error_at` datetime DEFAULT NULL,
+  `last_error_code` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `password_resets`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;

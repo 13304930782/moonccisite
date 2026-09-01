@@ -11,6 +11,9 @@ const applicationRoutes = require('./routes/applications');
 const settingsRoutes = require('./routes/settings');
 const commentRoutes = require('./routes/comments');
 const earlyAccessRoutes = require('./routes/early-access');
+const electricityRoutes = require('./routes/electricity');
+const adminElectricityRoutes = require('./routes/adminElectricity');
+const { startElectricityScheduler } = require('./jobs/electricityScheduler');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -131,10 +134,12 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/early-access', earlyAccessLimiter, earlyAccessRoutes.publicRouter);
+app.use('/api/electricity', electricityRoutes);
 app.use('/api/upload', uploadRoutes.router);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/admin/early-access', earlyAccessRoutes.adminRouter);
+app.use('/api/admin/electricity', adminElectricityRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.use((error, _req, res, _next) => {
@@ -144,7 +149,10 @@ app.use((error, _req, res, _next) => {
 });
 
 const port = Number(process.env.PORT || 3001);
-app.listen(port, () => console.log(`server running on ${port}`));
+app.listen(port, () => {
+  console.log(`server running on ${port}`);
+  startElectricityScheduler();
+});
 
 // 全局异常处理
 process.on('uncaughtException', (err) => {

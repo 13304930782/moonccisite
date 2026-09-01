@@ -69,6 +69,7 @@ export function Header() {
       links: [
         { label: '内容分类', ariaLabel: '按分类浏览文章', to: '/categories' },
         { label: '热门标签', ariaLabel: '按标签浏览文章', to: '/tags' },
+        { label: '宿舍电量 Dashboard', ariaLabel: '查看宿舍电量监控', to: '/electricity' },
         { label: 'Early Access Program', ariaLabel: '申请 PromptDock Early Access', to: '/early-access' },
       ],
     },

@@ -5,6 +5,7 @@ import {
   Ban,
   Crown,
   FileText,
+  Gauge,
   Home,
   Image,
   Inbox,
@@ -130,6 +131,12 @@ export function AdminShell({ children }: AdminShellProps) {
       title: 'Early Access 审核',
       to: '/admin/early-access',
       icon: Inbox,
+      show: owner,
+    },
+    {
+      title: '水电监控设置',
+      to: '/admin/electricity',
+      icon: Gauge,
       show: owner,
     },
     {
