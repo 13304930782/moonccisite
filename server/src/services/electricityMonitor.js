@@ -1,4 +1,4 @@
-const { fetchElectricitySnapshot } = require('../lib/electricity');
+const { fetchElectricitySnapshot, resolveNow } = require('../lib/electricity');
 const { calculateUsageStats, classifyElectricity, evaluateLowAlertTransition } = require('../lib/electricityMetrics');
 const { getBusinessDate } = require('../lib/electricityTime');
 const { sendElectricityDailyReport, sendElectricityLowAlert } = require('../lib/electricityMailer');
@@ -22,9 +22,9 @@ function publicSnapshot(snapshot) {
 }
 
 async function collectSnapshot(options = {}) {
-  const now = options.now ? new Date(options.now()) : new Date();
+  const now = resolveNow(options.now);
   try {
-    const upstream = await fetchElectricitySnapshot({ ...options, now: () => now.getTime() });
+    const upstream = await fetchElectricitySnapshot({ ...options, now });
     const stored = await repository.upsertSnapshot(upstream, getBusinessDate(now), now);
     await repository.markCollectionSuccess(now);
     return stored;
@@ -110,6 +110,6 @@ async function sendTestElectricityEmail() {
 }
 
 module.exports = {
-  credentialsConfigured, getDashboardData, publicSnapshot, refreshElectricity,
+  collectSnapshot, credentialsConfigured, getDashboardData, publicSnapshot, refreshElectricity,
   runElectricityCycle, sendTestElectricityEmail,
 };

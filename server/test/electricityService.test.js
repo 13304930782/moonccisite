@@ -49,7 +49,7 @@ test('missing optional data fields normalize to safe empty values', () => {
 
 test('uses only the fixed school endpoint and browser-like headers', async () => {
   let captured;
-  await fetchElectricitySnapshot({ env, now: () => Date.parse('2026-09-01T13:00:00Z'), fetchImpl: async (url, init) => {
+  await fetchElectricitySnapshot({ env, now: Date.parse('2026-09-01T13:00:00Z'), fetchImpl: async (url, init) => {
     captured = { url, init };
     return { ok: true, headers: { get: () => null }, text: async () => responseText() };
   }});
@@ -57,8 +57,16 @@ test('uses only the fixed school endpoint and browser-like headers', async () =>
   assert.equal(`${url.origin}${url.pathname}`, SCHOOL_ENDPOINT);
   assert.equal(url.searchParams.get('customercode'), '2252');
   assert.equal(JSON.parse(url.searchParams.get('param')).cmd, 'h5_getstuindexpage');
+  assert.equal(JSON.parse(url.searchParams.get('param')).timestamp, Date.parse('2026-09-01T13:00:00Z'));
   assert.equal(captured.init.method, 'POST');
   assert.match(captured.init.headers['User-Agent'], /Mozilla/);
+});
+
+test('rejects the former function-shaped now contract', async () => {
+  await assert.rejects(
+    fetchElectricitySnapshot({ env, now: () => Date.now(), fetchImpl: async () => assert.fail('fetch must not run') }),
+    (error) => error.code === 'ELECTRICITY_INVALID_TIMESTAMP',
+  );
 });
 
 test('HTTP failures return a safe typed error', async () => {

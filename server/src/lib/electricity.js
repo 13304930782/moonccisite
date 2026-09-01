@@ -13,6 +13,19 @@ class ElectricityUpstreamError extends Error {
   }
 }
 
+function resolveNow(value) {
+  if (value === undefined) return new Date();
+  const date = value instanceof Date
+    ? new Date(value.getTime())
+    : typeof value === 'number' && Number.isFinite(value)
+      ? new Date(value)
+      : null;
+  if (!date || !Number.isFinite(date.getTime())) {
+    throw new ElectricityUpstreamError('ELECTRICITY_INVALID_TIMESTAMP', '电量采集时间无效');
+  }
+  return date;
+}
+
 function requiredCredentials(env = process.env) {
   const account = String(env.ELECTRICITY_SCHOOL_ACCOUNT || '').trim();
   const roomVerify = String(env.ELECTRICITY_ROOM_VERIFY || '').trim();
@@ -105,7 +118,7 @@ function parsePayload(text, credentials, fetchedAt) {
 async function fetchElectricitySnapshot(options = {}) {
   const env = options.env || process.env;
   const credentials = requiredCredentials(env);
-  const fetchedAt = options.now ? new Date(options.now()) : new Date();
+  const fetchedAt = resolveNow(options.now);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs || DEFAULT_TIMEOUT_MS);
   const payload = {
@@ -149,4 +162,5 @@ module.exports = {
   normalizeRecord,
   parsePayload,
   requiredCredentials,
+  resolveNow,
 };
