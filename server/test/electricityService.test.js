@@ -73,6 +73,17 @@ test('HTTP failures return a safe typed error', async () => {
   await assert.rejects(fetchElectricitySnapshot({ env, fetchImpl: async () => ({ ok: false, status: 503 }) }), (error) => error.code === 'ELECTRICITY_HTTP_ERROR');
 });
 
+test('403 and 429 responses stop collection with explicit safe codes', async () => {
+  await assert.rejects(
+    fetchElectricitySnapshot({ env, fetchImpl: async () => ({ ok: false, status: 403 }) }),
+    (error) => error.code === 'ELECTRICITY_ACCESS_RESTRICTED' && !error.message.includes(credentials.account),
+  );
+  await assert.rejects(
+    fetchElectricitySnapshot({ env, fetchImpl: async () => ({ ok: false, status: 429 }) }),
+    (error) => error.code === 'ELECTRICITY_RATE_LIMITED' && !error.message.includes(credentials.roomVerify),
+  );
+});
+
 test('oversized responses are rejected', async () => {
   await assert.rejects(fetchElectricitySnapshot({ env, fetchImpl: async () => ({ ok: true, headers: { get: () => String(600000) }, text: async () => '' }) }), (error) => error.code === 'ELECTRICITY_RESPONSE_TOO_LARGE');
 });

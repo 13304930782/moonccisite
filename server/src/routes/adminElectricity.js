@@ -3,6 +3,7 @@ const { authRequired, ownerOnly } = require('../middleware/auth');
 const repository = require('../repositories/electricityRepository');
 const { getDashboardData, refreshElectricity, sendTestElectricityEmail } = require('../services/electricityMonitor');
 const { reloadElectricitySchedule } = require('../jobs/electricityScheduler');
+const { DEFAULT_MANUAL_COOLDOWN_MINUTES, manualRefreshGuard } = require('../lib/electricitySchedule');
 
 const router = express.Router();
 router.use(authRequired, ownerOnly);
@@ -12,7 +13,11 @@ function isEmail(value) {
 }
 
 function safeError(error, fallback) {
-  const allowed = new Set(['ELECTRICITY_NOT_CONFIGURED', 'ELECTRICITY_NO_SNAPSHOT', 'ELECTRICITY_TIMEOUT', 'ELECTRICITY_NETWORK_ERROR', 'ELECTRICITY_HTTP_ERROR']);
+  const allowed = new Set([
+    'ELECTRICITY_NOT_CONFIGURED', 'ELECTRICITY_NO_SNAPSHOT', 'ELECTRICITY_TIMEOUT',
+    'ELECTRICITY_NETWORK_ERROR', 'ELECTRICITY_HTTP_ERROR', 'ELECTRICITY_ACCESS_RESTRICTED',
+    'ELECTRICITY_RATE_LIMITED',
+  ]);
   return allowed.has(error?.code) ? error.message : fallback;
 }
 
@@ -53,6 +58,16 @@ router.put('/settings', async (req, res) => {
 
 router.post('/refresh', async (_req, res) => {
   try {
+    const state = await repository.getMonitorState();
+    const cooldownMinutes = Number(process.env.ELECTRICITY_MANUAL_COOLDOWN_MINUTES) || DEFAULT_MANUAL_COOLDOWN_MINUTES;
+    const guard = manualRefreshGuard(state, new Date(), cooldownMinutes);
+    if (guard.blocked) {
+      if (guard.retryAfterSeconds) res.set('Retry-After', String(guard.retryAfterSeconds));
+      const message = guard.reason === 'paused_after_failure'
+        ? '今天的电量采集已因失败暂停，请明天再试。'
+        : `查询过于频繁，请在 ${guard.retryAfterSeconds} 秒后再试。`;
+      return res.status(429).json({ message, retryAfterSeconds: guard.retryAfterSeconds });
+    }
     res.json({ data: await refreshElectricity(), message: '电量数据已刷新。' });
   } catch (error) {
     res.status(error?.code === 'ELECTRICITY_NOT_CONFIGURED' ? 400 : 502).json({ message: safeError(error, '刷新电量数据失败。') });

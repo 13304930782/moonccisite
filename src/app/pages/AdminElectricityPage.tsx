@@ -41,7 +41,7 @@ export default function AdminElectricityPage() {
   return (
     <div className="electricity-admin">
       <header className="electricity-admin-head">
-        <div><span>OWNER ONLY / UTILITIES</span><h1>水电监控设置</h1><p>控制每日采集、日报和一次性低电量告警。学校凭据只存在服务器环境变量中。</p></div>
+        <div><span>OWNER ONLY / UTILITIES</span><h1>水电监控设置</h1><p>固定在 07:00、12:00、21:00 采集，早晚发送简报。学校凭据只存在服务器环境变量中。</p></div>
         <a href="/electricity" target="_blank" rel="noreferrer" className="electricity-button">查看 Dashboard</a>
       </header>
 
@@ -51,9 +51,9 @@ export default function AdminElectricityPage() {
         <form className="electricity-admin-card electricity-admin-form" onSubmit={save}>
           <div className="electricity-admin-card-title"><Zap /><div><h2>运行策略</h2><p>Asia/Shanghai 业务时区</p></div></div>
           <label className="electricity-switch-row"><span><strong>启用电量监控</strong><small>关闭后调度器不再查询学校接口</small></span><input type="checkbox" checked={form.enabled} onChange={(event) => setForm({ ...form, enabled: event.target.checked })} /></label>
-          <label className="electricity-switch-row"><span><strong>发送每日电量简报</strong><small>当日成功发送后不会重复</small></span><input type="checkbox" checked={form.dailyNotify} onChange={(event) => setForm({ ...form, dailyNotify: event.target.checked })} /></label>
+          <label className="electricity-switch-row"><span><strong>发送早晚电量简报</strong><small>07:00 早报、21:00 晚报；12:00 只采集</small></span><input type="checkbox" checked={form.dailyNotify} onChange={(event) => setForm({ ...form, dailyNotify: event.target.checked })} /></label>
           <div className="electricity-field-grid">
-            <label><span>每日发送时间（0–23 时）</span><input type="number" min="0" max="23" value={form.notifyHour} onChange={(event) => setForm({ ...form, notifyHour: Number(event.target.value) })} /></label>
+            <label><span>固定运行计划</span><input type="text" readOnly value="07:00 早报 · 12:00 采集 · 21:00 晚报" /></label>
             <label><span>通知收件人</span><input type="email" placeholder="留空则使用邮件设置收件人" value={form.notifyTo} onChange={(event) => setForm({ ...form, notifyTo: event.target.value })} /></label>
             <label><span>自购剩余警戒值（kWh）</span><input type="number" min="0" step="0.01" value={form.lowPurchaseThreshold} onChange={(event) => setForm({ ...form, lowPurchaseThreshold: Number(event.target.value) })} /></label>
             <label><span>总余量警戒值（kWh）</span><input type="number" min="0" step="0.01" value={form.lowTotalThreshold} onChange={(event) => setForm({ ...form, lowTotalThreshold: Number(event.target.value) })} /></label>

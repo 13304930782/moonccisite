@@ -10,10 +10,11 @@ async function recipientAndConfig(notifyTo) {
   return { mailConfig, recipient: String(notifyTo || mailConfig.notify_to || '').trim() };
 }
 
-async function sendElectricityDailyReport({ snapshot, metrics, status, notifyTo, test = false }) {
+async function sendElectricityDailyReport({ snapshot, metrics, status, notifyTo, period, test = false }) {
   const { mailConfig, recipient } = await recipientAndConfig(notifyTo);
   const siteUrl = safeSiteUrl(mailConfig.site_url);
-  const label = test ? '测试报告' : '每日简报';
+  const label = test ? '测试报告' : period === 'morning' ? '早间简报' : period === 'evening' ? '晚间简报' : '电量简报';
+  const periodCode = test ? 'TEST' : period === 'morning' ? 'MORNING' : period === 'evening' ? 'EVENING' : 'DAILY';
   const text = [
     `Mooncci 宿舍电量${label}`,
     `日期：${snapshot.snapshotDate}`,
@@ -29,8 +30,8 @@ async function sendElectricityDailyReport({ snapshot, metrics, status, notifyTo,
     `${siteUrl}/electricity`,
   ].join('\n');
   const html = renderBrandedEmail({
-    eyebrow: `MOONCCI / ELECTRICITY ${test ? 'TEST' : 'DAILY'}`,
-    title: test ? '宿舍电量测试邮件' : '今日宿舍电量简报',
+    eyebrow: `MOONCCI / ELECTRICITY ${periodCode}`,
+    title: test ? '宿舍电量测试邮件' : `今日宿舍电量${label}`,
     intro: `采集日期 ${snapshot.snapshotDate}，状态为 ${status.toUpperCase()}。`,
     details: [
       { label: '总余量', value: `${displayNumber(snapshot.totalRemaining)} kWh` },

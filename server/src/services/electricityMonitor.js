@@ -1,6 +1,7 @@
 const { fetchElectricitySnapshot, resolveNow } = require('../lib/electricity');
 const { calculateUsageStats, classifyElectricity, evaluateLowAlertTransition } = require('../lib/electricityMetrics');
 const { getBusinessDate } = require('../lib/electricityTime');
+const { hasSentNotificationSlot } = require('../lib/electricitySchedule');
 const { sendElectricityDailyReport, sendElectricityLowAlert } = require('../lib/electricityMailer');
 const repository = require('../repositories/electricityRepository');
 
@@ -50,7 +51,7 @@ async function getDashboardData(days = 30) {
   };
 }
 
-async function processNotifications(snapshot, config, { daily = false, test = false } = {}) {
+async function processNotifications(snapshot, config, { dailySlot = null, test = false } = {}) {
   const history = await repository.getSnapshotHistory(30);
   const metrics = calculateUsageStats(history, snapshot);
   const status = classifyElectricity(snapshot, config);
@@ -63,9 +64,9 @@ async function processNotifications(snapshot, config, { daily = false, test = fa
     return results;
   }
 
-  if (daily && config.dailyNotify && state.lastDailyEmailDate !== snapshot.snapshotDate) {
-    results.daily = await sendElectricityDailyReport({ snapshot, metrics, status, notifyTo: config.notifyTo });
-    if (results.daily.sent) await repository.markDailyEmailSent(snapshot.snapshotDate);
+  if (dailySlot && config.dailyNotify && !hasSentNotificationSlot(state, snapshot.snapshotDate, dailySlot)) {
+    results.daily = await sendElectricityDailyReport({ snapshot, metrics, status, notifyTo: config.notifyTo, period: dailySlot });
+    if (results.daily.sent) await repository.markDailyEmailSent(snapshot.snapshotDate, dailySlot);
   }
 
   if (transition.entered) {
@@ -78,12 +79,12 @@ async function processNotifications(snapshot, config, { daily = false, test = fa
   return results;
 }
 
-async function runElectricityCycle({ daily = true, now } = {}) {
+async function runElectricityCycle({ dailySlot = null, now } = {}) {
   const config = await repository.getElectricityConfig();
   if (!config.enabled) return { skipped: true, reason: 'disabled' };
   if (!credentialsConfigured()) return { skipped: true, reason: 'not_configured' };
   const snapshot = await collectSnapshot({ now });
-  return { skipped: false, snapshot, notifications: await processNotifications(snapshot, config, { daily }) };
+  return { skipped: false, snapshot, notifications: await processNotifications(snapshot, config, { dailySlot }) };
 }
 
 async function refreshElectricity() {
@@ -94,7 +95,7 @@ async function refreshElectricity() {
     throw error;
   }
   const snapshot = await collectSnapshot();
-  await processNotifications(snapshot, config, { daily: false });
+  await processNotifications(snapshot, config);
   return getDashboardData(30);
 }
 

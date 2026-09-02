@@ -170,6 +170,7 @@ CREATE TABLE `electricity_monitor_state` (
   `last_low_alert_at` datetime DEFAULT NULL,
   `last_recovered_at` datetime DEFAULT NULL,
   `last_daily_email_date` date DEFAULT NULL,
+  `last_daily_email_slot` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `last_success_at` datetime DEFAULT NULL,
   `last_error_at` datetime DEFAULT NULL,
   `last_error_code` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,

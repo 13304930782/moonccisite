@@ -117,6 +117,7 @@ async function getMonitorState() {
     lastLowAlertAt: row.last_low_alert_at || null,
     lastRecoveredAt: row.last_recovered_at || null,
     lastDailyEmailDate: dateOnly(row.last_daily_email_date),
+    lastDailyEmailSlot: row.last_daily_email_slot || null,
     lastSuccessAt: row.last_success_at || null,
     lastErrorAt: row.last_error_at || null,
     lastErrorCode: row.last_error_code || null,
@@ -133,8 +134,8 @@ async function markCollectionFailure(recordedAt, code) {
   await db.query('UPDATE electricity_monitor_state SET last_error_at=?, last_error_code=? WHERE id=1', [recordedAt, String(code || 'UNKNOWN').slice(0, 100)]);
 }
 
-async function markDailyEmailSent(snapshotDate) {
-  await db.query('UPDATE electricity_monitor_state SET last_daily_email_date=? WHERE id=1', [snapshotDate]);
+async function markDailyEmailSent(snapshotDate, slot) {
+  await db.query('UPDATE electricity_monitor_state SET last_daily_email_date=?, last_daily_email_slot=? WHERE id=1', [snapshotDate, slot]);
 }
 
 async function setLowAlertState(active, recordedAt) {

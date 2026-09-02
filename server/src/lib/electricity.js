@@ -144,6 +144,8 @@ async function fetchElectricitySnapshot(options = {}) {
         Referer: 'https://xqh5.17wanxiao.com/userwaterelecmini/index.html',
       },
     });
+    if (response.status === 403) throw new ElectricityUpstreamError('ELECTRICITY_ACCESS_RESTRICTED', '学校接口拒绝了本次请求，电量采集已暂停至次日');
+    if (response.status === 429) throw new ElectricityUpstreamError('ELECTRICITY_RATE_LIMITED', '学校接口请求频率受限，电量采集已暂停至次日');
     if (!response.ok) throw new ElectricityUpstreamError('ELECTRICITY_HTTP_ERROR', `学校接口暂时不可用（HTTP ${response.status}）`);
     return parsePayload(await readLimitedText(response), credentials, fetchedAt);
   } catch (error) {

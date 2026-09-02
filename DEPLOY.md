@@ -107,6 +107,8 @@ ELECTRICITY_CUSTOMER_CODE=2252
 ELECTRICITY_COMMAND=OWNWaterElecService
 ELECTRICITY_DAILY_NOTIFY=true
 ELECTRICITY_NOTIFY_HOUR=21
+ELECTRICITY_SCHEDULE_HOURS=7,12,21
+ELECTRICITY_MANUAL_COOLDOWN_MINUTES=15
 ELECTRICITY_LOW_PURCHASE_THRESHOLD=10
 ELECTRICITY_LOW_TOTAL_THRESHOLD=20
 ```
@@ -119,9 +121,9 @@ node scripts/migrate.js --dry-run
 node scripts/migrate.js
 ```
 
-本功能对应迁移为 `202609010001_create_electricity_monitor.sql`。它创建每日唯一快照表和通知状态表；同一天重复执行会更新当天快照，不会生成几十条重复记录。
+基础迁移 `202609010001_create_electricity_monitor.sql` 创建每日唯一快照表和通知状态表；同一天重复执行会更新当天快照，不会生成几十条重复记录。本次调度更新新增 `202609020001_add_electricity_email_slot.sql`，只增加早晚邮件去重所需的时段字段；不要修改已经执行过的旧迁移。
 
-3. 以运行线上 API 的 `mooncci` 用户重载 PM2，让新环境变量和每天 21:00（Asia/Shanghai）的调度器生效：
+3. 以运行线上 API 的 `mooncci` 用户重载 PM2，让新环境变量和每天 07:00、12:00、21:00（Asia/Shanghai）的固定调度器生效。07:00 采集后发送早报，12:00 只采集，21:00 采集后发送晚报；任一采集失败后，当天剩余自动采集会暂停，次日自动恢复。管理端“立即查询”默认有 15 分钟冷却：
 
 ```bash
 su -s /bin/bash mooncci -c "cd /www/wwwroot/mooncci-source/server && pm2 startOrReload ecosystem.config.cjs --update-env"
