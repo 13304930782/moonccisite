@@ -1,85 +1,135 @@
-const { getBusinessDate } = require('../lib/electricityTime');
-const {
-  hasSentNotificationSlot,
-  isPausedForBusinessDate,
-  isSlotComplete,
-  latestPassedScheduleHour,
-  nextScheduleSlot,
-  notificationSlotForHour,
-  parseScheduleHours,
-} = require('../lib/electricitySchedule');
+const db = require('../db');
+const rooms = require('../repositories/electricityRoomRepository');
 const repository = require('../repositories/electricityRepository');
-const { credentialsConfigured, runElectricityCycle } = require('../services/electricityMonitor');
-
-let timer = null;
-let running = false;
-
-function safeLog(message, error) {
-  console.error(`[electricity] ${message}`, error?.code || 'ELECTRICITY_JOB_FAILED');
+const { runElectricityCycle } = require('../services/electricityMonitor');
+const { getBusinessDate, getShanghaiParts } = require('../lib/electricityTime');
+const {
+  scheduleFromConfig,
+  isPausedForBusinessDate,
+} = require('../lib/electricitySchedule');
+const { isMidnightWindow } = require('../lib/electricityDailyUsage');
+let timer = null,
+  running = false;
+function dueEntry(room, now) {
+  const config =
+    typeof room.config === 'string' ? JSON.parse(room.config) : room.config;
+  if (!room.active || config.enabled === false) return null;
+  const hour = getShanghaiParts(now).hour;
+  const entry = scheduleFromConfig(config)
+    .filter((row) => row.hour <= hour)
+    .at(-1);
+  if (!entry) return null;
+  if (entry.hour === 0 && !isMidnightWindow(now)) return null;
+  const at = new Date(
+    `${getBusinessDate(now)}T${String(entry.hour).padStart(2, '0')}:00:00+08:00`,
+  );
+  // New and edited schedules begin with future slots, not past reports.
+  if (room.updated_at && new Date(room.updated_at) > at) return null;
+  return entry;
 }
-
-async function execute(slotHour, config) {
-  if (running) return { skipped: true, reason: 'already_running' };
+async function claim(scope, date, hour, now) {
+  const [insert] = await db.query(
+    'INSERT IGNORE INTO electricity_room_runs(scope_key,run_date,run_hour,started_at) VALUES(?,?,?,?)',
+    [scope, date, hour, now],
+  );
+  if (insert.affectedRows) return true;
+  const [retry] = await db.query(
+    "UPDATE electricity_room_runs SET status='running',attempts=attempts+1,started_at=? WHERE scope_key=? AND run_date=? AND run_hour=? AND status<>'complete' AND attempts<3 AND started_at<?",
+    [now, scope, date, hour, new Date(now.getTime() - 15 * 60000)],
+  );
+  return Boolean(retry.affectedRows);
+}
+async function tick(nowOverride) {
+  if (running) return;
   running = true;
   try {
-    const state = await repository.getMonitorState();
-    if (isPausedForBusinessDate(state, new Date())) {
-      return { skipped: true, reason: 'paused_after_failure' };
+    const [list] = await db.query(
+      'SELECT * FROM electricity_rooms WHERE active=1 ORDER BY created_at,id',
+    );
+    for (const room of list) {
+      const now = nowOverride || new Date();
+      let entry;
+      try {
+        entry = dueEntry(room, now);
+        if (!entry) continue;
+        await rooms.inRoom(
+          room,
+          async () => {
+            const state = await repository.getMonitorState();
+            if (isPausedForBusinessDate(state, now)) return;
+            if (
+              !(await claim(
+                room.scope_key,
+                getBusinessDate(now),
+                entry.hour,
+                now,
+              ))
+            )
+              return;
+            try {
+              // Re-check after queueing: removed/disabled rooms must not execute stale work.
+              const latest = await rooms.getRoom(room.id);
+              if (!latest || !dueEntry(latest, now)) return;
+              const current = dueEntry(latest, now);
+              if (current.hour !== entry.hour || current.type !== entry.type)
+                return;
+              await runElectricityCycle({
+                dailySlot: ['morning', 'evening'].includes(entry.type)
+                  ? entry.type
+                  : null,
+                midnight: entry.hour === 0,
+                now,
+              });
+              await db.query(
+                "UPDATE electricity_room_runs SET status='complete',error_code=NULL WHERE scope_key=? AND run_date=? AND run_hour=?",
+                [room.scope_key, getBusinessDate(now), entry.hour],
+              );
+            } catch (error) {
+              await db.query(
+                "UPDATE electricity_room_runs SET status='failed',error_code=? WHERE scope_key=? AND run_date=? AND run_hour=?",
+                [
+                  String(error.code || 'ELECTRICITY_JOB_FAILED').slice(0, 100),
+                  room.scope_key,
+                  getBusinessDate(now),
+                  entry.hour,
+                ],
+              );
+              throw error;
+            }
+          },
+          { credentials: true },
+        );
+      } catch (error) {
+        console.error(
+          `[electricity] Room ${room.id} scheduled task failed:`,
+          error.code || 'ELECTRICITY_JOB_FAILED',
+        );
+      }
     }
-    return await runElectricityCycle({ dailySlot: notificationSlotForHour(slotHour, scheduleHours()) });
   } catch (error) {
-    safeLog('scheduled collection failed:', error);
-    return { skipped: true, reason: error?.code || 'collection_failed' };
+    console.error(
+      '[electricity] Schedule scan failed:',
+      error.code || 'ELECTRICITY_JOB_FAILED',
+    );
   } finally {
     running = false;
   }
 }
-
-function scheduleHours() {
-  return parseScheduleHours(process.env.ELECTRICITY_SCHEDULE_HOURS);
-}
-
-function scheduleNext(config) {
-  if (timer) clearTimeout(timer);
-  const slot = nextScheduleSlot(new Date(), scheduleHours());
-  const delay = Math.max(1000, slot.at.getTime() - Date.now());
-  timer = setTimeout(async () => {
-    await execute(slot.hour, config);
-    try { scheduleNext(await repository.getElectricityConfig()); } catch (error) { safeLog('could not reschedule:', error); }
-  }, delay);
-  timer.unref?.();
-}
-
-async function catchUp(config) {
-  if (!config.enabled || !credentialsConfigured()) return;
-  const now = new Date();
-  const slotHour = latestPassedScheduleHour(now, scheduleHours());
-  if (slotHour === null) return;
-  const state = await repository.getMonitorState();
-  if (isPausedForBusinessDate(state, now)) return;
-  const today = getBusinessDate(now);
-  const dailySlot = notificationSlotForHour(slotHour, scheduleHours());
-  const emailPending = config.dailyNotify && dailySlot && !hasSentNotificationSlot(state, today, dailySlot);
-  if (!isSlotComplete(state.lastSuccessAt, now, slotHour) || emailPending) await execute(slotHour, config);
-}
-
 async function startElectricityScheduler() {
-  try {
-    const config = await repository.getElectricityConfig();
-    scheduleNext(config);
-    const startup = setTimeout(() => catchUp(config).catch((error) => safeLog('startup catch-up failed:', error)), 8000);
-    startup.unref?.();
-    const label = scheduleHours().map((hour) => `${String(hour).padStart(2, '0')}:00`).join(' / ');
-    console.log(`[electricity] Scheduler ready for ${label} Asia/Shanghai.`);
-  } catch (error) {
-    safeLog('scheduler initialization failed:', error);
-  }
+  if (process.env.MOONCCI_TASK_PROCESS !== 'true') return;
+  if (timer) clearInterval(timer);
+  await tick();
+  timer = setInterval(() => tick(), 15000);
+  timer.unref?.();
+  console.log(
+    '[electricity] Room scheduler ready; Asia/Shanghai, midnight history, per-room plans.',
+  );
 }
-
-async function reloadElectricitySchedule() {
-  const config = await repository.getElectricityConfig();
-  scheduleNext(config);
-  await catchUp(config);
-}
-
-module.exports = { reloadElectricitySchedule, startElectricityScheduler };
+// API and worker are independent: the worker scans saved plans every 15 seconds.
+async function reloadElectricitySchedule() {}
+module.exports = {
+  startElectricityScheduler,
+  reloadElectricitySchedule,
+  dueEntry,
+  tick,
+};

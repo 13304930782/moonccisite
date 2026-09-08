@@ -35,32 +35,32 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="neo-dot-grid flex min-h-screen items-center justify-center px-6 py-10">
-      <div className="w-full max-w-md rounded-[12px] border-2 border-black bg-white p-8 shadow-[8px_8px_0_#000]">
-        <Link to="/login" className="text-sm font-black text-black hover:underline">
+      <div className="w-full max-w-md rounded-[12px] border border-border bg-card p-8 shadow-none">
+        <Link to="/login" className="text-sm font-semibold text-foreground hover:underline">
           返回登录
         </Link>
 
-        <h1 className="neo-heading mt-5 text-4xl text-black">
+        <h1 className="neo-heading mt-5 text-4xl text-foreground">
           忘记密码
         </h1>
 
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           输入注册邮箱，我们会发送一封密码重置邮件。
         </p>
 
         {message && (
-          <div className="mt-5 rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          <div className="mt-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
             {message}
           </div>
         )}
 
         <form onSubmit={submit} className="mt-6 space-y-5">
           <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">
+            <label className="block mb-2 text-sm font-medium text-foreground">
               邮箱
             </label>
             <div className="neo-input flex items-center gap-3 px-4 py-3">
-              <Mail className="w-5 h-5 text-gray-400" />
+              <Mail className="w-5 h-5 text-muted-foreground" />
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

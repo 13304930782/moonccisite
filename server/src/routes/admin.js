@@ -1,9 +1,11 @@
+const { formatIpLocation } = require('../lib/geoip');
 const express = require('express');
 const db = require('../db');
 const { authRequired, adminOnly, editorOrAdmin, isAdminLike } = require('../middleware/auth');
-const { sendCommentReviewNotification } = require('../lib/mailer');
+const { sendCommentReviewNotification, sendUserPermissionsNotification, accountPermissionChanges } = require('../lib/mailer');
+const { attemptNotification, notificationMessage } = require('../lib/adminNotification');
 
-const router = express.Router();
+const router = require('../lib/asyncRouter')();
 
 function maskIp(ip) {
   if (!ip) return '';
@@ -77,12 +79,16 @@ router.put('/users/:id', adminOnly, async (req, res) => {
     return res.status(400).json({ message: 'You cannot disable your own account' });
   }
 
-  await db.query(
-    'UPDATE users SET role=?, status=?, can_comment=? WHERE id=?',
-    [nextRole, nextStatus, nextCanComment, req.params.id]
+  const updated = { ...old, role: nextRole, status: nextStatus, can_comment: nextCanComment };
+  if (!accountPermissionChanges(old, updated).length)
+    return res.json({ message: '设置未变化，未重复发送通知', notification: { status: 'not_needed' } });
+  const [write] = await db.query(
+    'UPDATE users SET role=?, status=?, can_comment=? WHERE id=? AND role=? AND status=? AND can_comment <=> ?',
+    [nextRole, nextStatus, nextCanComment, req.params.id, old.role, old.status, old.can_comment]
   );
-
-  res.json({ message: '更新成功' });
+  if (!write.affectedRows) return res.status(409).json({ message: '用户设置已被更新，请刷新后重试。' });
+  const notification = await attemptNotification(() => sendUserPermissionsNotification(old, updated));
+  res.json({ message: notificationMessage('更新成功', notification), notification });
 });
 
 router.delete('/users/:id', adminOnly, async (req, res) => {
@@ -203,6 +209,7 @@ router.get('/comments', adminOnly, async (req, res) => {
 
   res.json(rows.map((row) => ({
     ...row,
+    ip_location: formatIpLocation(row.ip_location),
     ip_address_masked: maskIp(row.ip_address),
     ip_address: req.user.role === 'owner' ? row.ip_address : undefined,
   })));
@@ -256,31 +263,18 @@ router.put('/comments/:id', adminOnly, async (req, res) => {
     return res.status(400).json({ message: '不允许的评论状态流转' });
   }
 
-  await db.query('UPDATE comments SET status=? WHERE id=?', [status, req.params.id]);
-
-  if (status === 'visible' || status === 'rejected') {
-    sendCommentReviewNotification(
-      {
-        postId: comment.post_id,
-        postTitle: comment.post_title,
-        authorName: comment.author_name,
-        authorEmail: comment.author_email,
-        content: comment.content,
-      },
-      status
-    ).catch((err) => {
-      console.error('[admin/comments] 审核结果邮件发送失败:', err.message);
-    });
-  }
-
-  res.json({
-    message:
-      status === 'visible'
-        ? '评论已通过，并已通知用户'
-        : status === 'rejected'
-          ? '评论已驳回，并已通知用户'
-          : '更新成功',
-  });
+  if (comment.status === status)
+    return res.json({ message: '评论状态未变化，未重复发送通知', notification: { status: 'not_needed' } });
+  const [write] = await db.query('UPDATE comments SET status=? WHERE id=? AND status=?', [status, req.params.id, comment.status]);
+  if (!write.affectedRows) return res.status(409).json({ message: '评论已被其他操作更新，请刷新后重试。' });
+  const notification = ['visible', 'rejected'].includes(status)
+    ? await attemptNotification(() => sendCommentReviewNotification({
+        postId: comment.post_id, postTitle: comment.post_title,
+        authorName: comment.author_name, authorEmail: comment.author_email, content: comment.content,
+      }, status))
+    : { status: 'not_needed' };
+  const base = status === 'visible' ? '评论已通过' : status === 'rejected' ? '评论已驳回' : '更新成功';
+  res.json({ message: notificationMessage(base, notification), notification });
 });
 
 /**
@@ -349,59 +343,36 @@ router.get('/editor-applications', adminOnly, async (req, res) => {
   res.json(rows);
 });
 
-router.put('/editor-applications/:id', adminOnly, async (req, res) => {
+router.put('/editor-applications/:id', adminOnly, async (req, res, next) => {
   const { status, review_note } = req.body;
-
-  if (!['approved', 'rejected'].includes(status)) {
-    return res.status(400).json({ message: '审核状态不合法' });
-  }
-
-  const [rows] = await db.query(
-    `
-    SELECT
-      ea.*,
-      u.role AS user_role,
-      u.status AS user_status
-    FROM editor_applications ea
-    JOIN users u ON u.id = ea.user_id
-    WHERE ea.id=?
-    LIMIT 1
-    `,
-    [req.params.id]
-  );
-
-  const app = rows[0];
-
-  if (!app) return res.status(404).json({ message: '申请不存在' });
-
-  if (app.status !== 'pending') {
-    return res.status(400).json({ message: 'This application has already been reviewed' });
-  }
-
-  if (status === 'approved') {
-    if (app.user_status === 'disabled') {
-      return res.status(400).json({ message: 'Cannot approve a disabled user' });
+  if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ message: '审核状态不合法' });
+  let conn, committed = false, application, old, updated;
+  try {
+    conn = await db.getConnection();
+    await conn.beginTransaction();
+    const [rows] = await conn.query('SELECT * FROM editor_applications WHERE id=? LIMIT 1 FOR UPDATE', [req.params.id]);
+    application = rows[0];
+    if (!application) { await conn.rollback(); return res.status(404).json({ message: '申请不存在' }); }
+    if (application.status !== 'pending') { await conn.rollback(); return res.status(400).json({ message: '该申请已经审核，未重复发送通知。' }); }
+    if (status === 'approved') {
+      const [users] = await conn.query('SELECT id, username, email, role, status, can_comment FROM users WHERE id=? LIMIT 1 FOR UPDATE', [application.user_id]);
+      old = users[0];
+      if (!old || old.status !== 'active' || old.role !== 'user') {
+        await conn.rollback(); return res.status(400).json({ message: '仅可为启用中的普通用户授予编辑权限。' });
+      }
+      updated = { ...old, role: 'editor' };
+      await conn.query('UPDATE users SET role="editor" WHERE id=?', [old.id]);
     }
-
-    if (app.user_role !== 'user') {
-      return res.status(400).json({ message: 'Only normal users can be promoted to editor' });
-    }
-  }
-
-  await db.query(
-    `
-    UPDATE editor_applications
-    SET status=?, reviewer_id=?, review_note=?, reviewed_at=NOW()
-    WHERE id=?
-    `,
-    [status, req.user.id, review_note || '', req.params.id]
-  );
-
-  if (status === 'approved') {
-    await db.query('UPDATE users SET role="editor" WHERE id=?', [app.user_id]);
-  }
-
-  res.json({ message: status === 'approved' ? '已通过申请，并授予编辑权限' : '已拒绝申请' });
+    await conn.query('UPDATE editor_applications SET status=?, reviewer_id=?, review_note=?, reviewed_at=NOW() WHERE id=?',
+      [status, req.user.id, review_note || '', req.params.id]);
+    await conn.commit(); committed = true;
+  } catch (error) {
+    if (conn && !committed) await conn.rollback().catch(() => {});
+    return next(error);
+  } finally { conn?.release(); }
+  const notification = updated ? await attemptNotification(() => sendUserPermissionsNotification(old, updated)) : { status: 'not_needed' };
+  const base = status === 'approved' ? '已通过申请，并授予编辑权限' : '已拒绝申请';
+  res.json({ message: notificationMessage(base, notification), notification });
 });
 
 module.exports = router;

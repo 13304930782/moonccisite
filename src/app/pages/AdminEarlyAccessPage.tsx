@@ -1,3 +1,4 @@
+import { ThemeSelect } from '../components/ThemeSelect';
 import { FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Search, UserRoundCheck } from 'lucide-react';
@@ -54,33 +55,33 @@ export default function AdminEarlyAccessPage() {
 
   return (
     <div>
-      <div className="flex flex-col gap-6 border-2 border-black bg-white p-6 shadow-[7px_7px_0_#000] md:p-8">
+      <div className="flex flex-col gap-6 border border-border bg-card p-6 shadow-none md:p-8">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
-            <span className="neo-kicker bg-[#ffe17c]">PromptDock / Owner only</span>
-            <h1 className="neo-heading mt-6 text-4xl md:text-5xl">Early Access 审核</h1>
-            <p className="mt-4 text-sm font-bold text-black/55">查看申请资料、邮件状态并执行明确的批准或拒绝。</p>
+            <span className="neo-kicker bg-muted">PromptDock / Owner only</span>
+            <h1 className="admin-title">Early Access 审核</h1>
+            <p className="mt-4 text-sm font-medium text-muted-foreground">查看申请资料、邮件状态并执行明确的批准或拒绝。</p>
           </div>
-          <div className="flex h-14 w-14 items-center justify-center border-2 border-black bg-[#b7c6c2] shadow-[4px_4px_0_#000]">
+          <div className="flex h-14 w-14 items-center justify-center border border-border bg-muted shadow-none">
             <UserRoundCheck className="h-7 w-7" />
           </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-[180px_1fr]">
-          <label className="font-black">
+          <label className="font-medium">
             状态
-            <select
+            <ThemeSelect
               value={status}
-              onChange={(event) => { setStatus(event.target.value); setPage(1); }}
+              onValueChange={(nextValue) => { setStatus(nextValue); setPage(1); }}
               className="neo-input mt-2 w-full px-4 py-3 outline-none"
             >
               <option value="pending">待审核</option>
               <option value="approved">已通过</option>
               <option value="rejected">已拒绝</option>
               <option value="all">全部</option>
-            </select>
+            </ThemeSelect>
           </label>
-          <form onSubmit={search} className="font-black">
+          <form onSubmit={search} className="font-medium">
             <label htmlFor="early-access-search">搜索姓名或邮箱</label>
             <div className="mt-2 flex gap-3">
               <input id="early-access-search" value={keyword} onChange={(event) => setKeyword(event.target.value)} className="neo-input min-w-0 flex-1 px-4 py-3 outline-none" />
@@ -89,48 +90,48 @@ export default function AdminEarlyAccessPage() {
           </form>
         </div>
 
-        {message && <div role="alert" className="border-2 border-black bg-[#ffe17c] px-4 py-3 font-bold">{message}</div>}
+        {message && <div role="alert" className="border border-border bg-muted px-4 py-3 font-medium">{message}</div>}
       </div>
 
       <div className="mt-8 space-y-4">
-        {loading && <div className="border-2 border-black bg-white p-6 font-bold shadow-[4px_4px_0_#000]">正在加载申请…</div>}
-        {!loading && items.length === 0 && <div className="border-2 border-black bg-white p-6 font-bold shadow-[4px_4px_0_#000]">暂无符合条件的申请。</div>}
+        {loading && <div className="border border-border bg-card p-6 font-medium shadow-none">正在加载申请…</div>}
+        {!loading && items.length === 0 && <div className="border border-border bg-card p-6 font-medium shadow-none">暂无符合条件的申请。</div>}
 
         {items.map((item) => (
           <Link
             key={item.id}
             to={`/admin/early-access/${item.id}`}
-            className="group flex flex-col justify-between gap-5 border-2 border-black bg-white p-5 shadow-[5px_5px_0_#000] transition hover:translate-x-1 hover:translate-y-1 hover:shadow-none md:flex-row md:items-center"
+            className="group flex flex-col justify-between gap-5 border border-border bg-card p-5 shadow-none transition   shadow-none md:flex-row md:items-center"
           >
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
-                <span className="font-mono text-xs font-black">#{item.id}</span>
-                <span className={`border-2 border-black px-2.5 py-1 text-xs font-black ${item.status === 'pending' ? 'bg-[#ffe17c]' : item.status === 'approved' ? 'bg-[#b7c6c2]' : 'bg-white'}`}>
+                <span className="font-mono text-xs font-medium">#{item.id}</span>
+                <span className={`border border-border px-2.5 py-1 text-xs font-medium ${item.status === 'pending' ? 'bg-muted' : item.status === 'approved' ? 'bg-muted' : 'bg-card'}`}>
                   {statusText[item.status] || item.status}
                 </span>
                 {item.owner_notification_error && !item.owner_notification_sent_at && (
-                  <span className="border-2 border-black bg-red-100 px-2.5 py-1 text-xs font-black">owner 通知失败</span>
+                  <span className="border border-border bg-red-100 px-2.5 py-1 text-xs font-medium">owner 通知失败</span>
                 )}
                 {item.approval_email_error && !item.approval_email_sent_at && (
-                  <span className="border-2 border-black bg-red-100 px-2.5 py-1 text-xs font-black">通过邮件失败</span>
+                  <span className="border border-border bg-red-100 px-2.5 py-1 text-xs font-medium">通过邮件失败</span>
                 )}
               </div>
               <h2 className="neo-heading mt-4 truncate text-2xl">{item.name}</h2>
-              <p className="mt-2 truncate text-sm font-bold text-black/55">{item.email} · {occupationText[item.occupation] || item.occupation} · {item.macos_version}</p>
+              <p className="mt-2 truncate text-sm font-medium text-muted-foreground">{item.email} · {occupationText[item.occupation] || item.occupation} · {item.macos_version}</p>
             </div>
             <div className="flex shrink-0 items-center gap-4">
-              <span className="font-mono text-xs font-bold text-black/45">{item.created_at?.slice(0, 16).replace('T', ' ')}</span>
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              <span className="font-mono text-xs font-medium text-muted-foreground">{item.created_at?.slice(0, 16).replace('T', ' ')}</span>
+              <ArrowRight className="h-5 w-5 transition-transform " />
             </div>
           </Link>
         ))}
       </div>
 
       {!loading && totalPages > 1 && (
-        <div className="mt-8 flex items-center justify-between border-2 border-black bg-[#ffe17c] p-4 shadow-[4px_4px_0_#000]">
-          <button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="neo-button bg-white disabled:opacity-40">上一页</button>
-          <span className="font-mono text-sm font-black">{page} / {totalPages} · {total} 份申请</span>
-          <button type="button" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)} className="neo-button bg-white disabled:opacity-40">下一页</button>
+        <div className="mt-8 flex items-center justify-between border border-border bg-muted p-4 shadow-none">
+          <button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="neo-button bg-card disabled:opacity-40">上一页</button>
+          <span className="font-mono text-sm font-medium">{page} / {totalPages} · {total} 份申请</span>
+          <button type="button" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)} className="neo-button bg-card disabled:opacity-40">下一页</button>
         </div>
       )}
     </div>

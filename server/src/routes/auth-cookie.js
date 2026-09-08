@@ -3,27 +3,23 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const db = require('../db');
-const { AUTH_COOKIE_NAME, authRequired } = require('../middleware/auth');
+const { AUTH_COOKIE_NAME, authRequired, getAuthTokenFromRequest } = require('../middleware/auth');
 const { sendMail, getMailConfig } = require('../lib/mailer');
 const { renderBrandedEmail } = require('../lib/mailTemplate');
 const { verifyGoogleCredential } = require('../lib/googleIdentity');
 
-const router = express.Router();
+const router = require('../lib/asyncRouter')();
+router.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.vary('Cookie');
+  res.vary('Authorization');
+  next();
+});
 
 const authRateBuckets = new Map();
 
 function getClientIp(req) {
-  const cfIp = req.headers['cf-connecting-ip'];
-  const realIp = req.headers['x-real-ip'];
-  const forwarded = req.headers['x-forwarded-for'];
-
-  return String(
-    cfIp ||
-      realIp ||
-      (forwarded ? String(forwarded).split(',')[0].trim() : '') ||
-      req.socket.remoteAddress ||
-      ''
-  ).replace('::ffff:', '');
+  return String(req.ip || req.socket.remoteAddress || '').replace('::ffff:', '');
 }
 
 function rateKeyEmail(req) {
@@ -77,18 +73,21 @@ function sha256(input) {
 }
 
 function validatePassword(password) {
+  if (Buffer.byteLength(password, 'utf8') > 72) return '密码不能超过 72 字节。';
   if (password.length < 8) return PASSWORD_RULE_MESSAGE;
   if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) return PASSWORD_RULE_MESSAGE;
   return '';
 }
 
-function signToken(user) {
+function signToken(user, sessionStartedAt) {
   return jwt.sign(
     {
       id: user.id,
       username: user.username,
       email: user.email,
       role: user.role,
+      sessionStartedAt,
+      jti: crypto.randomUUID(),
     },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
@@ -195,6 +194,9 @@ router.post('/register', authRateLimit({ name: 'register', windowMs: 60 * 60 * 1
     if (username.length < 2 || username.length > 30) {
       return res.status(400).json({ message: '用户名长度需要在 2 到 30 个字符之间。' });
     }
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: '请填写有效的邮箱地址。' });
+    }
 
     const passwordError = validatePassword(password);
     if (passwordError) {
@@ -236,6 +238,7 @@ router.post('/register', authRateLimit({ name: 'register', windowMs: 60 * 60 * 1
 });
 
 router.post('/login', authRateLimit({ name: 'login', windowMs: 15 * 60 * 1000, max: 10, includeEmail: true }), async (req, res) => {
+  const sessionStartedAt = Date.now();
   try {
     const email = String(req.body.email || '').trim().toLowerCase();
     const password = String(req.body.password || '');
@@ -287,7 +290,7 @@ router.post('/login', authRateLimit({ name: 'login', windowMs: 15 * 60 * 1000, m
 
     await db.query('UPDATE users SET login_attempts=0, locked_until=NULL WHERE id=?', [user.id]);
 
-    setAuthCookie(req, res, signToken(user));
+    setAuthCookie(req, res, signToken(user, sessionStartedAt));
 
     res.json({
       message: '登录成功。',
@@ -300,6 +303,7 @@ router.post('/login', authRateLimit({ name: 'login', windowMs: 15 * 60 * 1000, m
 });
 
 router.post('/google', authRateLimit({ name: 'google-login', windowMs: 15 * 60 * 1000, max: 20 }), async (req, res) => {
+  const sessionStartedAt = Date.now();
   try {
     const credential = String(req.body.credential || '').trim();
     if (!credential) return res.status(400).json({ message: '缺少 Google 登录凭证。' });
@@ -352,7 +356,7 @@ router.post('/google', authRateLimit({ name: 'google-login', windowMs: 15 * 60 *
     if (user.status === 'disabled') return res.status(403).json({ message: '该账号已被禁用。' });
 
     await db.query('UPDATE users SET login_attempts=0, locked_until=NULL WHERE id=?', [user.id]);
-    setAuthCookie(req, res, signToken(user));
+    setAuthCookie(req, res, signToken(user, sessionStartedAt));
 
     res.json({ message: 'Google 登录成功。', user: publicUser(user) });
   } catch (err) {
@@ -371,6 +375,20 @@ router.get('/me', authRequired, async (req, res) => {
 });
 
 router.post('/logout', async (req, res) => {
+  const token = getAuthTokenFromRequest(req);
+  if (token) {
+    let payload;
+    try { payload = jwt.verify(token, process.env.JWT_SECRET); }
+    catch (error) {
+      if (!['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(error.name)) throw error;
+    }
+    if (payload) {
+      // Persist revocation before reporting success, including across PM2 workers/restarts.
+      await db.query('INSERT IGNORE INTO auth_revocations (token_hash,expires_at) VALUES (?,?)',
+        [sha256(token), payload.exp ? payload.exp * 1000 : 9223372036854775807n.toString()]);
+      await db.query('DELETE FROM auth_revocations WHERE expires_at<? LIMIT 100', [Date.now()]);
+    }
+  }
   clearAuthCookie(req, res);
   res.json({ message: '已退出登录。' });
 });
@@ -412,10 +430,10 @@ router.post('/forgot-password', authRateLimit({ name: 'forgot-password', windowM
     const resetUrl = `${siteUrl}/reset-password?token=${rawToken}`;
     const mailResult = await sendMail({
       to: user.email,
-      subject: '[Mooncci] Reset your password',
-      text: `You requested to reset your Mooncci Blog password. This link is valid for 30 minutes:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
+      subject: '[mooncci] 重置账户密码',
+      text: `You requested to reset your mooncci password. This link is valid for 30 minutes:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
       html: renderBrandedEmail({
-        eyebrow: 'MOONCCI / ACCOUNT SECURITY',
+        eyebrow: 'mooncci / ACCOUNT SECURITY',
         title: '重置你的账户密码',
         intro: `${user.username || user.email}，我们收到了你的密码重置请求。`,
         paragraphs: ['这个链接将在 30 分钟后失效。如果不是你本人发起，可以忽略这封邮件。'],
@@ -442,8 +460,8 @@ router.post('/reset-password', authRateLimit({ name: 'reset-password', windowMs:
     if (!token || !password) {
       return res.status(400).json({ message: '缺少重置凭证或新密码。' });
     }
-
-
+    const passwordError = validatePassword(password);
+    if (passwordError) return res.status(400).json({ message: passwordError });
     const tokenHash = sha256(token);
     const passwordHash = await bcrypt.hash(password, 10);
     const connection = await db.getConnection();
@@ -482,6 +500,11 @@ router.post('/reset-password', authRateLimit({ name: 'reset-password', windowMs:
       }
 
       await connection.query('UPDATE users SET password_hash=? WHERE id=?', [passwordHash, record.user_id]);
+      await connection.query(
+        'INSERT INTO auth_invalidations (user_id,invalid_before) VALUES (?,?) ON DUPLICATE KEY UPDATE invalid_before=GREATEST(invalid_before,VALUES(invalid_before))',
+        [record.user_id, Date.now()]
+      );
+      await connection.query('UPDATE users SET login_attempts=0, locked_until=NULL WHERE id=?', [record.user_id]);
       await connection.commit();
     } catch (err) {
       await connection.rollback();

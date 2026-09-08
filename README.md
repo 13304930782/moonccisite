@@ -6,6 +6,13 @@ mooncci site 是一个基于 React、Vite、TypeScript、Node.js、Express 和 M
 
 ## 功能特性
 
+- 黑白灰阅读视觉、浅色/深色主题、移动导航与文章目录
+- 首页近况、短动态发布/撤回、文章与动态统一更新流
+- 作品管理、首页推荐、公开 GitHub 正式 Release 同步
+- RSS、邮箱确认订阅、每周摘要、投递去重和人工核对
+
+本次三期功能与验证记录见 [IMPLEMENTATION.md](IMPLEMENTATION.md)，启动、数据库迁移与任务开关见 [CONTENT-DEPLOY.md](CONTENT-DEPLOY.md)。GitHub 和周报默认关闭，真实内容通过后台录入。
+
 - 用户注册、登录、退出、忘记密码
 - HttpOnly Cookie 登录态与角色权限控制
 - owner / admin / editor / user 四级角色
@@ -15,7 +22,8 @@ mooncci site 是一个基于 React、Vite、TypeScript、Node.js、Express 和 M
 - 图片上传、格式校验、压缩、媒体库、回收站和批量操作
 - SMTP 邮件配置、评论提醒和后台邮件发送
 - PromptDock Early Access 招募、owner 专属审核、申请通知和通过邮件
-- 后台管理页和移动端 / 平板端适配
+- 统一二级页面、克制动画及移动端 / 平板端适配
+- 独立 mooncci-worker 任务进程，数据库锁防止重复任务
 - Nginx 反向代理、PM2 后端运行、Vite 静态部署
 
 ## 技术栈
@@ -83,7 +91,7 @@ npm install
 cp server/.env.example server/.env
 ```
 
-然后按实际环境填写数据库、JWT、SMTP 等配置。不要提交真实 `.env` 文件。
+然后按实际环境填写数据库、JWT、SMTP 等配置。不要提交真实 `.env` 文件。新空库在 `server` 执行 `node scripts/init-db.js`，已有站点使用 `node scripts/migrate.js --dry-run` 预览升级。完整步骤见 [CONTENT-DEPLOY.md](CONTENT-DEPLOY.md)。本地 HTTP 开发需要单独设置 Cookie 与 CSRF 允许来源，Vite 已提供 `/api` 代理。
 
 启动前端：
 

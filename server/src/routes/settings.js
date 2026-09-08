@@ -1,3 +1,4 @@
+const {brandText}=require('../lib/siteIdentity');
 const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -14,7 +15,7 @@ const {
   buildReleaseDownloadUrl,
 } = require('../lib/earlyAccessRelease');
 
-const router = express.Router();
+const router = require('../lib/asyncRouter')();
 const CUSTOM_MAIL_DAILY_LIMIT = Number(process.env.CUSTOM_MAIL_DAILY_LIMIT || 20);
 const configuredEarlyAccessUploadMaxMb = Number(process.env.EARLY_ACCESS_UPLOAD_MAX_MB || 512);
 const EARLY_ACCESS_UPLOAD_MAX_MB = Number.isFinite(configuredEarlyAccessUploadMaxMb) && configuredEarlyAccessUploadMaxMb > 0
@@ -41,8 +42,8 @@ const earlyAccessReleaseUpload = multer({
 }).single('file');
 
 const defaultBrand = {
-  site_title: 'Mooncci Blog',
-  nav_title: 'Mooncci Blog',
+  site_title: 'mooncci · 个人技术手记',
+  nav_title: 'mooncci',
   logo_url: '',
   favicon_url: '',
 };
@@ -58,6 +59,8 @@ const defaultProfile = {
 };
 
 const defaultHero = {
+  title: '',
+  eyebrow: 'mooncci / 个人技术手记',
   badge: 'Welcome',
   title_before: 'Explore ',
   title_highlight: 'programming',
@@ -70,12 +73,13 @@ const defaultHero = {
 };
 
 const defaultFooter = {
-  copyright: 'Copyright Mooncci',
-  icp_text: '',
+  settings_version: '1',
+  copyright: '© 2024–2026 mooncci in LNTU',
+  icp_text: '辽ICP备2024042989号-2',
   icp_url: 'https://beian.miit.gov.cn/',
-  police_text: '',
-  police_url: 'https://beian.mps.gov.cn/',
-  police_icon_url: '',
+  police_text: '辽公网安备21041102000446号',
+  police_url: 'https://beian.mps.gov.cn/#/query/webSearch?code=21041102000446',
+  police_icon_url: '/beian.png',
 };
 
 const defaultMail = {
@@ -166,7 +170,7 @@ async function getSetting(key, fallback) {
     [key]
   );
 
-  if (!rows[0]) return fallback;
+  if (!rows[0]) return { ...fallback };
 
   return {
     ...fallback,
@@ -225,12 +229,34 @@ function uploadErrorResponse(error) {
   return { status: 400, message: '安装包上传失败，请检查文件后重试。' };
 }
 
+function normalizeBrandDisplay(brand,profile,hero,footer) {
+  brand.nav_title='mooncci';
+  brand.site_title=brandText(brand.site_title || 'mooncci · 个人技术手记');
+  for(const key of ['name','title','bio']) if(profile[key]) profile[key]=brandText(profile[key]);
+  hero.title = hero.title || `${hero.title_before || ''}${hero.title_highlight || ''}${hero.title_after || ''}`;
+  for(const key of ['title','eyebrow','badge','title_before','title_highlight','title_after','subtitle','primary_text','secondary_text']) if(hero[key]) hero[key]=brandText(hero[key]);
+  // Older saved settings contain empty legal fields and the original placeholder copyright.
+  if (footer.settings_version !== '2') {
+    for (const [key, fallback] of Object.entries(defaultFooter)) {
+      footer[key] = String(footer[key] || '').trim() || fallback;
+    }
+  }
+  footer.copyright = brandText(footer.copyright);
+  if (footer.settings_version !== '2' && /^Copyright mooncci(?: in LNTU)?$/i.test(footer.copyright)) {
+    footer.copyright = defaultFooter.copyright;
+  }
+  if (footer.settings_version !== '2' && /^https:\/\/beian\.mps\.gov\.cn\/?$/.test(footer.police_url)) {
+    footer.police_url = defaultFooter.police_url;
+  }
+}
+
 router.get('/site', async (_req, res) => {
   const brand = await getSetting('brand', defaultBrand);
   const profile = await getSetting('profile', defaultProfile);
   const hero = await getSetting('hero', defaultHero);
   const footer = await getSetting('footer', defaultFooter);
 
+  normalizeBrandDisplay(brand,profile,hero,footer);
   res.json({ brand, profile, hero, footer });
 });
 
@@ -246,10 +272,23 @@ router.put('/site', authRequired, adminOnly, async (req, res) => {
   const hero = pickStringFields(body.hero, currentHero);
   const footer = pickStringFields(body.footer, currentFooter);
 
-  await saveSetting('brand', brand);
-  await saveSetting('profile', profile);
-  await saveSetting('hero', hero);
-  await saveSetting('footer', footer);
+  if (body.hero && Object.hasOwn(body.hero, 'title')) {
+    if (!hero.title.trim()) return res.status(400).json({ message: '首页标题不能为空。' });
+    // Keep legacy readers compatible with the single title field.
+    hero.title_before = hero.title;
+    hero.title_highlight = '';
+    hero.title_after = '';
+  }
+  if (body.hero && !Object.hasOwn(body.hero, 'title') && ['title_before', 'title_highlight', 'title_after'].some(key => Object.hasOwn(body.hero, key))) {
+    hero.title = `${hero.title_before || ''}${hero.title_highlight || ''}${hero.title_after || ''}`;
+  }
+  if (body.footer) footer.settings_version = '2';
+  normalizeBrandDisplay(brand,profile,hero,footer);
+  // Each section saves independently; leave unrelated and legacy data untouched.
+  if (body.brand) await saveSetting('brand', brand);
+  if (body.profile) await saveSetting('profile', profile);
+  if (body.hero) await saveSetting('hero', hero);
+  if (body.footer) await saveSetting('footer', footer);
 
   res.json({
     message: 'Site settings saved.',
@@ -382,13 +421,13 @@ router.post('/mail/test', authRequired, adminOnly, async (_req, res) => {
 
   const result = await sendMail({
     to: config.notify_to,
-    subject: '[Mooncci] Mail notification test',
-    text: 'This is a test email from Mooncci Blog. If you receive it, mail notifications are configured correctly.',
+    subject: '[mooncci] 邮件发送测试',
+    text: 'This is a test email from mooncci. If you receive it, mail notifications are configured correctly.',
     html: renderBrandedEmail({
-      eyebrow: 'MOONCCI / MAIL TEST',
+      eyebrow: 'mooncci / MAIL TEST',
       title: '品牌邮件配置成功',
       intro: '如果你看到这封邮件，说明 SMTP 与接收提醒邮箱已经正确配置。',
-      paragraphs: ['评论审核与 PromptDock Early Access 申请都会使用同一套黄黑品牌邮件。'],
+      paragraphs: ['订阅确认、周报、账户通知、评论审核、电量提醒与 PromptDock 申请使用统一的 mooncci 邮件样式。'],
       callout: { title: '兼容性说明', body: '邮件使用 table 布局和内联样式，以兼容 Apple Mail、Gmail 与 Outlook。' },
     }),
   });
@@ -449,7 +488,7 @@ router.post('/mail/send-custom', authRequired, adminOnly, async (req, res) => {
         subject,
         text: content,
         html: renderBrandedEmail({
-          eyebrow: 'MOONCCI / MESSAGE',
+          eyebrow: 'mooncci / MESSAGE',
           title: subject,
           paragraphs: [content],
         }),

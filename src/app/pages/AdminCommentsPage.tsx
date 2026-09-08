@@ -1,3 +1,4 @@
+import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 
@@ -13,8 +14,8 @@ const statusClass: Record<string, string> = {
   pending: 'bg-yellow-50 text-yellow-700',
   visible: 'bg-green-50 text-green-700',
   rejected: 'bg-red-50 text-red-700',
-  hidden: 'bg-gray-100 text-gray-600',
-  deleted: 'bg-gray-200 text-gray-500',
+  hidden: 'bg-muted text-muted-foreground',
+  deleted: 'bg-muted text-muted-foreground',
 };
 
 export default function AdminCommentsPage() {
@@ -41,7 +42,7 @@ export default function AdminCommentsPage() {
   const updateStatus = async (id: number, nextStatus: string) => {
     const confirmText =
       nextStatus === 'visible'
-        ? '确定通过这条评论吗？通过后会邮件通知用户。'
+        ? '确定通过这条评论吗？通过后会尝试邮件通知用户。'
         : nextStatus === 'rejected'
           ? '确定驳回这条评论吗？驳回后会邮件通知用户。'
           : '确定更新这条评论状态吗？';
@@ -62,26 +63,26 @@ export default function AdminCommentsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="rounded-[2rem] bg-white/85 backdrop-blur border border-white/50 p-8 shadow-xl">
+    <div className="max-w-[1200px] mx-auto">
+      <div className="py-2">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">评论管理</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            新评论默认待审核。通过或驳回后，系统会邮件通知评论用户。
+          <h1 className="admin-title">评论管理</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            新评论默认待审核。通过或驳回后，系统会尝试邮件通知评论用户，并显示发送结果。
           </p>
         </div>
 
         {message && (
-          <div className="mb-5 rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          <div className="mb-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
             {message}
           </div>
         )}
 
         <div className="mb-6 flex flex-col md:flex-row gap-3">
-          <select
+          <ThemeSelect
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+            onValueChange={(nextValue) => setStatus(nextValue)}
+            className="rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="pending">待审核</option>
             <option value="visible">已通过</option>
@@ -89,7 +90,7 @@ export default function AdminCommentsPage() {
             <option value="hidden">已隐藏</option>
             <option value="deleted">已删除</option>
             <option value="all">全部</option>
-          </select>
+          </ThemeSelect>
 
           <input
             value={keyword}
@@ -98,12 +99,12 @@ export default function AdminCommentsPage() {
               if (e.key === 'Enter') loadComments();
             }}
             placeholder="搜索评论、用户、邮箱、文章或 IP"
-            className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
           />
 
           <button
             onClick={loadComments}
-            className="rounded-2xl bg-gray-950 px-5 py-3 text-white hover:bg-gray-800"
+            className="rounded-[10px] bg-muted px-5 py-3 text-foreground hover:bg-muted"
           >
             搜索
           </button>
@@ -111,31 +112,31 @@ export default function AdminCommentsPage() {
 
         <div className="space-y-4">
           {comments.length === 0 && (
-            <div className="rounded-2xl bg-gray-50 px-5 py-8 text-center text-gray-500">
+            <div className="rounded-[10px] bg-muted px-5 py-8 text-center text-muted-foreground">
               暂无评论
             </div>
           )}
 
           {comments.map((item) => (
-            <div key={item.id} className="rounded-3xl border border-gray-200 bg-white/75 p-5">
+            <div key={item.id} className="rounded-[10px] border border-border bg-card p-5">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                     <span>#{item.id}</span>
                     <span>文章：{item.post_title}</span>
                     <span>用户：{item.author_name}</span>
                     <span>邮箱：{item.author_email}</span>
                   </div>
 
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                    <span className={`rounded-full px-3 py-1 ${statusClass[item.status] || 'bg-gray-100 text-gray-600'}`}>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span className={`rounded-full px-3 py-1 ${statusClass[item.status] || 'bg-muted text-muted-foreground'}`}>
                       {statusText[item.status] || item.status}
                     </span>
                     <span>IP：{item.ip_address || '-'}</span>
                     <span>时间：{item.created_at?.slice(0, 19).replace('T', ' ')}</span>
                   </div>
 
-                  <p className="mt-4 whitespace-pre-wrap rounded-2xl bg-gray-50 px-4 py-3 leading-7 text-gray-800">
+                  <p className="mt-4 whitespace-pre-wrap rounded-[10px] bg-muted px-4 py-3 leading-7 text-foreground">
                     {item.content}
                   </p>
                 </div>
@@ -144,7 +145,7 @@ export default function AdminCommentsPage() {
                   {item.status !== 'visible' && (
                     <button
                       onClick={() => updateStatus(item.id, 'visible')}
-                      className="rounded-full bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
+                      className="rounded-full bg-green-600 px-4 py-2 text-sm text-foreground hover:bg-green-700"
                     >
                       通过
                     </button>
@@ -153,7 +154,7 @@ export default function AdminCommentsPage() {
                   {item.status !== 'rejected' && (
                     <button
                       onClick={() => updateStatus(item.id, 'rejected')}
-                      className="rounded-full bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+                      className="rounded-full bg-red-600 px-4 py-2 text-sm text-foreground hover:bg-red-700"
                     >
                       驳回
                     </button>
@@ -162,7 +163,7 @@ export default function AdminCommentsPage() {
                   {item.status !== 'hidden' && (
                     <button
                       onClick={() => updateStatus(item.id, 'hidden')}
-                      className="rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"
+                      className="rounded-full bg-muted px-4 py-2 text-sm text-foreground hover:bg-muted"
                     >
                       隐藏
                     </button>
@@ -171,7 +172,7 @@ export default function AdminCommentsPage() {
                   {item.status !== 'deleted' && (
                     <button
                       onClick={() => updateStatus(item.id, 'deleted')}
-                      className="rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-500 hover:bg-gray-50"
+                      className="rounded-full border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
                     >
                       删除
                     </button>

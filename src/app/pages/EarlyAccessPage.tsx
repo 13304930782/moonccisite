@@ -1,3 +1,4 @@
+import { ThemeSelect } from '../components/ThemeSelect';
 import { FormEvent, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
@@ -11,7 +12,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
-import { Header } from '../components/Header';
+import { SitePage, PageHeading } from '../components/ContentUI';
 import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
 
@@ -61,7 +62,8 @@ const features = [
   ['ai_assistant', 'AI 助手'],
 ];
 
-const fieldClass = 'neo-input mt-2 w-full px-4 py-3 outline-none placeholder:text-black/35 disabled:opacity-60';
+const fieldClass =
+  'neo-input mt-2 w-full px-4 py-3 outline-none placeholder:text-muted-foreground disabled:opacity-60';
 
 export default function EarlyAccessPage() {
   const formRef = useRef<HTMLFormElement>(null);
@@ -80,12 +82,17 @@ export default function EarlyAccessPage() {
       'desiredFeatures',
       form.desiredFeatures.includes(feature)
         ? form.desiredFeatures.filter((item) => item !== feature)
-        : [...form.desiredFeatures, feature]
+        : [...form.desiredFeatures, feature],
     );
   };
 
   const focusForm = () => {
-    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    formRef.current?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'auto'
+        : 'smooth',
+      block: 'start',
+    });
     window.setTimeout(() => nameRef.current?.focus(), 500);
   };
 
@@ -116,188 +123,191 @@ export default function EarlyAccessPage() {
   };
 
   return (
-    <div className="neo-page">
-      <Header />
+    <SitePage>
+      <PageHeading eyebrow="PromptDock / Early Access" title="一起打磨 PromptDock">
+        <p>
+          一款从 macOS 开始的 Prompt
+          管理与工作流工具。邀请你提前体验，也欢迎分享实际使用中的问题与想法。
+        </p>
+      </PageHeading>
+      <div className="detail-columns">
+        <aside className="detail-aside">
+          <h2>关于这次内测</h2>
+          <p>当前开放 macOS 版本。Windows、iPhone 和 iPad 仍在计划中。</p>
+          <dl className="plain-facts">
+            <div>
+              <dt>提前体验</dt>
+              <dd>试用正在构建的功能。</dd>
+            </div>
+            <div>
+              <dt>参与反馈</dt>
+              <dd>让真实工作流影响后续开发。</dd>
+            </div>
+            <div>
+              <dt>后续安排</dt>
+              <dd>审核结果与体验说明通过邮件发送。</dd>
+            </div>
+          </dl>
+          <button type="button" className="text-link" onClick={focusForm}>
+            填写申请 ↓
+          </button>
+        </aside>
+        <section id="early-access-form" className="detail-body">
+          <div className="form-section-heading">
+            <h2>申请体验</h2>
+            <p>这些信息仅用于内测筛选与联系。</p>
+          </div>
+          {success ? (
+            <div role="status" className="quiet-state">
+              <h3>申请已提交</h3>
+              <p>我们会通过邮件联系你。</p>
+            </div>
+          ) : (
+            <form ref={formRef} onSubmit={submit} className="site-form scroll-mt-24">
+              <div className="grid gap-6 md:grid-cols-2">
+                <label className="font-medium">
+                  姓名
+                  <input
+                    ref={nameRef}
+                    required
+                    maxLength={80}
+                    value={form.name}
+                    onChange={(event) => update('name', event.target.value)}
+                    className={fieldClass}
+                    autoComplete="name"
+                  />
+                </label>
+                <label className="font-medium">
+                  邮箱
+                  <input
+                    required
+                    maxLength={254}
+                    type="email"
+                    value={form.email}
+                    onChange={(event) => update('email', event.target.value)}
+                    className={fieldClass}
+                    autoComplete="email"
+                    inputMode="email"
+                  />
+                </label>
+                <label className="font-medium">
+                  职业身份
+                  <ThemeSelect
+                    required
+                    value={form.occupation}
+                    onValueChange={(nextValue) => update('occupation', nextValue)}
+                    className={fieldClass}
+                  >
+                    <option value="">请选择</option>
+                    {occupations.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </ThemeSelect>
+                </label>
+                <label className="font-medium">
+                  当前设备
+                  <ThemeSelect
+                    required
+                    value={form.device}
+                    onValueChange={(nextValue) => update('device', nextValue)}
+                    className={fieldClass}
+                  >
+                    <option value="">请选择</option>
+                    {devices.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </ThemeSelect>
+                </label>
+                <label className="font-medium md:col-span-2">
+                  macOS 版本
+                  <input
+                    required
+                    maxLength={100}
+                    value={form.macOSVersion}
+                    onChange={(event) => update('macOSVersion', event.target.value)}
+                    className={fieldClass}
+                    placeholder="例如：macOS 15.5"
+                  />
+                </label>
+                <label className="font-medium md:col-span-2">
+                  主要使用场景
+                  <textarea
+                    required
+                    maxLength={3000}
+                    rows={4}
+                    value={form.useCase}
+                    onChange={(event) => update('useCase', event.target.value)}
+                    className={fieldClass}
+                    placeholder="例如：AI 辅助工作、教学备课、代码开发、内容创作"
+                  />
+                </label>
+              </div>
 
-      <main>
-        <section className="neo-dot-grid border-b-2 border-black px-5 pb-20 pt-36 lg:px-6 lg:pb-24 lg:pt-44">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-            className="mx-auto max-w-7xl"
-          >
-            <span className="neo-kicker bg-white">PromptDock / Early Access Program</span>
-            <div className="mt-9 grid items-end gap-10 lg:grid-cols-[1.45fr_0.55fr]">
-              <div>
-                <h1 className="neo-heading max-w-5xl text-5xl leading-[1.02] md:text-7xl lg:text-[5.7rem]">
-                  加入 PromptDock<br />Early Access 计划
-                </h1>
-                <p className="mt-8 max-w-3xl text-lg font-bold leading-8 text-black/70 md:text-xl">
-                  抢先体验下一代 AI Prompt 管理与工作流工具。参与产品共创，帮助我们打造更适合真实用户需求的 AI 生产力应用。
+              <fieldset className="mt-8">
+                <legend className="font-medium">希望体验的功能</legend>
+                <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
+                  {features.map(([value, label]) => {
+                    const checked = form.desiredFeatures.includes(value);
+                    return (
+                      <label
+                        key={value}
+                        className={`flex cursor-pointer items-center gap-3 py-2 text-sm ${checked ? 'text-foreground' : 'text-muted-foreground'}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleFeature(value)}
+                          className="h-4 w-4 accent-current"
+                        />
+                        {label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+
+              <label className="mt-8 block font-medium">
+                申请理由
+                <textarea
+                  required
+                  maxLength={3000}
+                  rows={4}
+                  value={form.reason}
+                  onChange={(event) => update('reason', event.target.value)}
+                  className={fieldClass}
+                  placeholder="你为什么想加入 Early Access？希望 PromptDock 帮你解决什么问题？"
+                />
+              </label>
+
+              {message && (
+                <div
+                  role="alert"
+                  className="mt-6 border border-border bg-muted px-4 py-3 font-medium shadow-none"
+                >
+                  {message}
+                </div>
+              )}
+
+              <div className="mt-8 flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
+                <p className="max-w-xl text-xs font-medium leading-6 text-muted-foreground">
+                  提交即表示你同意我们仅为 Early Access 审核与后续联系处理这些信息。
                 </p>
-                <button type="button" onClick={focusForm} className="neo-button neo-button-dark mt-10 px-7 py-4">
-                  申请体验 <ArrowDown className="h-5 w-5" />
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="neo-button neo-button-dark shrink-0 px-7 disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {submitting ? '提交中…' : '提交申请'} <Code2 className="h-4 w-4" />
                 </button>
               </div>
-
-              <div className="neo-card-lg rounded-[12px] bg-white p-7">
-                <div className="flex items-center justify-between">
-                  <Laptop className="h-10 w-10" />
-                  <span className="border-2 border-black bg-[#b7c6c2] px-3 py-1 font-mono text-xs font-black">macOS ✓</span>
-                </div>
-                <h2 className="neo-heading mt-10 text-3xl">Native first.</h2>
-                <p className="mt-4 text-sm font-bold leading-7 text-black/60">
-                  当前版本专为 macOS 原生体验设计。其他平台仍在计划中，不会展示尚未存在的能力。
-                </p>
-              </div>
-            </div>
-          </motion.div>
+            </form>
+          )}
         </section>
-
-        <section className="mx-auto max-w-7xl px-5 py-20 lg:px-6 lg:py-24">
-          <span className="neo-kicker bg-[#b7c6c2]">01 / Why join</span>
-          <h2 className="neo-heading mt-7 text-5xl md:text-6xl">为什么加入 Early Access？</h2>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {[
-              { icon: Sparkles, title: '提前体验', text: '第一时间使用 macOS 原生 AI 工具。' },
-              { icon: MessageSquareText, title: '参与共创', text: '反馈使用体验，影响产品未来方向。' },
-              { icon: ShieldCheck, title: '专属权益', text: '未来优先体验 PromptDock 新功能。' },
-            ].map(({ icon: Icon, title, text }, index) => (
-              <article key={title} className="neo-card rounded-[12px] p-7">
-                <div className="flex items-center justify-between">
-                  <span className="flex h-14 w-14 items-center justify-center border-2 border-black bg-[#ffe17c]">
-                    <Icon className="h-6 w-6" />
-                  </span>
-                  <span className="font-mono text-sm font-black">0{index + 1}</span>
-                </div>
-                <h3 className="neo-heading mt-10 text-3xl">{title}</h3>
-                <p className="mt-4 text-sm font-bold leading-7 text-black/60">{text}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="border-y-2 border-black bg-[#171e19] px-5 py-20 text-white lg:px-6 lg:py-24">
-          <div className="mx-auto max-w-7xl">
-            <span className="neo-kicker border-white bg-[#171e19] text-white shadow-[3px_3px_0_#b7c6c2]">02 / Platforms</span>
-            <h2 className="neo-heading mt-7 text-5xl md:text-6xl">从 macOS 开始。</h2>
-            <div className="mt-12 grid gap-6 md:grid-cols-4">
-              <article className="border-2 border-white bg-[#ffe17c] p-6 text-black shadow-[6px_6px_0_#fff] md:col-span-2">
-                <div className="flex items-center justify-between">
-                  <Laptop className="h-8 w-8" />
-                  <CheckCircle2 className="h-7 w-7" />
-                </div>
-                <h3 className="neo-heading mt-12 text-4xl">macOS</h3>
-                <p className="mt-4 text-sm font-bold leading-7">当前版本专为 macOS 原生体验设计。</p>
-              </article>
-              {['Windows', 'iPhone', 'iPad'].map((platform) => (
-                <article key={platform} className="border-2 border-white/45 bg-[#171e19] p-6">
-                  <span className="font-mono text-xs font-black uppercase tracking-widest text-[#b7c6c2]">Coming Soon</span>
-                  <h3 className="neo-heading mt-16 text-3xl text-white">{platform}</h3>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="early-access-form" className="neo-dot-grid px-5 py-20 lg:px-6 lg:py-24">
-          <div className="mx-auto max-w-5xl">
-            <span className="neo-kicker bg-white">03 / Apply</span>
-            <h2 className="neo-heading mt-7 text-5xl md:text-6xl">告诉我们你的真实工作流。</h2>
-            <p className="mt-5 max-w-2xl text-base font-bold leading-7 text-black/65">
-              申请信息仅用于 Early Access 筛选与联系。提交后，我们会通过邮件通知后续安排。
-            </p>
-
-            {success ? (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                role="status"
-                className="neo-card-lg mt-12 rounded-[12px] bg-white p-8 md:p-12"
-              >
-                <span className="flex h-16 w-16 items-center justify-center border-2 border-black bg-[#ffe17c] shadow-[4px_4px_0_#000]">
-                  <Check className="h-8 w-8" />
-                </span>
-                <h3 className="neo-heading mt-9 text-4xl">感谢加入 Early Access 计划！</h3>
-                <p className="mt-5 text-lg font-bold text-black/65">我们会通过邮件联系你。</p>
-              </motion.div>
-            ) : (
-              <form ref={formRef} onSubmit={submit} className="neo-card-lg mt-12 scroll-mt-32 rounded-[12px] bg-white p-6 md:p-10">
-                <div className="grid gap-6 md:grid-cols-2">
-                  <label className="font-black">
-                    姓名
-                    <input ref={nameRef} required maxLength={80} value={form.name} onChange={(event) => update('name', event.target.value)} className={fieldClass} autoComplete="name" />
-                  </label>
-                  <label className="font-black">
-                    邮箱
-                    <input required maxLength={254} type="email" value={form.email} onChange={(event) => update('email', event.target.value)} className={fieldClass} autoComplete="email" inputMode="email" />
-                  </label>
-                  <label className="font-black">
-                    职业身份
-                    <select required value={form.occupation} onChange={(event) => update('occupation', event.target.value)} className={fieldClass}>
-                      <option value="">请选择</option>
-                      {occupations.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                    </select>
-                  </label>
-                  <label className="font-black">
-                    当前设备
-                    <select required value={form.device} onChange={(event) => update('device', event.target.value)} className={fieldClass}>
-                      <option value="">请选择</option>
-                      {devices.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                    </select>
-                  </label>
-                  <label className="font-black md:col-span-2">
-                    macOS 版本
-                    <input required maxLength={100} value={form.macOSVersion} onChange={(event) => update('macOSVersion', event.target.value)} className={fieldClass} placeholder="例如：macOS 15.5" />
-                  </label>
-                  <label className="font-black md:col-span-2">
-                    主要使用场景
-                    <textarea required maxLength={3000} rows={5} value={form.useCase} onChange={(event) => update('useCase', event.target.value)} className={fieldClass} placeholder="例如：AI 辅助工作、教学备课、代码开发、内容创作" />
-                  </label>
-                </div>
-
-                <fieldset className="mt-8">
-                  <legend className="font-black">希望体验的功能</legend>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {features.map(([value, label]) => {
-                      const checked = form.desiredFeatures.includes(value);
-                      return (
-                        <label key={value} className={`flex cursor-pointer items-center gap-3 border-2 border-black px-4 py-3 font-bold transition ${checked ? 'bg-[#ffe17c] shadow-[3px_3px_0_#000]' : 'bg-white hover:bg-[#b7c6c2]'}`}>
-                          <input type="checkbox" checked={checked} onChange={() => toggleFeature(value)} className="h-4 w-4 accent-black" />
-                          {label}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </fieldset>
-
-                <label className="mt-8 block font-black">
-                  申请理由
-                  <textarea required maxLength={3000} rows={5} value={form.reason} onChange={(event) => update('reason', event.target.value)} className={fieldClass} placeholder="你为什么想加入 Early Access？希望 PromptDock 帮你解决什么问题？" />
-                </label>
-
-                {message && (
-                  <div role="alert" className="mt-6 border-2 border-black bg-[#ffe17c] px-4 py-3 font-bold shadow-[3px_3px_0_#000]">
-                    {message}
-                  </div>
-                )}
-
-                <div className="mt-8 flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
-                  <p className="max-w-xl text-xs font-bold leading-6 text-black/55">
-                    提交即表示你同意我们仅为 Early Access 审核与后续联系处理这些信息。
-                  </p>
-                  <button type="submit" disabled={submitting} className="neo-button neo-button-dark shrink-0 px-7 disabled:cursor-not-allowed disabled:opacity-55">
-                    {submitting ? '提交中…' : '提交申请'} <Code2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </section>
-      </main>
-
-      <SiteFooter />
-    </div>
+      </div>
+    </SitePage>
   );
 }

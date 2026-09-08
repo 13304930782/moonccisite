@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 type Comment = {
+  replies?: Comment[];
   id: number;
   post_id: number;
   user_id: number;
@@ -38,21 +39,21 @@ function getRoleName(role?: string) {
 function getRoleBadge(role?: string) {
   if (role === 'owner') {
     return (
-      <span className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm">
+      <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground shadow-none">
         站长
       </span>
     );
   }
   if (role === 'admin') {
     return (
-      <span className="rounded-full bg-blue-600 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm">
+      <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground shadow-none">
         管理员
       </span>
     );
   }
   if (role === 'editor') {
     return (
-      <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm">
+      <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground shadow-none">
         编辑
       </span>
     );
@@ -69,10 +70,9 @@ function canDelete(user: any, comment: Comment) {
 }
 
 function getCommentRule(role?: string) {
-  if (role === 'owner') return '无需审核，站长评论发布后直接显示，并拥有最高审核权限。';
-  if (role === 'admin') return '无需审核，管理员评论发布后直接显示。';
-  if (role === 'editor') return '无需审核，编辑评论发布后直接显示。';
-  return '需要审核，管理员通过后才会公开显示；你自己的待审核评论会优先显示。';
+  if (['owner', 'admin', 'editor'].includes(role || ''))
+    return '你的评论发布后直接显示。';
+  return '评论审核通过后公开，待审核内容仅你自己可见。';
 }
 
 export function CommentSection({ postId }: { postId: number | string }) {
@@ -213,28 +213,18 @@ export function CommentSection({ postId }: { postId: number | string }) {
   };
 
   const renderCommentItem = (item: Comment, isReply: boolean = false) => {
-    const borderColors = item.author_role === 'owner'
-      ? 'border-purple-300 bg-gradient-to-br from-purple-50 via-white to-blue-50 shadow-sm shadow-purple-200/40'
-      : item.author_role === 'admin'
-        ? 'border-blue-200 bg-blue-50/70 shadow-sm shadow-blue-100/50'
-        : item.status === 'pending'
-          ? 'border-yellow-200 bg-yellow-50/70'
-          : item.status === 'rejected'
-            ? 'border-red-200 bg-red-50/70'
-            : 'border-gray-200 bg-white/75 dark:border-gray-800 dark:bg-gray-950/50';
-
     return (
       <div key={item.id} className={isReply ? 'ml-5 md:ml-10 mt-3' : ''}>
-        <div className={'rounded-2xl border p-4 ' + borderColors}>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
-            <span className="font-medium text-gray-900 dark:text-white">
+        <div className={`comment-item comment-item--${item.status}`}>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground ">
               {item.author_name}
             </span>
 
             {getRoleBadge(item.author_role)}
 
             {item.reply_to_name && (
-              <span className="text-blue-600">
+              <span className="text-foreground">
                 回复 @{item.reply_to_name}
               </span>
             )}
@@ -255,7 +245,7 @@ export function CommentSection({ postId }: { postId: number | string }) {
             )}
           </div>
 
-          <p className="mt-3 whitespace-pre-wrap leading-7 text-gray-800 dark:text-gray-200">
+          <p className="mt-3 whitespace-pre-wrap leading-7 text-foreground ">
             {item.content}
           </p>
 
@@ -279,11 +269,15 @@ export function CommentSection({ postId }: { postId: number | string }) {
                 'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition ' +
                 (item.liked_by_me
                   ? 'bg-red-50 text-red-600'
-                  : 'bg-gray-100 text-gray-500 hover:text-red-600') +
+                  : 'bg-muted text-muted-foreground hover:text-red-600') +
                 ' disabled:opacity-50'
               }
             >
-              <Heart className={'w-4 h-4 ' + (item.liked_by_me ? 'fill-current' : '')} />
+              <Heart
+                className={
+                  'w-4 h-4 ' + (item.liked_by_me ? 'fill-current' : '')
+                }
+              />
               {item.like_count || 0}
             </button>
 
@@ -293,7 +287,7 @@ export function CommentSection({ postId }: { postId: number | string }) {
                   setReplyingTo(item);
                   setReplyContent('');
                 }}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition"
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition"
               >
                 <Reply className="w-4 h-4" />
                 回复
@@ -303,7 +297,7 @@ export function CommentSection({ postId }: { postId: number | string }) {
             {canDelete(user, item) && (
               <button
                 onClick={() => deleteComment(item)}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:text-red-600 hover:bg-red-50 transition"
               >
                 <Trash2 className="w-4 h-4" />
                 删除
@@ -317,9 +311,9 @@ export function CommentSection({ postId }: { postId: number | string }) {
             onSubmit={submitReply}
             className={'mt-3 ' + (isReply ? 'ml-5 md:ml-10' : '')}
           >
-            <div className="rounded-2xl border border-blue-300 bg-blue-50/50 p-4">
+            <div className="rounded-[10px] border border-border bg-muted p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-blue-700">
+                <span className="text-sm text-foreground">
                   回复 @{item.author_name}
                 </span>
                 <button
@@ -328,7 +322,7 @@ export function CommentSection({ postId }: { postId: number | string }) {
                     setReplyingTo(null);
                     setReplyContent('');
                   }}
-                  className="rounded-full p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200"
+                  className="rounded-full p-1 text-muted-foreground hover:text-muted-foreground hover:bg-muted"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -339,14 +333,14 @@ export function CommentSection({ postId }: { postId: number | string }) {
                 onChange={(e) => setReplyContent(e.target.value)}
                 rows={3}
                 placeholder={'回复 @' + item.author_name + '...'}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-[6px] border border-border bg-card px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
 
               <div className="mt-2 flex justify-end">
                 <button
                   type="submit"
                   disabled={submittingReply || !replyContent.trim()}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
+                  className="inline-flex items-center gap-1.5 rounded-[6px] bg-muted px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60"
                 >
                   <Send className="w-3.5 h-3.5" />
                   {submittingReply ? '提交中...' : '回复'}
@@ -357,7 +351,7 @@ export function CommentSection({ postId }: { postId: number | string }) {
         )}
 
         {item.replies && item.replies.length > 0 && (
-          <div className="border-l-2 border-blue-200 dark:border-blue-800 ml-2 md:ml-4">
+          <div className="border-l border-border  ml-2 md:ml-4">
             {item.replies.map((reply) => renderCommentItem(reply, true))}
           </div>
         )}
@@ -366,49 +360,44 @@ export function CommentSection({ postId }: { postId: number | string }) {
   };
 
   return (
-    <section className="mt-12 rounded-[2rem] bg-white/80 dark:bg-gray-900/80 backdrop-blur border border-gray-200/50 dark:border-gray-800/50 p-6 md:p-8 shadow-lg shadow-black/5">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <MessageCircle className="w-6 h-6 text-blue-600" />
-            评论
-          </h2>
-          <div className="mt-2 rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3 text-sm text-blue-800">
-            {user ? (
-              <div className="space-y-1">
-                <p>你的用户名：<span className="font-semibold">{user.username}</span></p>
-                <p>网站身份：<span className="font-semibold">{getRoleName(user.role)}</span></p>
-                <p>评论规则：<span className="font-semibold">{getCommentRule(user.role)}</span></p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <p>当前状态：<span className="font-semibold">未登录</span></p>
-                <p>评论规则：登录后才可以发表评论。</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex rounded-2xl bg-gray-100 dark:bg-gray-800 p-1">
+    <section
+      className="comment-section"
+      aria-labelledby={`comments-heading-${postId}`}
+    >
+      <div className="comment-header">
+        <h2 id={`comments-heading-${postId}`}>
+          <MessageCircle aria-hidden="true" />
+          评论
+        </h2>
+        <div className="comment-sort" role="group" aria-label="评论排序">
           {sortOptions.map((item) => (
             <button
+              type="button"
               key={item.value}
               onClick={() => setSort(item.value)}
-              className={
-                'rounded-xl px-4 py-2 text-sm transition ' +
-                (sort === item.value
-                  ? 'bg-white dark:bg-gray-950 text-blue-600 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-white')
-              }
+              aria-pressed={sort === item.value}
             >
               {item.label}
             </button>
           ))}
         </div>
       </div>
+      <div className="comment-account">
+        {user ? (
+          <>
+            <p>
+              <strong>{user.username}</strong>
+              <span>{getRoleName(user.role)}</span>
+            </p>
+            <p>{getCommentRule(user.role)}</p>
+          </>
+        ) : (
+          <p>登录后参与讨论。</p>
+        )}
+      </div>
 
       {message && (
-        <div className="mt-5 rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+        <div className="mt-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
           {message}
         </div>
       )}
@@ -418,14 +407,20 @@ export function CommentSection({ postId }: { postId: number | string }) {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={4}
-          placeholder={user ? '写下你的评论，提交后等待审核...' : '请先登录后再评论'}
-          className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+          placeholder={
+            user
+              ? ['owner', 'admin', 'editor'].includes(user.role)
+                ? '写下你的评论…'
+                : '写下你的评论，审核通过后公开…'
+              : '请先登录后再评论'
+          }
+          className="w-full rounded-[10px] border border-border  bg-card  px-4 py-3 outline-none focus:ring-2 focus:ring-ring text-foreground "
         />
 
         <div className="mt-3 flex justify-end">
           <button
             disabled={loading || !user}
-            className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-white hover:bg-blue-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-foreground hover:bg-muted disabled:opacity-60"
           >
             <Send className="w-4 h-4" />
             {loading ? '提交中...' : '发表评论'}
@@ -435,7 +430,7 @@ export function CommentSection({ postId }: { postId: number | string }) {
 
       <div className="mt-8 space-y-2">
         {comments.length === 0 && (
-          <div className="rounded-2xl bg-gray-50 dark:bg-gray-800/60 px-5 py-8 text-center text-gray-500">
+          <div className="rounded-[10px] bg-muted  px-5 py-8 text-center text-muted-foreground">
             暂无评论
           </div>
         )}
@@ -445,4 +440,4 @@ export function CommentSection({ postId }: { postId: number | string }) {
     </section>
   );
 }
-// __MOONCCI_V2__
+// Comment interface

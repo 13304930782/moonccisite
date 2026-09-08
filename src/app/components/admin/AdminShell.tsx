@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useSiteSettings } from '../../context/SiteSettingsContext';
+import { safeImageSrc } from '../../lib/safeUrl';
+import { ThemeToggle } from '../../context/ThemeContext';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
+  ArrowUp,
   Ban,
   Crown,
   FileText,
@@ -44,18 +48,18 @@ function getRoleName(role?: string) {
 
 function getRoleBadgeClass(role?: string) {
   if (role === 'owner') {
-    return 'border-2 border-black bg-[#ffe17c] text-black shadow-[3px_3px_0_#000]';
+    return 'border border-border bg-muted text-foreground shadow-none';
   }
 
   if (role === 'admin') {
-    return 'border-2 border-black bg-[#b7c6c2] text-black shadow-[3px_3px_0_#000]';
+    return 'border border-border bg-muted text-foreground shadow-none';
   }
 
   if (role === 'editor') {
-    return 'border-2 border-black bg-white text-black shadow-[3px_3px_0_#000]';
+    return 'border border-border bg-card text-foreground shadow-none';
   }
 
-  return 'border-2 border-white bg-[#171e19] text-white';
+  return 'border border-border bg-muted text-foreground';
 }
 
 function isManager(role?: string) {
@@ -67,8 +71,39 @@ function canWrite(role?: string) {
 }
 
 export function AdminShell({ children }: AdminShellProps) {
-  const { user, logout } = useAuth();
+  const mainRef = useRef<HTMLElement>(null);
+  const [showTop, setShowTop] = useState(false);
+  function backToTop() {
+    const main = mainRef.current;
+    if (!main) return;
+    const heading = main.querySelector<HTMLElement>('h1') || main;
+    heading.setAttribute('tabindex', '-1');
+    heading.focus({ preventScroll: true });
+    main.scrollTo({
+      top: 0,
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth',
+    });
+  }
+
+  const { user, logout, loggingOut, logoutError } = useAuth();
+  const { data: settings } = useSiteSettings();
+  const brand = settings?.brand || {};
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+  useEffect(() => {
+    setMobileOpen(false);
+    mainRef.current?.scrollTo({ top: 0, behavior: 'instant' });
+    setShowTop(false);
+  }, [location.pathname]);
+  useEffect(() => {
+    const close = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, []);
 
   const role = user?.role || 'user';
   const manager = isManager(role);
@@ -98,6 +133,14 @@ export function AdminShell({ children }: AdminShellProps) {
 
   const menus: MenuItem[] = [
     {
+      title: '近况与动态',
+      to: '/admin/updates',
+      icon: MessageCircle,
+      show: manager,
+    },
+    { title: '作品管理', to: '/admin/projects', icon: FileText, show: manager },
+    { title: '订阅与周报', to: '/admin/newsletter', icon: Mail, show: owner },
+    {
       title: '概览',
       to: '/admin',
       icon: LayoutDashboard,
@@ -119,7 +162,7 @@ export function AdminShell({ children }: AdminShellProps) {
       title: '媒体库',
       to: '/admin/media',
       icon: Image,
-      show: writer,
+      show: manager,
     },
     {
       title: '编辑申请审核',
@@ -185,182 +228,104 @@ export function AdminShell({ children }: AdminShellProps) {
 
   const closeMobile = () => setMobileOpen(false);
 
-  const handleLogout = () => {
-    logout();
-    closeMobile();
+  const handleLogout = async () => {
+    if (await logout()) closeMobile();
   };
 
-  const MenuContent = ({ mobile = false }: { mobile?: boolean }) => (
-    <div className="flex h-full min-h-0 w-full flex-col">
-      <Link
-        to="/"
-        onClick={() => mobile && closeMobile()}
-        className="flex shrink-0 items-center gap-3 px-2"
-      >
-        <div className="h-11 w-11 shrink-0 overflow-hidden border-2 border-black bg-[#171e19]">
-          <img
-            src="/api/uploads/logo.png"
-            alt="logo"
-            className="h-full w-full object-cover"
-            onError={(event) => {
-              event.currentTarget.style.display = 'none';
-            }}
-          />
-        </div>
-
-        <div className="min-w-0">
-          <div className="neo-heading truncate text-lg text-black">MOONCCI</div>
-          <div className="truncate font-mono text-[10px] font-bold uppercase tracking-wider text-black/55">Control Center</div>
-        </div>
-      </Link>
-
-      <div className="mt-8 shrink-0 rounded-[12px] border-2 border-black bg-[#171e19] p-5 text-white shadow-[6px_6px_0_#000]">
-        <div className="text-sm text-white/70">当前用户</div>
-
-        <div className="mt-3 truncate font-bold">
-          {user?.username || '未登录'}
-        </div>
-
-        <div className="mt-3">
-          <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${getRoleBadgeClass(role)}`}>
-            {role === 'owner' && <Crown className="h-3.5 w-3.5" />}
-            {getRoleName(role)}
-          </span>
-        </div>
+  const MenuContent = () => (
+    <>
+      <div className="admin-menu-head">
+        <Link className="site-brand" to="/">
+          mooncci
+        </Link>
+        <ThemeToggle />
       </div>
-
-      <nav className="mt-6 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]">
-        {menus.map((item) => {
-          const Icon = item.icon;
-
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/admin'}
-              onClick={() => mobile && closeMobile()}
-              className={({ isActive }) =>
-                [
-                  'flex items-center gap-3 rounded-[10px] border-2 px-4 py-3 text-sm font-bold transition',
-                  isActive
-                    ? 'border-black bg-[#ffe17c] text-black shadow-[3px_3px_0_#000]'
-                    : 'border-transparent text-black/60 hover:border-black hover:bg-[#b7c6c2] hover:text-black',
-                ].join(' ')
-              }
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{item.title}</span>
-            </NavLink>
-          );
-        })}
-
-        <Link
-          to="/"
-          onClick={() => mobile && closeMobile()}
-          className="flex items-center gap-3 rounded-[10px] border-2 border-transparent px-4 py-3 text-sm font-bold text-black/60 transition hover:border-black hover:bg-[#b7c6c2] hover:text-black"
-        >
-          <Home className="h-4 w-4 shrink-0" />
+      <p className="admin-user">
+        {user?.username} · {getRoleName(role)}
+      </p>
+      <nav className="admin-menu" aria-label="后台导航">
+        {menus.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.to === '/admin'}
+            onClick={closeMobile}
+          >
+            <item.icon />
+            <span>{item.title}</span>
+          </NavLink>
+        ))}
+        <Link to="/" onClick={closeMobile}>
+          <Home />
           <span>返回首页</span>
         </Link>
-
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-[10px] border-2 border-transparent px-4 py-3 text-sm font-bold text-black/60 transition hover:border-black hover:bg-[#ffe17c] hover:text-black"
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          <span>退出登录</span>
+        <button onClick={handleLogout} disabled={loggingOut}>
+          <LogOut />
+          <span>{loggingOut ? '正在退出…' : '退出登录'}</span>
         </button>
       </nav>
-    </div>
+      {logoutError && (
+        <p className="admin-user" role="alert">
+          {logoutError}
+        </p>
+      )}
+    </>
   );
-
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[#b7c6c2] text-black lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
-      <aside className="hidden min-h-0 overflow-hidden border-r-2 border-black bg-white p-5 lg:flex">
+    <div className="admin-frame">
+      <aside className="admin-sidebar">
         <MenuContent />
       </aside>
-
-      <header className="fixed left-0 right-0 top-0 z-50 border-b-2 border-black bg-[#ffe17c] px-4 py-3 lg:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <Link to="/" className="flex min-w-0 items-center gap-3">
-            <div className="h-10 w-10 shrink-0 overflow-hidden border-2 border-black bg-[#171e19]">
-              <img
-                src="/api/uploads/logo.png"
-                alt="logo"
-                className="h-full w-full object-cover"
-                onError={(event) => {
-                  event.currentTarget.style.display = 'none';
-                }}
-              />
-            </div>
-
-            <div className="min-w-0">
-              <div className="truncate text-sm font-bold text-gray-900">
-                后台管理
-              </div>
-              <div className="truncate text-xs text-gray-500">
-                {user?.username || '未登录'} · {getRoleName(role)}
-              </div>
-            </div>
-          </Link>
-
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-1 rounded-[8px] border-2 border-black bg-white px-3 py-2 text-xs font-bold text-black shadow-[2px_2px_0_#000]"
-            >
-              <Home className="h-4 w-4" />
-              首页
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => setMobileOpen(true)}
-              className="inline-flex items-center gap-1 rounded-[8px] border-2 border-black bg-[#171e19] px-3 py-2 text-xs font-bold text-white shadow-[2px_2px_0_#000]"
-            >
-              <Menu className="h-4 w-4" />
-              菜单
-            </button>
-          </div>
+      <header className="admin-mobile-bar">
+        <Link className="site-brand" to="/">
+          mooncci
+        </Link>
+        <div className="header-actions">
+          <ThemeToggle />
+          <button
+            className="icon-button"
+            aria-label={mobileOpen ? '关闭后台菜单' : '打开后台菜单'}
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            {mobileOpen ? <X /> : <Menu />}
+          </button>
         </div>
       </header>
-
       {mobileOpen && (
-        <div className="fixed inset-0 z-[60] overflow-hidden lg:hidden">
+        <div className="admin-mobile-layer">
           <button
-            type="button"
+            className="admin-menu-backdrop"
             aria-label="关闭菜单"
-            className="absolute inset-0 bg-black/40"
             onClick={closeMobile}
           />
-
-          <aside className="absolute inset-y-0 left-0 flex w-80 max-w-[86vw] flex-col overflow-hidden border-r-2 border-black bg-white p-5 shadow-[8px_0_0_#000]">
-            <div className="mb-5 flex shrink-0 items-center justify-between">
-              <div className="text-sm font-semibold text-gray-500">后台菜单</div>
-              <button
-                type="button"
-                onClick={closeMobile}
-                className="rounded-[8px] border-2 border-black bg-[#ffe17c] p-2 text-black"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="h-[calc(100%-3.5rem)] min-h-0">
-              <MenuContent mobile />
-            </div>
+          <aside>
+            <MenuContent />
           </aside>
         </div>
       )}
-
-      <main className="absolute inset-x-0 bottom-0 top-[73px] overflow-y-auto overscroll-contain px-4 pb-6 pt-6 [-webkit-overflow-scrolling:touch] lg:static lg:min-h-0 lg:px-10 lg:py-6">
-        <div className="mx-auto max-w-7xl">
+      <main
+        className="admin-main"
+        ref={mainRef}
+        tabIndex={-1}
+        onScroll={(event) => setShowTop(event.currentTarget.scrollTop > 320)}
+      >
+        <div className="admin-content" key={location.pathname}>
           {children}
         </div>
       </main>
+      {showTop && !mobileOpen && (
+        <button
+          className="admin-back-top"
+          type="button"
+          onClick={backToTop}
+          aria-label="回到页面顶部"
+        >
+          <ArrowUp size={18} aria-hidden="true" />
+          <span>回到顶部</span>
+        </button>
+      )}
     </div>
   );
 }
-
 export default AdminShell;

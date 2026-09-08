@@ -1,112 +1,154 @@
-import { Search, Zap } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { CardNav, CardNavItem } from './CardNav';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, Search, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../lib/api';
-import { initialSiteSettings } from '../config/initialSiteSettings';
+import { ThemeToggle } from '../context/ThemeContext';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 import { safeImageSrc } from '../lib/safeUrl';
-
-const defaultBrand = {
-  site_title: 'Mooncci Blog',
-  nav_title: 'MOONCCI',
-  logo_url: '',
-  favicon_url: '',
-};
-
 export function Header() {
-  const [keyword, setKeyword] = useState('');
-  const [brand, setBrand] = useState({ ...defaultBrand, ...(initialSiteSettings.brand || {}) });
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const logoUrl = safeImageSrc(brand.logo_url);
-  const adminEntryPath = user && ['owner', 'admin', 'editor'].includes(user.role)
-    ? '/admin'
-    : '/admin/editor-apply';
-
+  const { user, logout, loggingOut, logoutError } = useAuth();
+  const { data: settings } = useSiteSettings();
+  const brand = settings?.brand || {};
+  const [menu, setMenu] = useState(false),
+    [search, setSearch] = useState(false),
+    [keyword, setKeyword] = useState('');
+  const navigate = useNavigate(),
+    location = useLocation();
   useEffect(() => {
-    api('/settings/site')
-      .then((data) => setBrand({ ...defaultBrand, ...(data.brand || {}) }))
-      .catch(() => {});
-  }, []);
-
-  const submitSearch = (event: FormEvent) => {
-    event.preventDefault();
-    const value = keyword.trim();
-    if (!value) return;
-    navigate(`/search?q=${encodeURIComponent(value)}`);
-    setKeyword('');
-  };
-
-  const items: CardNavItem[] = [
-    {
-      eyebrow: '01 / READ',
-      label: '阅读',
-      bgColor: '#b7c6c2',
-      textColor: '#000000',
-      links: [
-        { label: '返回首页', ariaLabel: '前往网站首页', to: '/' },
-        { label: '全部文章', ariaLabel: '浏览全部文章', to: '/articles' },
-      ],
-      extra: (
-        <form className="card-nav-search" onSubmit={submitSearch}>
-          <Search aria-hidden="true" />
-          <input
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            placeholder="搜索文章"
-            aria-label="搜索文章"
-          />
-          <button type="submit">搜索</button>
-        </form>
-      ),
-    },
-    {
-      eyebrow: '02 / EXPLORE',
-      label: '探索',
-      bgColor: '#ffe17c',
-      textColor: '#000000',
-      links: [
-        { label: '内容分类', ariaLabel: '按分类浏览文章', to: '/categories' },
-        { label: '热门标签', ariaLabel: '按标签浏览文章', to: '/tags' },
-        { label: '宿舍电量 Dashboard', ariaLabel: '查看宿舍电量监控', to: '/electricity' },
-        { label: 'Early Access Program', ariaLabel: '申请 PromptDock Early Access', to: '/early-access' },
-      ],
-    },
-    {
-      eyebrow: user ? `@${user.username}` : '03 / ACCOUNT',
-      label: user ? '我的账户' : '加入社区',
-      bgColor: '#171e19',
-      textColor: '#ffffff',
-      links: user
-        ? [
-            { label: '控制台', ariaLabel: '进入内容控制台', to: adminEntryPath },
-            { label: '退出登录', ariaLabel: '退出当前账户', onClick: logout },
-          ]
-        : [
-            { label: '登录账户', ariaLabel: '登录 Mooncci Blog', to: '/login' },
-            { label: '注册账号', ariaLabel: '注册 Mooncci Blog 账号', to: '/register' },
-            { label: '申请成为编辑', ariaLabel: '申请成为网站编辑', to: '/admin/editor-apply' },
-          ],
-    },
-  ];
-
-  return (
-    <CardNav
-      brand={brand.nav_title || 'MOONCCI'}
-      logo={logoUrl}
-      logoFallback={<Zap className="h-5 w-5 fill-current" />}
-      items={items}
-      cta={
-        user ? (
-          <Link to={adminEntryPath} className="neo-button neo-button-dark">控制台</Link>
-        ) : (
-          <>
-            <Link to="/login" className="neo-button card-nav-login-button">登录</Link>
-            <Link to="/register" className="neo-button neo-button-dark">加入社区</Link>
-          </>
-        )
+    setMenu(false);
+    setSearch(false);
+  }, [location.pathname, location.search]);
+  useEffect(() => {
+    function close(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setMenu(false);
+        setSearch(false);
       }
-    />
+    }
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, []);
+  const admin =
+    user && ['owner', 'admin', 'editor'].includes(user.role)
+      ? '/admin'
+      : '/admin/editor-apply';
+  const links = [
+    ['/articles', '文章'],
+    ['/updates', '近况'],
+    ['/projects', '作品'],
+    ['/electricity', '宿舍电量监控'],
+    ['/early-access', 'Early Access'],
+  ];
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    if (keyword.trim())
+      navigate('/search?q=' + encodeURIComponent(keyword.trim()));
+  }
+  return (
+    <header className="site-header">
+      <div className="site-container header-inner">
+        <Link className="site-brand" to="/">
+          {safeImageSrc(brand.logo_url) && (
+            <img src={safeImageSrc(brand.logo_url)} alt="" />
+          )}
+          <span>mooncci</span>
+        </Link>
+        <nav className="desktop-nav" aria-label="主导航">
+          {links.map(([to, label]) => (
+            <NavLink key={to} to={to}>
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="header-actions">
+          <button
+            className="icon-button"
+            onClick={() => setSearch(!search)}
+            aria-label="搜索文章"
+            aria-expanded={search}
+          >
+            <Search />
+          </button>
+          <ThemeToggle />
+          <div className="header-account">
+            {user ? (
+              <details className="nav-disclosure">
+                <summary>{user.username}</summary>
+                <div className="nav-popover">
+                  <Link to={admin}>
+                    {user.role === 'user' ? '申请成为编辑' : '控制台'}
+                  </Link>
+                  <button onClick={() => void logout()} disabled={loggingOut}>
+                    {loggingOut ? '正在退出…' : '退出登录'}
+                  </button>
+                </div>
+              </details>
+            ) : (
+              <Link to="/login">登录 / 注册</Link>
+            )}
+          </div>
+          <button
+            className="icon-button mobile-menu-button"
+            aria-expanded={menu}
+            aria-controls="mobile-navigation"
+            aria-label={menu ? '关闭菜单' : '打开菜单'}
+            onClick={() => setMenu(!menu)}
+          >
+            {menu ? <X /> : <Menu />}
+          </button>
+        </div>
+      </div>
+      {search && (
+        <form className="site-container header-search" onSubmit={submit}>
+          <label className="sr-only" htmlFor="header-query">
+            搜索文章
+          </label>
+          <input
+            id="header-query"
+            autoFocus
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="搜索文章…"
+          />
+          <button className="quiet-button">搜索</button>
+        </form>
+      )}
+      {menu && (
+        <nav
+          id="mobile-navigation"
+          className="mobile-navigation"
+          aria-label="手机导航"
+        >
+          {links.map(([to, label]) => (
+            <Link key={to} to={to}>
+              {label}
+            </Link>
+          ))}
+          {user ? (
+            <>
+              <Link to={admin}>
+                {user.role === 'user' ? '申请成为编辑' : '控制台'}
+              </Link>
+              <button onClick={() => void logout()} disabled={loggingOut}>
+                {loggingOut ? '正在退出…' : '退出登录'}
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">登录账户</Link>
+              <Link to="/register">注册账号</Link>
+            </>
+          )}
+        </nav>
+      )}
+      {logoutError && (
+        <p
+          className="site-container py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {logoutError}
+        </p>
+      )}
+    </header>
   );
 }

@@ -1,3 +1,5 @@
+const {siteOrigin, brandText}=require('./siteIdentity');
+const addressparser = require('nodemailer/lib/addressparser');
 const nodemailer = require('nodemailer');
 const db = require('../db');
 const { renderBrandedEmail, safeHttpUrl } = require('./mailTemplate');
@@ -59,11 +61,12 @@ async function getMailConfig() {
     'SELECT setting_value FROM site_settings WHERE setting_key = "mail" LIMIT 1'
   );
 
-  if (!rows[0]) return { ...defaultMail };
+  if (!rows[0]) return { ...defaultMail, site_url:siteOrigin() };
 
   return {
     ...defaultMail,
     ...safeParse(rows[0].setting_value, {}),
+    site_url:siteOrigin(),
   };
 }
 
@@ -104,11 +107,11 @@ async function sendMail({ to, subject, text, html, config: providedConfig }) {
   const transporter = createTransporter(config);
 
   await transporter.sendMail({
-    from: config.smtp_from || config.smtp_user,
+    from: { name: 'mooncci', address: addressparser(cleanMailHeader(config.smtp_from || config.smtp_user))[0]?.address || config.smtp_user },
     to,
-    subject: cleanMailHeader(subject),
+    subject: `[mooncci] ${brandText(cleanMailHeader(subject)).replace(/^(?:\[mooncci\]\s*)+/i, '').replace(/^mooncci\s+(?=周报)/, '') || '站点通知'}`,
     text,
-    html,
+    html: html || renderBrandedEmail({ title: subject || '站点通知', paragraphs: [text || ''] }),
   });
 
   console.log('[mail] Mail sent successfully.');
@@ -141,7 +144,7 @@ async function sendCommentNotification(comment) {
   ].join('\n');
 
   const html = renderBrandedEmail({
-    eyebrow: 'MOONCCI / COMMENT REVIEW',
+    eyebrow: 'mooncci / COMMENT REVIEW',
     title: '有一条新评论等待审核',
     intro: '网站刚刚收到一条新评论。登录后台查看完整上下文后，再决定是否公开。',
     details: [
@@ -156,7 +159,7 @@ async function sendCommentNotification(comment) {
 
   return sendMail({
     to: config.notify_to,
-    subject: `[Mooncci] New comment pending review: ${postTitle}`,
+    subject: `[mooncci] 新评论待审核： ${postTitle}`,
     text,
     html,
     config,
@@ -176,8 +179,8 @@ async function sendCommentReviewNotification(comment, status) {
   const passed = status === 'visible';
   const resultText = passed ? 'approved and visible' : 'rejected and not visible';
   const subject = passed
-    ? '[Mooncci] Your comment was approved'
-    : '[Mooncci] Your comment was rejected';
+    ? '[mooncci] 评论审核通过'
+    : '[mooncci] 评论未通过审核';
   const text = [
     `Your comment was ${resultText}.`,
     '',
@@ -188,7 +191,7 @@ async function sendCommentReviewNotification(comment, status) {
     `Article: ${articleUrl}`,
   ].join('\n');
   const html = renderBrandedEmail({
-    eyebrow: 'MOONCCI / COMMENT STATUS',
+    eyebrow: 'mooncci / COMMENT STATUS',
     title: passed ? '你的评论已通过审核' : '你的评论未通过审核',
     intro: passed
       ? '评论现在已经显示在文章页面中。感谢你参与讨论。'
@@ -248,12 +251,12 @@ async function sendEarlyAccessOwnerNotification(application) {
       { label: '希望体验', value: features },
     ],
     cta: { label: '审核申请', url: reviewUrl },
-    footer: 'PromptDock Early Access · Secure owner review',
+    footer: 'PromptDock Early Access · 申请审核通知',
   });
 
   return sendMail({
     to: config.notify_to,
-    subject: `[PromptDock] Early Access 申请 #${application.id}`,
+    subject: `[mooncci] PromptDock Early Access 申请 #${application.id}`,
     text,
     html,
     config,
@@ -291,15 +294,43 @@ async function sendEarlyAccessApprovalEmail(application) {
       body: 'macOS ✓\nWindows、iPhone 与 iPad：Coming Soon',
     },
     cta: { label: '下载 PromptDock', url: downloadUrl },
-    footer: 'PromptDock Early Access · Local-first AI productivity for macOS',
+    footer: 'PromptDock Early Access · macOS 体验计划',
   });
 
   return sendMail({
     to: application.email,
-    subject: '[PromptDock] 你的 Early Access 申请已通过',
+    subject: '[mooncci] PromptDock Early Access 申请已通过',
     text,
     html,
     config,
+  });
+}
+
+function accountPermissionChanges(before, after) {
+  const roles = { owner: '站长', admin: '管理员', editor: '编辑', user: '普通用户' };
+  const changes = [];
+  if (before.role !== after.role) changes.push({ label: '账号角色', value: `${roles[before.role] || before.role} → ${roles[after.role] || after.role}` });
+  if (before.status !== after.status) changes.push({ label: '账号状态', value: `${before.status === 'active' ? '启用' : '停用'} → ${after.status === 'active' ? '启用' : '停用'}` });
+  if (Number(before.can_comment) !== Number(after.can_comment)) changes.push({ label: '普通用户评论开关', value: `${Number(before.can_comment) === 1 ? '允许' : '禁止'} → ${Number(after.can_comment) === 1 ? '允许' : '禁止'}` });
+  return changes;
+}
+async function sendUserPermissionsNotification(before, after) {
+  const details = accountPermissionChanges(before, after);
+  if (!details.length) return { sent: false, reason: '账号权限未变化。' };
+  if (!after.email) return { sent: false, reason: '用户没有邮箱。' };
+  const config = await getMailConfig();
+  const siteUrl = safeSiteUrl(config.site_url);
+  const enabled = after.status === 'active';
+  const url = enabled ? `${siteUrl}/login` : siteUrl;
+  const paragraphs = [enabled ? '新的权限已经生效，你可以登录 mooncci 查看。' : '当前账号已停用，暂时无法登录。'];
+  if (Number(before.can_comment) !== Number(after.can_comment)) paragraphs.push('评论开关适用于普通用户；站长、管理员和编辑的评论权限按账号角色执行。');
+  paragraphs.push('如对这次调整有疑问，请联系站点管理员。');
+  const title = '你的账号权限已更新';
+  const intro = `你好，${after.username || '用户'}。站点管理人员更新了你的 mooncci 账号权限。`;
+  return sendMail({ to: after.email, subject: '[mooncci] 账号权限已更新', config,
+    text: [title, intro, ...details.map(item => `${item.label}：${item.value}`), ...paragraphs, '', `查看 mooncci：${url}`].join('\n'),
+    html: renderBrandedEmail({ eyebrow: '账号通知', title, intro, details, paragraphs,
+      cta: { label: enabled ? '登录 mooncci' : '访问 mooncci', url } }),
   });
 }
 
@@ -312,6 +343,8 @@ module.exports = {
   sendMail,
   sendCommentNotification,
   sendCommentReviewNotification,
+  sendUserPermissionsNotification,
+  accountPermissionChanges,
   sendEarlyAccessOwnerNotification,
   sendEarlyAccessApprovalEmail,
 };

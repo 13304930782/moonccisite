@@ -1,12 +1,12 @@
 import { ArrowRight, Lock, Mail, User } from 'lucide-react';
 import { FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { AuthShell } from '../components/AuthShell';
 import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { useAuth } from '../context/AuthContext';
 
 export default function RegisterPage() {
-  const { register, googleLogin } = useAuth();
+  const { register, googleLogin, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -20,7 +20,11 @@ export default function RegisterPage() {
     if (!username || !email || !password || !confirmPassword) {
       return setMessage('请完整填写用户名、邮箱、密码和确认密码');
     }
-    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    if (
+      password.length < 8 ||
+      !/[A-Za-z]/.test(password) ||
+      !/\d/.test(password)
+    ) {
       return setMessage('密码至少 8 位，并且需要同时包含字母和数字');
     }
     if (password !== confirmPassword) return setMessage('两次输入的密码不一致');
@@ -45,7 +49,9 @@ export default function RegisterPage() {
 
     try {
       const user = await googleLogin(credential);
-      navigate(['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/');
+      navigate(
+        ['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/',
+      );
     } catch (err: any) {
       setMessage(err.message || 'Google 注册失败，请重试');
     } finally {
@@ -53,27 +59,47 @@ export default function RegisterPage() {
     }
   };
 
+  if (authLoading)
+    return (
+      <p className="quiet-state" role="status">
+        正在确认登录状态…
+      </p>
+    );
+  if (user) return <Navigate to="/" replace />;
+
   return (
     <AuthShell
       index="02 / 02"
       modeLabel="NEW MEMBER"
-      storyTitle={<>创建账号，<br />加入讨论。</>}
+      storyTitle={
+        <>
+          创建账号，
+          <br />
+          加入讨论。
+        </>
+      }
       storyDescription="用一个简单账号参与文章评论；当你准备好分享自己的经验，也可以继续申请成为编辑。"
       formTitle="注册账号"
-      formDescription="填写基础信息，创建你的 Mooncci Blog 通行证。"
+      formDescription="填写基础信息，创建你的 mooncci 通行证。"
       alternatePrompt="已经有账号？"
       alternateLabel="去登录"
       alternateTo="/login"
     >
       {message && (
-        <div className={`auth-message ${message.includes('成功') ? 'is-success' : ''}`} role="status" aria-live="polite">
+        <div
+          className={`auth-message ${message.includes('成功') ? 'is-success' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
           {message}
         </div>
       )}
 
       <form onSubmit={submit} className="auth-form">
         <div>
-          <label htmlFor="username" className="auth-field-label">用户名</label>
+          <label htmlFor="username" className="auth-field-label">
+            用户名
+          </label>
           <div className="auth-field-control">
             <User aria-hidden="true" />
             <input
@@ -89,7 +115,9 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label htmlFor="register-email" className="auth-field-label">邮箱</label>
+          <label htmlFor="register-email" className="auth-field-label">
+            邮箱
+          </label>
           <div className="auth-field-control">
             <Mail aria-hidden="true" />
             <input
@@ -106,7 +134,9 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label htmlFor="new-password" className="auth-field-label">密码</label>
+          <label htmlFor="new-password" className="auth-field-label">
+            密码
+          </label>
           <div className="auth-field-control">
             <Lock aria-hidden="true" />
             <input
@@ -122,7 +152,9 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label htmlFor="confirm-password" className="auth-field-label">确认密码</label>
+          <label htmlFor="confirm-password" className="auth-field-label">
+            确认密码
+          </label>
           <div className="auth-field-control">
             <Lock aria-hidden="true" />
             <input
@@ -137,13 +169,19 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <button type="submit" disabled={loading} className="neo-button neo-button-dark auth-submit disabled:opacity-60">
+        <button
+          type="submit"
+          disabled={loading}
+          className="neo-button neo-button-dark auth-submit disabled:opacity-60"
+        >
           {loading ? '注册中...' : '创建账号'}
           <ArrowRight aria-hidden="true" className="h-4 w-4" />
         </button>
       </form>
 
-      <div className="auth-oauth-divider"><span>或直接创建账号</span></div>
+      <div className="auth-oauth-divider">
+        <span>或直接创建账号</span>
+      </div>
       <GoogleSignInButton
         context="signup"
         disabled={loading}

@@ -59,91 +59,91 @@ export default function AdminEarlyAccessDetailPage() {
     }
   };
 
-  if (loading) return <div className="border-2 border-black bg-white p-6 font-bold shadow-[5px_5px_0_#000]">正在加载申请…</div>;
-  if (!application) return <div className="border-2 border-black bg-white p-6 font-bold shadow-[5px_5px_0_#000]">{message || '申请不存在。'}</div>;
+  if (loading) return <div className="border border-border bg-card p-6 font-medium shadow-none">正在加载申请…</div>;
+  if (!application) return <div className="border border-border bg-card p-6 font-medium shadow-none">{message || '申请不存在。'}</div>;
 
   const features = Array.isArray(application.desired_features) ? application.desired_features : [];
 
   return (
     <div>
-      <Link to="/admin/early-access" className="neo-button bg-white"><ArrowLeft className="h-4 w-4" />返回申请列表</Link>
+      <Link to="/admin/early-access" className="neo-button bg-card"><ArrowLeft className="h-4 w-4" />返回申请列表</Link>
 
-      <div className="mt-7 border-2 border-black bg-white p-6 shadow-[8px_8px_0_#000] md:p-9">
+      <div className="mt-7 border border-border bg-card p-6 shadow-none md:p-9">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-mono text-sm font-black">APPLICATION #{application.id}</span>
-              <span className={`border-2 border-black px-3 py-1 text-xs font-black ${application.status === 'pending' ? 'bg-[#ffe17c]' : application.status === 'approved' ? 'bg-[#b7c6c2]' : 'bg-white'}`}>
+              <span className="font-mono text-sm font-medium">APPLICATION #{application.id}</span>
+              <span className={`border border-border px-3 py-1 text-xs font-medium ${application.status === 'pending' ? 'bg-muted' : application.status === 'approved' ? 'bg-muted' : 'bg-card'}`}>
                 {labels[application.status] || application.status}
               </span>
             </div>
-            <h1 className="neo-heading mt-6 text-4xl md:text-5xl">{application.name}</h1>
-            <p className="mt-3 font-bold text-black/55">{application.email}</p>
+            <h1 className="admin-title">{application.name}</h1>
+            <p className="mt-3 font-medium text-muted-foreground">{application.email}</p>
           </div>
-          <div className="font-mono text-xs font-bold leading-6 text-black/50">
+          <div className="font-mono text-xs font-medium leading-6 text-muted-foreground">
             提交：{formatDate(application.created_at)}<br />
             审核：{formatDate(application.reviewed_at)}
           </div>
         </div>
 
-        <div className="mt-9 grid gap-0 border-2 border-black md:grid-cols-2">
+        <div className="mt-9 grid gap-0 border border-border md:grid-cols-2">
           {[
             ['职业身份', labels[application.occupation] || application.occupation],
             ['当前设备', labels[application.device] || application.device],
             ['macOS 版本', application.macos_version],
             ['审核人', application.reviewer_name || '—'],
           ].map(([label, value]) => (
-            <div key={label} className="border-b-2 border-black p-4 last:border-b-0 md:border-r-2 md:[&:nth-child(even)]:border-r-0 md:[&:nth-last-child(-n+2)]:border-b-0">
-              <div className="font-mono text-xs font-black uppercase tracking-wider text-black/45">{label}</div>
-              <div className="mt-2 font-bold">{value || '—'}</div>
+            <div key={label} className="border-b border-border p-4 last:border-b-0 md:border-r md:[&:nth-child(even)]:border-r-0 md:[&:nth-last-child(-n+2)]:border-b-0">
+              <div className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
+              <div className="mt-2 font-medium">{value || '—'}</div>
             </div>
           ))}
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <section className="border-2 border-black bg-[#b7c6c2] p-5">
+          <section className="border border-border bg-muted p-5">
             <h2 className="neo-heading text-2xl">主要使用场景</h2>
-            <p className="mt-4 whitespace-pre-wrap text-sm font-bold leading-7">{application.use_case}</p>
+            <p className="mt-4 whitespace-pre-wrap text-sm font-medium leading-7">{application.use_case}</p>
           </section>
-          <section className="border-2 border-black bg-[#ffe17c] p-5">
+          <section className="border border-border bg-muted p-5">
             <h2 className="neo-heading text-2xl">申请理由</h2>
-            <p className="mt-4 whitespace-pre-wrap text-sm font-bold leading-7">{application.reason}</p>
+            <p className="mt-4 whitespace-pre-wrap text-sm font-medium leading-7">{application.reason}</p>
           </section>
         </div>
 
-        <section className="mt-6 border-2 border-black p-5">
+        <section className="mt-6 border border-border p-5">
           <h2 className="neo-heading text-2xl">希望体验的功能</h2>
           <div className="mt-4 flex flex-wrap gap-2">
-            {features.map((feature: string) => <span key={feature} className="border-2 border-black bg-white px-3 py-2 text-sm font-black shadow-[2px_2px_0_#000]">{labels[feature] || feature}</span>)}
+            {features.map((feature: string) => <span key={feature} className="border border-border bg-card px-3 py-2 text-sm font-medium shadow-none">{labels[feature] || feature}</span>)}
           </div>
         </section>
 
         <section className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="border-2 border-black p-5">
-            <div className="flex items-center gap-2 font-black"><Mail className="h-4 w-4" />owner 通知</div>
-            <p className="mt-3 text-sm font-bold text-black/55">发送时间：{formatDate(application.owner_notification_sent_at)}</p>
-            {application.owner_notification_error && !application.owner_notification_sent_at && <p className="mt-2 text-sm font-bold text-red-700">{application.owner_notification_error}</p>}
+          <div className="border border-border p-5">
+            <div className="flex items-center gap-2 font-medium"><Mail className="h-4 w-4" />owner 通知</div>
+            <p className="mt-3 text-sm font-medium text-muted-foreground">发送时间：{formatDate(application.owner_notification_sent_at)}</p>
+            {application.owner_notification_error && !application.owner_notification_sent_at && <p className="mt-2 text-sm font-medium text-red-700">{application.owner_notification_error}</p>}
             {!application.owner_notification_sent_at && (
-              <button type="button" disabled={working} onClick={() => action('resend-owner-notification')} className="neo-button mt-4 bg-white"><RotateCcw className="h-4 w-4" />重试通知</button>
+              <button type="button" disabled={working} onClick={() => action('resend-owner-notification')} className="neo-button mt-4 bg-card"><RotateCcw className="h-4 w-4" />重试通知</button>
             )}
           </div>
-          <div className="border-2 border-black p-5">
-            <div className="flex items-center gap-2 font-black"><Mail className="h-4 w-4" />申请人通过邮件</div>
-            <p className="mt-3 text-sm font-bold text-black/55">发送时间：{formatDate(application.approval_email_sent_at)}</p>
-            {application.approval_email_error && !application.approval_email_sent_at && <p className="mt-2 text-sm font-bold text-red-700">{application.approval_email_error}</p>}
+          <div className="border border-border p-5">
+            <div className="flex items-center gap-2 font-medium"><Mail className="h-4 w-4" />申请人通过邮件</div>
+            <p className="mt-3 text-sm font-medium text-muted-foreground">发送时间：{formatDate(application.approval_email_sent_at)}</p>
+            {application.approval_email_error && !application.approval_email_sent_at && <p className="mt-2 text-sm font-medium text-red-700">{application.approval_email_error}</p>}
             {application.status === 'approved' && !application.approval_email_sent_at && (
-              <button type="button" disabled={working} onClick={() => action('resend-approval-email')} className="neo-button mt-4 bg-[#ffe17c]"><RotateCcw className="h-4 w-4" />重试通过邮件</button>
+              <button type="button" disabled={working} onClick={() => action('resend-approval-email')} className="neo-button mt-4 bg-muted"><RotateCcw className="h-4 w-4" />重试通过邮件</button>
             )}
           </div>
         </section>
 
-        {message && <div role="status" className="mt-6 border-2 border-black bg-[#ffe17c] px-4 py-3 font-bold shadow-[3px_3px_0_#000]">{message}</div>}
+        {message && <div role="status" className="mt-6 border border-border bg-muted px-4 py-3 font-medium shadow-none">{message}</div>}
 
         {application.status === 'pending' ? (
-          <section className="mt-8 border-2 border-black bg-[#171e19] p-6 text-white">
-            <label className="font-black">
+          <section className="mt-8 border border-border bg-muted p-6 text-foreground">
+            <label className="font-medium">
               内部审核备注（不会发送给申请人）
-              <textarea maxLength={2000} rows={4} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} className="neo-input mt-3 w-full px-4 py-3 text-black outline-none" />
+              <textarea maxLength={2000} rows={4} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} className="neo-input mt-3 w-full px-4 py-3 text-foreground outline-none" />
             </label>
             <div className="mt-6 flex flex-wrap gap-4">
               <button
@@ -158,19 +158,19 @@ export default function AdminEarlyAccessDetailPage() {
                 type="button"
                 disabled={working}
                 onClick={() => action('reject', { reviewNote }, '确认拒绝这份申请吗？申请人不会收到邮件。')}
-                className="neo-button bg-white text-black disabled:opacity-50"
+                className="neo-button bg-card text-foreground disabled:opacity-50"
               >
                 <X className="h-4 w-4" />拒绝申请
               </button>
-              <Link to="/admin/mail-settings" className="neo-button border-white bg-[#171e19] text-white shadow-[4px_4px_0_#fff]">
+              <Link to="/admin/mail-settings" className="neo-button border-border bg-muted text-foreground shadow-none">
                 <Settings className="h-4 w-4" />下载与邮件设置
               </Link>
             </div>
           </section>
         ) : application.review_note ? (
-          <section className="mt-8 border-2 border-black bg-[#b7c6c2] p-5">
-            <h2 className="font-black">内部审核备注</h2>
-            <p className="mt-3 whitespace-pre-wrap text-sm font-bold leading-7">{application.review_note}</p>
+          <section className="mt-8 border border-border bg-muted p-5">
+            <h2 className="font-medium">内部审核备注</h2>
+            <p className="mt-3 whitespace-pre-wrap text-sm font-medium leading-7">{application.review_note}</p>
           </section>
         ) : null}
       </div>

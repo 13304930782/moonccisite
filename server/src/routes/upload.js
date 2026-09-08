@@ -4,9 +4,14 @@ const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 const db = require('../db');
-const { authRequired, editorOrAdmin } = require('../middleware/auth');
+const { authRequired, editorOrAdmin, adminOnly } = require('../middleware/auth');
 
-const router = express.Router();
+const router = require('../lib/asyncRouter')();
+// The media library is shared; mutations can rewrite or remove other authors' images.
+router.use('/media', authRequired, (req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  return adminOnly(req, res, next);
+});
 
 const uploadDir = path.join(__dirname, '../../uploads');
 const trashDir = path.join(uploadDir, '.trash');

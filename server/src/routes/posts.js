@@ -1,30 +1,18 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
-const { authRequired, editorOrAdmin, isAdminLike } = require('../middleware/auth');
+const { authRequired, editorOrAdmin, isAdminLike, getUserFromRequest } = require('../middleware/auth');
 
-const router = express.Router();
+const router = require('../lib/asyncRouter')();
+router.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.vary('Cookie');
+  res.vary('Authorization');
+  next();
+});
 
 async function optionalUser(req) {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-
-  if (!token) return null;
-
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const [rows] = await db.query(
-      'SELECT id, username, email, role, status, can_comment FROM users WHERE id=? LIMIT 1',
-      [payload.id]
-    );
-    const user = rows[0];
-
-    if (!user || user.status === 'disabled') return null;
-
-    return user;
-  } catch {
-    return null;
-  }
+  try { const user=await getUserFromRequest(req); return user && user.status !== 'disabled' ? user : null; } catch { return null; }
 }
 
 function canManagePost(user, post) {
@@ -248,7 +236,7 @@ router.put('/:id', authRequired, editorOrAdmin, async (req, res) => {
     }
 
     const p = normalized.value;
-    const publishedAt = p.status === 'published' ? (old.published_at || new Date()) : null;
+    const publishedAt = old.published_at || (p.status === 'published' ? new Date() : null);
 
     await db.query(
       'UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,category=?,tags=?,status=?,published_at=? WHERE id=?',

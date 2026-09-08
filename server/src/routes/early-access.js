@@ -9,8 +9,8 @@ const {
   sendEarlyAccessOwnerNotification,
 } = require('../lib/mailer');
 
-const publicRouter = express.Router();
-const adminRouter = express.Router();
+const publicRouter = require('../lib/asyncRouter')();
+const adminRouter = require('../lib/asyncRouter')();
 
 const OCCUPATIONS = new Set(['student', 'teacher', 'developer', 'creator', 'enterprise', 'other']);
 const DEVICES = new Set(['macbook', 'imac', 'mac_mini', 'mac_studio']);

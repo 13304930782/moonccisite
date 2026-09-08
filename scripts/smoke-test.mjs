@@ -62,7 +62,7 @@ async function expectStatus(name, path, expected, options = {}) {
 }
 
 async function main() {
-  console.log(`Mooncci smoke test: ${BASE_URL}`);
+  console.log(`mooncci smoke test: ${BASE_URL}`);
   console.log('Sensitive values are never printed.');
 
   await expectStatus('health endpoint', '/api/health', 200);

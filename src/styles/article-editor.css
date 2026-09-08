@@ -1,0 +1,190 @@
+.article-editor {
+  min-width: 0;
+}
+.article-editor-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: fit-content;
+  max-width: 100%;
+}
+.article-editor-tabs button {
+  padding: 8px 14px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.article-editor-tabs button[aria-pressed='true'] {
+  background: var(--foreground);
+  color: var(--background);
+}
+.article-editor-hint {
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 12px 0 16px;
+  color: var(--muted-foreground);
+}
+.article-editor > textarea {
+  width: 100%;
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  color: var(--foreground);
+  font-family: ui-monospace, monospace;
+  line-height: 1.8;
+  resize: vertical;
+}
+.article-editor-preview {
+  padding: 24px;
+  min-height: 360px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.visual-editor .toastui-editor-defaultUI {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+}
+.visual-editor .toastui-editor-defaultUI .toastui-editor-defaultUI-toolbar {
+  background: var(--muted);
+  border-color: var(--border);
+  border-radius: 6px 6px 0 0;
+  padding: 0 10px;
+}
+.visual-editor .toastui-editor-defaultUI .toastui-editor-main,
+.visual-editor .toastui-editor-defaultUI .toastui-editor-ww-container {
+  background: var(--card);
+}
+.visual-editor .toastui-editor-defaultUI .toastui-editor-defaultUI button {
+  border-radius: 4px;
+  font-family: inherit;
+}
+.visual-editor
+  .toastui-editor-defaultUI
+  .toastui-editor-defaultUI-toolbar
+  button {
+  padding: 0;
+  flex-shrink: 0;
+}
+.visual-editor .toastui-editor-defaultUI .toastui-editor-contents,
+.visual-editor .toastui-editor-defaultUI .toastui-editor-contents p {
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.8;
+}
+.visual-editor
+  .toastui-editor-defaultUI
+  .toastui-editor-ww-container
+  .toastui-editor-contents {
+  padding: 20px;
+}
+.visual-editor
+  .toastui-editor-defaultUI
+  .toastui-editor-contents
+  :is(h1, h2, h3, h4, h5, h6, strong, em, li) {
+  color: var(--foreground);
+}
+.visual-editor
+  .toastui-editor-defaultUI
+  .toastui-editor-contents
+  :is(h1, h2, h3) {
+  font-weight: 600;
+}
+.visual-editor .toastui-editor-defaultUI .toastui-editor-contents a {
+  color: var(--foreground);
+  text-decoration: underline;
+}
+.visual-editor .toastui-editor-defaultUI .toastui-editor-contents pre {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.visual-editor .toastui-editor-defaultUI .toastui-editor-popup {
+  background: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px #00000010;
+  max-width: calc(100vw - 48px);
+}
+.visual-editor .toastui-editor-defaultUI .toastui-editor-popup input {
+  background: var(--background);
+  color: var(--foreground);
+  border-color: var(--border);
+  line-height: normal;
+}
+.visual-editor
+  .toastui-editor-defaultUI
+  .toastui-editor-defaultUI
+  .toastui-editor-ok-button {
+  background: var(--foreground);
+  color: var(--background);
+}
+.visual-editor
+  .toastui-editor-defaultUI
+  .toastui-editor-popup-body
+  :is(label, h1, h2, h3, h4, h5, h6) {
+  color: var(--foreground);
+}
+.visual-editor .toastui-editor-defaultUI .toastui-editor-toolbar-group {
+  flex-shrink: 0;
+}
+.visual-editor .toastui-editor-defaultUI .toastui-editor-defaultUI-toolbar {
+  overflow: visible;
+}
+@media (max-width: 760px) {
+  .article-editor-tabs button {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .article-editor-preview {
+    padding: 16px;
+  }
+  .visual-editor .toastui-editor-defaultUI .toastui-editor-defaultUI-toolbar {
+    padding: 0 4px;
+  }
+}
+
+.article-write-page {
+  min-width: 0;
+}
+.article-write-content {
+  max-width: 1060px;
+  margin: auto;
+}
+
+.visual-editor .toastui-editor-defaultUI .toastui-editor-contents :is(th, td) {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--foreground);
+}
+.visual-editor .toastui-editor-defaultUI .toastui-editor-contents th {
+  background: var(--muted);
+  font-weight: 600;
+}
+.visual-editor
+  .toastui-editor-defaultUI
+  .toastui-editor-contents
+  .task-list-item::before {
+  background-image: none;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+}
+.visual-editor
+  .toastui-editor-defaultUI
+  .toastui-editor-contents
+  .task-list-item.checked::before {
+  content: '✓';
+  color: var(--background);
+  background: var(--foreground);
+  border-color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}

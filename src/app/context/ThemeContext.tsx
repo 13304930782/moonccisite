@@ -1,83 +1,59 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
-import { Layers3, Sparkles } from 'lucide-react';
-import Plasma from '../components/Plasma';
-
-type MoonTheme = 'paper' | 'plasma';
-
-type ThemeContextValue = {
+import { Moon, Sun } from 'lucide-react';
+type MoonTheme = 'light' | 'dark';
+const ThemeContext = createContext<{
   theme: MoonTheme;
-  setTheme: (theme: MoonTheme) => void;
+  setTheme: (t: MoonTheme) => void;
   toggleTheme: () => void;
-};
-
-const STORAGE_KEY = 'mooncci-theme';
-const ThemeContext = createContext<ThemeContextValue | null>(null);
-
-function getInitialTheme(): MoonTheme {
-  if (typeof window === 'undefined') return 'paper';
+} | null>(null);
+function initial(): MoonTheme {
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === 'plasma' ? 'plasma' : 'paper';
+    const saved = localStorage.getItem('mooncci-theme');
+    return saved === 'dark' || saved === 'plasma' ? 'dark' : 'light';
   } catch {
-    return 'paper';
+    return 'light';
   }
 }
-
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<MoonTheme>(getInitialTheme);
-
+  const [theme, setTheme] = useState<MoonTheme>(initial);
   useEffect(() => {
     document.documentElement.dataset.moonTheme = theme;
-    document.documentElement.style.colorScheme = theme === 'plasma' ? 'dark' : 'light';
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.documentElement.style.colorScheme = theme;
     try {
-      window.localStorage.setItem(STORAGE_KEY, theme);
-    } catch {
-      // Theme switching still works when storage is unavailable.
-    }
+      localStorage.setItem('mooncci-theme', theme);
+    } catch {}
   }, [theme]);
-
-  const value = useMemo<ThemeContextValue>(() => ({
-    theme,
-    setTheme,
-    toggleTheme: () => setTheme((current) => current === 'paper' ? 'plasma' : 'paper'),
-  }), [theme]);
-
+  const value = useMemo(
+    () => ({
+      theme,
+      setTheme,
+      toggleTheme: () => setTheme((t) => (t === 'light' ? 'dark' : 'light')),
+    }),
+    [theme],
+  );
   return (
     <ThemeContext.Provider value={value}>
-      <div className="moon-theme-backdrop" aria-hidden="true">
-        {theme === 'plasma' && (
-          <Plasma
-            color="#ff6b35"
-            speed={0.6}
-            direction="forward"
-            scale={1.1}
-            opacity={0.8}
-            mouseInteractive
-          />
-        )}
-      </div>
       <div className="moon-app-layer">{children}</div>
-      <button
-        type="button"
-        className="moon-theme-toggle"
-        data-target-theme={theme === 'paper' ? 'plasma' : 'paper'}
-        onClick={value.toggleTheme}
-        aria-label={theme === 'paper' ? '切换到 Plasma 主题' : '切换到纸张主题'}
-        title={theme === 'paper' ? '切换到 Plasma 主题' : '切换到纸张主题'}
-      >
-        <span className="moon-theme-toggle-orb" aria-hidden="true">
-          {theme === 'paper' ? <Sparkles /> : <Layers3 />}
-        </span>
-        <span className="moon-theme-toggle-copy">
-          <small>THEME</small>
-          <strong>{theme === 'paper' ? 'PLASMA' : 'PAPER'}</strong>
-        </span>
-      </button>
     </ThemeContext.Provider>
   );
 }
-
 export function useMoonTheme() {
   const value = useContext(ThemeContext);
-  if (!value) throw new Error('useMoonTheme must be used inside ThemeProvider');
+  if (!value) throw Error('Missing theme provider');
   return value;
+}
+export function ThemeToggle() {
+  const { theme, toggleTheme } = useMoonTheme();
+  return (
+    <button
+      className="icon-button"
+      type="button"
+      onClick={toggleTheme}
+      aria-label={theme === 'light' ? '切换深色主题' : '切换浅色主题'}
+      title={theme === 'light' ? '切换深色主题' : '切换浅色主题'}
+    >
+      {theme === 'light' ? <Moon /> : <Sun />}
+    </button>
+  );
 }

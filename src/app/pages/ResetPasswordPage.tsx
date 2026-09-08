@@ -54,22 +54,22 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="neo-dot-grid flex min-h-screen items-center justify-center px-6 py-10">
-      <div className="w-full max-w-md rounded-[12px] border-2 border-black bg-white p-8 shadow-[8px_8px_0_#000]">
-        <Link to="/login" className="text-sm font-black text-black hover:underline">
+      <div className="w-full max-w-md rounded-[12px] border border-border bg-card p-8 shadow-none">
+        <Link to="/login" className="text-sm font-semibold text-foreground hover:underline">
           返回登录
         </Link>
 
-        <h1 className="neo-heading mt-5 text-4xl text-black">
+        <h1 className="neo-heading mt-5 text-4xl text-foreground">
           重置密码
         </h1>
 
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           请设置一个新密码。
         </p>
 
         {message && (
-          <div className={`mt-5 rounded-2xl px-4 py-3 text-sm ${
-            message.includes('已重置') ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-600'
+          <div className={`mt-5 rounded-[10px] px-4 py-3 text-sm ${
+            message.includes('已重置') ? 'bg-muted text-foreground' : 'bg-red-50 text-red-600'
           }`}>
             {message}
           </div>
@@ -77,11 +77,11 @@ export default function ResetPasswordPage() {
 
         <form onSubmit={submit} className="mt-6 space-y-5">
           <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">
+            <label className="block mb-2 text-sm font-medium text-foreground">
               新密码
             </label>
             <div className="neo-input flex items-center gap-3 px-4 py-3">
-              <Lock className="w-5 h-5 text-gray-400" />
+              <Lock className="w-5 h-5 text-muted-foreground" />
               <input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -93,11 +93,11 @@ export default function ResetPasswordPage() {
           </div>
 
           <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">
+            <label className="block mb-2 text-sm font-medium text-foreground">
               确认新密码
             </label>
             <div className="neo-input flex items-center gap-3 px-4 py-3">
-              <Lock className="w-5 h-5 text-gray-400" />
+              <Lock className="w-5 h-5 text-muted-foreground" />
               <input
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
