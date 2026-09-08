@@ -6,6 +6,8 @@ const { sendCommentReviewNotification, sendUserPermissionsNotification, accountP
 const { attemptNotification, notificationMessage } = require('../lib/adminNotification');
 
 const router = require('../lib/asyncRouter')();
+// Keep a router-level ceiling when this module is mounted independently.
+router.use(require('express-rate-limit')({ windowMs: 60000, limit: 300, standardHeaders: true, legacyHeaders: false }));
 
 function maskIp(ip) {
   if (!ip) return '';

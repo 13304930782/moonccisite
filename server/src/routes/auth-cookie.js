@@ -17,48 +17,12 @@ router.use((_req, res, next) => {
   next();
 });
 
-const authRateBuckets = new Map();
-
-function getClientIp(req) {
-  return String(req.ip || req.socket.remoteAddress || '').replace('::ffff:', '');
-}
-
-function rateKeyEmail(req) {
-  return String(req.body?.email || '').trim().toLowerCase();
-}
-
-function cleanupAuthRateBuckets(now) {
-  if (authRateBuckets.size < 10000) return;
-
-  for (const [key, bucket] of authRateBuckets.entries()) {
-    if (bucket.resetAt <= now) authRateBuckets.delete(key);
-  }
-}
-
 function authRateLimit({ name, windowMs, max, includeEmail = false }) {
-  return (req, res, next) => {
-    const now = Date.now();
-    cleanupAuthRateBuckets(now);
-
-    const email = includeEmail ? `:${rateKeyEmail(req)}` : '';
-    const key = `${name}:${getClientIp(req)}${email}`;
-    const bucket = authRateBuckets.get(key);
-
-    if (!bucket || bucket.resetAt <= now) {
-      authRateBuckets.set(key, { count: 1, resetAt: now + windowMs });
-      return next();
-    }
-
-    bucket.count += 1;
-
-    if (bucket.count > max) {
-      const retryAfter = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
-      res.setHeader('Retry-After', String(retryAfter));
-      return res.status(429).json({ message: '请求过于频繁，请稍后再试。' });
-    }
-
-    next();
-  };
+  return rateLimit({
+    windowMs, limit: max, standardHeaders: true, legacyHeaders: false,
+    keyGenerator: req => `${name}:${rateLimit.ipKeyGenerator(req.ip)}:${includeEmail ? sha256(String(req.body?.email || '').trim().toLowerCase()) : ''}`,
+    message: { message: '请求过于频繁，请稍后再试。' },
+  });
 }
 
 

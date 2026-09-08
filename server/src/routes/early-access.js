@@ -11,6 +11,9 @@ const {
 
 const publicRouter = require('../lib/asyncRouter')();
 const adminRouter = require('../lib/asyncRouter')();
+const routeLimit = require('express-rate-limit');
+publicRouter.use(routeLimit({ windowMs: 60000, limit: 300, standardHeaders: true, legacyHeaders: false }));
+adminRouter.use(routeLimit({ windowMs: 60000, limit: 300, standardHeaders: true, legacyHeaders: false }));
 
 const OCCUPATIONS = new Set(['student', 'teacher', 'developer', 'creator', 'enterprise', 'other']);
 const DEVICES = new Set(['macbook', 'imac', 'mac_mini', 'mac_studio']);

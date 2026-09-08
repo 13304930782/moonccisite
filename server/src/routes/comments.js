@@ -5,6 +5,7 @@ const { sendCommentNotification } = require('../lib/mailer');
 const { getIpLocation, formatIpLocation } = require('../lib/geoip');
 
 const router = require('../lib/asyncRouter')();
+router.use(require('express-rate-limit')({ windowMs: 60000, limit: 300, standardHeaders: true, legacyHeaders: false }));
 
 async function optionalUser(req) {
   try {

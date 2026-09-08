@@ -13,7 +13,7 @@ for program in rsync tar sha256sum curl su npm; do command -v "$program" >/dev/n
 dump_bin=$(command -v mysqldump || true)
 [[ -n "$dump_bin" ]] || dump_bin=/www/server/mysql/bin/mysqldump
 [[ -x "$dump_bin" ]] || { echo '找不到 mysqldump，未修改站点。' >&2; exit 1; }
-(cd "$bundle" && sha256sum -c SHA256SUMS)
+(cd "$bundle" && sha256sum --quiet -c SHA256SUMS)
 while IFS= read -r file; do
   [[ -n "$file" && "$file" != /* && "$file" != *..* && -f "$bundle/$file" && ! -L "$bundle/$file" ]]
   case "$file" in server/.env|*/node_modules/*|*/uploads/*|server/ecosystem.config.cjs) exit 1 ;; esac
