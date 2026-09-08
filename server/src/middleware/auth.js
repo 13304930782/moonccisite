@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const db = require('../db');
+const crypto = require('crypto');
 
 const AUTH_COOKIE_NAME = 'mooncci_token';
 
@@ -54,14 +55,21 @@ async function getUserFromRequest(req) {
   const payload = jwt.verify(token, process.env.JWT_SECRET);
 
   const [rows] = await db.query(
-    'SELECT id, username, email, role, status, can_comment FROM users WHERE id=? LIMIT 1',
-    [payload.id]
+    `SELECT id, username, email, role, status, can_comment FROM users
+     WHERE id=?
+       AND NOT EXISTS (SELECT 1 FROM auth_revocations WHERE token_hash=?)
+       AND NOT EXISTS (SELECT 1 FROM auth_invalidations WHERE user_id=users.id AND invalid_before>=?)
+     LIMIT 1`,
+    [payload.id, crypto.createHash('sha256').update(token).digest('hex'), payload.sessionStartedAt || Number(payload.iat || 0) * 1000]
   );
 
   return rows[0] || null;
 }
 
 async function authRequired(req, res, next) {
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.vary('Cookie');
+  res.vary('Authorization');
   try {
     const user = await getUserFromRequest(req);
 
@@ -75,14 +83,25 @@ async function authRequired(req, res, next) {
 
     req.user = user;
     next();
-  } catch {
-    return res.status(401).json({ message: 'Login session expired. Please log in again.' });
+  } catch (error) {
+    if (['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(error.name)) {
+      return res.status(401).json({ message: 'Login session expired. Please log in again.' });
+    }
+    return res.status(503).json({ message: '认证服务暂时不可用，请稍后重试。' });
   }
 }
 
 function adminOnly(req, res, next) {
   if (!isAdminLike(req.user)) {
     return res.status(403).json({ message: 'Owner or admin permission is required.' });
+  }
+
+  next();
+}
+
+function ownerOnly(req, res, next) {
+  if (req.user?.role !== 'owner') {
+    return res.status(403).json({ message: 'Owner permission is required.' });
   }
 
   next();
@@ -100,6 +119,7 @@ module.exports = {
   AUTH_COOKIE_NAME,
   authRequired,
   adminOnly,
+  ownerOnly,
   editorOrAdmin,
   getAuthTokenFromRequest,
   getUserFromRequest,

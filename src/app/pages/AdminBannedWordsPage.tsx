@@ -1,3 +1,4 @@
+import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
@@ -54,34 +55,34 @@ export default function AdminBannedWordsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 px-6 py-16">
-      <div className="max-w-4xl mx-auto rounded-3xl bg-white/80 backdrop-blur border border-white/40 p-8 shadow-xl">
-        <Link to="/admin" className="text-sm text-blue-600 hover:underline">返回后台</Link>
-        <h1 className="mt-2 mb-8 text-3xl font-bold text-gray-900">违禁词设置</h1>
+    <div className="min-h-full bg-transparent px-6 py-10">
+      <div className="max-w-4xl mx-auto rounded-[10px] bg-card  border border-border p-8 shadow-none">
+        <Link to="/admin" className="text-sm text-foreground hover:underline">返回后台</Link>
+        <h1 className="admin-title">违禁词设置</h1>
 
-        {message && <div className="mb-4 rounded-xl bg-blue-50 px-4 py-3 text-blue-700">{message}</div>}
+        {message && <div className="mb-4 rounded-[6px] bg-muted px-4 py-3 text-foreground">{message}</div>}
 
         <form onSubmit={addWord} className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-3">
-          <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="违禁词" className="rounded-xl border px-4 py-2 bg-white" />
+          <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="违禁词" className="rounded-[6px] border px-4 py-2 bg-card" />
 
-          <select value={action} onChange={(e) => setAction(e.target.value)} className="rounded-xl border px-4 py-2 bg-white">
+          <ThemeSelect value={action} onValueChange={(nextValue) => setAction(nextValue)} className="rounded-[6px] border px-4 py-2 bg-card">
             <option value="block">拦截</option>
             <option value="replace">替换</option>
-          </select>
+          </ThemeSelect>
 
-          <input value={replacement} onChange={(e) => setReplacement(e.target.value)} placeholder="替换为" className="rounded-xl border px-4 py-2 bg-white" />
+          <input value={replacement} onChange={(e) => setReplacement(e.target.value)} placeholder="替换为" className="rounded-[6px] border px-4 py-2 bg-card" />
 
-          <button className="rounded-xl bg-blue-600 px-5 py-2 text-white">添加</button>
+          <button className="rounded-[6px] bg-muted px-5 py-2 text-foreground">添加</button>
         </form>
 
         <div className="space-y-3">
-          {words.length === 0 && <p className="text-gray-500">暂无违禁词。</p>}
+          {words.length === 0 && <p className="text-muted-foreground">暂无违禁词。</p>}
 
           {words.map((item) => (
-            <div key={item.id} className="rounded-2xl border border-gray-200 bg-white/70 px-5 py-4 flex items-center justify-between">
+            <div key={item.id} className="rounded-[10px] border border-border bg-card px-5 py-4 flex items-center justify-between">
               <div>
-                <div className="font-medium text-gray-900">{item.word}</div>
-                <div className="text-sm text-gray-500">
+                <div className="font-medium text-foreground">{item.word}</div>
+                <div className="text-sm text-muted-foreground">
                   处理方式：{item.action === 'block' ? '拦截' : `替换为 ${item.replacement || '***'}`}
                 </div>
               </div>

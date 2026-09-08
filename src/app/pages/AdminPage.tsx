@@ -201,85 +201,36 @@ export default function AdminPage() {
   ].filter((item) => item.show);
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-[2rem] bg-gradient-to-br from-gray-950 via-purple-950 to-blue-950 p-8 text-white shadow-xl">
-        <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm">
-          {role === 'owner' ? <Crown className="h-4 w-4 text-yellow-300" /> : <ShieldCheck className="h-4 w-4" />}
-          Mooncci Control Center
-        </div>
-
-        <h1 className="mt-6 text-4xl font-black tracking-tight md:text-5xl">
-          后台管理
-        </h1>
-
-        <div className="mt-5 flex flex-wrap items-center gap-3 text-sm">
-          <span className="text-white/80">当前登录：</span>
-          <span className="font-semibold">{user?.username || '未登录'}</span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
-            {role === 'owner' && <Crown className="h-3.5 w-3.5 text-yellow-300" />}
-            {getRoleName(role)}
-          </span>
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-blue-100 bg-blue-50 px-6 py-5 text-blue-700">
-        {getRoleTip(role)}
-      </section>
-
+    <div>
+      <header className="admin-overview-head">
+        <p className="eyebrow">工作区</p>
+        <h1>后台管理</h1>
+        <p>
+          {user?.username}，{getRoleTip(role)}
+        </p>
+      </header>
       {statCards.length > 0 && (
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {statCards.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <div key={item.title} className="rounded-3xl bg-white/80 p-6 shadow-lg shadow-black/5">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-2xl bg-blue-50 p-3 text-blue-600">
-                    <Icon className="h-5 w-5" />
-                  </div>
-
-                  <div className="text-3xl font-black text-gray-900">
-                    {item.value}
-                  </div>
-                </div>
-
-                <div className="mt-4 text-sm text-gray-500">{item.title}</div>
-              </div>
-            );
-          })}
+        <section className="admin-stats" aria-label="内容统计">
+          {statCards.map((item) => (
+            <div key={item.title}>
+              <strong>{item.value}</strong>
+              <span>{item.title}</span>
+            </div>
+          ))}
         </section>
       )}
-
-      <section className="rounded-[2rem] bg-white/80 p-8 shadow-lg shadow-black/5">
-        <h2 className="text-2xl font-bold text-gray-900">快捷操作</h2>
-        <p className="mt-2 text-sm text-gray-500">
-          根据你的角色显示可用功能。
-        </p>
-
-        <div className="mt-7 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {actions.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className="group rounded-3xl border border-gray-200 bg-white/80 p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-lg">
-                  <Icon className="h-6 w-6" />
-                </div>
-
-                <h3 className="mt-5 text-lg font-semibold text-gray-900 transition-colors group-hover:text-blue-600">
-                  {item.title}
-                </h3>
-
-                <p className="mt-2 text-sm leading-6 text-gray-500">
-                  {item.desc}
-                </p>
-              </Link>
-            );
-          })}
+      <section>
+        <h2>常用操作</h2>
+        <div className="admin-quick-links">
+          {actions.map((item) => (
+            <Link key={item.to} to={item.to}>
+              <item.icon />
+              <div>
+                <h3>{item.title}</h3>
+                <p>{item.desc}</p>
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
     </div>

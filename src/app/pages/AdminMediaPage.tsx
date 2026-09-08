@@ -1,3 +1,4 @@
+import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Copy,
@@ -442,28 +443,28 @@ export default function AdminMediaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-[2rem] border border-white/60 bg-white/85 p-8 shadow-xl backdrop-blur">
+      <div className="rounded-[10px] border border-border bg-card p-8 shadow-none ">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">媒体库</h1>
-            <p className="mt-2 text-sm text-gray-500">
+            <h1 className="admin-title">媒体库</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
               管理上传图片，支持预览、复制链接、改显示名、改文件名、回收站、批量操作和二次压缩。
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <select
+            <ThemeSelect
               value={imageQuality}
-              onChange={(e) => setImageQuality(e.target.value)}
-              className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              onValueChange={(nextValue) => setImageQuality(nextValue)}
+              className="rounded-[10px] border border-border bg-card px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="low">低清晰度</option>
               <option value="medium">中清晰度</option>
               <option value="high">高清晰度</option>
               <option value="original">原图</option>
-            </select>
+            </ThemeSelect>
 
-            <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm text-white hover:bg-blue-700">
+            <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-sm text-foreground hover:bg-muted">
               <Upload className="h-4 w-4" />
               {uploading ? '上传中...' : '上传图片'}
               <input
@@ -478,7 +479,7 @@ export default function AdminMediaPage() {
             <button
               type="button"
               onClick={load}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-950 px-5 py-3 text-sm text-white hover:bg-gray-800"
+              className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-sm text-foreground hover:bg-muted"
             >
               <RefreshCw className="h-4 w-4" />
               刷新
@@ -491,14 +492,14 @@ export default function AdminMediaPage() {
             <button
               type="button"
               onClick={() => setStatus('active')}
-              className={`rounded-2xl px-4 py-2 text-sm ${status === 'active' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+              className={`rounded-[10px] px-4 py-2 text-sm ${status === 'active' ? 'bg-muted text-foreground' : 'bg-muted text-foreground'}`}
             >
               正常文件
             </button>
             <button
               type="button"
               onClick={() => setStatus('trashed')}
-              className={`rounded-2xl px-4 py-2 text-sm ${status === 'trashed' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+              className={`rounded-[10px] px-4 py-2 text-sm ${status === 'trashed' ? 'bg-muted text-foreground' : 'bg-muted text-foreground'}`}
             >
               回收站
             </button>
@@ -507,22 +508,22 @@ export default function AdminMediaPage() {
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 lg:max-w-md"
+            className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring lg:max-w-md"
             placeholder="搜索文件名、显示名、Alt..."
           />
 
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             共 {items.length} 个文件，当前显示 {filtered.length} 个
           </p>
         </div>
 
-        <div className="mt-5 flex flex-col gap-3 rounded-3xl bg-gray-50 p-4 md:flex-row md:items-center md:justify-between">
+        <div className="mt-5 flex flex-col gap-3 rounded-[10px] bg-muted p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={toggleVisible}
               disabled={filtered.length === 0}
-              className="rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              className="rounded-[10px] border border-border bg-card px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
             >
               {allVisibleSelected ? '取消本页全选' : '本页全选'}
             </button>
@@ -531,12 +532,12 @@ export default function AdminMediaPage() {
               type="button"
               onClick={() => setSelectedFilenames([])}
               disabled={selectedCount === 0}
-              className="rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              className="rounded-[10px] border border-border bg-card px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
             >
               清空选择
             </button>
 
-            <span className="text-sm text-gray-500">已选择 {selectedCount} 个</span>
+            <span className="text-sm text-muted-foreground">已选择 {selectedCount} 个</span>
           </div>
 
           {status === 'active' ? (
@@ -544,7 +545,7 @@ export default function AdminMediaPage() {
               type="button"
               disabled={selectedCount === 0 || saving}
               onClick={() => batchDelete(false)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-2.5 text-sm text-white hover:bg-red-700 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-red-600 px-5 py-2.5 text-sm text-foreground hover:bg-red-700 disabled:opacity-50"
             >
               <Trash2 className="h-4 w-4" />
               批量删除到回收站
@@ -555,7 +556,7 @@ export default function AdminMediaPage() {
                 type="button"
                 disabled={selectedCount === 0 || saving}
                 onClick={batchRestore}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-2.5 text-sm text-foreground hover:bg-muted disabled:opacity-50"
               >
                 <Undo2 className="h-4 w-4" />
                 批量恢复
@@ -565,7 +566,7 @@ export default function AdminMediaPage() {
                 type="button"
                 disabled={selectedCount === 0 || saving}
                 onClick={batchPermanentDelete}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-2.5 text-sm text-white hover:bg-red-700 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-red-600 px-5 py-2.5 text-sm text-foreground hover:bg-red-700 disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" />
                 批量彻底删除
@@ -575,18 +576,18 @@ export default function AdminMediaPage() {
         </div>
 
         {message && (
-          <div className="mt-5 rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          <div className="mt-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
             {message}
           </div>
         )}
       </div>
 
       {loading ? (
-        <div className="rounded-[2rem] border border-white/60 bg-white/85 p-8 text-gray-500 shadow-xl">
+        <div className="rounded-[10px] border border-border bg-card p-8 text-muted-foreground shadow-none">
           正在加载媒体库...
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-[2rem] border border-white/60 bg-white/85 p-8 text-gray-500 shadow-xl">
+        <div className="rounded-[10px] border border-border bg-card p-8 text-muted-foreground shadow-none">
           暂无媒体文件。
         </div>
       ) : (
@@ -597,26 +598,26 @@ export default function AdminMediaPage() {
             const checked = selectedSet.has(item.filename);
 
             return (
-              <div key={item.filename} className={`overflow-hidden rounded-3xl border bg-white/85 shadow-lg ${checked ? 'border-blue-500 ring-2 ring-blue-200' : 'border-white/60'}`}>
+              <div key={item.filename} className={`overflow-hidden rounded-[10px] border bg-card shadow-none ${checked ? 'border-border ring-2 ring-ring' : 'border-border'}`}>
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => openDetail(item)}
-                    className="flex h-48 w-full items-center justify-center bg-gray-100"
+                    className="flex h-48 w-full items-center justify-center bg-muted"
                   >
                     {imageUrl ? (
                       <img src={imageUrl} alt={mediaName(item)} className="h-full w-full object-cover" loading="lazy" />
                     ) : (
-                      <ImageIcon className="h-10 w-10 text-gray-400" />
+                      <ImageIcon className="h-10 w-10 text-muted-foreground" />
                     )}
                   </button>
 
-                  <label className="absolute left-3 top-3 inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-white/90 px-3 py-2 text-xs font-medium text-gray-700 shadow">
+                  <label className="absolute left-3 top-3 inline-flex cursor-pointer items-center gap-2 rounded-[10px] bg-card px-3 py-2 text-xs font-medium text-foreground shadow-none">
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggleOne(item.filename)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                      className="h-4 w-4 rounded border-border text-foreground"
                     />
                     选择
                   </label>
@@ -624,13 +625,13 @@ export default function AdminMediaPage() {
 
                 <div className="space-y-3 p-4">
                   <div>
-                    <p className="truncate text-sm font-semibold text-gray-900" title={mediaName(item)}>
+                    <p className="truncate text-sm font-medium text-foreground" title={mediaName(item)}>
                       {mediaName(item)}
                     </p>
-                    <p className="mt-1 truncate text-xs text-gray-500" title={item.filename}>
+                    <p className="mt-1 truncate text-xs text-muted-foreground" title={item.filename}>
                       {item.filename}
                     </p>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {item.size_text} · {item.ext} · {formatTime(item.uploaded_at)}
                     </p>
                   </div>
@@ -639,7 +640,7 @@ export default function AdminMediaPage() {
                     <button
                       type="button"
                       onClick={() => openDetail(item)}
-                      className="inline-flex items-center justify-center gap-1 rounded-xl bg-gray-100 px-3 py-2 text-xs text-gray-700 hover:bg-gray-200"
+                      className="inline-flex items-center justify-center gap-1 rounded-[6px] bg-muted px-3 py-2 text-xs text-foreground hover:bg-muted"
                     >
                       <Eye className="h-3.5 w-3.5" />
                       打开
@@ -647,7 +648,7 @@ export default function AdminMediaPage() {
                     <button
                       type="button"
                       onClick={() => handleCopy(item.url, '图片 URL')}
-                      className="inline-flex items-center justify-center gap-1 rounded-xl bg-gray-100 px-3 py-2 text-xs text-gray-700 hover:bg-gray-200"
+                      className="inline-flex items-center justify-center gap-1 rounded-[6px] bg-muted px-3 py-2 text-xs text-foreground hover:bg-muted"
                     >
                       <Copy className="h-3.5 w-3.5" />
                       URL
@@ -655,7 +656,7 @@ export default function AdminMediaPage() {
                     <button
                       type="button"
                       onClick={() => handleCopy(markdown, 'Markdown')}
-                      className="inline-flex items-center justify-center gap-1 rounded-xl bg-blue-600 px-3 py-2 text-xs text-white hover:bg-blue-700"
+                      className="inline-flex items-center justify-center gap-1 rounded-[6px] bg-muted px-3 py-2 text-xs text-foreground hover:bg-muted"
                     >
                       <Copy className="h-3.5 w-3.5" />
                       MD
@@ -669,29 +670,29 @@ export default function AdminMediaPage() {
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-muted p-4">
+          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[10px] bg-card p-6 shadow-none">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">{mediaName(selected)}</h2>
-                <p className="mt-1 text-sm text-gray-500">{selected.filename}</p>
+                <h2 className="text-2xl font-medium text-foreground">{mediaName(selected)}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{selected.filename}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                className="rounded-2xl bg-gray-100 p-2 text-gray-600 hover:bg-gray-200"
+                className="rounded-[10px] bg-muted p-2 text-muted-foreground hover:bg-muted"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="overflow-hidden rounded-3xl bg-gray-100">
+              <div className="overflow-hidden rounded-[10px] bg-muted">
                 <img src={safeImageSrc(selected.url)} alt={mediaName(selected)} className="max-h-[62vh] w-full object-contain" />
               </div>
 
               <div className="space-y-4">
-                <div className="rounded-3xl bg-gray-50 p-4 text-sm text-gray-600">
+                <div className="rounded-[10px] bg-muted p-4 text-sm text-muted-foreground">
                   <div>大小：{selected.size_text}</div>
                   <div>类型：{selected.mime || selected.ext}</div>
                   <div>尺寸：{selected.width && selected.height ? `${selected.width} × ${selected.height}` : '-'}</div>
@@ -699,21 +700,21 @@ export default function AdminMediaPage() {
                 </div>
 
                 <label className="block">
-                  <span className="text-sm font-medium text-gray-700">链接显示名</span>
+                  <span className="text-sm font-medium text-foreground">链接显示名</span>
                   <input
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                    className="mt-2 w-full rounded-[10px] border border-border px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
                     placeholder="例如：首页封面图"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-medium text-gray-700">Alt 文本</span>
+                  <span className="text-sm font-medium text-foreground">Alt 文本</span>
                   <input
                     value={altText}
                     onChange={(e) => setAltText(e.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                    className="mt-2 w-full rounded-[10px] border border-border px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
                     placeholder="给搜索引擎和无障碍阅读器看的图片说明"
                   />
                 </label>
@@ -722,7 +723,7 @@ export default function AdminMediaPage() {
                   type="button"
                   disabled={saving}
                   onClick={saveMeta}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-sm text-foreground hover:bg-muted disabled:opacity-60"
                 >
                   <Save className="h-4 w-4" />
                   保存显示信息
@@ -731,11 +732,11 @@ export default function AdminMediaPage() {
                 {selected.status !== 'trashed' ? (
                   <>
                     <label className="block">
-                      <span className="text-sm font-medium text-gray-700">文件名</span>
+                      <span className="text-sm font-medium text-foreground">文件名</span>
                       <input
                         value={renameTo}
                         onChange={(e) => setRenameTo(e.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                        className="mt-2 w-full rounded-[10px] border border-border px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
                         placeholder={selected.filename}
                       />
                     </label>
@@ -744,27 +745,27 @@ export default function AdminMediaPage() {
                       type="button"
                       disabled={saving}
                       onClick={renameFile}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-950 px-5 py-3 text-sm text-white hover:bg-gray-800 disabled:opacity-60"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-sm text-foreground hover:bg-muted disabled:opacity-60"
                     >
                       <Pencil className="h-4 w-4" />
                       修改文件名并同步文章引用
                     </button>
 
                     <div className="grid grid-cols-[1fr_auto] gap-2">
-                      <select
+                      <ThemeSelect
                         value={recompressQuality}
-                        onChange={(e) => setRecompressQuality(e.target.value)}
-                        className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        onValueChange={(nextValue) => setRecompressQuality(nextValue)}
+                        className="rounded-[10px] border border-border bg-card px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
                       >
                         <option value="low">低清晰度</option>
                         <option value="medium">中清晰度</option>
                         <option value="high">高清晰度</option>
-                      </select>
+                      </ThemeSelect>
                       <button
                         type="button"
                         disabled={saving}
                         onClick={recompress}
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm text-white hover:bg-emerald-700 disabled:opacity-60"
+                        className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-emerald-600 px-5 py-3 text-sm text-foreground hover:bg-emerald-700 disabled:opacity-60"
                       >
                         <RotateCw className="h-4 w-4" />
                         二次压缩
@@ -775,7 +776,7 @@ export default function AdminMediaPage() {
                       type="button"
                       disabled={saving}
                       onClick={() => deleteFile(false)}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm text-white hover:bg-red-700 disabled:opacity-60"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-red-600 px-5 py-3 text-sm text-foreground hover:bg-red-700 disabled:opacity-60"
                     >
                       <Trash2 className="h-4 w-4" />
                       删除到回收站
@@ -787,7 +788,7 @@ export default function AdminMediaPage() {
                       type="button"
                       disabled={saving}
                       onClick={restoreFile}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-sm text-foreground hover:bg-muted disabled:opacity-60"
                     >
                       <Undo2 className="h-4 w-4" />
                       恢复
@@ -796,7 +797,7 @@ export default function AdminMediaPage() {
                       type="button"
                       disabled={saving}
                       onClick={permanentDelete}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm text-white hover:bg-red-700 disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-red-600 px-5 py-3 text-sm text-foreground hover:bg-red-700 disabled:opacity-60"
                     >
                       <Trash2 className="h-4 w-4" />
                       彻底删除
@@ -808,14 +809,14 @@ export default function AdminMediaPage() {
                   <button
                     type="button"
                     onClick={() => handleCopy(selected.url, '图片 URL')}
-                    className="rounded-2xl bg-gray-100 px-4 py-3 text-sm text-gray-700 hover:bg-gray-200"
+                    className="rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground hover:bg-muted"
                   >
                     复制 URL
                   </button>
                   <button
                     type="button"
                     onClick={() => handleCopy(`![${altText || mediaName(selected)}](${selected.url})`, 'Markdown')}
-                    className="rounded-2xl bg-gray-100 px-4 py-3 text-sm text-gray-700 hover:bg-gray-200"
+                    className="rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground hover:bg-muted"
                   >
                     复制 Markdown
                   </button>

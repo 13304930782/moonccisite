@@ -1,16 +1,20 @@
-export async function api(path: string, options: RequestInit = {}) {
-  const headers: Record<string, string> = {
-    ...((options.headers as Record<string, string>) || {}),
-  };
+export class ApiError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
 
-  headers['X-Requested-With'] = headers['X-Requested-With'] || 'XMLHttpRequest';
+export async function api(path: string, options: RequestInit = {}) {
+  const headers = new Headers(options.headers);
+
+  headers.set('X-Requested-With', 'XMLHttpRequest');
 
   if (!(options.body instanceof FormData)) {
-    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   }
 
-  delete headers.Authorization;
-  delete headers.authorization;
+  headers.delete('Authorization');
 
   const res = await fetch(`/api${path}`, {
     ...options,
@@ -25,15 +29,16 @@ export async function api(path: string, options: RequestInit = {}) {
     data = await res.json();
   } else {
     const text = await res.text();
-    data = {
-      message: text.includes('<!DOCTYPE')
+    throw new ApiError(
+      /<!doctype|<html/i.test(text)
         ? '接口返回了网页内容，请检查后端或 Nginx 的 /api 代理'
-        : text || '请求失败',
-    };
+        : '接口返回格式异常，请稍后重试',
+      res.status,
+    );
   }
 
   if (!res.ok) {
-    throw new Error(data?.message || '请求失败');
+    throw new ApiError(data?.message || '请求失败', res.status);
   }
 
   return data;

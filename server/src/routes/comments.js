@@ -2,9 +2,10 @@ const express = require('express');
 const db = require('../db');
 const { authRequired, getUserFromRequest } = require('../middleware/auth');
 const { sendCommentNotification } = require('../lib/mailer');
-const { getIpLocation } = require('../lib/geoip');
+const { getIpLocation, formatIpLocation } = require('../lib/geoip');
 
-const router = express.Router();
+const router = require('../lib/asyncRouter')();
+router.use(require('express-rate-limit')({ windowMs: 60000, limit: 300, standardHeaders: true, legacyHeaders: false }));
 
 async function optionalUser(req) {
   try {
@@ -84,7 +85,14 @@ async function checkBannedWords(content) {
  */
 router.get('/post/:postId', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.vary('Cookie');
+    res.vary('Authorization');
     const viewer = await optionalUser(req);
+    const [[post]] = await db.query('SELECT status,author_id FROM posts WHERE id=? LIMIT 1', [req.params.postId]);
+    if (!post || (post.status !== 'published' && !['owner', 'admin'].includes(viewer?.role) && Number(post.author_id) !== Number(viewer?.id))) {
+      return res.status(404).json({ message: '文章不存在' });
+    }
     const sort = String(req.query.sort || 'latest');
 
     const params = [req.params.postId];
@@ -181,6 +189,7 @@ router.get('/post/:postId', async (req, res) => {
         liked_by_me: Boolean(row.liked_by_me),
         like_count: Number(row.like_count || 0),
         status_text,
+        ip_location: formatIpLocation(row.ip_location),
         ip_address_masked: maskIp(row.ip_address),
         ip_address: undefined,
       };
@@ -233,7 +242,7 @@ router.post('/post/:postId', authRequired, async (req, res) => {
     }
 
     const [posts] = await db.query(
-      'SELECT id, title FROM posts WHERE id=? LIMIT 1',
+      'SELECT id, title FROM posts WHERE id=? AND status="published" LIMIT 1',
       [req.params.postId]
     );
 
@@ -376,7 +385,7 @@ router.post('/:id/like', authRequired, async (req, res) => {
     }
 
     const [rows] = await db.query(
-      'SELECT id, status FROM comments WHERE id=? LIMIT 1',
+      'SELECT c.id, c.status FROM comments c JOIN posts p ON p.id=c.post_id WHERE c.id=? AND p.status="published" LIMIT 1',
       [req.params.id]
     );
 

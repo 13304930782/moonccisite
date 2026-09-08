@@ -1,3 +1,4 @@
+import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
@@ -40,47 +41,47 @@ export default function AdminEditorApplicationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 px-6 py-16">
-      <div className="max-w-6xl mx-auto rounded-3xl bg-white/80 backdrop-blur border border-white/40 p-8 shadow-xl">
-        <Link to="/admin" className="text-sm text-blue-600 hover:underline">返回后台</Link>
+    <div className="min-h-full bg-transparent px-6 py-10">
+      <div className="max-w-6xl mx-auto rounded-[10px] bg-card  border border-border p-8 shadow-none">
+        <Link to="/admin" className="text-sm text-foreground hover:underline">返回后台</Link>
 
         <div className="mt-2 mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">编辑申请审核</h1>
-            <p className="mt-2 text-sm text-gray-500">审核普通用户的写文章权限申请。</p>
+            <h1 className="admin-title">编辑申请审核</h1>
+            <p className="mt-2 text-sm text-muted-foreground">审核普通用户的写文章权限申请。</p>
           </div>
 
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border px-4 py-2 bg-white">
+          <ThemeSelect value={status} onValueChange={(nextValue) => setStatus(nextValue)} className="rounded-[6px] border px-4 py-2 bg-card">
             <option value="all">全部</option>
             <option value="pending">待审核</option>
             <option value="approved">已通过</option>
             <option value="rejected">已拒绝</option>
-          </select>
+          </ThemeSelect>
         </div>
 
-        {message && <div className="mb-4 rounded-xl bg-blue-50 px-4 py-3 text-blue-700">{message}</div>}
+        {message && <div className="mb-4 rounded-[6px] bg-muted px-4 py-3 text-foreground">{message}</div>}
 
         <div className="space-y-4">
-          {applications.length === 0 && <p className="text-gray-500">暂无申请。</p>}
+          {applications.length === 0 && <p className="text-muted-foreground">暂无申请。</p>}
 
           {applications.map((item) => (
-            <div key={item.id} className="rounded-2xl border border-gray-200 bg-white/70 p-5">
+            <div key={item.id} className="rounded-[10px] border border-border bg-card p-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-muted-foreground">
                     #{item.id} ｜ 用户：{item.username} ｜ 邮箱：{item.email} ｜ 当前角色：{item.role}
                   </div>
 
-                  <div className="mt-1 text-sm text-gray-500">
+                  <div className="mt-1 text-sm text-muted-foreground">
                     状态：{statusText[item.status] || item.status} ｜ 申请时间：{item.created_at?.slice(0, 19).replace('T', ' ')}
                   </div>
 
-                  <p className="mt-4 whitespace-pre-wrap leading-7 text-gray-800">
+                  <p className="mt-4 whitespace-pre-wrap leading-7 text-foreground">
                     {item.reason}
                   </p>
 
                   {item.review_note && (
-                    <div className="mt-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                    <div className="mt-3 rounded-[6px] bg-muted px-4 py-3 text-sm text-muted-foreground">
                       审核备注：{item.review_note}
                     </div>
                   )}
@@ -88,7 +89,7 @@ export default function AdminEditorApplicationsPage() {
 
                 {item.status === 'pending' && (
                   <div className="flex gap-2 shrink-0">
-                    <button onClick={() => review(item.id, 'approved')} className="rounded-full bg-blue-600 px-4 py-2 text-sm text-white">
+                    <button onClick={() => review(item.id, 'approved')} className="rounded-full bg-muted px-4 py-2 text-sm text-foreground">
                       通过
                     </button>
                     <button onClick={() => review(item.id, 'rejected')} className="rounded-full border border-red-200 px-4 py-2 text-sm text-red-600">

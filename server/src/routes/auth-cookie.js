@@ -2,64 +2,27 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const db = require('../db');
-const { AUTH_COOKIE_NAME, authRequired } = require('../middleware/auth');
+const { AUTH_COOKIE_NAME, authRequired, getAuthTokenFromRequest } = require('../middleware/auth');
 const { sendMail, getMailConfig } = require('../lib/mailer');
+const { renderBrandedEmail } = require('../lib/mailTemplate');
+const { verifyGoogleCredential } = require('../lib/googleIdentity');
 
-const router = express.Router();
-
-const authRateBuckets = new Map();
-
-function getClientIp(req) {
-  const cfIp = req.headers['cf-connecting-ip'];
-  const realIp = req.headers['x-real-ip'];
-  const forwarded = req.headers['x-forwarded-for'];
-
-  return String(
-    cfIp ||
-      realIp ||
-      (forwarded ? String(forwarded).split(',')[0].trim() : '') ||
-      req.socket.remoteAddress ||
-      ''
-  ).replace('::ffff:', '');
-}
-
-function rateKeyEmail(req) {
-  return String(req.body?.email || '').trim().toLowerCase();
-}
-
-function cleanupAuthRateBuckets(now) {
-  if (authRateBuckets.size < 10000) return;
-
-  for (const [key, bucket] of authRateBuckets.entries()) {
-    if (bucket.resetAt <= now) authRateBuckets.delete(key);
-  }
-}
+const router = require('../lib/asyncRouter')();
+router.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.vary('Cookie');
+  res.vary('Authorization');
+  next();
+});
 
 function authRateLimit({ name, windowMs, max, includeEmail = false }) {
-  return (req, res, next) => {
-    const now = Date.now();
-    cleanupAuthRateBuckets(now);
-
-    const email = includeEmail ? `:${rateKeyEmail(req)}` : '';
-    const key = `${name}:${getClientIp(req)}${email}`;
-    const bucket = authRateBuckets.get(key);
-
-    if (!bucket || bucket.resetAt <= now) {
-      authRateBuckets.set(key, { count: 1, resetAt: now + windowMs });
-      return next();
-    }
-
-    bucket.count += 1;
-
-    if (bucket.count > max) {
-      const retryAfter = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
-      res.setHeader('Retry-After', String(retryAfter));
-      return res.status(429).json({ message: '请求过于频繁，请稍后再试。' });
-    }
-
-    next();
-  };
+  return rateLimit({
+    windowMs, limit: max, standardHeaders: true, legacyHeaders: false,
+    keyGenerator: req => `${name}:${rateLimit.ipKeyGenerator(req.ip)}:${includeEmail ? sha256(String(req.body?.email || '').trim().toLowerCase()) : ''}`,
+    message: { message: '请求过于频繁，请稍后再试。' },
+  });
 }
 
 
@@ -68,33 +31,28 @@ const PASSWORD_RULE_MESSAGE = '密码至少 8 位，并且需要同时包含字�
 const MAX_LOGIN_FAILURES = 5;
 const LOGIN_LOCK_MINUTES = 15;
 const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
-
-function escapeHtml(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+const DEFAULT_GOOGLE_CLIENT_ID = '614401761904-4g7soo2d1clsnui71h5tb9ia4j1t530m.apps.googleusercontent.com';
 
 function sha256(input) {
   return crypto.createHash('sha256').update(input).digest('hex');
 }
 
 function validatePassword(password) {
+  if (Buffer.byteLength(password, 'utf8') > 72) return '密码不能超过 72 字节。';
   if (password.length < 8) return PASSWORD_RULE_MESSAGE;
   if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) return PASSWORD_RULE_MESSAGE;
   return '';
 }
 
-function signToken(user) {
+function signToken(user, sessionStartedAt) {
   return jwt.sign(
     {
       id: user.id,
       username: user.username,
       email: user.email,
       role: user.role,
+      sessionStartedAt,
+      jti: crypto.randomUUID(),
     },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
@@ -165,6 +123,29 @@ function safeSiteUrl(value) {
   }
 }
 
+function googleIsAuthoritativeForEmail(payload) {
+  const email = String(payload.email || '').toLowerCase();
+  return email.endsWith('@gmail.com') || Boolean(payload.hd);
+}
+
+function truncateUsername(value, maxLength = 30) {
+  return Array.from(String(value || '').replace(/\s+/g, ' ').trim()).slice(0, maxLength).join('');
+}
+
+async function createAvailableUsername(preferredName, email) {
+  const emailName = String(email || '').split('@')[0];
+  const base = truncateUsername(preferredName) || truncateUsername(emailName) || 'Google 用户';
+
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const suffix = attempt === 0 ? '' : ` ${attempt + 1}`;
+    const candidate = `${truncateUsername(base, 30 - Array.from(suffix).length)}${suffix}`;
+    const [rows] = await db.query('SELECT id FROM users WHERE username=? LIMIT 1', [candidate]);
+    if (!rows[0]) return candidate;
+  }
+
+  return `Google用户${crypto.randomBytes(4).toString('hex')}`;
+}
+
 router.post('/register', authRateLimit({ name: 'register', windowMs: 60 * 60 * 1000, max: 8 }), async (req, res) => {
   try {
     const username = String(req.body.username || '').trim();
@@ -177,6 +158,9 @@ router.post('/register', authRateLimit({ name: 'register', windowMs: 60 * 60 * 1
 
     if (username.length < 2 || username.length > 30) {
       return res.status(400).json({ message: '用户名长度需要在 2 到 30 个字符之间。' });
+    }
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: '请填写有效的邮箱地址。' });
     }
 
     const passwordError = validatePassword(password);
@@ -219,6 +203,7 @@ router.post('/register', authRateLimit({ name: 'register', windowMs: 60 * 60 * 1
 });
 
 router.post('/login', authRateLimit({ name: 'login', windowMs: 15 * 60 * 1000, max: 10, includeEmail: true }), async (req, res) => {
+  const sessionStartedAt = Date.now();
   try {
     const email = String(req.body.email || '').trim().toLowerCase();
     const password = String(req.body.password || '');
@@ -270,7 +255,7 @@ router.post('/login', authRateLimit({ name: 'login', windowMs: 15 * 60 * 1000, m
 
     await db.query('UPDATE users SET login_attempts=0, locked_until=NULL WHERE id=?', [user.id]);
 
-    setAuthCookie(req, res, signToken(user));
+    setAuthCookie(req, res, signToken(user, sessionStartedAt));
 
     res.json({
       message: '登录成功。',
@@ -282,11 +267,99 @@ router.post('/login', authRateLimit({ name: 'login', windowMs: 15 * 60 * 1000, m
   }
 });
 
+router.post('/google', authRateLimit({ name: 'google-login', windowMs: 15 * 60 * 1000, max: 20 }), async (req, res) => {
+  const sessionStartedAt = Date.now();
+  try {
+    const credential = String(req.body.credential || '').trim();
+    if (!credential) return res.status(400).json({ message: '缺少 Google 登录凭证。' });
+
+    const googleClientId = String(process.env.GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID).trim();
+    const payload = await verifyGoogleCredential(credential, googleClientId);
+    const googleSub = String(payload.sub);
+    const email = String(payload.email).trim().toLowerCase();
+
+    const [subRows] = await db.query('SELECT * FROM users WHERE google_sub=? LIMIT 1', [googleSub]);
+    let user = subRows[0];
+
+    if (!user) {
+      const [emailRows] = await db.query('SELECT * FROM users WHERE email=? LIMIT 1', [email]);
+      user = emailRows[0];
+
+      if (user) {
+        if (user.google_sub && user.google_sub !== googleSub) {
+          return res.status(409).json({ message: '该邮箱已经绑定其他 Google 账号。' });
+        }
+
+        if (!googleIsAuthoritativeForEmail(payload)) {
+          return res.status(409).json({ message: '请先使用邮箱和密码登录，再绑定这个 Google 账号。' });
+        }
+
+        await db.query('UPDATE users SET google_sub=? WHERE id=? AND google_sub IS NULL', [googleSub, user.id]);
+        user.google_sub = googleSub;
+      } else {
+        if (!googleIsAuthoritativeForEmail(payload)) {
+          return res.status(400).json({ message: '目前 Google 快捷注册仅支持 Gmail 或 Google Workspace 邮箱。' });
+        }
+
+        const username = await createAvailableUsername(payload.name, email);
+        const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
+        const [result] = await db.query(
+          `
+          INSERT INTO users
+          (username, email, google_sub, password_hash, role, status, can_comment)
+          VALUES (?, ?, ?, ?, 'user', 'active', 1)
+          `,
+          [username, email, googleSub, passwordHash]
+        );
+
+        const [createdRows] = await db.query('SELECT * FROM users WHERE id=? LIMIT 1', [result.insertId]);
+        user = createdRows[0];
+      }
+    }
+
+    if (!user) return res.status(500).json({ message: 'Google 登录未能创建账号。' });
+    if (user.status === 'disabled') return res.status(403).json({ message: '该账号已被禁用。' });
+
+    await db.query('UPDATE users SET login_attempts=0, locked_until=NULL WHERE id=?', [user.id]);
+    setAuthCookie(req, res, signToken(user, sessionStartedAt));
+
+    res.json({ message: 'Google 登录成功。', user: publicUser(user) });
+  } catch (err) {
+    console.error('[auth/google]', err);
+
+    if (err && err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ message: '该 Google 账号或邮箱已经绑定，请重试。' });
+    }
+
+    res.status(401).json({ message: 'Google 登录凭证无效或已过期，请重新选择账号。' });
+  }
+});
+
 router.get('/me', authRequired, async (req, res) => {
   res.json({ user: publicUser(req.user) });
 });
 
-router.post('/logout', async (req, res) => {
+const logoutLimiter = rateLimit({
+  windowMs: 60000, limit: 120, standardHeaders: true, legacyHeaders: false,
+  skip: req => !getAuthTokenFromRequest(req),
+  keyGenerator: req => sha256(getAuthTokenFromRequest(req) || ''),
+  message: { message: '退出请求过于频繁，请一分钟后重试。' },
+});
+router.post('/logout', logoutLimiter, async (req, res) => {
+  const token = getAuthTokenFromRequest(req);
+  if (token) {
+    let payload;
+    try { payload = jwt.verify(token, process.env.JWT_SECRET); }
+    catch (error) {
+      if (!['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(error.name)) throw error;
+    }
+    if (payload) {
+      // Persist revocation before reporting success, including across PM2 workers/restarts.
+      await db.query('INSERT IGNORE INTO auth_revocations (token_hash,expires_at) VALUES (?,?)',
+        [sha256(token), payload.exp ? payload.exp * 1000 : 9223372036854775807n.toString()]);
+      await db.query('DELETE FROM auth_revocations WHERE expires_at<? LIMIT 100', [Date.now()]);
+    }
+  }
   clearAuthCookie(req, res);
   res.json({ message: '已退出登录。' });
 });
@@ -326,27 +399,22 @@ router.post('/forgot-password', authRateLimit({ name: 'forgot-password', windowM
     const config = await getMailConfig();
     const siteUrl = safeSiteUrl(config.site_url || process.env.SITE_URL);
     const resetUrl = `${siteUrl}/reset-password?token=${rawToken}`;
-    const htmlResetUrl = escapeHtml(resetUrl);
-    const displayName = escapeHtml(user.username || user.email);
-
-    await sendMail({
+    const mailResult = await sendMail({
       to: user.email,
-      subject: '[Mooncci] Reset your password',
-      text: `You requested to reset your Mooncci Blog password. This link is valid for 30 minutes:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.8; color: #111827;">
-          <h2>Reset your password</h2>
-          <p>Hello, ${displayName}.</p>
-          <p>You requested to reset your Mooncci Blog password. This link is valid for 30 minutes.</p>
-          <p>
-            <a href="${htmlResetUrl}" style="display:inline-block;background:#2563eb;color:white;padding:10px 18px;border-radius:999px;text-decoration:none;">
-              Reset password
-            </a>
-          </p>
-          <p style="color:#6b7280;font-size:13px;">If you did not request this, you can ignore this email.</p>
-        </div>
-      `,
+      subject: '[mooncci] 重置账户密码',
+      text: `You requested to reset your mooncci password. This link is valid for 30 minutes:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
+      html: renderBrandedEmail({
+        eyebrow: 'mooncci / ACCOUNT SECURITY',
+        title: '重置你的账户密码',
+        intro: `${user.username || user.email}，我们收到了你的密码重置请求。`,
+        paragraphs: ['这个链接将在 30 分钟后失效。如果不是你本人发起，可以忽略这封邮件。'],
+        cta: { label: '重置密码', url: resetUrl },
+      }),
     });
+
+    if (!mailResult.sent) {
+      throw new Error(mailResult.reason || 'Password reset email was not sent.');
+    }
 
     res.json({ message: GENERIC_RESET_MESSAGE });
   } catch (err) {
@@ -363,8 +431,8 @@ router.post('/reset-password', authRateLimit({ name: 'reset-password', windowMs:
     if (!token || !password) {
       return res.status(400).json({ message: '缺少重置凭证或新密码。' });
     }
-
-
+    const passwordError = validatePassword(password);
+    if (passwordError) return res.status(400).json({ message: passwordError });
     const tokenHash = sha256(token);
     const passwordHash = await bcrypt.hash(password, 10);
     const connection = await db.getConnection();
@@ -403,6 +471,11 @@ router.post('/reset-password', authRateLimit({ name: 'reset-password', windowMs:
       }
 
       await connection.query('UPDATE users SET password_hash=? WHERE id=?', [passwordHash, record.user_id]);
+      await connection.query(
+        'INSERT INTO auth_invalidations (user_id,invalid_before) VALUES (?,?) ON DUPLICATE KEY UPDATE invalid_before=GREATEST(invalid_before,VALUES(invalid_before))',
+        [record.user_id, Date.now()]
+      );
+      await connection.query('UPDATE users SET login_attempts=0, locked_until=NULL WHERE id=?', [record.user_id]);
       await connection.commit();
     } catch (err) {
       await connection.rollback();

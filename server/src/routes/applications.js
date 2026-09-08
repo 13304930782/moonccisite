@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { authRequired } = require('../middleware/auth');
 
-const router = express.Router();
+const router = require('../lib/asyncRouter')();
 
 router.use(authRequired);
 

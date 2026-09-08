@@ -1,16 +1,39 @@
-
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>个人博客网站设计</title>
-      <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
-    </head>
-
-    <body>
-      <div id="root"></div>
-      <script type="module" src="/src/main.tsx"></script>
-    </body>
-  </html>
-  
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mooncci · 个人技术手记</title>
+    <meta name="description" content="mooncci 的个人技术手记，记录文章、日常近况与作品进展。" />
+    <meta property="og:site_name" content="mooncci" />
+    <script>
+      try {
+        var savedTheme = localStorage.getItem('mooncci-theme');
+        var initialTheme = savedTheme === 'dark' || savedTheme === 'plasma' ? 'dark' : 'light';
+        document.documentElement.dataset.moonTheme = initialTheme;
+        document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+        document.documentElement.style.colorScheme = initialTheme;
+      } catch (_) {}
+    </script>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      #root {
+        height: 100%;
+      }
+    </style>
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="mooncci · 最近更新"
+      href="/api/feed.xml"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

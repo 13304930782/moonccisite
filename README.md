@@ -6,6 +6,13 @@ mooncci site 是一个基于 React、Vite、TypeScript、Node.js、Express 和 M
 
 ## 功能特性
 
+- 黑白灰阅读视觉、浅色/深色主题、移动导航与文章目录
+- 首页近况、短动态发布/撤回、文章与动态统一更新流
+- 作品管理、首页推荐、公开 GitHub 正式 Release 同步
+- RSS、邮箱确认订阅、每周摘要、投递去重和人工核对
+
+本次三期功能与验证记录见 [IMPLEMENTATION.md](IMPLEMENTATION.md)，启动、数据库迁移与任务开关见 [CONTENT-DEPLOY.md](CONTENT-DEPLOY.md)。GitHub 和周报默认关闭，真实内容通过后台录入。
+
 - 用户注册、登录、退出、忘记密码
 - HttpOnly Cookie 登录态与角色权限控制
 - owner / admin / editor / user 四级角色
@@ -14,7 +21,9 @@ mooncci site 是一个基于 React、Vite、TypeScript、Node.js、Express 和 M
 - 站点设置、Logo、favicon、备案和首页内容配置
 - 图片上传、格式校验、压缩、媒体库、回收站和批量操作
 - SMTP 邮件配置、评论提醒和后台邮件发送
-- 后台管理页和移动端 / 平板端适配
+- PromptDock Early Access 招募、owner 专属审核、申请通知和通过邮件
+- 统一二级页面、克制动画及移动端 / 平板端适配
+- 独立 mooncci-worker 任务进程，数据库锁防止重复任务
 - Nginx 反向代理、PM2 后端运行、Vite 静态部署
 
 ## 技术栈
@@ -82,7 +91,7 @@ npm install
 cp server/.env.example server/.env
 ```
 
-然后按实际环境填写数据库、JWT、SMTP 等配置。不要提交真实 `.env` 文件。
+然后按实际环境填写数据库、JWT、SMTP 等配置。不要提交真实 `.env` 文件。新空库在 `server` 执行 `node scripts/init-db.js`，已有站点使用 `node scripts/migrate.js --dry-run` 预览升级。完整步骤见 [CONTENT-DEPLOY.md](CONTENT-DEPLOY.md)。本地 HTTP 开发需要单独设置 Cookie 与 CSRF 允许来源，Vite 已提供 `/api` 代理。
 
 启动前端：
 
@@ -118,6 +127,8 @@ server/database/
 ```
 
 执行迁移前建议先备份数据库。迁移脚本支持先 dry-run 再执行，避免误操作。
+
+部署 Early Access 功能时，先执行最新数据库迁移，再在后台“邮件设置”中配置接收提醒邮箱、SMTP 和有效的 HTTPS PromptDock 下载地址。下载地址未配置时，系统会阻止批准申请，避免发送不完整的通过邮件。
 
 ## 部署说明
 
@@ -179,6 +190,7 @@ mooncci site is a personal content website and admin dashboard built with React,
 - Site settings, logo, favicon, footer, and homepage configuration
 - Image upload, validation, compression, media library, recycle bin, and batch actions
 - SMTP configuration, comment notifications, and admin email sending
+- PromptDock Early Access applications, owner-only review, and branded approval emails
 - Admin dashboard with mobile and tablet support
 - Nginx reverse proxy, PM2 backend process, and Vite static deployment
 
@@ -309,6 +321,7 @@ Recommended production setup:
 - Comment moderation for normal users
 - Clear admin/editor/owner permission boundaries
 - Secrets managed through environment variables
+- Owner-only PromptDock DMG release upload with size and UDIF signature validation
 
 ## Roles
 

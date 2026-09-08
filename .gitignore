@@ -18,3 +18,8 @@ database/backups/
 *.bak
 *.bak_*
 *.backup
+
+# Isolated local acceptance environments and screenshots
+.cache/
+__pycache__/
+*.pyc

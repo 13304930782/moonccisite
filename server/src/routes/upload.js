@@ -2,12 +2,16 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const FileType = require('file-type');
 const sharp = require('sharp');
 const db = require('../db');
-const { authRequired, editorOrAdmin } = require('../middleware/auth');
+const { authRequired, editorOrAdmin, adminOnly } = require('../middleware/auth');
 
-const router = express.Router();
+const router = require('../lib/asyncRouter')();
+// The media library is shared; mutations can rewrite or remove other authors' images.
+router.use('/media', authRequired, (req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  return adminOnly(req, res, next);
+});
 
 const uploadDir = path.join(__dirname, '../../uploads');
 const trashDir = path.join(uploadDir, '.trash');
@@ -118,7 +122,8 @@ function removeUploadedFile(filePath) {
 }
 
 async function getDetectedImageInfo(filePath) {
-  const detected = await FileType.fromFile(filePath);
+  const { fileTypeFromFile } = await import('file-type');
+  const detected = await fileTypeFromFile(filePath);
   if (!detected) return { ok: false, detected: null };
 
   const safeExt = extByDetected[detected.ext];

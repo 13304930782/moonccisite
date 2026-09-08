@@ -1,0 +1,55 @@
+name: Site checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix server
+      - run: npm test
+      - run: npm test --prefix server
+      - run: npm run build
+      - run: bash -n scripts/deploy-audit.sh
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/test-browser.cjs
+      - run: npm audit --audit-level=moderate
+      - run: npm audit --prefix server --audit-level=moderate
+  mysql-integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci --prefix server
+      - run: node server/scripts/test-integration.js
+        env:
+          TEST_DB_PORT: '3306'

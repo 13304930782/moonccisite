@@ -1,0 +1,40 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+test('production middleware: logout survives rate limits, failures have JSON status and media edits require admin', async t => {
+  process.env.JWT_SECRET = 'audit-http-fixture-only';
+  process.env.COOKIE_SECURE = 'false';
+  const db = require('../src/db');
+  const user = { id: 987, username: 'audit', email: 'audit@example.test', role: 'editor', status: 'active' };
+  let fail = false;
+  t.mock.method(db, 'query', async sql => {
+    if (fail) throw new Error('fixture database unavailable');
+    return /SELECT/.test(sql) ? [[user]] : [{ affectedRows: 1 }];
+  });
+  const app = require('../src/index');
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); await db.end(); await require('../src/platformDb').end(); });
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const cookie = `mooncci_token=${require('jsonwebtoken').sign({ id: user.id }, process.env.JWT_SECRET)}`;
+  const headers = { Cookie: cookie, 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+  const request = (path, options = {}) => fetch(base + path, { headers, signal: AbortSignal.timeout(5000), ...options });
+  for (let i = 0; i < 25; i++) assert.equal((await request('/auth/me')).status, 200);
+  assert.equal((await request('/upload/media/not-mine.png', { method: 'DELETE' })).status, 403);
+  fail = true;
+  assert.equal((await request('/auth/me')).status, 503);
+  assert.equal((await request('/settings/site')).status, 500, 'async rejection reaches the JSON error handler');
+  assert.equal((await request('/auth/logout', { method: 'POST' })).status, 500, 'failed revocation cannot claim success');
+  fail = false;
+  const invalid = await request('/auth/reset-password', { method: 'POST', body: '{' });
+  assert.equal(invalid.status, 400);
+  assert.equal((await request('/missing-api')).status, 404);
+  const badPassword = await request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token: 'x', password: '123' }) });
+  assert.equal(badPassword.status, 400);
+  assert.equal((await request('/auth/logout', { method: 'POST', headers: { ...headers, Origin: 'https://evil.invalid' } })).status, 403);
+  for (let i = 0; i < 205; i++) await request('/health');
+  assert.equal((await request('/health')).status, 429);
+  const logout = await request('/auth/logout', { method: 'POST' });
+  assert.equal(logout.status, 200, 'logout remains reachable after exhausting global and auth budgets');
+  assert.match(logout.headers.get('set-cookie'), /Expires=Thu, 01 Jan 1970/);
+});

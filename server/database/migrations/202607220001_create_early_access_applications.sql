@@ -1,0 +1,28 @@
+CREATE TABLE IF NOT EXISTS early_access_applications (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(80) NOT NULL,
+  email VARCHAR(254) NOT NULL,
+  email_normalized VARCHAR(254) NOT NULL,
+  occupation ENUM('student','teacher','developer','creator','enterprise','other') NOT NULL,
+  use_case TEXT NOT NULL,
+  device ENUM('macbook','imac','mac_mini','mac_studio') NOT NULL,
+  macos_version VARCHAR(100) NOT NULL,
+  desired_features JSON NOT NULL,
+  reason TEXT NOT NULL,
+  status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  reviewer_id INT NULL,
+  review_note TEXT NULL,
+  reviewed_at DATETIME NULL,
+  owner_notification_sent_at DATETIME NULL,
+  owner_notification_error VARCHAR(500) NULL,
+  approval_email_sent_at DATETIME NULL,
+  approval_email_error VARCHAR(500) NULL,
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_early_access_email (email_normalized),
+  KEY idx_early_access_status_created (status, created_at),
+  KEY idx_early_access_reviewer (reviewer_id),
+  CONSTRAINT fk_early_access_reviewer
+    FOREIGN KEY (reviewer_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

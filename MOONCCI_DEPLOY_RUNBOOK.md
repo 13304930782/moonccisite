@@ -1,4 +1,4 @@
-# Mooncci.site 部署与运维速查
+# mooncci.site 部署与运维速查
 
 ## 常用路径
 
