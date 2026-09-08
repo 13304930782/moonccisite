@@ -23,6 +23,7 @@ jobs:
       - run: npm test
       - run: npm test --prefix server
       - run: npm run build
+      - run: bash -n scripts/deploy-audit.sh
       - run: npx playwright install --with-deps chromium
       - run: node scripts/test-browser.cjs
       - run: npm audit --audit-level=moderate

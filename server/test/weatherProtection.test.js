@@ -33,6 +33,7 @@ test('signed browser limits survive IP changes, separate campus visitors, enforc
  const express=require('express'),jwt=require('jsonwebtoken');
  const {createClientIdentity,createClientLimiter,outsideWeatherGlobal,COOKIE}=require('../src/middleware/weatherClientLimit');
  const secret='test-only-campus-secret-0123456789';let now=Date.now();const app=express();app.set('trust proxy',1);
+ app.use(require('express-rate-limit')({windowMs:60000,limit:5000}));
  let legacy=0;app.use('/api',outsideWeatherGlobal((_q,r)=>{legacy++;r.sendStatus(429);}));
  app.use('/api/weather-mood',createClientIdentity({secret:()=>secret,clock:()=>now}),createClientLimiter(3,{clock:()=>now}),(_q,r)=>r.json({ok:true}));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));

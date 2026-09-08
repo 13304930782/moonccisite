@@ -96,10 +96,10 @@ const globalLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.method === 'POST' && /^\/auth\/logout\/?$/i.test(req.path),
+  skip: (req) => /^\/weather-mood(?:\/|$)/.test(req.path) || (req.method === 'POST' && /^\/auth\/logout\/?$/i.test(req.path)),
   message: { message: '请求过于频繁，请稍后重试' },
 });
-app.use('/api', require('./middleware/weatherClientLimit').outsideWeatherGlobal(globalLimiter));
+app.use('/api', globalLimiter);
 app.use('/api', requireRequestedWith);
 
 // 认证接口限流（防暴力破解）

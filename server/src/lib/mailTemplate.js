@@ -22,7 +22,9 @@ function renderAction(action) {
 function renderText(value) {
   const actions = [];
   const text = String(value ?? '').replace(/https?:\/\/[^\s<>"'，。！？；（）]+/gi, url => {
-    const trailing = /[.,;!?]+$/.exec(url)?.[0] || '';
+    let end = url.length;
+    while (end > 0 && '.,;!?'.includes(url[end - 1])) end--;
+    const trailing = url.slice(end);
     const target = trailing ? url.slice(0, -trailing.length) : url;
     if (!safeHttpUrl(target)) return url;
     actions.push({ label: `打开链接 ${actions.length + 1}`, url: target });

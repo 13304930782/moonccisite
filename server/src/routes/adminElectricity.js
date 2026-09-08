@@ -30,7 +30,9 @@ router.use(
 );
 
 function isEmail(value) {
-  return !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value));
+  if (!value) return true;
+  const text = String(value);
+  return text.length <= 254 && /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(text);
 }
 
 function safeError(error, fallback) {

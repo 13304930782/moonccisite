@@ -21,3 +21,5 @@ database/backups/
 
 # Isolated local acceptance environments and screenshots
 .cache/
+__pycache__/
+*.pyc

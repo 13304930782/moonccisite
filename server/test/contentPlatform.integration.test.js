@@ -131,7 +131,7 @@ test(
       let extraReleases = [];
       let calls = 0;
       global.fetch = async (url, options) => {
-        if (!String(url).startsWith("https://api.github.com"))
+        if (new URL(String(url)).origin !== "https://api.github.com")
           return originalFetch(url, options);
         calls++;
         if (responseMode === "limited")

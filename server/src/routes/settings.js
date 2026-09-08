@@ -24,6 +24,7 @@ const EARLY_ACCESS_UPLOAD_MAX_MB = Number.isFinite(configuredEarlyAccessUploadMa
 const earlyAccessReleaseDir = path.join(__dirname, '../../uploads/releases');
 const earlyAccessReleaseTmpDir = path.join(earlyAccessReleaseDir, '.tmp');
 let earlyAccessReleaseUploadBusy = false;
+const temporaryUploads = new WeakMap();
 
 for (const directory of [earlyAccessReleaseDir, earlyAccessReleaseTmpDir]) {
   fs.mkdirSync(directory, { recursive: true });
@@ -32,7 +33,11 @@ for (const directory of [earlyAccessReleaseDir, earlyAccessReleaseTmpDir]) {
 const earlyAccessReleaseUpload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, callback) => callback(null, earlyAccessReleaseTmpDir),
-    filename: (_req, _file, callback) => callback(null, `${Date.now()}-${crypto.randomUUID()}.dmg`),
+    filename: (req, _file, callback) => {
+      const filename = `${Date.now()}-${crypto.randomUUID()}.dmg`;
+      temporaryUploads.set(req, path.join(earlyAccessReleaseTmpDir, filename));
+      callback(null, filename);
+    },
   }),
   limits: {
     files: 1,
@@ -325,7 +330,9 @@ router.post('/mail/early-access-upload', authRequired, ownerOnly, (req, res) => 
       return reply(400, { message: '请选择有效的 DMG 安装包。' });
     }
 
-    const temporaryPath = req.file.path;
+    const temporaryPath = temporaryUploads.get(req);
+    temporaryUploads.delete(req);
+    if (!temporaryPath) return reply(400, { message: '缺少服务端上传文件记录。' });
     const releasePath = path.join(earlyAccessReleaseDir, RELEASE_FILENAME);
     const backupPath = path.join(earlyAccessReleaseTmpDir, `${RELEASE_FILENAME}.${Date.now()}.backup`);
     let hasBackup = false;

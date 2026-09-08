@@ -11,7 +11,7 @@ test('branded email escapes content and renders a non-blue CTA', () => {
   });
 
   assert.match(html, /&lt;PromptDock&gt;/);
-  assert.doesNotMatch(html, /<script>/);
+  assert.doesNotMatch(html, /<script\b/i);
   assert.match(html, /data-mail-theme="mooncci"/);
   assert.match(html, /color:#ffffff !important/);
   assert.match(html, /data-mail-fallback="true"/);

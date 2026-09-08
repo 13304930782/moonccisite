@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const db = require('../db');
 const { AUTH_COOKIE_NAME, authRequired, getAuthTokenFromRequest } = require('../middleware/auth');
 const { sendMail, getMailConfig } = require('../lib/mailer');
@@ -374,7 +375,13 @@ router.get('/me', authRequired, async (req, res) => {
   res.json({ user: publicUser(req.user) });
 });
 
-router.post('/logout', async (req, res) => {
+const logoutLimiter = rateLimit({
+  windowMs: 60000, limit: 120, standardHeaders: true, legacyHeaders: false,
+  skip: req => !getAuthTokenFromRequest(req),
+  keyGenerator: req => sha256(getAuthTokenFromRequest(req) || ''),
+  message: { message: '退出请求过于频繁，请一分钟后重试。' },
+});
+router.post('/logout', logoutLimiter, async (req, res) => {
   const token = getAuthTokenFromRequest(req);
   if (token) {
     let payload;
