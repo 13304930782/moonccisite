@@ -117,7 +117,7 @@ function normalizeEmail(value) {
 }
 
 function isEmailLike(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 async function getCustomMailCountToday(senderId) {

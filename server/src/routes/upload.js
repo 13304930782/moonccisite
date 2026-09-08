@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 const db = require('../db');
+const { sanitizeNamePart } = require('../lib/mediaName');
 const { authRequired, editorOrAdmin, adminOnly } = require('../middleware/auth');
 
 const router = require('../lib/asyncRouter')();
@@ -74,18 +75,6 @@ function isPublicUploadFile(filename) {
 
 function safeBasename(filename) {
   return path.basename(String(filename || '')).trim();
-}
-
-function sanitizeNamePart(value) {
-  const cleaned = String(value || '')
-    .trim()
-    .replace(/\.[^.]+$/, '')
-    .replace(/[^a-zA-Z0-9._-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^[-_.]+|[-_.]+$/g, '')
-    .slice(0, 120);
-
-  return cleaned || `image-${Date.now()}`;
 }
 
 function sanitizeDisplayText(value, max = 255) {

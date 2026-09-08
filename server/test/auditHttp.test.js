@@ -21,6 +21,12 @@ test('production middleware: logout survives rate limits, failures have JSON sta
   const request = (path, options = {}) => fetch(base + path, { headers, signal: AbortSignal.timeout(5000), ...options });
   for (let i = 0; i < 25; i++) assert.equal((await request('/auth/me')).status, 200);
   assert.equal((await request('/upload/media/not-mine.png', { method: 'DELETE' })).status, 403);
+  user.role = 'admin';
+  const oversizedEmail = await request('/settings/mail/send-custom', {
+    method: 'POST', body: JSON.stringify({ to: 'x@' + '.'.repeat(400000) + ' ', subject: 'fixture', content: 'fixture' }),
+  });
+  assert.equal(oversizedEmail.status, 400, 'oversized recipient must be rejected before expensive validation or mail delivery');
+  user.role = 'editor';
   fail = true;
   assert.equal((await request('/auth/me')).status, 503);
   assert.equal((await request('/settings/site')).status, 500, 'async rejection reaches the JSON error handler');
@@ -34,6 +40,16 @@ test('production middleware: logout survives rate limits, failures have JSON sta
   assert.equal((await request('/auth/logout', { method: 'POST', headers: { ...headers, Origin: 'https://evil.invalid' } })).status, 403);
   for (let i = 0; i < 205; i++) await request('/health');
   assert.equal((await request('/health')).status, 429);
+  // Every route reported by CodeQL is mounted after the shared /api limiter.
+  for (const [method, path] of [
+    ['GET', '/upload/media'], ['PUT', '/upload/media/test.png'],
+    ['PUT', '/upload/media/test.png/rename'], ['POST', '/upload/media/test.png/recompress'],
+    ['GET', '/posts/meta/categories'], ['GET', '/posts/meta/tags'],
+    ['GET', '/posts'], ['GET', '/posts/1'], ['POST', '/posts'],
+    ['PUT', '/posts/1'], ['DELETE', '/posts/1'],
+    ['GET', '/applications/me'], ['POST', '/applications'],
+    ['POST', '/settings/mail/send-custom'],
+  ]) assert.equal((await request(path, { method })).status, 429, `${method} ${path} must be rate limited`);
   const logout = await request('/auth/logout', { method: 'POST' });
   assert.equal(logout.status, 200, 'logout remains reachable after exhausting global and auth budgets');
   assert.match(logout.headers.get('set-cookie'), /Expires=Thu, 01 Jan 1970/);
