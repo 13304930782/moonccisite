@@ -1275,3 +1275,46 @@
     margin-top: 24px;
   }
 }
+
+/* Phone layout: one compact summary, aligned chart controls; desktop stays intact. */
+@media (max-width: 640px) {
+  .electricity-page .electricity-overview {
+    margin-top: 24px;
+    gap: 0;
+    padding: 16px;
+    border: 1px solid var(--electric-border);
+    background: var(--electric-panel);
+  }
+  .electricity-page .electricity-total-card {
+    min-height: 0;
+    padding: 0 0 16px;
+    gap: 16px;
+    background: transparent;
+  }
+  .electricity-page .electricity-card-label { font-size: 10px; letter-spacing: .09em; }
+  .electricity-page .electricity-total-value { gap: 10px; flex-wrap: wrap; }
+  .electricity-page .electricity-total-value strong { font-size: 48px; line-height: 1; letter-spacing: -.065em; }
+  .electricity-page .electricity-total-value span { font-size: 18px; }
+  .electricity-page .electricity-total-foot { border: 0; padding: 0; font-size: 11px; color: var(--electric-muted); }
+  .electricity-page .electricity-metric-grid { gap: 0 20px; }
+  .electricity-page .electricity-metric-grid article { min-width: 0; min-height: 0; padding: 16px 0; gap: 7px; }
+  .electricity-page .electricity-metric-grid article:nth-last-child(-n+2) { border-bottom: 0; padding-bottom: 0; }
+  .electricity-page .electricity-metric-grid span { font-size: 12px; color: var(--electric-muted); }
+  .electricity-page .electricity-metric-grid strong { margin: 0; font-size: 30px; line-height: 1.1; overflow-wrap: anywhere; }
+  .electricity-page .electricity-metric-grid small { font-size: 11px; }
+  .electricity-page .electricity-chart-card,
+  .electricity-page .electricity-history-list { padding: 0 0 20px; margin-top: 28px; }
+  .electricity-page .electricity-chart-card .electricity-section-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 12px 8px;
+  }
+  .electricity-page .electricity-chart-card .electricity-section-head > div:first-child { display: contents; }
+  .electricity-page .electricity-chart-card .electricity-section-head > div:first-child > span { grid-column: 1 / -1; font-size: 10px; }
+  .electricity-page .electricity-chart-modes { margin-top: 0; }
+  .electricity-page .electricity-chart-card .electricity-section-head > .electricity-segment { align-self: end; }
+  .electricity-page .electricity-chart-card .electricity-segment { padding: 2px; max-width: 100%; }
+  .electricity-page .electricity-chart-card .electricity-segment button { min-height: 44px; padding: 8px 9px; font-size: 12px; }
+  .electricity-page .electricity-chart-card .electricity-chart { margin-top: 20px; }
+}
