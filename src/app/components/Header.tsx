@@ -79,7 +79,8 @@ export function Header() {
                   <Link to={admin}>
                     {user.role === 'user' ? '申请成为编辑' : '控制台'}
                   </Link>
-                  <button onClick={() => void logout()} disabled={loggingOut}>
+                  <Link to="/account/connections">账号绑定</Link>
+              <button onClick={() => void logout()} disabled={loggingOut}>
                     {loggingOut ? '正在退出…' : '退出登录'}
                   </button>
                 </div>
@@ -130,6 +131,7 @@ export function Header() {
               <Link to={admin}>
                 {user.role === 'user' ? '申请成为编辑' : '控制台'}
               </Link>
+              <Link to="/account/connections">账号绑定</Link>
               <button onClick={() => void logout()} disabled={loggingOut}>
                 {loggingOut ? '正在退出…' : '退出登录'}
               </button>

@@ -80,6 +80,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await api(path, {
           method: 'POST', body: JSON.stringify(body), signal: AbortSignal.timeout(15000),
         });
+        if (data.registration_required) {
+          if (version === authVersion.current) window.location.assign('/complete-registration');
+          throw new Error('请完成邮箱验证后继续。');
+        }
         if (version === authVersion.current) {
           clearAuthCache();
           setLogoutError('');

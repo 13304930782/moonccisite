@@ -2,7 +2,7 @@ import { ArrowRight, Lock, Mail, User } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { AuthShell } from '../components/AuthShell';
-import { GoogleSignInButton } from '../components/GoogleSignInButton';
+import { SocialLoginButtons } from '../components/SocialLoginButtons';
 import { useAuth } from '../context/AuthContext';
 
 export default function RegisterPage() {
@@ -179,10 +179,7 @@ export default function RegisterPage() {
         </button>
       </form>
 
-      <div className="auth-oauth-divider">
-        <span>或直接创建账号</span>
-      </div>
-      <GoogleSignInButton
+      <SocialLoginButtons
         context="signup"
         disabled={loading}
         onCredential={signUpWithGoogle}

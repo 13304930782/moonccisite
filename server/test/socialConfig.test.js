@@ -1,0 +1,20 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+test('OAuth secrets are authenticated ciphertext and callbacks use only configured site origin', async t => {
+  process.env.JWT_SECRET = 'oauth-fixture-encryption-key-32-characters';
+  process.env.SITE_URL = 'https://mooncci.site';
+  const store = require('../src/lib/socialConfig');
+  const secret = 'fixture-only-client-secret';
+  const value = store.encrypt(secret, 'qq');
+  assert.ok(!value.includes(secret)); assert.equal(store.decrypt(value, 'qq'), secret);
+  assert.throws(() => store.decrypt(value, 'github'));
+  assert.notEqual(store.encrypt(secret, 'qq'), value);
+  assert.equal(store.callbackUrl('qq'), 'https://mooncci.site/api/auth/qq/callback');
+  assert.equal(store.validProvider('__proto__'), false);
+  const db = require('../src/db'); t.after(() => db.end());
+  t.mock.method(db, 'query', async () => [[]]);
+  const google = await store.getConfig('google');
+  assert.equal(google.client_id, process.env.GOOGLE_CLIENT_ID || '614401761904-4g7soo2d1clsnui71h5tb9ia4j1t530m.apps.googleusercontent.com');
+  assert.equal(store.ready(google), true);
+  for (const p of ['github', 'qq', 'wechat', 'gitee']) assert.equal(store.ready(await store.getConfig(p)), false);
+});

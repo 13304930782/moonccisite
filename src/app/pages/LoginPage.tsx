@@ -2,7 +2,7 @@ import { ArrowRight, Lock, Mail } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthShell } from '../components/AuthShell';
-import { GoogleSignInButton } from '../components/GoogleSignInButton';
+import { SocialLoginButtons } from '../components/SocialLoginButtons';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
@@ -11,7 +11,7 @@ export default function LoginPage() {
   const { login, googleLogin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(params.get('oauth') === 'email_exists' ? '该邮箱已有账号，请先使用原方式登录，再到账号绑定页绑定。' : params.get('oauth') === 'failed' ? '第三方登录未完成，授权可能已取消、过期或账号不可用，请重试。' : '');
   const [loading, setLoading] = useState(false);
 
   const finishLogin = (user: { role: string }) => {
@@ -132,10 +132,8 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <div className="auth-oauth-divider">
-        <span>或使用快捷登录</span>
-      </div>
-      <GoogleSignInButton
+      <SocialLoginButtons
+        returnTo={params.get('redirect') || '/'}
         disabled={loading}
         onCredential={signInWithGoogle}
         onError={setMessage}

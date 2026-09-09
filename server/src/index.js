@@ -133,7 +133,8 @@ app.get('/api/health', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json({ ok: true });
 });
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/auth', authLimiter, require('./routes/socialLogin'));
+app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/early-access', earlyAccessLimiter, earlyAccessRoutes.publicRouter);
