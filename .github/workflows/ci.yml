@@ -20,9 +20,11 @@ jobs:
             server/package-lock.json
       - run: npm ci
       - run: npm ci --prefix server
+      - run: npm run typecheck
       - run: npm test
       - run: npm test --prefix server
       - run: npm run build
+      - run: npm run check:bundle
       - run: python3 scripts/test-offline-release.py
       - run: bash -n scripts/deploy-offline-frontend.sh
       - run: bash -n scripts/deploy-audit.sh
