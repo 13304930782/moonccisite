@@ -377,7 +377,7 @@ export default function AdminSiteSettingsPage() {
               value={now.content}
               onChange={(e) => setNow({ ...now, content: e.target.value })}
             />
-            <small>支持 Markdown，最多 2000 字。留空时首页显示默认提示。</small>
+            <small>支持 Markdown，最多 2000 字。填写后优先展示；留空时首页自动展示最新一条已发布近况。</small>
           </label>
           {now.updated_at && (
             <p className="settings-hint">
