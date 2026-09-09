@@ -17,6 +17,7 @@ const baseline = [
   '202609080001_create_companion_interactions.sql',
   '202609090001_electricity_rooms.sql',
   '202609090002_auth_revocation.sql',
+  '202609090003_update_comments.sql',
 ];
 async function main() {
   const connection = await mysql.createConnection({

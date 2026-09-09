@@ -1543,3 +1543,17 @@ input[type='checkbox'] {
 }
 .admin-back-top:hover { background: var(--muted); }
 .admin-back-top:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+
+/* Stable loading surfaces use geometry, never placeholder article content. */
+.content-skeleton { min-height: 300px; padding: 24px 0; display: flex; flex-direction: column; gap: 18px; }
+.skeleton-line,.skeleton-block { display: block; background: var(--muted); border-radius: 3px; }
+.skeleton-line { height: 15px; width: 88%; }
+.skeleton-line:nth-child(3) { width: 65%; }
+.skeleton-heading { height: 34px; width: 52%; margin-bottom: 12px; }
+.skeleton-block { height: 140px; width: 100%; opacity: .65; }
+.home-hero .content-skeleton { min-height: 240px; }
+.update-detail { min-height: 55vh; }
+.update-detail article { margin-bottom: 48px; }
+.resource-content { min-width: 0; }
+html { scrollbar-gutter: stable; }
+@media(max-width:640px) { .content-skeleton { min-height:260px; } }

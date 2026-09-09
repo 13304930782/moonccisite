@@ -29,7 +29,7 @@ async function main() {
   } finally { await setup.end(); }
   run(['--test', '--test-concurrency=1', 'test/contentPlatform.integration.test.js', 'test/platformContracts.integration.test.js',
     'test/githubVisibility.integration.test.js', 'test/contentVisibility.integration.test.js', 'test/newsletter.integration.test.js', 'test/siteSettings.integration.test.js',
-    'test/authRevocation.integration.test.js'], { DB_NAME: 'mooncci_qa_audit_v2', CONTENT_INTEGRATION: 'true', SITE_SETTINGS_INTEGRATION: 'true', AUTH_INTEGRATION: 'true' });
+    'test/authRevocation.integration.test.js', 'test/updateComments.integration.test.js'], { DB_NAME: 'mooncci_qa_audit_v2', CONTENT_INTEGRATION: 'true', SITE_SETTINGS_INTEGRATION: 'true', AUTH_INTEGRATION: 'true' });
   run(['--test', 'test/electricityRss.integration.test.js'], { DB_NAME: 'mooncci_electricity_rss_qa', ELECTRICITY_RSS_INTEGRATION: 'true' });
   run(['--test', 'test/electricityHistorySync.integration.test.js'], { DB_NAME: 'mooncci_electricity_rss_qa', ELECTRICITY_HISTORY_INTEGRATION: 'true' });
   run(['--test', 'test/electricityRooms.integration.test.js'], { DB_NAME: 'mooncci_electricity_rooms_qa', ELECTRICITY_ROOMS_INTEGRATION: 'true' });

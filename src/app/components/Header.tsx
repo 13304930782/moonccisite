@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { ThemeToggle } from '../context/ThemeContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { safeImageSrc } from '../lib/safeUrl';
+import { preloadPage } from '../lib/preloadPage';
 export function Header() {
   const { user, logout, loggingOut, logoutError } = useAuth();
   const { data: settings } = useSiteSettings();
@@ -55,7 +56,7 @@ export function Header() {
         </Link>
         <nav className="desktop-nav" aria-label="主导航">
           {links.map(([to, label]) => (
-            <NavLink key={to} to={to}>
+            <NavLink key={to} to={to} onPointerEnter={() => preloadPage(to)} onFocus={() => preloadPage(to)} onTouchStart={() => preloadPage(to)}>
               {label}
             </NavLink>
           ))}

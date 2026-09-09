@@ -5,8 +5,13 @@ import { Header } from './Header';
 import { SiteFooter } from './SiteFooter';
 
 export type PageData<T = any> = { items: T[]; total: number; page: number; pageSize: number };
+// Only published, user-independent endpoints may share an in-memory snapshot.
+const publicSnapshots = new Map<string, { data: any; time: number }>();
+const cacheable = (path: string) => /^\/(now|activity|projects|updates)(?:[/?]|$)/.test(path);
 export function useResource<T = any>(path: string) {
-  const [data, setData] = useState<T | null>(null),
+  const cached = cacheable(path) ? publicSnapshots.get(path) : undefined;
+  const snapshot = cached && Date.now() - cached.time < 30000 ? cached.data : null;
+  const [state, setState] = useState<{ path: string; data: T | null }>({ path, data: snapshot }),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true),
     [version, setVersion] = useState(0);
@@ -15,13 +20,25 @@ export function useResource<T = any>(path: string) {
     let active = true;
     setLoading(true);
     setError('');
-    setData(null);
+    setState(current => current.path === path ? current : { path, data: snapshot });
     api(path)
       .then((v) => {
-        if (active) setData(v);
+        if (active) {
+          setState({ path, data: v });
+          if (cacheable(path)) {
+            if (publicSnapshots.size >= 40) publicSnapshots.delete(publicSnapshots.keys().next().value!);
+            publicSnapshots.set(path, { data: v, time: Date.now() });
+          }
+        }
       })
       .catch((e) => {
-        if (active) setError(e.message);
+        if (active) {
+          setError(e.message);
+          if ([401, 403, 404].includes(e.status)) {
+            publicSnapshots.delete(path);
+            setState({ path, data: null });
+          }
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -30,7 +47,14 @@ export function useResource<T = any>(path: string) {
       active = false;
     };
   }, [path, version]);
-  return { data, error, loading, reload };
+  return { data: state.path === path ? state.data : snapshot, error: state.path === path ? error : '', loading: loading || state.path !== path, reload };
+}
+export function ContentSkeleton() {
+  return <div className="content-skeleton" role="status" aria-label="正在加载内容" aria-busy="true">
+    <span className="skeleton-line skeleton-heading" /><span className="skeleton-line" />
+    <span className="skeleton-line" /><span className="skeleton-block" />
+    <span className="sr-only">正在加载内容…</span>
+  </div>;
 }
 export function ResourceState({
   resource,
@@ -39,13 +63,8 @@ export function ResourceState({
   resource: ReturnType<typeof useResource>;
   children: ReactNode;
 }) {
-  if (resource.loading)
-    return (
-      <p className="quiet-state" role="status">
-        正在加载…
-      </p>
-    );
-  if (resource.error)
+  if (resource.loading && resource.data === null) return <ContentSkeleton />;
+  if (resource.error && resource.data === null)
     return (
       <div className="quiet-state" role="alert">
         <p>{resource.error}</p>
@@ -54,7 +73,10 @@ export function ResourceState({
         </button>
       </div>
     );
-  return <>{children}</>;
+  return <div className="resource-content" aria-busy={resource.loading}>
+    {resource.error && <p className="muted" role="status">暂时无法更新，保留上次加载的内容。 <button className="text-link" onClick={resource.reload}>重试</button></p>}
+    {children}
+  </div>;
 }
 export function SitePage({ children, narrow = false }: { children: ReactNode; narrow?: boolean }) {
   return (

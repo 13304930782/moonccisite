@@ -22,12 +22,17 @@ const Context = createContext<(SettingsState & { reload: () => void }) | null>(
   null,
 );
 
+const snapshotKey = 'mooncci-public-settings-v1';
+function readSnapshot(): SiteSettings | null {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(snapshotKey) || 'null');
+    if (!saved || Date.now() - saved.time > 300000) return null;
+    return ['brand', 'hero', 'footer'].every(key => saved.data?.[key] && typeof saved.data[key] === 'object' && !Array.isArray(saved.data[key])) ? saved.data : null;
+  } catch { return null; }
+}
+
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SettingsState>({
-    data: null,
-    loading: true,
-    error: '',
-  });
+  const [state, setState] = useState<SettingsState>(() => { const data = readSnapshot(); return { data, loading: !data, error: '' }; });
   const [version, setVersion] = useState(0);
   const reload = useCallback(() => setVersion((value) => value + 1), []);
   useEffect(() => {
@@ -45,8 +50,10 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
         ) {
           throw new Error('站点配置格式不正确，请稍后重试。');
         }
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
           setState({ data, loading: false, error: '' });
+          try { sessionStorage.setItem(snapshotKey, JSON.stringify({ data, time: Date.now() })); } catch {}
+        }
       })
       .catch((error) => {
         if (!controller.signal.aborted)

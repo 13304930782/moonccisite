@@ -1249,3 +1249,14 @@
     font-size: 16px;
   }
 }
+
+.electricity-chart { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.electricity-chart-canvas { height: 100%; width: 100%; }
+.electricity-chart::-webkit-scrollbar,.electricity-table-scroll::-webkit-scrollbar { display: none; }
+.electricity-table-scroll { scrollbar-width: none; }
+@media(max-width:640px) {
+  .electricity-chart-canvas { min-width: 560px; }
+  .electricity-chart[data-days="30"] .electricity-chart-canvas { min-width: 1320px; }
+  .electricity-chart { overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+  .electricity-chart-card { min-width: 0; max-width: 100%; }
+}

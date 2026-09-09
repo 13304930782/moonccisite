@@ -1,3 +1,4 @@
+import { CommentSection } from '../components/CommentSection';
 import { useSearchParams, useParams, Link } from 'react-router-dom';
 import {
   SitePage,
@@ -5,7 +6,6 @@ import {
   ActivityList,
   ResourceState,
   Pagination,
-  SubscribeForm,
   useResource,
   formatDate,
 } from '../components/ContentUI';
@@ -45,7 +45,6 @@ export default function UpdatesPage() {
           </>
         )}
       </ResourceState>
-      <SubscribeForm />
     </SitePage>
   );
 }
@@ -59,7 +58,7 @@ export function UpdateDetailPage() {
       </Link>
       <ResourceState resource={resource}>
         {resource.data && (
-          <article>
+          <div className="update-detail"><article>
             <PageHeading eyebrow="NOTE" title="一则近况">
               <time>{formatDate(resource.data.published_at)}</time>
             </PageHeading>
@@ -71,10 +70,9 @@ export function UpdateDetailPage() {
                 alt="动态配图"
               />
             )}
-          </article>
+          </article><CommentSection key={id} updateId={resource.data.id} /></div>
         )}
       </ResourceState>
-      <SubscribeForm />
     </SitePage>
   );
 }

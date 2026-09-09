@@ -176,7 +176,7 @@ router.get('/comments', adminOnly, async (req, res) => {
   }
 
   if (keyword) {
-    where.push('(c.content LIKE ? OR u.username LIKE ? OR u.email LIKE ? OR p.title LIKE ? OR c.ip_address LIKE ?)');
+    where.push('(c.content LIKE ? OR u.username LIKE ? OR u.email LIKE ? OR COALESCE(p.title,n.content) LIKE ? OR c.ip_address LIKE ?)');
     params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
   }
 
@@ -187,6 +187,7 @@ router.get('/comments', adminOnly, async (req, res) => {
     SELECT
       c.id,
       c.post_id,
+      c.update_id,
       c.user_id,
       c.parent_id,
       c.reply_to_user_id,
@@ -198,10 +199,11 @@ router.get('/comments', adminOnly, async (req, res) => {
       c.created_at,
       u.username AS author_name,
       u.email AS author_email,
-      p.title AS post_title
+      COALESCE(p.title, LEFT(n.content,80)) AS post_title
     FROM comments c
     JOIN users u ON u.id = c.user_id
-    JOIN posts p ON p.id = c.post_id
+    LEFT JOIN posts p ON p.id = c.post_id
+    LEFT JOIN updates n ON n.id = c.update_id
     ${whereSql}
     ORDER BY c.created_at DESC
     LIMIT 300
@@ -237,10 +239,11 @@ router.put('/comments/:id', adminOnly, async (req, res) => {
       c.*,
       u.username AS author_name,
       u.email AS author_email,
-      p.title AS post_title
+      COALESCE(p.title, LEFT(n.content,80)) AS post_title
     FROM comments c
     JOIN users u ON u.id = c.user_id
-    JOIN posts p ON p.id = c.post_id
+    LEFT JOIN posts p ON p.id = c.post_id
+    LEFT JOIN updates n ON n.id = c.update_id
     WHERE c.id=?
     LIMIT 1
     `,
@@ -271,7 +274,7 @@ router.put('/comments/:id', adminOnly, async (req, res) => {
   if (!write.affectedRows) return res.status(409).json({ message: '评论已被其他操作更新，请刷新后重试。' });
   const notification = ['visible', 'rejected'].includes(status)
     ? await attemptNotification(() => sendCommentReviewNotification({
-        postId: comment.post_id, postTitle: comment.post_title,
+        postId: comment.post_id, updateId: comment.update_id, postTitle: comment.post_title,
         authorName: comment.author_name, authorEmail: comment.author_email, content: comment.content,
       }, status))
     : { status: 'not_needed' };

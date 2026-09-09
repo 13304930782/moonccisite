@@ -12,7 +12,7 @@ import {
   useResource,
 } from '../components/ContentUI';
 import { useSiteSettings } from '../context/SiteSettingsContext';
-import { ProjectCard } from './ProjectsPage';
+import { ProjectCard } from '../components/ProjectCard';
 function HeroLink({ to, label }: { to: string; label: string }) {
   return isExternalHttpUrl(to) ? (
     <a
