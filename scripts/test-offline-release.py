@@ -22,6 +22,7 @@ class OfflineReleaseTests(unittest.TestCase):
         (self.root / 'dist/assets').mkdir(parents=True)
         (self.root / 'dist/index.html').write_bytes(b'new page')
         (self.root / 'dist/assets/app.js').write_bytes(b'new script')
+        (self.root / 'dist/asset-manifest.json').write_bytes(b'{"rev":2}')
         (self.root / 'scripts').mkdir()
         shutil.copy(HERE / 'deploy-offline-frontend.sh', self.root / 'scripts')
         shutil.copy(HERE / 'verify-live.mjs', self.root / 'scripts')
@@ -50,6 +51,10 @@ class OfflineReleaseTests(unittest.TestCase):
         web.mkdir()
         (web / 'index.html').write_bytes(b'old page')
         (web / 'old-hash.js').write_bytes(b'old asset')
+        # TarInfo uses mtime=0. A same-size manifest from an earlier release must
+        # be copied even though rsync's ordinary size/mtime quick check matches.
+        (web / 'asset-manifest.json').write_bytes(b'{"rev":1}')
+        os.utime(web / 'asset-manifest.json', (0, 0))
         env = {**os.environ, 'MOONCCI_WEB_ROOT': str(web), 'MOONCCI_BACKUP_ROOT': str(self.root / 'backups')}
         def run():
             return subprocess.run(['bash', str(package / 'deploy.sh')], env=env, capture_output=True, timeout=20)
@@ -62,6 +67,7 @@ class OfflineReleaseTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((web / 'index.html').read_bytes(), b'new page')
         self.assertEqual((web / 'old-hash.js').read_bytes(), b'old asset')
+        self.assertEqual((web / 'asset-manifest.json').read_bytes(), b'{"rev":2}')
         # A copier that reports success but corrupts a resource must trigger rollback.
         (web / 'index.html').write_bytes(b'rollback target')
         binaries = self.root / 'bin'
