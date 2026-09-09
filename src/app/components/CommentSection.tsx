@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Heart, MessageCircle, Reply, Send, Trash2, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -75,10 +75,18 @@ function getCommentRule(role?: string) {
   return '评论审核通过后公开，待审核内容仅你自己可见。';
 }
 
-export function CommentSection({ postId }: { postId: number | string }) {
+export function CommentSection({ postId, updateId }: { postId?: number | string; updateId?: number | string }) {
+  const { user } = useAuth();
+  return <CommentThread key={`${updateId ? 'update' : 'post'}:${updateId || postId}:${user?.id || 'guest'}`} postId={postId} updateId={updateId} />;
+}
+function CommentThread({ postId, updateId }: { postId?: number | string; updateId?: number | string }) {
+  const targetId = updateId || postId;
+  const endpoint = '/comments/' + (updateId ? 'update/' : 'post/') + targetId;
   const { user } = useAuth();
 
   const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(true);
+  const requestVersion = useRef(0);
   const [sort, setSort] = useState('latest');
   const [content, setContent] = useState('');
   const [message, setMessage] = useState('');
@@ -88,15 +96,19 @@ export function CommentSection({ postId }: { postId: number | string }) {
   const [submittingReply, setSubmittingReply] = useState(false);
 
   const loadComments = () => {
-    api('/comments/post/' + postId + '?sort=' + sort)
-      .then(setComments)
-      .catch((err) => setMessage(err.message || '评论加载失败'));
+    const version = ++requestVersion.current;
+    setCommentsLoading(true);
+    api(endpoint + '?sort=' + sort)
+      .then(rows => { if (version === requestVersion.current) setComments(rows); })
+      .catch((err) => { if (version === requestVersion.current) setMessage(err.message || '评论加载失败'); })
+      .finally(() => { if (version === requestVersion.current) setCommentsLoading(false); });
   };
 
   useEffect(() => {
-    if (!postId) return;
+    if (!targetId) return;
     loadComments();
-  }, [postId, sort, user?.id]);
+    return () => { requestVersion.current++; };
+  }, [endpoint, sort, user?.id]);
 
   const commentTree = useMemo(() => {
     const top = comments.filter((c) => !c.parent_id);
@@ -124,7 +136,7 @@ export function CommentSection({ postId }: { postId: number | string }) {
     setMessage('');
 
     try {
-      const res = await api('/comments/post/' + postId, {
+      const res = await api(endpoint, {
         method: 'POST',
         body: JSON.stringify({ content }),
       });
@@ -153,7 +165,7 @@ export function CommentSection({ postId }: { postId: number | string }) {
     setMessage('');
 
     try {
-      const res = await api('/comments/post/' + postId, {
+      const res = await api(endpoint, {
         method: 'POST',
         body: JSON.stringify({
           content: replyContent,
@@ -428,8 +440,9 @@ export function CommentSection({ postId }: { postId: number | string }) {
         </div>
       </form>
 
-      <div className="mt-8 space-y-2">
-        {comments.length === 0 && (
+      <div className="mt-8 space-y-2" aria-busy={commentsLoading}>
+        {commentsLoading && comments.length === 0 && <p className="quiet-state" role="status">正在读取评论…</p>}
+        {!commentsLoading && !message && comments.length === 0 && (
           <div className="rounded-[10px] bg-muted  px-5 py-8 text-center text-muted-foreground">
             暂无评论
           </div>

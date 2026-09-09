@@ -175,7 +175,7 @@ async function sendCommentReviewNotification(comment, status) {
   }
 
   const siteUrl = safeSiteUrl(config.site_url);
-  const articleUrl = `${siteUrl}/article/${encodeURIComponent(comment.postId)}`;
+  const articleUrl = `${siteUrl}/${comment.updateId ? 'updates' : 'article'}/${encodeURIComponent(comment.updateId || comment.postId)}`;
   const passed = status === 'visible';
   const resultText = passed ? 'approved and visible' : 'rejected and not visible';
   const subject = passed

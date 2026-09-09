@@ -483,6 +483,8 @@ function ElectricityDashboard({
               ) : (
                 <div
                   className="electricity-chart"
+                  data-days={days}
+                  tabIndex={0}
                   aria-label={`最近 ${days} 天${chartMode === 'balance' ? '余额折线图' : '日用电柱状图'}`}
                   data-chart-mode={chartMode}
                   data-motion={reduceMotion ? 'reduced' : 'enabled'}
@@ -497,7 +499,7 @@ function ElectricityDashboard({
                       setTooltipTrigger('hover');
                   }}
                 >
-                  <ChartViewport>
+                  <div className="electricity-chart-canvas"><ChartViewport>
                     {({ width, height }) => (
                       <div key={chartMode} className="electricity-chart-enter">
                         <ComposedChart
@@ -586,7 +588,7 @@ function ElectricityDashboard({
                         </ComposedChart>
                       </div>
                     )}
-                  </ChartViewport>
+                  </ChartViewport></div>
                 </div>
               )}
               <div className="electricity-insights">

@@ -123,7 +123,7 @@ export default function AdminCommentsPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                     <span>#{item.id}</span>
-                    <span>文章：{item.post_title}</span>
+                    <span>内容：{item.post_title}</span>
                     <span>用户：{item.author_name}</span>
                     <span>邮箱：{item.author_email}</span>
                   </div>

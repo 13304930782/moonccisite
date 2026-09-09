@@ -83,19 +83,22 @@ async function checkBannedWords(content) {
  * 3. 自己的 pending 评论永远排最上面
  * 4. 支持 sort=latest / oldest / likes
  */
-router.get('/post/:postId', async (req, res) => {
+router.get(['/post/:postId', '/update/:updateId'], async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'private, no-store');
     res.vary('Cookie');
     res.vary('Authorization');
     const viewer = await optionalUser(req);
-    const [[post]] = await db.query('SELECT status,author_id FROM posts WHERE id=? LIMIT 1', [req.params.postId]);
+    const isUpdate = Boolean(req.params.updateId);
+    const targetId = req.params.updateId || req.params.postId;
+    const column = isUpdate ? 'update_id' : 'post_id';
+    const [[post]] = await db.query(`SELECT status,author_id FROM ${isUpdate ? 'updates' : 'posts'} WHERE id=? LIMIT 1`, [targetId]);
     if (!post || (post.status !== 'published' && !['owner', 'admin'].includes(viewer?.role) && Number(post.author_id) !== Number(viewer?.id))) {
-      return res.status(404).json({ message: '文章不存在' });
+      return res.status(404).json({ message: '内容不存在' });
     }
     const sort = String(req.query.sort || 'latest');
 
-    const params = [req.params.postId];
+    const params = [targetId];
     let ownSql = '';
 
     if (viewer) {
@@ -125,6 +128,7 @@ router.get('/post/:postId', async (req, res) => {
       SELECT
         c.id,
         c.post_id,
+        c.update_id,
         c.user_id,
         c.parent_id,
         c.reply_to_user_id,
@@ -153,7 +157,7 @@ router.get('/post/:postId', async (req, res) => {
       FROM comments c
       JOIN users u ON u.id = c.user_id
       LEFT JOIN users ru ON ru.id = c.reply_to_user_id
-      WHERE c.post_id = ?
+      WHERE c.${column} = ?
         AND (
           c.status = 'visible'
           ${ownSql}
@@ -206,11 +210,14 @@ router.get('/post/:postId', async (req, res) => {
  * 发表评论 / 回复评论
  * 默认 pending，管理员审核后公开显示
  */
-router.post('/post/:postId', authRequired, async (req, res) => {
+router.post(['/post/:postId', '/update/:updateId'], authRequired, async (req, res) => {
   try {
     console.log('[comments/create] 收到新评论请求');
 
     const { content, parent_id, reply_to_user_id } = req.body;
+    const isUpdate = Boolean(req.params.updateId);
+    const targetId = req.params.updateId || req.params.postId;
+    const column = isUpdate ? 'update_id' : 'post_id';
 
     const normalizedContent = String(content || '').trim();
 
@@ -242,14 +249,14 @@ router.post('/post/:postId', authRequired, async (req, res) => {
     }
 
     const [posts] = await db.query(
-      'SELECT id, title FROM posts WHERE id=? AND status="published" LIMIT 1',
-      [req.params.postId]
+      `SELECT id, ${isUpdate ? 'LEFT(content,80)' : 'title'} AS title FROM ${isUpdate ? 'updates' : 'posts'} WHERE id=? AND status="published" LIMIT 1`,
+      [targetId]
     );
 
     const post = posts[0];
 
     if (!post) {
-      return res.status(404).json({ message: '文章不存在' });
+      return res.status(404).json({ message: '内容不存在' });
     }
 
     let normalizedParentId = parent_id || null;
@@ -260,23 +267,23 @@ router.post('/post/:postId', authRequired, async (req, res) => {
         `
         SELECT c.user_id
         FROM comments c
-        WHERE c.post_id = ?
+        WHERE c.${column} = ?
           AND c.user_id = ?
           AND c.status != 'deleted'
         LIMIT 1
         `,
-        [req.params.postId, normalizedReplyToUserId]
+        [targetId, normalizedReplyToUserId]
       );
 
       if (!replyUsers[0]) {
-        return res.status(400).json({ message: '被回复的用户不属于当前文章评论区' });
+        return res.status(400).json({ message: '被回复的用户不属于当前内容评论区' });
       }
     }
 
     if (normalizedParentId) {
       const [parents] = await db.query(
-        'SELECT id, user_id, post_id, status FROM comments WHERE id=? AND post_id=? AND status != "deleted" LIMIT 1',
-        [normalizedParentId, req.params.postId]
+        `SELECT id, user_id, post_id, update_id, status FROM comments WHERE id=? AND ${column}=? AND status != "deleted" LIMIT 1`,
+        [normalizedParentId, targetId]
       );
 
       const parent = parents[0];
@@ -315,11 +322,11 @@ router.post('/post/:postId', authRequired, async (req, res) => {
     const [result] = await db.query(
       `
       INSERT INTO comments
-      (post_id, user_id, parent_id, reply_to_user_id, content, ip_address, ip_location, user_agent, status)
+      (${column}, user_id, parent_id, reply_to_user_id, content, ip_address, ip_location, user_agent, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
-        req.params.postId,
+        targetId,
         user.id,
         normalizedParentId,
         normalizedReplyToUserId,
@@ -385,7 +392,7 @@ router.post('/:id/like', authRequired, async (req, res) => {
     }
 
     const [rows] = await db.query(
-      'SELECT c.id, c.status FROM comments c JOIN posts p ON p.id=c.post_id WHERE c.id=? AND p.status="published" LIMIT 1',
+      `SELECT c.id, c.status FROM comments c LEFT JOIN posts p ON p.id=c.post_id LEFT JOIN updates n ON n.id=c.update_id WHERE c.id=? AND ((c.post_id IS NOT NULL AND p.status='published') OR (c.update_id IS NOT NULL AND n.status='published')) LIMIT 1`,
       [req.params.id]
     );
 

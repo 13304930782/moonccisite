@@ -1,45 +1,47 @@
 import { SiteSettingsProvider } from './context/SiteSettingsContext';
-import RssPage from './pages/RssPage';
+const RssPage = lazy(() => import('./pages/RssPage'));
 import HomePage from './pages/HomePage';
-import UpdatesPage,{UpdateDetailPage} from './pages/UpdatesPage';
-import ProjectsPage,{ProjectDetailPage} from './pages/ProjectsPage';
-import SubscriptionPage from './pages/SubscriptionPage';
-import {AdminUpdatesPage,AdminProjectsPage,AdminNewsletterPage} from './pages/AdminContentPage';
+const UpdatesPage = lazy(() => import('./pages/UpdatesPage'));
+const UpdateDetailPage = lazy(() => import('./pages/UpdatesPage').then(m => ({ default: m.UpdateDetailPage })));
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
+const ProjectDetailPage = lazy(() => import('./pages/ProjectsPage').then(m => ({ default: m.ProjectDetailPage })));
+const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
+const AdminUpdatesPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminUpdatesPage })));
+const AdminProjectsPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminProjectsPage })));
+const AdminNewsletterPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminNewsletterPage })));
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { lazy, Suspense, useEffect, useState } from 'react';
-import { api } from './lib/api';
-import LoginPage from './pages/LoginPage';
-import AdminLoginPage from './pages/AdminLoginPage';
-import RegisterPage from './pages/RegisterPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import AdminPage from './pages/AdminPage';
-import AdminPostsPage from './pages/AdminPostsPage';
-import AdminWritePage from './pages/AdminWritePage';
-import AdminUsersPage from './pages/AdminUsersPage';
-import AdminCommentsPage from './pages/AdminCommentsPage';
-import AdminBannedWordsPage from './pages/AdminBannedWordsPage';
-import EditorApplyPage from './pages/EditorApplyPage';
-import AdminEditorApplicationsPage from './pages/AdminEditorApplicationsPage';
-import AdminSiteSettingsPage from './pages/AdminSiteSettingsPage';
-import AdminMailSettingsPage from './pages/AdminMailSettingsPage';
-import AdminSendMailPage from './pages/AdminSendMailPage';
-import AdminMediaPage from './pages/AdminMediaPage';
-import ArticlePage from './pages/ArticlePage';
-import ArticlesPage from './pages/ArticlesPage';
-import TagPage from './pages/TagPage';
-import TagsPage from './pages/TagsPage';
-import CategoryPage from './pages/CategoryPage';
-import CategoriesPage from './pages/CategoriesPage';
-import SearchPage from './pages/SearchPage';
-import EarlyAccessPage from './pages/EarlyAccessPage';
-import AdminEarlyAccessPage from './pages/AdminEarlyAccessPage';
-import AdminEarlyAccessDetailPage from './pages/AdminEarlyAccessDetailPage';
+import { lazy, Suspense, useLayoutEffect } from 'react';
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const AdminPostsPage = lazy(() => import('./pages/AdminPostsPage'));
+const AdminWritePage = lazy(() => import('./pages/AdminWritePage'));
+const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
+const AdminCommentsPage = lazy(() => import('./pages/AdminCommentsPage'));
+const AdminBannedWordsPage = lazy(() => import('./pages/AdminBannedWordsPage'));
+const EditorApplyPage = lazy(() => import('./pages/EditorApplyPage'));
+const AdminEditorApplicationsPage = lazy(() => import('./pages/AdminEditorApplicationsPage'));
+const AdminSiteSettingsPage = lazy(() => import('./pages/AdminSiteSettingsPage'));
+const AdminMailSettingsPage = lazy(() => import('./pages/AdminMailSettingsPage'));
+const AdminSendMailPage = lazy(() => import('./pages/AdminSendMailPage'));
+const AdminMediaPage = lazy(() => import('./pages/AdminMediaPage'));
+const ArticlePage = lazy(() => import('./pages/ArticlePage'));
+const ArticlesPage = lazy(() => import('./pages/ArticlesPage'));
+const TagPage = lazy(() => import('./pages/TagPage'));
+const TagsPage = lazy(() => import('./pages/TagsPage'));
+const CategoryPage = lazy(() => import('./pages/CategoryPage'));
+const CategoriesPage = lazy(() => import('./pages/CategoriesPage'));
+const SearchPage = lazy(() => import('./pages/SearchPage'));
+const EarlyAccessPage = lazy(() => import('./pages/EarlyAccessPage'));
+const AdminEarlyAccessPage = lazy(() => import('./pages/AdminEarlyAccessPage'));
+const AdminEarlyAccessDetailPage = lazy(() => import('./pages/AdminEarlyAccessDetailPage'));
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AdminShell } from './components/admin/AdminShell';
 import { SiteMeta } from './components/SiteMeta';
-import { ArrowRight, BookMarked, Code2, Compass, Lightbulb } from 'lucide-react';
+import { SitePage, ContentSkeleton } from './components/ContentUI';
 import { ThemeProvider } from './context/ThemeContext';
 
 const ElectricityPage = lazy(() => import('./pages/ElectricityPage'));
@@ -52,7 +54,7 @@ function PublicWeatherCompanion() {
 }
 
 function RouteLoader() {
-  return <div className="min-h-screen grid place-items-center font-medium">正在加载页面…</div>;
+  return <SitePage><ContentSkeleton /></SitePage>;
 }
 
 function isAdminRole(role?: string) {
@@ -96,6 +98,12 @@ function Guard({
   return children;
 }
 
+function ScrollToPageTop() {
+  const { pathname } = useLocation();
+  useLayoutEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }, [pathname]);
+  return null;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -103,7 +111,8 @@ export default function App() {
       <AuthProvider>
         <SiteMeta />
         <BrowserRouter>
-          <Routes>
+          <ScrollToPageTop />
+          <Suspense fallback={<RouteLoader />}><Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/updates" element={<UpdatesPage/>}/>
           <Route path="/updates/:id" element={<UpdateDetailPage/>}/>
@@ -148,7 +157,7 @@ export default function App() {
           <Route path="/admin/electricity" element={<Guard ownerOnly><AdminShell><Suspense fallback={<RouteLoader />}><AdminElectricityPage /></Suspense></AdminShell></Guard>} />
 
           <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
+          </Routes></Suspense>
           <PublicWeatherCompanion />
         </BrowserRouter>
       </AuthProvider>
