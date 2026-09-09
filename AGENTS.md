@@ -20,3 +20,8 @@ Turn the current personal blog source into a full-stack blog system with authent
 - Add or update `DEPLOY.md` for BaoTa deployment.
 - Ensure `npm install` and `npm run build` work for the frontend.
 - Provide clear startup commands for both frontend and backend.
+
+## Release workflow (user preference)
+- After GitHub push/merge, build and verify a local deployment archive and provide Windows PowerShell upload commands plus server offline deployment/log commands. Do not make the production server download GitHub or build frontend dependencies by default.
+- Write all shell scripts, checksum sidecars and manifests as LF bytes, including on Windows. Verify archived files and checksum contents before handing off.
+- Run deployment in a child shell with nohup; never put set -e or exit in the interactive SSH shell. Preserve historical SQL, .env and uploads. Frontend-only releases must not restart PM2 or execute migrations. Backend/dependency/migration releases require a separately reviewed scoped package; never claim the frontend packer deploys them.

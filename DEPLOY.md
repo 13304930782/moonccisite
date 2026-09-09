@@ -274,3 +274,12 @@ bash /root/mooncci-electricity-charts-20260908/deploy-electricity-charts.sh
 ### 后台列表与媒体库容量修复
 
 参见 [CAPACITY-2026-09-09.md](CAPACITY-2026-09-09.md)。使用 `scripts/deploy-media-capacity.sh <完整提交号>` 后台部署，本批无需数据库迁移或依赖更新，仅重启 API。
+
+
+## 默认发布方式：电脑打包、离线上传
+
+前端更新在干净且已提交的源码上运行 `python scripts/build-offline-release.py`。脚本先构建，再生成 `.cache/mooncci-frontend-<提交号前12位>.tar.gz`、LF 校验文件和 `.cache/offline-release.json`；任何打包内容不一致都中止。执行 `powershell -ExecutionPolicy Bypass -File scripts/Upload-OfflineRelease.ps1` 上传，脚本在本机再次校验并输出服务器命令。服务器不访问 GitHub/npm。
+
+服务端校验包内文件、等待部署锁（最多120秒）、备份 index、复制静态资源并最后替换入口；不删除旧哈希资源。切换后校验失败则恢复入口，按备份目录记录退出码，日志带时间。文件校验通过不等于公网 HTTPS/CDN 已验收，完成后仍需刷新实际页面检查。
+
+此标准包**仅包含前端**。后端代码、依赖及增量迁移继续使用每批单独审核的白名单包，保护已执行的历史 SQL，不把 Windows node_modules 上传到 Linux。本轮发布流程改进无业务或数据库变更。
