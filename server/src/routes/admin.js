@@ -36,6 +36,43 @@ function isSameUser(a, b) {
   return Number(a) === Number(b);
 }
 
+// Status and session invalidation must commit together: reactivation must never
+// restore a token issued before the account was disabled.
+async function persistAccountChange(sql, params, invalidateUserId, ownerActorId) {
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    if (ownerActorId !== undefined) {
+      // Serialize owner changes and recheck the actor under the same lock.
+      // Two owners must not concurrently disable/demote each other and leave
+      // the site without an active owner.
+      const [owners] = await connection.query('SELECT id,status FROM users WHERE role="owner" ORDER BY id FOR UPDATE');
+      if (!owners.some(owner => Number(owner.id) === Number(ownerActorId) && owner.status === 'active')) {
+        await connection.rollback();
+        return 'forbidden';
+      }
+    }
+    const [write] = await connection.query(sql, params);
+    if (!write.affectedRows) {
+      await connection.rollback();
+      return false;
+    }
+    if (invalidateUserId !== undefined) {
+      await connection.query(
+        'INSERT INTO auth_invalidations (user_id,invalid_before) VALUES (?,?) ON DUPLICATE KEY UPDATE invalid_before=GREATEST(invalid_before,VALUES(invalid_before))',
+        [invalidateUserId, Date.now()]
+      );
+    }
+    await connection.commit();
+    return true;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 router.get('/users', adminOnly, async (req, res) => {
   const where = [], params = [];
   const keyword = String(req.query.keyword || '').trim().slice(0, 255);
@@ -101,11 +138,14 @@ router.put('/users/:id', adminOnly, async (req, res) => {
   const updated = { ...old, role: nextRole, status: nextStatus, can_comment: nextCanComment };
   if (!accountPermissionChanges(old, updated).length)
     return res.json({ message: '设置未变化，未重复发送通知', notification: { status: 'not_needed' } });
-  const [write] = await db.query(
+  const written = await persistAccountChange(
     'UPDATE users SET role=?, status=?, can_comment=? WHERE id=? AND role=? AND status=? AND can_comment <=> ?',
-    [nextRole, nextStatus, nextCanComment, req.params.id, old.role, old.status, old.can_comment]
+    [nextRole, nextStatus, nextCanComment, req.params.id, old.role, old.status, old.can_comment],
+    nextStatus === 'disabled' ? old.id : undefined,
+    old.role === 'owner' || nextRole === 'owner' ? req.user.id : undefined
   );
-  if (!write.affectedRows) return res.status(409).json({ message: '用户设置已被更新，请刷新后重试。' });
+  if (written === 'forbidden') return res.status(403).json({ message: '站长权限已变化，请刷新后重试。' });
+  if (!written) return res.status(409).json({ message: '用户设置已被更新，请刷新后重试。' });
   const notification = await attemptNotification(() => sendUserPermissionsNotification(old, updated));
   res.json({ message: notificationMessage('更新成功', notification), notification });
 });
@@ -135,10 +175,6 @@ router.delete('/users/:id', adminOnly, async (req, res) => {
     return res.status(400).json({ message: 'You cannot delete your own account' });
   }
 
-  if (old.role === 'owner' && !isOwner(req.user)) {
-    return res.status(403).json({ message: 'Only owner can delete owner account' });
-  }
-
   if (old.role === 'owner' && old.status === 'active') {
     const [ownerRows] = await db.query(
       'SELECT COUNT(*) AS count FROM users WHERE role="owner" AND status="active"'
@@ -150,10 +186,14 @@ router.delete('/users/:id', adminOnly, async (req, res) => {
     }
   }
 
-  await db.query(
-    'UPDATE users SET status="disabled", can_comment=0 WHERE id=?',
-    [targetId]
+  const written = await persistAccountChange(
+    'UPDATE users SET status="disabled", can_comment=0 WHERE id=? AND role=? AND status=?',
+    [targetId, old.role, old.status],
+    targetId,
+    old.role === 'owner' ? req.user.id : undefined
   );
+  if (written === 'forbidden') return res.status(403).json({ message: '站长权限已变化，请刷新后重试。' });
+  if (!written) return res.status(409).json({ message: '用户设置已被更新，请刷新后重试。' });
 
   res.json({ message: 'User has been disabled. Posts and comments were kept.' });
 });

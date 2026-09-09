@@ -15,6 +15,7 @@ test('real admin routes notify once after persisted changes, report mail failure
     if(mailFailure)throw Error('SMTP failure with private details');sent.push(mail);return {messageId:'test'};
   }}));
   async function query(sql,args=[]) {
+    if(sql.startsWith('INSERT INTO auth_invalidations'))return [{affectedRows:1}];
     if(sql.includes('FROM site_settings'))return [[{setting_value:JSON.stringify(config)}]];
     if(sql.includes('FROM users'))return [[users[Number(args[0])]].filter(Boolean)];
     if(sql.includes('FROM comments c'))return [[{...comment}]];
