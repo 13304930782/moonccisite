@@ -1,0 +1,9 @@
+{
+  "entryJsBytes": 280000,
+  "entryJsGzipBytes": 90000,
+  "entryCssBytes": 170000,
+  "entryCssGzipBytes": 32000,
+  "maxJsChunkBytes": 450000,
+  "totalJsBytes": 2200000,
+  "totalJsGzipBytes": 750000
+}

@@ -283,3 +283,6 @@ bash /root/mooncci-electricity-charts-20260908/deploy-electricity-charts.sh
 服务端校验包内文件、等待部署锁（最多120秒）、备份 index、复制静态资源并最后替换入口；不删除旧哈希资源。切换后校验失败则恢复入口，按备份目录记录退出码，日志带时间。文件校验通过不等于公网 HTTPS/CDN 已验收，完成后仍需刷新实际页面检查。
 
 此标准包**仅包含前端**。后端代码、依赖及增量迁移继续使用每批单独审核的白名单包，保护已执行的历史 SQL，不把 Windows node_modules 上传到 Linux。本轮发布流程改进无业务或数据库变更。
+
+
+离线打包前现已自动运行 `npm run check`（严格类型、测试、构建、预算），详细标准见 [QUALITY-GATES.md](QUALITY-GATES.md)。本轮只有开发依赖与文档/构建工具变化，生产后端无需安装新依赖或执行迁移。

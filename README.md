@@ -1,340 +1,259 @@
-# mooncci site
+<h1 align="center">mooncci site</h1>
 
-> 中文 | [English](#english)
+<p align="center">
+  A personal home for articles, updates, projects, and everyday records.<br>
+  写文章，记近况，展示作品，也记录日常。
+</p>
 
-mooncci site 是一个基于 React、Vite、TypeScript、Node.js、Express 和 MySQL 的个人内容站点与后台管理系统。项目包含文章发布、评论审核、媒体库、站点设置、邮件通知、用户角色权限等功能，适合长期维护的个人博客或内容管理站点。
+<p align="center">
+  <a href="https://mooncci.site"><strong>访问网站 · Website</strong></a>
+  · <a href="DEPLOY.md">部署指南 · Deployment</a>
+  · <a href="SECURITY.md">安全 · Security</a>
+</p>
 
-## 功能特性
+<p align="center">
+  <strong><a href="#简体中文">简体中文</a></strong>
+  · <strong><a href="#english">English</a></strong>
+</p>
 
-- 黑白灰阅读视觉、浅色/深色主题、移动导航与文章目录
-- 首页近况、短动态发布/撤回、文章与动态统一更新流
-- 作品管理、首页推荐、公开 GitHub 正式 Release 同步
-- RSS、邮箱确认订阅、每周摘要、投递去重和人工核对
-
-本次三期功能与验证记录见 [IMPLEMENTATION.md](IMPLEMENTATION.md)，启动、数据库迁移与任务开关见 [CONTENT-DEPLOY.md](CONTENT-DEPLOY.md)。GitHub 和周报默认关闭，真实内容通过后台录入。
-
-- 用户注册、登录、退出、忘记密码
-- HttpOnly Cookie 登录态与角色权限控制
-- owner / admin / editor / user 四级角色
-- 文章发布、编辑、草稿和公开展示
-- 评论发布、审核、删除、恢复、点赞和回复
-- 站点设置、Logo、favicon、备案和首页内容配置
-- 图片上传、格式校验、压缩、媒体库、回收站和批量操作
-- SMTP 邮件配置、评论提醒和后台邮件发送
-- PromptDock Early Access 招募、owner 专属审核、申请通知和通过邮件
-- 统一二级页面、克制动画及移动端 / 平板端适配
-- 独立 mooncci-worker 任务进程，数据库锁防止重复任务
-- Nginx 反向代理、PM2 后端运行、Vite 静态部署
-
-## 技术栈
-
-### 前端
-
-- React
-- Vite
-- TypeScript
-- Tailwind CSS
-- React Router
-- Lucide React
-
-### 后端
-
-- Node.js
-- Express
-- MySQL
-- PM2
-- Multer
-- Sharp
-- Helmet
-- express-rate-limit
-
-### 部署
-
-- Nginx
-- PM2
-- MySQL
-- Cloudflare 可选
-
-## 目录结构
-
-```text
-.
-├── src/                  # 前端源码
-├── server/               # 后端源码
-│   ├── src/              # Express API
-│   ├── database/         # 数据库结构与迁移
-│   └── scripts/          # 运维脚本
-├── scripts/              # 前端打包与站点维护脚本
-├── public/               # 静态资源
-├── package.json
-└── README.md
-```
-
-## 本地开发
-
-安装前端依赖：
-
-```bash
-npm install
-```
-
-安装后端依赖：
-
-```bash
-cd server
-npm install
-```
-
-配置环境变量：
-
-```bash
-cp server/.env.example server/.env
-```
-
-然后按实际环境填写数据库、JWT、SMTP 等配置。不要提交真实 `.env` 文件。新空库在 `server` 执行 `node scripts/init-db.js`，已有站点使用 `node scripts/migrate.js --dry-run` 预览升级。完整步骤见 [CONTENT-DEPLOY.md](CONTENT-DEPLOY.md)。本地 HTTP 开发需要单独设置 Cookie 与 CSRF 允许来源，Vite 已提供 `/api` 代理。
-
-启动前端：
-
-```bash
-npm run dev
-```
-
-启动后端：
-
-```bash
-cd server
-npm run start
-```
-
-## 构建
-
-```bash
-npm run build
-```
-
-构建产物位于：
-
-```text
-dist/
-```
-
-## 数据库
-
-数据库结构和迁移文件位于：
-
-```text
-server/database/
-```
-
-执行迁移前建议先备份数据库。迁移脚本支持先 dry-run 再执行，避免误操作。
-
-部署 Early Access 功能时，先执行最新数据库迁移，再在后台“邮件设置”中配置接收提醒邮箱、SMTP 和有效的 HTTPS PromptDock 下载地址。下载地址未配置时，系统会阻止批准申请，避免发送不完整的通过邮件。
-
-## 部署说明
-
-生产环境建议：
-
-- 前端使用 Vite 构建后交给 Nginx 托管
-- 后端使用 PM2 运行 Express 服务
-- Nginx 将 `/api` 反向代理到后端服务
-- 上传目录禁止执行脚本文件
-- `.env`、数据库备份、日志、上传文件不提交到 Git
-- 静态资源开启长期缓存，`index.html` 不强缓存
-
-## 安全设计
-
-项目已重点加固以下内容：
-
-- 使用 HttpOnly Cookie 保存登录态
-- 后端统一校验登录状态和角色权限
-- 写操作要求可信请求头
-- CORS 白名单限制
-- Helmet 安全响应头
-- 登录、注册、忘记密码等接口限流
-- 图片上传限制 MIME、扩展名和文件内容
-- 禁止 SVG 等高风险格式上传
-- 评论内容、Markdown 链接和图片地址做安全处理
-- 普通用户评论需要审核
-- 管理员和编辑权限边界区分
-- 敏感配置通过 `.env` 管理
-
-## 角色权限
-
-| 角色 | 权限说明 |
-| --- | --- |
-| owner | 站长，拥有最高权限 |
-| admin | 管理员，可管理内容、用户、评论和大部分设置 |
-| editor | 编辑，可写文章和管理自己的内容 |
-| user | 普通用户，可评论、点赞和申请成为编辑 |
-
-## 注意事项
-
-- 不要提交 `.env`、数据库备份、日志、上传目录和构建产物
-- 不要在公开文档里暴露真实服务器路径、账号、IP、邮箱或密钥
-- 高风险模块包括认证、权限、上传、评论、邮件和 Markdown 渲染，需要定期复查
-- 发布前建议执行构建、接口冒烟测试和安全检查脚本
+<p align="center">
+  <a href="https://github.com/13304930782/moonccisite/actions/workflows/ci.yml"><img alt="Site checks" src="https://github.com/13304930782/moonccisite/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <img alt="Node.js 24+" src="https://img.shields.io/badge/Node.js-24%2B-339933?logo=nodedotjs&logoColor=white">
+  <img alt="React 18" src="https://img.shields.io/badge/React-18-149ECA?logo=react&logoColor=white">
+  <img alt="TypeScript strict" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white">
+  <img alt="MySQL" src="https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white">
+</p>
 
 ---
 
-## English
+<a id="简体中文"></a>
 
-mooncci site is a personal content website and admin dashboard built with React, Vite, TypeScript, Node.js, Express, and MySQL. It includes publishing, comments, media management, site settings, email notifications, user roles, and production deployment support.
+# 简体中文
 
-## Features
+## 一个持续更新的个人站点
 
-- User registration, login, logout, and password reset
-- HttpOnly Cookie based authentication
-- Role-based access control: owner, admin, editor, user
-- Post creation, editing, drafts, and public publishing
-- Comment review, deletion, restore, likes, and replies
-- Site settings, logo, favicon, footer, and homepage configuration
-- Image upload, validation, compression, media library, recycle bin, and batch actions
-- SMTP configuration, comment notifications, and admin email sending
-- PromptDock Early Access applications, owner-only review, and branded approval emails
-- Admin dashboard with mobile and tablet support
-- Nginx reverse proxy, PM2 backend process, and Vite static deployment
+mooncci site 把文章、短近况和作品放在同一个站点里。读者可以阅读、评论、订阅更新；作者通过后台管理内容、媒体和发布状态，无需为每篇文章重新修改前端源码。
 
-## Tech Stack
+界面沿用黑白灰的阅读风格，支持浅色与深色主题。手机端有独立的导航与电量概览排版，历史图表可以横向滑动。
 
-### Frontend
+## 从记录到发布
 
-- React
-- Vite
-- TypeScript
-- Tailwind CSS
-- React Router
-- Lucide React
+### 写长文，也记短近况
 
-### Backend
+文章支持可视化 Markdown 编辑、草稿、分类和标签；近况用于记录短更新。两者都接入评论、回复、点赞和审核。首页更新流汇总近期内容，作品页用于展示项目与链接。
 
-- Node.js
-- Express
-- MySQL
-- PM2
-- Multer
-- Sharp
-- Helmet
-- express-rate-limit
+### 把内容管理放回后台
 
-### Deployment
+后台提供文章分页、媒体库全库搜索、图片上传与压缩、回收站和批量操作。站点名称、首页文案、Logo、favicon 等通过配置管理。作者、管理员和站长按各自权限操作，编辑者不能越权管理他人的文章。
 
-- Nginx
-- PM2
-- MySQL
-- Optional Cloudflare integration
+### 与读者保持联系
 
-## Project Structure
+读者可以使用 RSS，或通过邮箱确认订阅。文章保留邮件订阅入口，近况详情展示评论。SMTP 通知、周报摘要与 GitHub Release 同步需要单独配置；未开启的服务不应被视为已经投递或同步。
 
-```text
-.
-├── src/                  # Frontend source code
-├── server/               # Backend source code
-│   ├── src/              # Express API
-│   ├── database/         # Schema and migrations
-│   └── scripts/          # Maintenance scripts
-├── scripts/              # Build and maintenance scripts
-├── public/               # Static assets
-├── package.json
-└── README.md
-```
+### 记录日常状态
 
-## Local Development
+可选电量模块支持授权账号下的多宿舍数据、余额与日用电趋势、7/30 天视图和私密 RSS。天气挂件使用配置好的天气服务，并限制请求频率与配额。这些模块依赖对应服务、凭据及数据来源，并非所有部署都默认可用。
 
-Install frontend dependencies:
+## 数据与安全
+
+内容和账号保存在部署者管理的 MySQL 中，媒体保存在服务器上传目录。登录使用 HttpOnly Cookie 与服务端会话撤销；密码使用 bcrypt。草稿、后台及个性化响应有权限与缓存控制。
+
+这是联网的全栈网站，不是离线应用。邮件、天气、Google 登录和 GitHub 同步等可选功能会连接相应外部服务。不要把真实密钥、Cookie、数据库备份或上传文件提交到仓库。漏洞报告方式见 [SECURITY.md](SECURITY.md)。
+
+## 当前状态
+
+项目持续用于个人站点维护。文章、近况评论、内容后台、电量页面和离线发布流程已经实现；容量与工程质量改进仍在继续。用户及评论管理列表的进一步分页优化列在后续工作中，不把计划项当作已完成功能。
+
+部署需要 **Node.js 24+、MySQL 8**，以及生产环境的 Nginx 和 PM2。React / TypeScript / Vite 构建静态前端，Express 提供相对路径 `/api` 接口，独立 worker 处理后台任务。
+
+## 开发者快速开始
 
 ```bash
-npm install
+git clone https://github.com/13304930782/moonccisite.git
+cd moonccisite
+npm ci
+npm ci --prefix server
 ```
 
-Install backend dependencies:
+复制 `server/.env.example` 为 `server/.env`，创建一个空 MySQL 数据库，填写数据库连接和至少 32 字符的随机 JWT 密钥。可用下面命令生成密钥：
 
 ```bash
-cd server
-npm install
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Create the backend environment file:
+本地 HTTP 开发还需调整以下配置：
+
+```dotenv
+NODE_ENV=development
+SITE_URL=http://localhost:5173
+COOKIE_SECURE=false
+COOKIE_DOMAIN=
+CORS_ORIGINS=http://localhost:5173
+CSRF_TRUSTED_ORIGINS=http://localhost:5173
+```
+
+**仅新建空库**运行初始化：
 
 ```bash
-cp server/.env.example server/.env
+node server/scripts/init-db.js
 ```
 
-Fill in your database, JWT, SMTP, and other runtime values. Never commit real `.env` files.
-
-Run the frontend:
+分别在三个终端启动：
 
 ```bash
 npm run dev
+npm run dev --prefix server
+npm run worker --prefix server
 ```
 
-Run the backend:
+前端通过 Vite 代理访问本机 API。已有数据库升级使用增量迁移，不能重新初始化或覆盖历史 SQL；详见 [DEPLOY.md](DEPLOY.md)。第三方功能先保持关闭，按需配置。
+
+## 检查与发布
 
 ```bash
-cd server
-npm run start
+npm run check
+npm test --prefix server
 ```
 
-## Build
+`npm run check` 依次运行前端严格类型检查、单元测试、生产构建及包体预算。CI 另外运行浏览器回归、隔离 MySQL 集成测试、离线部署故障测试和依赖审计。包体同时限制入口及其静态依赖、单个 JS 包与总 JS 体积，避免只靠拆小文件绕过限制。
+
+默认由电脑构建并上传，服务器不再下载 GitHub 或安装前端构建依赖：
+
+```powershell
+python scripts/build-offline-release.py
+powershell -ExecutionPolicy Bypass -File scripts/Upload-OfflineRelease.ps1
+```
+
+打包需要干净且已提交的源码；上传脚本校验包与 LF 校验文件，并输出服务器离线部署命令。**标准包只含前端**，不会更新后端依赖、执行迁移或重启 PM2。后端变更使用单独审核的部署包。完整说明见 [DEPLOY.md](DEPLOY.md)。
+
+<details>
+<summary><strong>目录与维护文档</strong></summary>
+
+```text
+src/          React 页面、组件、上下文与样式
+server/       Express API、worker、SQL 与服务端测试
+scripts/      构建、浏览器回归与离线发布工具
+test/         前端与构建工具测试
+public/       静态资源
+```
+
+- [审计记录](AUDIT-2026-09-09.md)
+- [近况、加载与图表体验](UPDATES-UX-2026-09-09.md)
+- [后台容量改进](CAPACITY-2026-09-09.md)
+- [质量门槛](QUALITY-GATES.md)
+- [内容平台配置](CONTENT-DEPLOY.md)
+
+</details>
+
+<details>
+<summary><strong>贡献与数据兼容</strong></summary>
+
+保留现有设计，使用相对 API 路径。数据库改动新增迁移，不编辑已经执行过的迁移。认证、权限、上传、编辑器和发布变更应覆盖失败场景与现有数据兼容性。提高包体预算时必须说明原因和影响，不能通过调高告警阈值掩盖增长。
+
+</details>
+
+## 授权与致谢
+
+仓库目前没有项目级 LICENSE 文件，不宣称采用 MIT 等开源许可证。第三方组件与素材说明见 [ATTRIBUTIONS.md](ATTRIBUTIONS.md) 和 [public/licenses](public/licenses)。
+
+<p align="right"><a href="#english">English →</a></p>
+
+---
+
+<a id="english"></a>
+
+# English
+
+## A personal site that keeps growing
+
+mooncci site brings articles, short updates, and projects together. Readers can follow, comment, and subscribe; authors publish through an administration interface instead of editing frontend source for every post.
+
+The reading interface uses a restrained monochrome palette with light and dark themes. Mobile navigation, electricity summaries, and horizontally scrollable history charts adapt to smaller screens.
+
+## From writing to publishing
+
+### Articles and short updates
+
+Write Markdown with a visual editor, keep drafts, and organize articles with categories and tags. Short updates have their own detail pages. Both support moderated comments, replies, and likes. A shared activity feed and project pages connect the site's content.
+
+### A practical content workspace
+
+Manage paginated article lists, search the full media library, upload and compress images, and use trash and batch actions. Site branding and homepage copy are configurable. Server-side roles restrict access; editors can manage their own articles rather than other authors' work.
+
+### Stay in touch
+
+RSS and confirmed email subscriptions provide ways to follow updates. Articles retain subscription forms; update details focus on comments. SMTP notifications, weekly digests, and GitHub Release synchronization require separate configuration and activation.
+
+### Optional everyday tools
+
+The electricity module supports multiple authorized rooms, balance and daily-usage trends, 7/30-day views, and private RSS. The weather companion uses configured providers with request limits and quotas. Availability depends on the deployment's credentials and data sources.
+
+## Data and security
+
+Accounts and content live in the operator's MySQL database, and media lives in the server upload directory. Authentication uses HttpOnly cookies with server-side revocation; passwords use bcrypt. Drafts, administrative endpoints, and personalized responses enforce permissions and cache controls.
+
+This is a connected full-stack application. Optional mail, weather, Google sign-in, and GitHub features contact their respective services. Keep secrets, cookies, database backups, and uploaded files out of Git. Report vulnerabilities through [SECURITY.md](SECURITY.md).
+
+## Current status
+
+The site is actively maintained. Content publishing, update comments, administration, electricity views, and offline frontend deployment are implemented. Further capacity work, including user/comment administration pagination, remains planned.
+
+Development requires **Node.js 24+ and MySQL 8**; production uses Nginx and PM2. The frontend uses React, TypeScript, and Vite. Express serves `/api`, and a separate worker runs background tasks.
+
+## Developer quick start
 
 ```bash
-npm run build
+git clone https://github.com/13304930782/moonccisite.git
+cd moonccisite
+npm ci
+npm ci --prefix server
 ```
 
-The production frontend output is generated in:
+Copy `server/.env.example` to `server/.env`, create an empty MySQL database, and configure its connection and a random JWT secret of at least 32 characters. For local HTTP development, use `SITE_URL=http://localhost:5173`, `COOKIE_SECURE=false`, an empty `COOKIE_DOMAIN`, and include that frontend origin in `CORS_ORIGINS` and `CSRF_TRUSTED_ORIGINS`.
 
-```text
-dist/
+For a **new empty database only**, run `node server/scripts/init-db.js`. Then run these commands in separate terminals:
+
+```bash
+npm run dev
+npm run dev --prefix server
+npm run worker --prefix server
 ```
 
-## Database
+Existing databases require incremental migrations. Never reinitialize a live database or overwrite applied migration files. See [DEPLOY.md](DEPLOY.md).
 
-Database schema and migration files are stored in:
+## Verification and deployment
 
-```text
-server/database/
+```bash
+npm run check
+npm test --prefix server
 ```
 
-Always back up the database before running migrations. Use dry-run mode first when available.
+The frontend check runs strict type checking, unit tests, a production build, and bundle budgets. CI also runs browser regressions, isolated MySQL integration tests, offline deployment failure tests, and dependency audits. Budgets cover the initial static import graph, individual chunks, and total JavaScript.
 
-## Deployment Notes
+Build an offline frontend archive on the computer, then upload it from PowerShell:
 
-Recommended production setup:
+```powershell
+python scripts/build-offline-release.py
+powershell -ExecutionPolicy Bypass -File scripts/Upload-OfflineRelease.ps1
+```
 
-- Serve the Vite build output with Nginx
-- Run the Express backend with PM2
-- Proxy `/api` requests from Nginx to the backend service
-- Prevent script execution in upload directories
-- Keep `.env`, database backups, logs, uploads, and build output out of Git
-- Use long-term cache for hashed static assets and no-cache for `index.html`
+The uploader validates the archive and LF checksum file and prints server deployment commands. This package is **frontend-only**: backend dependencies and database migrations need a separately reviewed package. See [DEPLOY.md](DEPLOY.md).
 
-## Security Highlights
+<details>
+<summary><strong>Architecture and maintenance</strong></summary>
 
-- HttpOnly Cookie authentication
-- Centralized backend authentication and role checks
-- Request source validation for write operations
-- CORS allowlist
-- Helmet security headers
-- Rate limits for authentication and sensitive endpoints
-- Strict image upload validation
-- SVG uploads disabled
-- Safe Markdown link and image handling
-- Comment moderation for normal users
-- Clear admin/editor/owner permission boundaries
-- Secrets managed through environment variables
-- Owner-only PromptDock DMG release upload with size and UDIF signature validation
+- `src/`: frontend pages, components, contexts, and styles.
+- `server/`: API, worker, SQL migrations, and backend tests.
+- `scripts/`: build, browser regression, and offline deployment tools.
+- `test/`: frontend and build-tool tests.
+- [Quality gates](QUALITY-GATES.md), [capacity improvements](CAPACITY-2026-09-09.md), and [audit record](AUDIT-2026-09-09.md).
 
-## Roles
+Changes should preserve the existing design, use relative API paths, add new migrations instead of rewriting old ones, and verify authorization, failure recovery, and data compatibility. Bundle-budget increases need an explicit explanation of the cost.
 
-| Role | Description |
-| --- | --- |
-| owner | Site owner with highest-level permissions |
-| admin | Administrator for content, users, comments, and most settings |
-| editor | Can write posts and manage owned content |
-| user | Can comment, like, and apply to become an editor |
+</details>
 
-## Notes
+## Licensing and acknowledgements
 
-- Do not commit `.env`, database backups, logs, uploads, or build artifacts
-- Do not publish real server paths, accounts, IP addresses, emails, or secrets
-- Authentication, permissions, uploads, comments, email, and Markdown rendering should be reviewed regularly
-- Before release, run build checks, smoke tests, and security scans
+There is currently no project-level LICENSE file in this repository; no MIT or other open-source license is claimed for the project. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) and [public/licenses](public/licenses) for third-party notices.
+
+<p align="right"><a href="#简体中文">← 简体中文</a></p>

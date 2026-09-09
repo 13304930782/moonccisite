@@ -52,7 +52,7 @@ def main():
     if git('status', '--porcelain'):
         raise SystemExit('Commit source changes before building a release.')
     revision = git('rev-parse', 'HEAD')
-    subprocess.run(['npm.cmd' if __import__('os').name == 'nt' else 'npm', 'run', 'build'], cwd=ROOT, check=True)
+    subprocess.run(['npm.cmd' if __import__('os').name == 'nt' else 'npm', 'run', 'check'], cwd=ROOT, check=True)
     if git('status', '--porcelain') or git('rev-parse', 'HEAD') != revision:
         raise SystemExit('Source changed during build; release aborted.')
     print(json.dumps(make_bundle(ROOT, revision), indent=2))
