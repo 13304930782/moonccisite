@@ -2,7 +2,7 @@ import { ThemeSelect } from '../components/ThemeSelect';
 import { useAuth } from '../context/AuthContext';
 import { useSearchParams, Link } from 'react-router-dom';
 import type { ElectricityRoom } from '../components/AdminElectricityRooms';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -12,20 +12,12 @@ import {
   TrendingDown,
   Zap,
 } from 'lucide-react';
-import {
-  Area,
-  Bar,
-  ComposedChart,
-  CartesianGrid,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+const ElectricityChart = lazy(() => import('../components/ElectricityChart'));
 import { Header } from '../components/Header';
 import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
 import { ElectricityRssSubscription } from '../components/ElectricityRssSubscription';
-import { ChartViewport } from '../components/ChartViewport';
+
 
 type Snapshot = {
   snapshotDate: string;
@@ -100,46 +92,6 @@ function dateTime(value?: string) {
         minute: '2-digit',
         hour12: false,
       }).format(date);
-}
-
-function ElectricityChartTooltip({
-  active,
-  payload,
-  mode,
-}: {
-  mode: 'balance' | 'usage';
-  active?: boolean;
-  payload?: readonly {
-    payload?: {
-      date: string;
-      total: number | null;
-      usage: number | null;
-      usageStatus: string;
-      recordedAt?: string;
-    };
-  }[];
-}) {
-  const point = payload?.[0]?.payload;
-  if (!active || !point) return null;
-  return (
-    <div className="electricity-chart-tooltip">
-      <strong>{point.date}</strong>
-      {mode === 'balance' && (
-        <>
-          <p>总余量：{amount(point.total)} kWh</p>
-          {point.recordedAt && (
-            <small>余额采集于 {dateTime(point.recordedAt)}</small>
-          )}
-        </>
-      )}
-      <p>
-        当日用电：
-        {point.usage === null
-          ? point.usageStatus
-          : `${amount(point.usage)} kWh`}
-      </p>
-    </div>
-  );
 }
 
 export default function ElectricityPage() {
@@ -499,96 +451,9 @@ function ElectricityDashboard({
                       setTooltipTrigger('hover');
                   }}
                 >
-                  <div className="electricity-chart-canvas"><ChartViewport>
-                    {({ width, height }) => (
-                      <div key={chartMode} className="electricity-chart-enter">
-                        <ComposedChart
-                          width={width}
-                          height={height}
-                          accessibilityLayer
-                          data={plotData}
-                          margin={{ top: 12, right: 8, left: -18, bottom: 0 }}
-                        >
-                          <defs>
-                            <linearGradient
-                              id="electricityFill"
-                              x1="0"
-                              y1="0"
-                              x2="0"
-                              y2="1"
-                            >
-                              <stop
-                                offset="0%"
-                                stopColor="var(--electric-accent)"
-                                stopOpacity={0.8}
-                              />
-                              <stop
-                                offset="100%"
-                                stopColor="var(--electric-accent)"
-                                stopOpacity={0.05}
-                              />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid
-                            stroke="var(--electric-grid)"
-                            strokeDasharray="4 5"
-                            vertical={false}
-                          />
-                          <XAxis
-                            tickFormatter={(value) => value.slice(5)}
-                            dataKey="date"
-                            stroke="var(--electric-muted)"
-                            tickLine={false}
-                            axisLine={false}
-                            fontSize={12}
-                          />
-                          <YAxis
-                            stroke="var(--electric-muted)"
-                            tickLine={false}
-                            axisLine={false}
-                            fontSize={12}
-                          />
-                          <Tooltip
-                            trigger={tooltipTrigger}
-                            isAnimationActive={!reduceMotion}
-                            animationDuration={150}
-                            filterNull={false}
-                            content={
-                              <ElectricityChartTooltip mode={chartMode} />
-                            }
-                          />
-                          {chartMode === 'balance' ? (
-                            <Area
-                              isAnimationActive={!reduceMotion}
-                              animationBegin={0}
-                              animationDuration={380}
-                              animationEasing="ease-out"
-                              type="monotone"
-                              dataKey="total"
-                              name="总余量 kWh"
-                              stroke="var(--electric-line)"
-                              strokeWidth={2}
-                              fill="url(#electricityFill)"
-                              dot={plotData.length === 1}
-                            />
-                          ) : (
-                            <Bar
-                              isAnimationActive={!reduceMotion}
-                              animationBegin={0}
-                              animationDuration={380}
-                              animationEasing="ease-out"
-                              dataKey="usage"
-                              name="日用电 kWh"
-                              fill="var(--electric-line)"
-                              fillOpacity={0.8}
-                              maxBarSize={36}
-                              radius={[3, 3, 0, 0]}
-                            />
-                          )}
-                        </ComposedChart>
-                      </div>
-                    )}
-                  </ChartViewport></div>
+                  <Suspense fallback={<div className="electricity-chart-canvas" aria-label="正在加载图表" />}>
+                    <ElectricityChart plotData={plotData} chartMode={chartMode} tooltipTrigger={tooltipTrigger} reduceMotion={reduceMotion} />
+                  </Suspense>
                 </div>
               )}
               <div className="electricity-insights">

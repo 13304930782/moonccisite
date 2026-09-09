@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { SiteFooter } from '../components/SiteFooter';
 import { BlogCard } from '../components/BlogCard';
-import { MarkdownContent } from '../components/MarkdownContent';
+import { lazy, Suspense } from 'react';
+const MarkdownContent = lazy(() => import('../components/MarkdownContent').then(m => ({ default: m.MarkdownContent })));
 import {
   ActivityList,
   formatDate,
@@ -72,7 +73,7 @@ export default function HomePage() {
             <ResourceState resource={now}>
               {now.data?.content ? (
                 <>
-                  <MarkdownContent content={now.data.content} />
+                  <Suspense fallback={<div className="content-skeleton" style={{ minHeight: 96 }} aria-label="正在加载近况正文" />}><MarkdownContent content={now.data.content} /></Suspense>
                   <time className="muted">
                     更新于 {formatDate(now.data.updated_at)}
                   </time>
