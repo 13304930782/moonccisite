@@ -152,12 +152,13 @@ async function getImageMeta(filePath, filename, fallback = {}) {
   };
 }
 
-async function upsertMediaRecord(meta, userId = null) {
+async function upsertMediaRecord(meta, userId = null, insertOnly = false) {
   await db.query(
     `
-    INSERT INTO media_assets
+    INSERT ${insertOnly ? 'IGNORE' : ''} INTO media_assets
     (filename, original_name, display_name, alt_text, url, mime, ext, size, width, height, quality, status, uploaded_by)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
+    ${insertOnly ? '' : `
     ON DUPLICATE KEY UPDATE
       original_name=VALUES(original_name),
       url=VALUES(url),
@@ -171,6 +172,7 @@ async function upsertMediaRecord(meta, userId = null) {
       deleted_at=NULL,
       uploaded_by=COALESCE(VALUES(uploaded_by), uploaded_by),
       updated_at=CURRENT_TIMESTAMP
+    `}
     `,
     [
       meta.filename,
@@ -189,23 +191,13 @@ async function upsertMediaRecord(meta, userId = null) {
   );
 }
 
-async function syncMediaRecords() {
-  const files = await fs.promises.readdir(uploadDir);
-
-  for (const filename of files) {
-    if (!isPublicUploadFile(filename)) continue;
-
-    const filePath = filePathFor(filename);
-    const stat = await fs.promises.stat(filePath);
-    if (!stat.isFile()) continue;
-
-    const [rows] = await db.query('SELECT filename FROM media_assets WHERE filename=? LIMIT 1', [filename]);
-    if (rows[0]) continue;
-
-    const meta = await getImageMeta(filePath, filename);
-    await upsertMediaRecord(meta);
-  }
-}
+const syncMediaRecords = require('../lib/mediaSync').createMediaSync({
+  directory: uploadDir, db, isImage: isPublicUploadFile,
+  importFile: async filename => {
+    const meta = await getImageMeta(filePathFor(filename), filename);
+    await upsertMediaRecord(meta, null, true);
+  },
+});
 
 async function findMedia(filename, status = null) {
   const safeName = safeBasename(filename);
@@ -428,7 +420,9 @@ router.get('/media', authRequired, editorOrAdmin, async (req, res) => {
     await syncMediaRecords();
 
     const status = ['active', 'trashed', 'all'].includes(req.query.status) ? req.query.status : 'active';
-    const keyword = String(req.query.q || '').trim();
+    const keyword = String(req.query.q || '').trim().slice(0, 255);
+    const paginated = req.query.page !== undefined || req.query.pageSize !== undefined;
+    let { page, pageSize } = require('../lib/listPagination').listPagination(req.query);
     const where = [];
     const params = [];
 
@@ -438,23 +432,29 @@ router.get('/media', authRequired, editorOrAdmin, async (req, res) => {
     }
 
     if (keyword) {
-      where.push('(filename LIKE ? OR display_name LIKE ? OR alt_text LIKE ?)');
-      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+      where.push('(filename LIKE ? OR display_name LIKE ? OR alt_text LIKE ? OR original_name LIKE ?)');
+      params.push(...Array(4).fill(`%${keyword}%`));
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    let total;
+    if (paginated) {
+      const [[count]] = await db.query(`SELECT COUNT(*) AS total FROM media_assets ${whereSql}`, params);
+      total = Number(count.total);
+      page = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
+    }
     const [rows] = await db.query(
       `
       SELECT *
       FROM media_assets
       ${whereSql}
       ORDER BY updated_at DESC, id DESC
-      LIMIT 500
+      LIMIT ? OFFSET ?
       `,
-      params
+      [...params, paginated ? pageSize : 500, paginated ? (page - 1) * pageSize : 0]
     );
 
-    res.json(rows.map(mapMediaRow));
+    res.json(paginated ? { items: rows.map(mapMediaRow), total, page, pageSize } : rows.map(mapMediaRow));
   } catch (err) {
     console.error('[upload/media]', err);
     res.status(500).json({ message: '媒体库加载失败' });

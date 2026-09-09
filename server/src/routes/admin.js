@@ -137,27 +137,38 @@ router.delete('/users/:id', adminOnly, async (req, res) => {
   res.json({ message: 'User has been disabled. Posts and comments were kept.' });
 });
 
+router.get('/stats', editorOrAdmin, async (req, res) => {
+  const manager = isAdminLike(req.user);
+  const [[posts]] = await db.query(`SELECT COUNT(*) AS total FROM posts ${manager ? '' : 'WHERE author_id=?'}`, manager ? [] : [req.user.id]);
+  const stats = { posts: Number(posts.total), users: 0, comments: 0, bannedWords: 0 };
+  if (manager) {
+    for (const [key, table] of [['users', 'users'], ['comments', 'comments'], ['bannedWords', 'banned_words']]) {
+      const [[row]] = await db.query(`SELECT COUNT(*) AS total FROM ${table}`);
+      stats[key] = Number(row.total);
+    }
+  }
+  res.json(stats);
+});
+
 router.get('/posts', editorOrAdmin, async (req, res) => {
   const params = [];
   let where = '';
-
-  if (!isAdminLike(req.user)) {
-    where = 'WHERE p.author_id = ?';
-    params.push(req.user.id);
+  if (!isAdminLike(req.user)) { where = 'WHERE p.author_id=?'; params.push(req.user.id); }
+  const paginated = req.query.page !== undefined || req.query.pageSize !== undefined;
+  let { page, pageSize } = require('../lib/listPagination').listPagination(req.query);
+  let total;
+  if (paginated) {
+    const [[count]] = await db.query(`SELECT COUNT(*) AS total FROM posts p ${where}`, params);
+    total = Number(count.total);
+    page = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
   }
-
-  const [rows] = await db.query(
-    `
-    SELECT p.*,u.username AS author_name
-    FROM posts p
-    JOIN users u ON u.id=p.author_id
-    ${where}
-    ORDER BY p.updated_at DESC
-    `,
-    params
-  );
-
-  res.json(rows);
+  const [rows] = await db.query(`
+    SELECT p.id,p.title,p.summary,p.status,p.category,p.author_id,p.updated_at,u.username AS author_name
+    FROM posts p JOIN users u ON u.id=p.author_id
+    ${where} ORDER BY p.updated_at DESC,p.id DESC
+    ${paginated ? 'LIMIT ? OFFSET ?' : ''}
+  `, paginated ? [...params, pageSize, (page - 1) * pageSize] : params);
+  res.json(paginated ? { items: rows, total, page, pageSize } : rows);
 });
 
 /**

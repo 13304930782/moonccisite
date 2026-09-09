@@ -1,5 +1,5 @@
 import { ThemeSelect } from '../components/ThemeSelect';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Copy,
   Eye,
@@ -98,6 +98,10 @@ async function copyText(text: string) {
 
 export default function AdminMediaPage() {
   const [items, setItems] = useState<MediaItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState('');
+  const requestVersion = useRef(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [keyword, setKeyword] = useState('');
@@ -112,37 +116,36 @@ export default function AdminMediaPage() {
   const [recompressQuality, setRecompressQuality] = useState('medium');
   const [saving, setSaving] = useState(false);
 
+  const queryKey = `${status}:${search}:${page}`;
+  const currentQuery = useRef(queryKey);
+  currentQuery.current = queryKey;
   const load = async () => {
+    const version = ++requestVersion.current;
+    const current = () => version === requestVersion.current && currentQuery.current === queryKey;
     setLoading(true);
     setMessage('');
-
     try {
-      const data = await api(`/upload/media?status=${status}`);
-      setItems(Array.isArray(data) ? data : []);
+      const data = await api(`/upload/media?${new URLSearchParams({ status, q: search, page: String(page), pageSize: '50' })}`);
+      if (!current()) return;
+      setItems(data.items);
+      setTotal(data.total);
+      if (data.page !== page) setPage(data.page);
     } catch (err: any) {
-      setMessage(err.message || '媒体库加载失败');
-    } finally {
-      setLoading(false);
-    }
+      if (current()) { setItems([]); setMessage(err.message || '媒体库加载失败'); }
+    } finally { if (current()) setLoading(false); }
   };
-
+  useEffect(() => {
+    const timer = setTimeout(() => { setPage(1); setSearch(keyword.trim()); }, 300);
+    return () => clearTimeout(timer);
+  }, [keyword]);
   useEffect(() => {
     setSelected(null);
     setSelectedFilenames([]);
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
-
-  const filtered = useMemo(() => {
-    const q = keyword.trim().toLowerCase();
-    if (!q) return items;
-
-    return items.filter((item) => {
-      return [item.filename, item.display_name, item.alt_text, item.original_name]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(q));
-    });
-  }, [items, keyword]);
+    setItems([]);
+    void load();
+    return () => { requestVersion.current++; };
+  }, [status, search, page]);
+  const filtered = items;
 
   const selectedSet = useMemo(() => new Set(selectedFilenames), [selectedFilenames]);
   const selectedCount = selectedFilenames.length;
@@ -491,14 +494,14 @@ export default function AdminMediaPage() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setStatus('active')}
+              onClick={() => { setPage(1); setStatus('active'); }}
               className={`rounded-[10px] px-4 py-2 text-sm ${status === 'active' ? 'bg-muted text-foreground' : 'bg-muted text-foreground'}`}
             >
               正常文件
             </button>
             <button
               type="button"
-              onClick={() => setStatus('trashed')}
+              onClick={() => { setPage(1); setStatus('trashed'); }}
               className={`rounded-[10px] px-4 py-2 text-sm ${status === 'trashed' ? 'bg-muted text-foreground' : 'bg-muted text-foreground'}`}
             >
               回收站
@@ -513,10 +516,15 @@ export default function AdminMediaPage() {
           />
 
           <p className="text-sm text-muted-foreground">
-            共 {items.length} 个文件，当前显示 {filtered.length} 个
+            共 {total} 个文件，本页 {filtered.length} 个
           </p>
         </div>
 
+        <nav aria-label="媒体库分页" className="mt-4 flex flex-wrap items-center gap-3">
+          <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="rounded border px-4 py-2 disabled:opacity-50">上一页</button>
+          <span>第 {page} / {Math.max(1, Math.ceil(total / 50))} 页</span>
+          <button type="button" disabled={loading || page * 50 >= total} onClick={() => setPage(page + 1)} className="rounded border px-4 py-2 disabled:opacity-50">下一页</button>
+        </nav>
         <div className="mt-5 flex flex-col gap-3 rounded-[10px] bg-muted p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <button

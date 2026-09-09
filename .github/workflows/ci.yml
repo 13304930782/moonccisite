@@ -24,9 +24,11 @@ jobs:
       - run: npm test --prefix server
       - run: npm run build
       - run: bash -n scripts/deploy-audit.sh
+      - run: bash -n scripts/deploy-media-capacity.sh
       - run: npx playwright install --with-deps chromium
       - run: node scripts/test-browser.cjs
       - run: node scripts/test-updates-browser.cjs
+      - run: node scripts/test-admin-capacity-browser.cjs
       - run: npm audit --audit-level=moderate
       - run: npm audit --prefix server --audit-level=moderate
   mysql-integration:

@@ -269,3 +269,8 @@ bash /root/mooncci-electricity-charts-20260908/deploy-electricity-charts.sh
 ### 电量访问提示页对齐修复（2026-09-09）
 
 未登录、加载中、无宿舍和无权限状态共用 site-container / page-content，替换不存在的 container-shell，并移除独立的 80px 纵向内边距。桌面内容与导航对齐，手机沿用 20px 侧边距，保留现有文案、权限与跳转。运行 `npm run build`、`python scripts/build-electricity-access-layout-package.py` 后，上传 `.cache/mooncci-electricity-access-layout-20260909.tar.gz`，解压执行 `bash deploy-electricity-access-layout.sh`；纯前端修复，无数据库迁移或 PM2 重启。
+
+
+### 后台列表与媒体库容量修复
+
+参见 [CAPACITY-2026-09-09.md](CAPACITY-2026-09-09.md)。使用 `scripts/deploy-media-capacity.sh <完整提交号>` 后台部署，本批无需数据库迁移或依赖更新，仅重启 API。
