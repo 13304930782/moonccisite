@@ -1,5 +1,7 @@
+import { useAdminList } from '../lib/useAdminList';
+import { AdminPagination } from '../components/AdminPagination';
 import { ThemeSelect } from '../components/ThemeSelect';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { api } from '../lib/api';
 
 const statusText: Record<string, string> = {
@@ -19,25 +21,15 @@ const statusClass: Record<string, string> = {
 };
 
 export default function AdminCommentsPage() {
-  const [comments, setComments] = useState<any[]>([]);
-  const [status, setStatus] = useState('pending');
+  const [filters, setFilters] = useState({ status: 'pending', target: 'all', keyword: '' });
   const [keyword, setKeyword] = useState('');
   const [message, setMessage] = useState('');
-
-  const loadComments = () => {
-    const q = new URLSearchParams();
-
-    if (status) q.set('status', status);
-    if (keyword.trim()) q.set('keyword', keyword.trim());
-
-    api(`/admin/comments?${q.toString()}`)
-      .then(setComments)
-      .catch((err) => setMessage(err.message || '评论加载失败'));
-  };
-
-  useEffect(() => {
-    loadComments();
-  }, [status]);
+  const [busy, setBusy] = useState(false);
+  const list = useAdminList<any>('/admin/comments', filters);
+  const comments = list.items;
+  const loadComments = list.reload;
+  const filter = (patch: Partial<typeof filters>) => { list.setPage(1); setFilters(f => ({ ...f, ...patch })); list.reload(); setMessage(''); };
+  const search = () => filter({ keyword: keyword.trim() });
 
   const updateStatus = async (id: number, nextStatus: string) => {
     const confirmText =
@@ -49,6 +41,8 @@ export default function AdminCommentsPage() {
 
     if (!window.confirm(confirmText)) return;
 
+    if (busy) return;
+    setBusy(true);
     try {
       const res = await api(`/admin/comments/${id}`, {
         method: 'PUT',
@@ -59,7 +53,7 @@ export default function AdminCommentsPage() {
       loadComments();
     } catch (err: any) {
       setMessage(err.message || '操作失败');
-    }
+    } finally { setBusy(false); }
   };
 
   return (
@@ -78,10 +72,10 @@ export default function AdminCommentsPage() {
           </div>
         )}
 
-        <div className="mb-6 flex flex-col md:flex-row gap-3">
-          <ThemeSelect
-            value={status}
-            onValueChange={(nextValue) => setStatus(nextValue)}
+        <fieldset disabled={busy} className="mb-6 flex flex-col md:flex-row gap-3">
+          <ThemeSelect aria-label="筛选评论状态"
+            value={filters.status}
+            onValueChange={(status) => filter({ status })}
             className="rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="pending">待审核</option>
@@ -92,26 +86,31 @@ export default function AdminCommentsPage() {
             <option value="all">全部</option>
           </ThemeSelect>
 
+          <ThemeSelect aria-label="筛选评论来源" value={filters.target} onValueChange={target => filter({ target })}>
+            <option value="all">全部内容</option><option value="post">文章评论</option><option value="update">近况评论</option>
+          </ThemeSelect>
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') loadComments();
+              if (e.key === 'Enter') search();
             }}
-            placeholder="搜索评论、用户、邮箱、文章或 IP"
+            placeholder="搜索评论、用户、邮箱、内容或 IP"
             className="flex-1 rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
           />
 
           <button
-            onClick={loadComments}
+            onClick={search}
             className="rounded-[10px] bg-muted px-5 py-3 text-foreground hover:bg-muted"
           >
             搜索
           </button>
-        </div>
-
+        </fieldset>
+        <AdminPagination label="评论管理分页" page={list.page} total={list.total} disabled={list.loading || busy} onPage={list.setPage} />
+        {list.error && <p role="alert">{list.error}</p>}
+        {list.loading && <p role="status">正在加载评论…</p>}
         <div className="space-y-4">
-          {comments.length === 0 && (
+          {!list.loading && !list.error && comments.length === 0 && (
             <div className="rounded-[10px] bg-muted px-5 py-8 text-center text-muted-foreground">
               暂无评论
             </div>
@@ -132,7 +131,7 @@ export default function AdminCommentsPage() {
                     <span className={`rounded-full px-3 py-1 ${statusClass[item.status] || 'bg-muted text-muted-foreground'}`}>
                       {statusText[item.status] || item.status}
                     </span>
-                    <span>IP：{item.ip_address || '-'}</span>
+                    <span>IP：{item.ip_address || item.ip_address_masked || '-'}</span>
                     <span>时间：{item.created_at?.slice(0, 19).replace('T', ' ')}</span>
                   </div>
 
@@ -143,7 +142,7 @@ export default function AdminCommentsPage() {
 
                 <div className="flex shrink-0 flex-wrap gap-2">
                   {item.status !== 'visible' && (
-                    <button
+                    <button disabled={busy}
                       onClick={() => updateStatus(item.id, 'visible')}
                       className="rounded-full bg-green-600 px-4 py-2 text-sm text-foreground hover:bg-green-700"
                     >
@@ -152,7 +151,7 @@ export default function AdminCommentsPage() {
                   )}
 
                   {item.status !== 'rejected' && (
-                    <button
+                    <button disabled={busy}
                       onClick={() => updateStatus(item.id, 'rejected')}
                       className="rounded-full bg-red-600 px-4 py-2 text-sm text-foreground hover:bg-red-700"
                     >
@@ -161,7 +160,7 @@ export default function AdminCommentsPage() {
                   )}
 
                   {item.status !== 'hidden' && (
-                    <button
+                    <button disabled={busy}
                       onClick={() => updateStatus(item.id, 'hidden')}
                       className="rounded-full bg-muted px-4 py-2 text-sm text-foreground hover:bg-muted"
                     >
@@ -170,7 +169,7 @@ export default function AdminCommentsPage() {
                   )}
 
                   {item.status !== 'deleted' && (
-                    <button
+                    <button disabled={busy}
                       onClick={() => updateStatus(item.id, 'deleted')}
                       className="rounded-full border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
                     >

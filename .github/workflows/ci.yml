@@ -26,6 +26,7 @@ jobs:
       - run: npm run build
       - run: npm run check:bundle
       - run: python3 scripts/test-offline-release.py
+      - run: bash -n scripts/deploy-admin-lists.sh
       - run: bash -n scripts/deploy-offline-frontend.sh
       - run: bash -n scripts/deploy-audit.sh
       - run: bash -n scripts/deploy-media-capacity.sh

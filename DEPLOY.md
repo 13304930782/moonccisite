@@ -286,3 +286,10 @@ bash /root/mooncci-electricity-charts-20260908/deploy-electricity-charts.sh
 
 
 离线打包前现已自动运行 `npm run check`（严格类型、测试、构建、预算），详细标准见 [QUALITY-GATES.md](QUALITY-GATES.md)。本轮只有开发依赖与文档/构建工具变化，生产后端无需安装新依赖或执行迁移。
+
+
+### 用户与评论管理离线发布
+
+在干净的已合并提交上运行 `python scripts/build-admin-lists-release.py`。它执行前端质量检查，打包 dist 和唯一后端文件 `server/src/routes/admin.js`，校验归档及 LF 校验文件。使用 `powershell -ExecutionPolicy Bypass -File .\scripts\Upload-OfflineRelease.ps1` 上传，按脚本输出的命令启动后台部署并检查日志。
+
+本包要求先前容量改进已部署（含 `server/src/lib/listPagination.js`），不安装依赖，不覆盖 SQL、环境变量或上传文件。部署备份 API 和旧入口，重启 mooncci-api，通过健康检查后切换前端；失败时恢复旧 API 和入口。worker 不重启。不要用纯前端包替代本次前后端更新。

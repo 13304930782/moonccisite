@@ -62,7 +62,7 @@ mooncci site 把文章、短近况和作品放在同一个站点里。读者可�
 
 ## 当前状态
 
-项目持续用于个人站点维护。文章、近况评论、内容后台、电量页面和离线发布流程已经实现；容量与工程质量改进仍在继续。用户及评论管理列表的进一步分页优化列在后续工作中，不把计划项当作已完成功能。
+项目持续用于个人站点维护。文章、近况评论、内容后台、电量页面和离线发布流程已经实现；容量与工程质量改进仍在继续。用户与评论管理已支持服务端分页、搜索和筛选，审核后自动校正页码。
 
 部署需要 **Node.js 24+、MySQL 8**，以及生产环境的 Nginx 和 PM2。React / TypeScript / Vite 构建静态前端，Express 提供相对路径 `/api` 接口，独立 worker 处理后台任务。
 
@@ -196,7 +196,7 @@ This is a connected full-stack application. Optional mail, weather, Google sign-
 
 ## Current status
 
-The site is actively maintained. Content publishing, update comments, administration, electricity views, and offline frontend deployment are implemented. Further capacity work, including user/comment administration pagination, remains planned.
+The site is actively maintained. Content publishing, update comments, administration, electricity views, and offline frontend deployment are implemented. User and comment administration now includes server-side pagination, search, filters, and page correction after moderation.
 
 Development requires **Node.js 24+ and MySQL 8**; production uses Nginx and PM2. The frontend uses React, TypeScript, and Vite. Express serves `/api`, and a separate worker runs background tasks.
 
