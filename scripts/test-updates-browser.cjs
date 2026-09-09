@@ -11,6 +11,7 @@ async function main() {
     const requests = []; page.on('request', req => requests.push(req.url()));
     const note = { id: 1, content: '浏览器测试近况正文', image_url: '', published_at: '2026-09-09' };
     let holdSettings = false, releaseSettings;
+    let nowContent = '当前真实记录', latestNotes = true;
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url());
       let body = {};
@@ -18,8 +19,13 @@ async function main() {
         if (holdSettings) await new Promise(r => { releaseSettings = r; });
         body = { brand: { nav_title: 'mooncci' }, hero: { title: '真实配置测试标题', subtitle: '测试配置副标题' }, footer: {} };
       } else if (url.pathname === '/api/auth/me') body = { user: { id: 1, username: 'fixture', role: 'owner' } };
-      else if (url.pathname === '/api/now') body = { content: '当前真实记录', updated_at: '2026-09-09' };
-      else if (url.pathname === '/api/activity') body = { items: [{ activity_id: 'u1', type: 'update', path: '/updates/1', title: '测试近况入口', excerpt: '一则记录', published_at: '2026-09-09' }], total: 1, page: 1, pageSize: 10 };
+      else if (url.pathname === '/api/now') body = { content: nowContent, updated_at: '2026-09-09' };
+      else if (url.pathname === '/api/activity') {
+        const update = { activity_id: 'u1', type: 'update', path: '/updates/1', title: '测试近况入口', excerpt: '一则记录', published_at: '2026-09-09' };
+        const post = { activity_id: 'p1', type: 'post', path: '/article/1', title: '新文章动态入口', excerpt: '文章摘要', published_at: '2026-09-10' };
+        const items = url.searchParams.get('type') === 'update' ? (latestNotes ? [update] : []) : (url.searchParams.get('scope') === 'home' ? [update] : [post, update]);
+        body = { items, total: items.length, page: 1, pageSize: 6 };
+      }
       else if (url.pathname === '/api/updates/1') body = note;
       else if (url.pathname.startsWith('/api/comments/')) body = [];
       else if (url.pathname === '/api/posts') body = [];
@@ -37,6 +43,20 @@ async function main() {
     await page.goto('http://127.0.0.1:4193');
     await page.getByRole('heading', { name: '真实配置测试标题' }).waitFor();
     assert.ok(!requests.some(url => /assets\/Admin.*\.js/.test(url)), 'homepage must not download admin routes');
+    await page.locator('.activity-list').getByRole('link', { name: /新文章动态入口/ }).waitFor();
+    await page.locator('.activity-list').getByRole('link', { name: /测试近况入口/ }).waitFor();
+    assert.equal(await page.locator('.activity-row').first().getAttribute('href'), '/article/1');
+    await page.locator('.now-panel').getByText('当前真实记录', { exact: true }).waitFor();
+    assert.ok(!requests.some(url => url.includes('type=update&pageSize=1')), 'manual NOW must not fetch an automatic note');
+    nowContent = '   '; await page.reload();
+    await page.locator('.now-panel').getByRole('link', { name: '查看这条近况 ↗' }).waitFor();
+    assert.equal(await page.locator('.now-panel').getByRole('link').getAttribute('href'), '/updates/1');
+    await page.locator('.now-panel').getByText('一则记录', { exact: true }).waitFor();
+    latestNotes = false; await page.reload();
+    await page.locator('.now-panel').getByText('还没有发布近况。', { exact: true }).waitFor();
+    nowContent = '当前真实记录'; latestNotes = true; await page.reload();
+    await page.locator('.now-panel').getByText('当前真实记录', { exact: true }).waitFor();
+
     holdSettings = true; await page.reload({ waitUntil: 'domcontentloaded' });
     await page.getByRole('heading', { name: '真实配置测试标题' }).waitFor();
     holdSettings = false; releaseSettings?.();

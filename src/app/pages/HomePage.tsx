@@ -30,10 +30,22 @@ function HeroLink({ to, label }: { to: string; label: string }) {
     </Link>
   );
 }
+function LatestNote() {
+  // Query independently: the newest six activities may all be articles.
+  const latest = useResource('/activity?type=update&pageSize=1');
+  const note = latest.data?.items?.[0];
+  return <ResourceState resource={latest}>
+    {note ? <>
+      <p>{note.excerpt}</p>
+      <time className="muted">发布于 {formatDate(note.published_at)}</time>
+      <div><Link className="text-link" to={safeRoutePath(note.path)}>查看这条近况 ↗</Link></div>
+    </> : <p className="muted">还没有发布近况。</p>}
+  </ResourceState>;
+}
 export default function HomePage() {
   const settings = useSiteSettings(),
     now = useResource('/now'),
-    activity = useResource('/activity?pageSize=6&scope=home'),
+    activity = useResource('/activity?pageSize=6'),
     posts = useResource('/posts?pageSize=4'),
     projects = useResource('/projects?featured=true');
   const hero = settings.data?.hero || {};
@@ -69,9 +81,9 @@ export default function HomePage() {
             </ResourceState>
           </div>
           <aside className="now-panel">
-            <p className="eyebrow">NOW / 正在做什么</p>
+            <p className="eyebrow">{now.data && !now.data.content?.trim() ? 'LATEST NOTE / 最近近况' : 'NOW / 正在做什么'}</p>
             <ResourceState resource={now}>
-              {now.data?.content ? (
+              {now.data?.content?.trim() ? (
                 <>
                   <Suspense fallback={<div className="content-skeleton" style={{ minHeight: 96 }} aria-label="正在加载近况正文" />}><MarkdownContent content={now.data.content} /></Suspense>
                   <time className="muted">
@@ -79,7 +91,7 @@ export default function HomePage() {
                   </time>
                 </>
               ) : (
-                <p className="muted">近况整理中。可以先读读最近的文章。</p>
+                <LatestNote />
               )}
             </ResourceState>
           </aside>
