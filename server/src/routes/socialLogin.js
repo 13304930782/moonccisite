@@ -16,6 +16,8 @@ router.use((_req, res, next) => {
   res.vary('Cookie'); next();
 });
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { message: '登录请求过于频繁，请稍后重试。' } });
+const readLimiter = rateLimit({ windowMs: 60000, limit: 120, standardHeaders: true, legacyHeaders: false, message: { message: '请求过于频繁，请稍后重试。' } });
+const settingsLimiter = rateLimit({ windowMs: 60000, limit: 20, standardHeaders: true, legacyHeaders: false, message: { message: '保存过于频繁，请稍后重试。' } });
 function cookieOptions(req) { return { ...authCookieOptions(req), domain: undefined, path: '/api/auth', maxAge: 10 * 60 * 1000 }; }
 const cookieName = provider => `mooncci_oauth_${provider}`;
 function readCookie(req, name) {
@@ -39,7 +41,7 @@ function pendingHash(req) {
   const token = readCookie(req, pendingCookie);
   return /^[a-f0-9]{64}$/.test(token) ? sha256(token) : '';
 }
-router.get('/registration', async (req, res) => {
+router.get('/registration', readLimiter, async (req, res) => {
   const [rows] = await db.query('SELECT provider FROM oauth_registrations WHERE token_hash=? AND expires_at>?', [pendingHash(req), Date.now()]);
   if (!rows[0]) return res.status(401).json({ message: '注册授权已过期，请重新选择第三方登录。' });
   res.json({ provider: PROVIDERS[rows[0].provider] });
@@ -121,14 +123,14 @@ router.post('/google', limiter, async (req, res) => {
   }
 });
 
-router.get('/providers', async (_req, res) => {
+router.get('/providers', readLimiter, async (_req, res) => {
   const configs = await Promise.all(Object.keys(PROVIDERS).map(p => getConfig(p)));
   res.json({ providers: configs.filter(ready).map(c => ({ provider: c.provider, name: PROVIDERS[c.provider], ...(c.provider === 'google' ? { client_id: c.client_id } : {}) })) });
 });
-router.get('/providers/manage', authRequired, ownerOnly, async (_req, res) => {
+router.get('/providers/manage', readLimiter, authRequired, ownerOnly, async (_req, res) => {
   res.json({ providers: await Promise.all(Object.keys(PROVIDERS).map(async p => publicConfig(await getConfig(p)))) });
 });
-router.put('/providers/manage/:provider', authRequired, ownerOnly, async (req, res) => {
+router.put('/providers/manage/:provider', settingsLimiter, authRequired, ownerOnly, async (req, res) => {
   const provider = req.params.provider;
   if (!validProvider(provider)) return res.status(404).json({ message: '未知登录渠道。' });
   const { enabled, client_id, client_secret, clear_secret, version } = req.body;
@@ -161,7 +163,7 @@ router.put('/providers/manage/:provider', authRequired, ownerOnly, async (req, r
   } finally { connection.release(); }
 });
 
-router.get('/connections', authRequired, async (req, res) => {
+router.get('/connections', readLimiter, authRequired, async (req, res) => {
   const [identities] = await db.query('SELECT provider,client_id FROM oauth_identities WHERE user_id=?', [req.user.id]);
   const [users] = await db.query('SELECT google_sub FROM users WHERE id=?', [req.user.id]);
   const configs = await Promise.all(Object.keys(PROVIDERS).map(p => getConfig(p)));

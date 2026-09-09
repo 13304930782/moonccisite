@@ -24,7 +24,7 @@ test('login and signup show only enabled providers, preserve Google row and requ
     assert.ok(!JSON.stringify(root.toJSON()).includes('GitHub'));
     await act(async () => { await buttons[0].props.onClick(); });
     assert.equal(sent[0], '/api/auth/qq/start'); assert.equal(sent[1].return_to, '/electricity');
-    assert.match(destination, /^https:\/\/graph.qq.com/);
+    assert.equal(new URL(destination).hostname, 'graph.qq.com');
     await act(async () => root.unmount());
   }
 });
