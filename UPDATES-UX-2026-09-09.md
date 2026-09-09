@@ -20,6 +20,8 @@
 
 **升级时保留服务器所有已执行的历史 SQL 文件**，尤其是先前从备份恢复的 `202607220001_create_early_access_applications.sql`。只增加这一个新迁移，不以仓库目录覆盖服务器迁移目录，也不要导入 schema.sql。
 
-升级前备份数据库、后端代码和前端入口；先运行迁移 dry-run 核验校验值。后端运行时变更为 `server/src/routes/comments.js`、`server/src/routes/admin.js`、`server/src/lib/mailer.js`；依赖未改变，无需重装生产依赖。前端使用构建后的 dist，保留旧哈希资源，最后替换 index.html。
+升级前备份数据库、后端代码和前端入口；先运行迁移 dry-run 核验校验值。后端运行时变更为 `server/src/routes/comments.js`、`server/src/routes/admin.js`、`server/src/lib/mailer.js`。另升级 Multer 至 2.3.0、Nodemailer 至 9.1.1、Sharp 至 0.35.4，处理发布检查期间新出现的依赖安全公告；需要同步 server/package.json 和锁文件，并提前在暂存目录运行 `npm ci --omit=dev`，成功后切换依赖。前端使用构建后的 dist，保留旧哈希资源，最后替换 index.html。
 
 上线后验证近况评论提交与审核、文章评论回归、匿名访问草稿被拒绝，以及手机 7/30 日横向滑动。
+
+依赖公告依据：[Nodemailer](https://github.com/advisories/GHSA-8m3c-c648-2xjj)、[Sharp](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c)。
