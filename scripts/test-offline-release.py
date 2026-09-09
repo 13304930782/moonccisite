@@ -127,5 +127,65 @@ class OfflineReleaseTests(unittest.TestCase):
                 self.assertIn(expected, result.stdout.decode())
 
 
+    @unittest.skipUnless(os.name != 'nt' and shutil.which('rsync'), 'Linux social deployment fault tests run in CI')
+    def test_social_deployment_is_scoped_and_rolls_back(self):
+        package = self.root / 'social'
+        with tarfile.open(self.result['package']) as archive:
+            archive.extractall(package, filter='data')
+        shutil.copy(HERE / 'deploy-social-login.sh', package / 'deploy.sh')
+        files = ['src/index.js', 'src/routes/auth-cookie.js', 'src/lib/authSession.js',
+                 'database/migrations/202609100001_social_login.sql']
+        for name in files:
+            target = package / 'server' / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text('-- fixture' if name.endswith('.sql') else 'module.exports = "new";')
+        (package / 'server/scripts').mkdir()
+        (package / 'server/scripts/migrate-social-login.js').write_text('// fixture migration')
+        (package / 'BACKEND_FILES').write_text('\n'.join(files) + '\n')
+        (package / 'SHA256SUMS').write_bytes(''.join(
+            f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(package).as_posix()}\n'
+            for p in sorted(package.rglob('*')) if p.is_file() and p.name != 'SHA256SUMS'
+        ).encode())
+        live = self.root / 'live'
+        for name in ['src/index.js', 'src/routes/auth-cookie.js', 'src/lib/googleIdentity.js', 'src/lib/asyncRouter.js', 'src/middleware/auth.js']:
+            target = live / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text('module.exports = "original";')
+        (live / '.env').write_text('CF_PROXY=preserve')
+        web = self.root / 'web'
+        (web / 'assets').mkdir(parents=True)
+        binaries = self.root / 'bin'
+        binaries.mkdir()
+        real_node = shutil.which('node')
+        stubs = {
+            'su': '#!/bin/sh\necho restart >> "$QA_PM_COUNT"\nexit 0\n',
+            'curl': '#!/bin/sh\nprintf \'{"ok":true,"providers":[]}\'\n',
+            'install': '#!/usr/bin/env python3\nimport os,sys\na=sys.argv[1:]; b=[]\nwhile a:\n x=a.pop(0)\n if x in ["-o","-g"]: a.pop(0)\n else: b.append(x)\nos.execv("/usr/bin/install",["install"]+b)\n',
+            'node': f'#!/bin/sh\nif [ "$1" = server/scripts/migrate-social-login.js ]; then [ "$QA_MODE" != migration-failure ]; exit $?; fi\nexec "{real_node}" "$@"\n',
+            'rsync': '#!/bin/sh\nif [ "$QA_MODE" = corrupt ]; then printf corrupt > "$MOONCCI_WEB_ROOT/assets/app.js"; exit 0; fi\nexec /usr/bin/rsync "$@"\n',
+        }
+        for name, content in stubs.items():
+            (binaries / name).write_text(content)
+            (binaries / name).chmod(0o755)
+        env = {**os.environ, 'PATH': str(binaries) + ':' + os.environ['PATH'],
+               'MOONCCI_WEB_ROOT': str(web), 'MOONCCI_SERVER_ROOT': str(live),
+               'MOONCCI_BACKUP_ROOT': str(self.root / 'backups'), 'QA_PM_COUNT': str(self.root / 'pm-count')}
+        for mode in ['migration-failure', 'corrupt', 'success']:
+            env['QA_MODE'] = mode
+            (self.root / 'pm-count').write_text('')
+            (live / 'src/index.js').write_text('module.exports = "original";')
+            (live / 'src/routes/auth-cookie.js').write_text('module.exports = "original";')
+            (web / 'index.html').write_text('original page')
+            result = subprocess.run(['bash', str(package / 'deploy.sh')], env=env, capture_output=True, timeout=20)
+            with self.subTest(mode=mode):
+                self.assertEqual(result.returncode == 0, mode == 'success', result.stdout.decode() + result.stderr.decode())
+                self.assertEqual((live / '.env').read_text(), 'CF_PROXY=preserve')
+                self.assertEqual((live / 'src/lib/googleIdentity.js').read_text(), 'module.exports = "original";')
+                if mode != 'success':
+                    self.assertEqual((web / 'index.html').read_text(), 'original page')
+                    self.assertEqual((live / 'src/routes/auth-cookie.js').read_text(), 'module.exports = "original";')
+                self.assertEqual(len((self.root / 'pm-count').read_text().splitlines()), {'migration-failure': 0, 'corrupt': 2, 'success': 1}[mode])
+
+
 if __name__ == '__main__':
     unittest.main()

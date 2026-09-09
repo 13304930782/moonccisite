@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 
-const DEFAULT_GOOGLE_CLIENT_ID = '614401761904-4g7soo2d1clsnui71h5tb9ia4j1t530m.apps.googleusercontent.com';
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
 const GOOGLE_SCRIPT_ID = 'google-identity-services';
 
 type GoogleCredentialResponse = {
@@ -62,6 +60,7 @@ function loadGoogleIdentityScript() {
 }
 
 type GoogleSignInButtonProps = {
+  clientId: string;
   context?: 'signin' | 'signup';
   disabled?: boolean;
   onCredential: (credential: string) => void | Promise<void>;
@@ -69,6 +68,7 @@ type GoogleSignInButtonProps = {
 };
 
 export function GoogleSignInButton({
+  clientId,
   context = 'signin',
   disabled = false,
   onCredential,
@@ -106,7 +106,7 @@ export function GoogleSignInButton({
     if (!scriptReady || !googleIdentity || !host) return;
 
     googleIdentity.initialize({
-      client_id: GOOGLE_CLIENT_ID,
+      client_id: clientId,
       callback: (response) => {
         if (!response.credential) {
           errorHandler.current('Google 没有返回可用的登录凭证。');
@@ -131,7 +131,7 @@ export function GoogleSignInButton({
       width: Math.min(400, Math.max(240, Math.floor(host.clientWidth || 320))),
       locale: 'zh-CN',
     });
-  }, [context, scriptReady]);
+  }, [context, scriptReady, clientId]);
 
   return (
     <div className={`auth-google-button ${disabled ? 'is-disabled' : ''}`} aria-busy={disabled}>

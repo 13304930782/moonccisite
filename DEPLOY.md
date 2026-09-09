@@ -327,3 +327,29 @@ bash /root/mooncci-electricity-charts-20260908/deploy-electricity-charts.sh
 ### 离线包固定时间戳的复制修复
 
 归档使用固定 mtime=0；不同版本的 asset-manifest.json 可能大小相同、内容不同。原 rsync -a 的大小/时间快速比较会跳过该文件，触发部署后的 SHA256 校验失败。两个离线部署脚本改用 rsync -ac，按内容比较后复制，保留完整校验和失败回滚。失败日志直接列出未通过文件。Linux 回归覆盖同大小、同时间戳、不同内容的旧清单替换。
+
+
+### 第三方登录管理与邮箱验证（2026-09-10）
+
+后台 `/admin/login-settings` 仅站长可访问，支持 GitHub、Google、QQ、微信、Gitee 的开关、应用 ID、密钥保存/清除与回调提示。默认保留现有 Google，其余渠道默认关闭。只有配置齐全且已启用的渠道显示在登录/注册页；Google 保留整行官方按钮，其余使用本地图标。密钥不回显，AES-256-GCM 加密存储。空密钥保留原值，更换应用 ID 必须先停用，并重新填写密钥。历史绑定按平台和应用 ID 隔离。
+
+Google 继续使用现有 GIS 凭证模式和 `googleIdentity.js`，默认 CF 证书代理 `https://google-certs.mooncci.site/google-certs` 及 `GOOGLE_CERTS_URL` 覆盖逻辑保持不变。未保存后台覆盖时沿用 `GOOGLE_CLIENT_ID` 或原默认值。不需要 Client Secret，不改 CF Worker，也不新增 Google 回调模式。已有 `users.google_sub` 关联保持可用；对尚未绑定的同邮箱账户，要求先用原方式登录再主动绑定，不自动合并。
+
+其他四个平台的完整回调地址：`https://mooncci.site/api/auth/{github|qq|wechat|gitee}/callback`，以后台显示值为准，来源于服务端 `SITE_URL`。微信用开放平台网站应用，授权回调域填 `mooncci.site`；GitHub 用 OAuth App；Gitee 授权范围 `user_info`；QQ 使用 `get_user_info`；微信使用 `snsapi_login`。GitHub 只请求 `read:user user:email` 并使用 PKCE。第三方授权仍需平台审核及真实凭据，配置页的“已启用”表示本地配置完整，并不表示平台授权已实测。
+
+邮箱：Google 可信 Gmail/Workspace 邮箱和 GitHub 的 verified 邮箱可用于新注册。未得到可信邮箱时，仅创建 30 分钟的临时注册记录并跳转 `/complete-registration`；无正式账号、无登录 Cookie、不能评论。邮箱验证码有效 10 分钟、最多尝试 5 次、重发间隔 60 秒，另有 IP/邮箱限流。通过验证才创建普通用户和正式登录会话。同邮箱已存在时要求原账号登录绑定。SMTP 必须可用，请先在邮件设置完成测试。随机不可知密码只存 bcrypt；若以后需密码登录，可通过已验证邮箱走忘记密码。现有邮箱密码注册流程未改变。
+
+`/account/connections` 支持登录后主动绑定；菜单有入口。绑定回调绑定原会话，退出/禁用后不可继续，已有绑定不可被另一用户抢占。不提供可能导致账号失联的直接解绑功能。OAuth state 持久化、限时、浏览器 Cookie 绑定且单次消费；授权码和平台 token 不写入日志或数据库。
+
+发布：`python -X utf8 scripts/build-social-login-release.py` 会先执行前端 check 并要求 Git 工作区干净，生成 `.cache/mooncci-social-login-<commit>.tar.gz` 和 LF SHA256 文件。`powershell -ExecutionPolicy Bypass -File scripts/Upload-OfflineRelease.ps1` 上传后打印匹配的 nohup 部署及验证命令。
+
+离线包只替换登录相关后端文件及前端，使用服务器现有 node_modules，不下载依赖。独立迁移脚本只执行新增的 `202609100001_social_login.sql`，建立 oauth_providers/identities/states/registrations 四张表并记录标准迁移摘要，不扫描、改写历史 SQL 或校验和。执行前检查现有 Google 和会话表。新表建好前现有 API 持续运行。备份范围内后端文件和旧前端入口，复制后重启 mooncci-api 并检查健康及配置接口，失败恢复原文件与入口。保留 `.env`、上传文件、Google CF 代理模块、worker 和旧哈希资源；新增表在回退后保留，不删除账号数据。
+
+测试：`npm run check`、`npm test --prefix server`；`SOCIAL_INTEGRATION=true node --test server/test/socialLogin.integration.test.js` 只使用本地 `mooncci_qa_social_login` 专用测试库（默认端口 33079）。覆盖配置权限/CSRF、密钥不回显、state 重放、邮箱强制验证/重放、账号禁用、绑定冲突、退出失效和已有 Google 关联。模拟第三方响应不等同于真实平台联调；审核通过后每个平台应实测一次授权、注册、绑定与退出。
+
+协议参考：
+- https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+- https://developers.google.com/identity/gsi/web/guides/verify-google-id-token
+- https://gitee.com/api/v5/oauth_doc
+- https://wiki.connect.qq.com/使用authorization_code获取access_token
+- https://developers.weixin.qq.com/doc/oplatform/Website_App/WeChat_Login/Wechat_Login.html

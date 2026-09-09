@@ -207,6 +207,13 @@ export function AdminShell({ children }: AdminShellProps) {
       show: manager,
     },
     {
+      title: '第三方登录',
+      desc: '管理 GitHub、Google、QQ、微信和 Gitee 登录',
+      to: '/admin/login-settings',
+      icon: Settings,
+      show: user?.role === 'owner',
+    },
+    {
       title: '邮件设置',
       to: '/admin/mail-settings',
       icon: Mail,
