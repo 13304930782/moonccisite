@@ -36,11 +36,28 @@ function isSameUser(a, b) {
   return Number(a) === Number(b);
 }
 
-router.get('/users', adminOnly, async (_req, res) => {
-  const [rows] = await db.query(
-    'SELECT id,username,email,role,status,can_comment,created_at FROM users ORDER BY id DESC'
-  );
-  res.json(rows);
+router.get('/users', adminOnly, async (req, res) => {
+  const where = [], params = [];
+  const keyword = String(req.query.keyword || '').trim().slice(0, 255);
+  if (keyword) { where.push('(username LIKE ? OR email LIKE ?)'); params.push(`%${keyword}%`, `%${keyword}%`); }
+  for (const [field, allowed] of [['role', ['owner', 'admin', 'editor', 'teacher', 'user']], ['status', ['active', 'disabled']]]) {
+    const value = req.query[field];
+    if (value && value !== 'all') {
+      if (!allowed.includes(value)) return res.status(400).json({ message: '筛选条件不合法' });
+      where.push(`${field}=?`); params.push(value);
+    }
+  }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const paginated = req.query.page !== undefined || req.query.pageSize !== undefined;
+  let { page, pageSize } = require('../lib/listPagination').listPagination(req.query);
+  let total;
+  if (paginated) {
+    const [[count]] = await db.query(`SELECT COUNT(*) AS total FROM users ${whereSql}`, params);
+    total = Number(count.total); page = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
+  }
+  const [rows] = await db.query(`SELECT id,username,email,role,status,can_comment,created_at FROM users ${whereSql} ORDER BY id DESC ${paginated ? 'LIMIT ? OFFSET ?' : ''}`,
+    paginated ? [...params, pageSize, (page - 1) * pageSize] : params);
+  res.json(paginated ? { items: rows, total, page, pageSize } : rows);
 });
 
 router.put('/users/:id', adminOnly, async (req, res) => {
@@ -110,6 +127,10 @@ router.delete('/users/:id', adminOnly, async (req, res) => {
     return res.status(404).json({ message: 'User not found' });
   }
 
+  if (old.role === 'owner' && !isOwner(req.user)) {
+    return res.status(403).json({ message: 'Only owner can disable owner account' });
+  }
+
   if (isSameUser(old.id, req.user.id)) {
     return res.status(400).json({ message: 'You cannot delete your own account' });
   }
@@ -176,10 +197,15 @@ router.get('/posts', editorOrAdmin, async (req, res) => {
  */
 router.get('/comments', adminOnly, async (req, res) => {
   const status = req.query.status;
-  const keyword = req.query.keyword;
+  const keyword = String(req.query.keyword || '').trim().slice(0, 255);
+  const target = req.query.target || 'all';
+  if (!['all', 'post', 'update'].includes(target)) return res.status(400).json({ message: '内容类型不合法' });
+  if (status && !['all', 'pending', 'visible', 'rejected', 'hidden', 'deleted'].includes(status)) return res.status(400).json({ message: '评论状态不合法' });
 
   const where = [];
   const params = [];
+  if (target === 'post') where.push('c.post_id IS NOT NULL');
+  if (target === 'update') where.push('c.update_id IS NOT NULL');
 
   if (status && status !== 'all') {
     where.push('c.status = ?');
@@ -193,6 +219,13 @@ router.get('/comments', adminOnly, async (req, res) => {
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
+  const paginated = req.query.page !== undefined || req.query.pageSize !== undefined;
+  let { page, pageSize } = require('../lib/listPagination').listPagination(req.query);
+  let total;
+  if (paginated) {
+    const [[count]] = await db.query(`SELECT COUNT(*) AS total FROM comments c JOIN users u ON u.id=c.user_id LEFT JOIN posts p ON p.id=c.post_id LEFT JOIN updates n ON n.id=c.update_id ${whereSql}`, params);
+    total = Number(count.total); page = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
+  }
   const [rows] = await db.query(
     `
     SELECT
@@ -216,18 +249,19 @@ router.get('/comments', adminOnly, async (req, res) => {
     LEFT JOIN posts p ON p.id = c.post_id
     LEFT JOIN updates n ON n.id = c.update_id
     ${whereSql}
-    ORDER BY c.created_at DESC
-    LIMIT 300
+    ORDER BY c.created_at DESC, c.id DESC
+    LIMIT ? OFFSET ?
     `,
-    params
+    [...params, paginated ? pageSize : 300, paginated ? (page - 1) * pageSize : 0]
   );
 
-  res.json(rows.map((row) => ({
+  const items = rows.map((row) => ({
     ...row,
     ip_location: formatIpLocation(row.ip_location),
     ip_address_masked: maskIp(row.ip_address),
     ip_address: req.user.role === 'owner' ? row.ip_address : undefined,
-  })));
+  }));
+  res.json(paginated ? { items, total, page, pageSize } : items);
 });
 
 /**

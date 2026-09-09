@@ -4,7 +4,7 @@ $projectRoot = Split-Path $PSScriptRoot -Parent
 $release = Get-Content -LiteralPath (Join-Path $projectRoot '.cache/offline-release.json') -Raw | ConvertFrom-Json
 $packagePath = $release.package
 $packageName = Split-Path $packagePath -Leaf
-if ($packageName -notmatch '^mooncci-frontend-[0-9a-f]{12}\.tar\.gz$') { throw 'Invalid release filename' }
+if ($packageName -notmatch '^mooncci-(frontend|admin-lists)-[0-9a-f]{12}\.tar\.gz$') { throw 'Invalid release filename' }
 $checksumPath = "$packagePath.sha256"
 if ((Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $release.sha256) { throw 'Package checksum mismatch' }
 $checksumText = [IO.File]::ReadAllText($checksumPath)
