@@ -1260,3 +1260,18 @@
   .electricity-chart { overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
   .electricity-chart-card { min-width: 0; max-width: 100%; }
 }
+
+/* Keep the mobile range switch fitted to its two buttons. */
+@media (max-width: 640px) {
+  .electricity-chart-card .electricity-section-head {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .electricity-chart-card .electricity-section-head > .electricity-segment {
+    width: fit-content;
+    align-self: flex-start;
+  }
+  .electricity-chart-card .electricity-chart {
+    margin-top: 24px;
+  }
+}

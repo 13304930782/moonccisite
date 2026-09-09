@@ -25,3 +25,9 @@
 上线后验证近况评论提交与审核、文章评论回归、匿名访问草稿被拒绝，以及手机 7/30 日横向滑动。
 
 依赖公告依据：[Nodemailer](https://github.com/advisories/GHSA-8m3c-c648-2xjj)、[Sharp](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c)。
+
+## 第二轮按需加载
+
+首页 Markdown 渲染器独立加载，入口约 230 KB（gzip 75 KB）；电量图表独立加载，只有可展示数据时才请求图表模块，未登录/空数据无需下载约 414 KB 图表代码。电量页面入口约 15 KB。编辑器内部 ProseMirror 独立为约 211 KB 缓存包，编辑器主包约 375 KB。编辑器总下载量基本不变，不能把分包等同于压缩减重。所有 JS 包低于原有 500 KB 告警阈值，阈值未提高。
+
+纯前端更新，需要重新构建并发布 dist；不需要再次迁移数据库或重启后端。保留旧哈希资源，最后替换 index.html。

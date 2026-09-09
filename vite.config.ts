@@ -32,6 +32,15 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (/[\\/]node_modules[\\/](prosemirror-[^\\/]+|orderedmap|rope-sequence|w3c-keyname)[\\/]/.test(id)) return 'editor-engine';
+        },
+      },
+    },
+  },
   optimizeDeps: { exclude: ['@toast-ui/editor'] },
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
