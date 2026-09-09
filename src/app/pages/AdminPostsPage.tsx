@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 
@@ -6,15 +6,25 @@ export default function AdminPostsPage() {
   const [posts, setPosts] = useState<any[]>([]);
   const [message, setMessage] = useState('');
 
-  const loadPosts = () => {
-    api('/admin/posts')
-      .then(setPosts)
-      .catch((err) => setMessage(err.message || '文章加载失败'));
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const requestVersion = useRef(0);
+  const loadPosts = async () => {
+    const version = ++requestVersion.current;
+    setLoading(true);
+    try {
+      const data = await api(`/admin/posts?page=${page}&pageSize=50`);
+      if (version !== requestVersion.current) return;
+      setPosts(data.items); setTotal(data.total);
+      if (data.page !== page) setPage(data.page);
+    } catch (err: any) { if (version === requestVersion.current) setMessage(err.message || '文章加载失败'); }
+    finally { if (version === requestVersion.current) setLoading(false); }
   };
-
   useEffect(() => {
-    loadPosts();
-  }, []);
+    setPosts([]); setMessage(''); void loadPosts();
+    return () => { requestVersion.current++; };
+  }, [page]);
 
   const removePost = async (id: number) => {
     if (!window.confirm('确定要删除这篇文章吗？')) return;
@@ -44,8 +54,14 @@ export default function AdminPostsPage() {
 
         {message && <div className="mb-4 rounded-[6px] bg-muted px-4 py-3 text-foreground">{message}</div>}
 
+        <nav aria-label="文章管理分页" className="mb-4 flex flex-wrap items-center gap-3">
+          <button disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="rounded border px-4 py-2 disabled:opacity-50">上一页</button>
+          <span>共 {total} 篇，第 {page} / {Math.max(1, Math.ceil(total / 50))} 页</span>
+          <button disabled={loading || page * 50 >= total} onClick={() => setPage(page + 1)} className="rounded border px-4 py-2 disabled:opacity-50">下一页</button>
+        </nav>
+        {loading && <p role="status">正在加载文章…</p>}
         <div className="space-y-4">
-          {posts.length === 0 && <p className="text-muted-foreground">还没有文章，先点击右上角写文章。</p>}
+          {!loading && !message && posts.length === 0 && <p className="text-muted-foreground">还没有文章，先点击右上角写文章。</p>}
 
           {posts.map((post) => (
             <div key={post.id} className="rounded-[10px] border border-border bg-card p-5">

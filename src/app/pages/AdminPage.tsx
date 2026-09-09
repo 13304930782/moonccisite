@@ -66,28 +66,9 @@ export default function AdminPage() {
 
     async function loadStats() {
       try {
-        const results = await Promise.allSettled([
-          writer ? api('/admin/posts') : Promise.resolve([]),
-          manager ? api('/admin/users') : Promise.resolve([]),
-          manager ? api('/admin/comments?status=all') : Promise.resolve([]),
-          manager ? api('/admin/banned-words') : Promise.resolve([]),
-        ]);
-
-        if (cancelled) return;
-
-        const getLength = (index: number) => {
-          const item = results[index];
-
-          if (item.status !== 'fulfilled') return 0;
-          return Array.isArray(item.value) ? item.value.length : 0;
-        };
-
-        setStats({
-          posts: getLength(0),
-          users: getLength(1),
-          comments: getLength(2),
-          bannedWords: getLength(3),
-        });
+        if (!writer) return;
+        const result = await api('/admin/stats');
+        if (!cancelled) setStats(result);
       } catch {
         // 不影响页面显示
       }
