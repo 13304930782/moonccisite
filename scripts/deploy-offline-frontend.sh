@@ -43,6 +43,9 @@ log '切换页面入口……'
 install -m 644 dist/index.html "$web/.index-offline.tmp"
 switched=1
 mv -f "$web/.index-offline.tmp" "$web/index.html"
-cmp dist/index.html "$web/index.html"
+log '核对已部署的全部前端文件……'
+sed -n 's|  dist/|  |p' SHA256SUMS > "$backup/frontend-checksums"
+test -s "$backup/frontend-checksums"
+(cd "$web" && sha256sum --strict -c "$backup/frontend-checksums") > "$backup/frontend-verification.log"
 printf '%s\n' "$revision" > "$backup/deployed-commit.txt"
 log "前端部署完成：$revision"

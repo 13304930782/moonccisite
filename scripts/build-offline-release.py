@@ -23,6 +23,7 @@ def make_bundle(root, revision):
     if not entries.get('dist/index.html'):
         raise ValueError('Missing built index.html')
     entries['deploy.sh'] = (root / 'scripts/deploy-offline-frontend.sh').read_bytes().replace(b'\r\n', b'\n')
+    entries['verify-live.mjs'] = (root / 'scripts/verify-live.mjs').read_bytes().replace(b'\r\n', b'\n')
     entries['REVISION'] = (revision + '\n').encode('ascii')
     entries['SHA256SUMS'] = ''.join(
         f'{hashlib.sha256(data).hexdigest()}  {path}\n' for path, data in sorted(entries.items())

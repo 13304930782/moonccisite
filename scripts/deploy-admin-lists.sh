@@ -8,10 +8,21 @@ mkdir -p "$backup_root"
 backup=$(mktemp -d "$backup_root/mooncci-offline.XXXXXX")
 switched=0
 server_changed=0
-live=/www/wwwroot/mooncci-source/server
+live=${MOONCCI_SERVER_ROOT:-/www/wwwroot/mooncci-source/server}
 export PATH="/opt/mooncci-node-v24.20.0/bin:$PATH"
 pm() { su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; pm2 $*"; }
 log() { printf '[%s] %s\n' "$(date '+%F %T')" "$*"; }
+check_api() {
+  local healthy=0
+  for attempt in $(seq 1 30); do
+    if curl -fsS --connect-timeout 2 --max-time 3 http://127.0.0.1:3001/api/health > "$backup/health.json" &&
+      node -e 'if(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).ok!==true)process.exit(1)' "$backup/health.json"; then
+      healthy=1; break
+    fi
+    sleep 2
+  done
+  test "$healthy" = 1
+}
 finish() {
   rc=$?
   trap - EXIT
@@ -26,8 +37,11 @@ finish() {
   fi
   if [ "$rc" -ne 0 ] && [ "$server_changed" = 1 ]; then
     log '恢复原 API 文件……'
-    cp -p "$backup/admin.js" "$live/src/routes/admin.js"
-    pm restart mooncci-api
+    if cp -p "$backup/admin.js" "$live/src/routes/admin.js" && pm restart mooncci-api && check_api; then
+      log '原 API 已恢复并通过健康检查'
+    else
+      log "API 自动恢复失败，请检查进程；原文件保存在 $backup/admin.js"
+    fi
   fi
   printf '%s\n' "$rc" > "$backup/exit-code"
   log "备份目录：$backup"
@@ -53,21 +67,16 @@ log '更新用户与评论 API……'
 server_changed=1
 install -o mooncci -g mooncci -m 644 server/src/routes/admin.js "$live/src/routes/admin.js"
 pm restart mooncci-api
-healthy=0
-for attempt in $(seq 1 30); do
-  if curl -fsS --connect-timeout 2 --max-time 3 http://127.0.0.1:3001/api/health > "$backup/health.json" &&
-    node -e 'if(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).ok!==true)process.exit(1)' "$backup/health.json"; then
-    healthy=1; break
-  fi
-  sleep 2
-done
-test "$healthy" = 1
+check_api
 log '复制前端资源，保留旧哈希文件……'
 rsync -a --exclude=index.html dist/ "$web/"
 log '切换页面入口……'
 install -m 644 dist/index.html "$web/.index-offline.tmp"
 switched=1
 mv -f "$web/.index-offline.tmp" "$web/index.html"
-cmp dist/index.html "$web/index.html"
+log '核对已部署的全部前端文件……'
+sed -n 's|  dist/|  |p' SHA256SUMS > "$backup/frontend-checksums"
+test -s "$backup/frontend-checksums"
+(cd "$web" && sha256sum --strict -c "$backup/frontend-checksums") > "$backup/frontend-verification.log"
 printf '%s\n' "$revision" > "$backup/deployed-commit.txt"
 log "用户与评论管理部署完成：$revision"
