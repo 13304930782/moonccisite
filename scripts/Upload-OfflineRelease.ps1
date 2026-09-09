@@ -26,3 +26,7 @@ echo "Background deployment started"
 BASH
 tail -n 40 /www/backup/$directoryName.log
 "@
+Write-Host 'After the deployment log reports exit code 0, run this read-only live check:'
+Write-Host @"
+/opt/mooncci-node-v24.20.0/bin/node /www/backup/$directoryName/verify-live.mjs https://mooncci.site
+"@

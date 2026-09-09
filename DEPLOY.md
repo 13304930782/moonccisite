@@ -293,3 +293,16 @@ bash /root/mooncci-electricity-charts-20260908/deploy-electricity-charts.sh
 在干净的已合并提交上运行 `python scripts/build-admin-lists-release.py`。它执行前端质量检查，打包 dist 和唯一后端文件 `server/src/routes/admin.js`，校验归档及 LF 校验文件。使用 `powershell -ExecutionPolicy Bypass -File .\scripts\Upload-OfflineRelease.ps1` 上传，按脚本输出的命令启动后台部署并检查日志。
 
 本包要求先前容量改进已部署（含 `server/src/lib/listPagination.js`），不安装依赖，不覆盖 SQL、环境变量或上传文件。部署备份 API 和旧入口，重启 mooncci-api，通过健康检查后切换前端；失败时恢复旧 API 和入口。worker 不重启。不要用纯前端包替代本次前后端更新。
+
+
+### 发布后只读验收
+
+新的离线包包含 `verify-live.mjs`。部署日志显示退出码 0 后执行：
+
+```bash
+/opt/mooncci-node-v24.20.0/bin/node /www/backup/实际包目录/verify-live.mjs https://mooncci.site
+```
+
+脚本不需要 npm 安装，只发送匿名 GET，每个请求超时 10 秒，不跟随重定向。请使用最终站点根地址。检查首页和入口静态资源是否与包一致、MIME、API JSON、匿名权限和 no-store。输出 PASS/FAIL，失败退出码 1；不会停止服务或自动回滚。若 CDN 改写 HTML/资源也会报告不一致，需人工核实改写及缓存策略。检查不包含动态页面交互、真实账号退出、数据库连通性、邮件和学校 API。
+
+所有本次前端文件还会在部署目录逐个核对 SHA256；旧哈希文件保留。脚本执行失败会恢复入口，后端包还恢复原 API 并确认其健康状态。资源校验日志与备份放在部署日志给出的备份目录中。
