@@ -1,6 +1,7 @@
+import {useUnsavedLeave} from '../lib/useUnsavedLeave';
 import { Link } from 'react-router-dom';
 import { ThemeSelect } from '../components/ThemeSelect';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import {
@@ -17,14 +18,17 @@ import { safeImageSrc } from '../lib/safeUrl';
 function ImageField({
   value,
   onChange,
+  onBusy,
 }: {
   value: string;
   onChange: (v: string) => void;
+  onBusy?: (v:boolean)=>void;
 }) {
   const [open, setOpen] = useState(false),
     [images, setImages] = useState<any[]>([]),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  useEffect(()=>{onBusy?.(busy);},[busy,onBusy]);
   async function library() {
     setBusy(true);
     try {
@@ -120,7 +124,8 @@ function ImageField({
 export function AdminUpdatesPage() {
   const [page, setPage] = useState(1),
     resource = useResource(`/admin/updates?page=${page}`);
-  const [form, setForm] = useState({
+  const [dirty,setDirty]=useState(false),[imageBusy,setImageBusy]=useState(false);useUnsavedLeave(dirty);
+  const [form, rawSetForm] = useState({
       id: 0,
       content: '',
       image_url: '',
@@ -128,15 +133,17 @@ export function AdminUpdatesPage() {
     }),
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false);
+  const setForm=(v:any)=>{setDirty(true);rawSetForm(v);};
   async function save(e: FormEvent) {
     e.preventDefault();
+    if(busy||imageBusy||resource.loading||resource.error)return;
     setBusy(true);
     try {
       await api(form.id ? `/admin/updates/${form.id}` : '/admin/updates', {
         method: form.id ? 'PUT' : 'POST',
         body: JSON.stringify(form),
       });
-      setForm({ id: 0, content: '', image_url: '', status: 'draft' });
+      rawSetForm({ id: 0, content: '', image_url: '', status: 'draft' });setDirty(false);
       setMessage('动态已保存');
       resource.reload();
     } catch (e: any) {
@@ -170,7 +177,7 @@ export function AdminUpdatesPage() {
             onChange={(e) => setForm({ ...form, content: e.target.value })}
           />
         </label>
-        <ImageField
+        <ImageField onBusy={setImageBusy}
           value={form.image_url}
           onChange={(image_url) => setForm({ ...form, image_url })}
         />
@@ -187,12 +194,12 @@ export function AdminUpdatesPage() {
           </ThemeSelect>
         </label>
         <div className="inline-actions">
-          <button disabled={busy}>{busy ? '保存中…' : '保存动态'}</button>
+          <button disabled={busy||imageBusy||resource.loading||!!resource.error}>{busy ? '保存中…' : '保存动态'}</button>
           {form.id > 0 && (
             <button
               type="button"
               onClick={() =>
-                setForm({ id: 0, content: '', image_url: '', status: 'draft' })
+                (!dirty||confirm('放弃当前未保存修改？')) && (rawSetForm({ id: 0, content: '', image_url: '', status: 'draft' }),setDirty(false))
               }
             >
               取消编辑
@@ -217,7 +224,7 @@ export function AdminUpdatesPage() {
                     </span>
                     <p>{u.content.slice(0, 160)}</p>
                   </div>
-                  <button onClick={() => setForm({ ...u })}>编辑 / 撤回</button>
+                  <button onClick={() => {if(!dirty||confirm('放弃当前未保存修改？')){rawSetForm({ ...u });setDirty(false);}}}>编辑 / 撤回</button>
                 </article>
               ))}
             </div>
@@ -243,15 +250,18 @@ const emptyProject = {
   featured_rank: '',
 };
 export function AdminProjectsPage() {
+  const [dirty,setDirty]=useState(false),[imageBusy,setImageBusy]=useState(false);useUnsavedLeave(dirty);
   const { user } = useAuth(),
     owner = user?.role === 'owner';
   const [page, setPage] = useState(1),
     resource = useResource(`/admin/projects?page=${page}`),
-    [form, setForm] = useState<any>({ ...emptyProject }),
+    [form, rawSetForm] = useState<any>({ ...emptyProject }),
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false),
     [selected, setSelected] = useState<number | null>(null);
+  const setForm=(v:any)=>{setDirty(true);rawSetForm(v);};
   async function action(path: string, method: string, body?: any) {
+    if(busy||imageBusy||resource.loading||resource.error)return false;
     setBusy(true);
     setMessage('');
     try {
@@ -278,7 +288,7 @@ export function AdminProjectsPage() {
         form,
       )
     )
-      setForm({ ...emptyProject });
+      {rawSetForm({ ...emptyProject });setDirty(false);}
   }
   return (
     <div className="content-admin">
@@ -335,7 +345,7 @@ export function AdminProjectsPage() {
             onChange={(e) => setForm({ ...form, content: e.target.value })}
           />
         </label>
-        <ImageField
+        <ImageField onBusy={setImageBusy}
           value={form.cover_image}
           onChange={(cover_image) => setForm({ ...form, cover_image })}
         />
@@ -369,9 +379,9 @@ export function AdminProjectsPage() {
           </label>
         </div>
         <div className="inline-actions">
-          <button disabled={busy}>保存作品</button>
+          <button disabled={busy||imageBusy||resource.loading||!!resource.error}>保存作品</button>
           {form.id > 0 && (
-            <button type="button" onClick={() => setForm({ ...emptyProject })}>
+            <button type="button" onClick={() => {if(!dirty||confirm('放弃当前未保存修改？')){rawSetForm({ ...emptyProject });setDirty(false);}}}>
               取消编辑
             </button>
           )}
@@ -400,7 +410,7 @@ export function AdminProjectsPage() {
                   <div className="inline-actions">
                     <button
                       onClick={() =>
-                        setForm({ ...p, featured_rank: p.featured_rank ?? '' })
+                        (!dirty||confirm('放弃当前未保存修改？')) && (rawSetForm({ ...p, featured_rank: p.featured_rank ?? '' }),setDirty(false))
                       }
                     >
                       编辑
@@ -409,7 +419,7 @@ export function AdminProjectsPage() {
                     {owner && (
                       <>
                         <button
-                          disabled={busy}
+                          disabled={busy||imageBusy||resource.loading||!!resource.error}
                           onClick={() =>
                             action(`/admin/projects/${p.id}/sync`, 'PUT', {
                               enabled: !p.sync_enabled,

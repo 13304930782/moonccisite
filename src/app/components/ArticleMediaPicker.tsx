@@ -1,0 +1,11 @@
+import {useEffect,useState} from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
+import {api} from '../lib/api';
+import {safeImageSrc} from '../lib/safeUrl';
+export function ArticleMediaPicker({onSelect,onClose}:{onSelect:(url:string,alt:string)=>void;onClose:()=>void}){
+ const [q,setQ]=useState(''),[keyword,setKeyword]=useState(''),[page,setPage]=useState(1),[data,setData]=useState<any>({items:[],total:0}),[error,setError]=useState(''),[loading,setLoading]=useState(true),[selected,setSelected]=useState<any>(null),[alt,setAlt]=useState('');
+ useEffect(()=>{let alive=true;setLoading(true);setError('');api(`/upload/media?status=active&page=${page}&pageSize=20&q=${encodeURIComponent(keyword)}`).then(r=>{if(alive)setData(r);}).catch(e=>{if(alive)setError(e.message);}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[keyword,page]);
+ return <Dialog.Root open onOpenChange={v=>{if(!v)onClose();}}><Dialog.Portal><Dialog.Overlay className="article-modal-overlay"/><Dialog.Content className="article-media-dialog"><Dialog.Title>从媒体库选择图片</Dialog.Title><Dialog.Description>只显示可用媒体。选择图片后填写替代文本并插入。</Dialog.Description><form onSubmit={e=>{e.preventDefault();setPage(1);setKeyword(q);}} className="inline-actions"><input aria-label="搜索图片" value={q} onChange={e=>setQ(e.target.value)}/><button>搜索</button></form>
+ {error&&<p role="alert">{error}</p>}{loading?<p role="status">正在加载图片…</p>:<div className="article-media-grid">{data.items.filter((m:any)=>safeImageSrc(m.url)).map((m:any)=><button key={m.filename} aria-pressed={selected?.filename===m.filename} onClick={()=>{setSelected(m);setAlt(m.alt_text||'');}}><img src={safeImageSrc(m.url)} alt={m.display_name||m.filename}/><span>{m.display_name||m.filename}</span></button>)}</div>}
+ <div className="inline-actions"><button disabled={page<=1||loading} onClick={()=>setPage(page-1)}>上一页</button><span>{page} / {Math.max(1,Math.ceil(data.total/20))}</span><button disabled={page*20>=data.total||loading} onClick={()=>setPage(page+1)}>下一页</button></div><label>图片替代文本<input value={alt} onChange={e=>setAlt(e.target.value)} maxLength={500}/></label><div className="inline-actions"><button disabled={!selected} onClick={()=>{onSelect(selected.url,alt);onClose();}}>使用图片</button><Dialog.Close>取消</Dialog.Close></div></Dialog.Content></Dialog.Portal></Dialog.Root>;
+}

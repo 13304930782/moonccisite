@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useState, useRef, useEffect } from 'react';
 import { MarkdownContent } from './MarkdownContent';
 import '../../styles/article-editor.css';
 const VisualMarkdownEditor = lazy(() => import('./VisualMarkdownEditor'));
@@ -9,6 +9,7 @@ export function ArticleEditor({
   uploadImage,
   onError,
   onBusy,
+  registerImageInsert,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -16,8 +17,18 @@ export function ArticleEditor({
   uploadImage: (file: File) => Promise<string>;
   onError: (message: string) => void;
   onBusy: (busy: boolean) => void;
+  registerImageInsert?: (insert:(url:string,alt:string)=>void)=>void;
 }) {
   const [mode, setMode] = useState(existing ? 'source' : 'visual');
+  const source=useRef<HTMLTextAreaElement>(null), visual=useRef<((url:string,alt:string)=>void)|null>(null);
+  useEffect(()=>{registerImageInsert?.((url,alt)=>{
+    if(mode==='visual'&&visual.current){visual.current(url,alt);return;}
+    const escaped=alt.replace(/\\/g,'\\\\').replace(/\[/g,'\\[').replace(/\]/g,'\\]').replace(/[\r\n]/g,' ');
+    const markdown=`![${escaped}](<${url.replace(/>/g,'%3E').replace(/</g,'%3C').replace(/\s/g,'%20')}>)`;
+    const el=source.current,start=el?.selectionStart??value.length,end=el?.selectionEnd??value.length;
+    onChange(value.slice(0,start)+markdown+value.slice(end));
+  });},[mode,value,onChange,registerImageInsert]);
+
   return (
     <div className="article-editor">
       <div
@@ -49,6 +60,7 @@ export function ArticleEditor({
       </p>
       {mode === 'source' ? (
         <textarea
+          ref={source}
           aria-label="Markdown 正文"
           spellCheck={false}
           rows={22}
@@ -70,6 +82,7 @@ export function ArticleEditor({
             uploadImage={uploadImage}
             onError={onError}
             onBusy={onBusy}
+            registerImageInsert={insert=>{visual.current=insert;}}
           />
         </Suspense>
       )}
