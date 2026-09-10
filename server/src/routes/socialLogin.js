@@ -195,7 +195,7 @@ router.post('/google/bind', limiter, authRequired, async (req, res) => {
 
 router.post('/:provider/start', limiter, async (req, res) => {
   const provider = req.params.provider;
-  if (!validProvider(provider) || provider === 'google') return res.status(404).json({ message: '未知登录渠道。' });
+  if (!validProvider(provider)) return res.status(404).json({ message: '未知登录渠道。' });
   const config = await getConfig(provider);
   if (!ready(config)) return res.status(403).json({ message: '该登录渠道尚未启用。' });
   const binding = req.body.mode === 'bind';
@@ -246,6 +246,10 @@ async function finishIdentity(provider, config, identity, state) {
       const [invalidated] = await connection.query('SELECT user_id FROM auth_invalidations WHERE user_id=? AND invalid_before>=?', [userId, state.started_at]);
       if (revoked.length || invalidated.length) throw new Error('session_expired');
     }
+    if (state.user_id && provider === 'google') {
+      const [bound] = await connection.query('SELECT google_sub FROM users WHERE id=?', [userId]);
+      if (bound[0]?.google_sub && bound[0].google_sub !== identity.subject) throw new Error('already_bound');
+    }
     if (!existing) {
       if (provider === 'google') await connection.query('UPDATE users SET google_sub=? WHERE id=?', [identity.subject, userId]);
       else await connection.query('INSERT INTO oauth_identities (provider,client_id,subject,user_id) VALUES (?,?,?,?)', [provider, config.client_id, identity.subject, userId]);
@@ -254,12 +258,38 @@ async function finishIdentity(provider, config, identity, state) {
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }
 }
-router.get('/:provider/callback', limiter, async (req, res) => {
+// Isolated callback document: consume the fragment before loading any other resource.
+// No access tokens are requested, and identity verification still uses googleIdentity's CF certificates.
+router.get('/google/callback', readLimiter, (_req, res) => {
+  const nonce = crypto.randomBytes(24).toString('base64');
+  res.setHeader('Content-Security-Policy', `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`);
+  res.type('html').send(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Google 登录 · mooncci</title>
+<style nonce="${nonce}">:root{color-scheme:light dark}body{font:16px/1.7 system-ui,sans-serif;max-width:440px;margin:20vh auto;padding:24px}a{color:inherit}</style></head><body><h1>Google 登录</h1><p id="status" role="status">正在确认登录…</p><a href="/login">返回登录页</a>
+<script nonce="${nonce}">
+const result = new URLSearchParams(location.hash.slice(1));
+history.replaceState(null, '', location.pathname);
+const state = result.get('state');
+const credential = result.get('id_token');
+async function finish() {
+  if (!state || !/^[a-f0-9]{64}$/.test(state) || (!result.has('error') && (!credential || credential.length > 16384))) throw new Error();
+  const response = await fetch('/api/auth/google/callback', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'}, body:JSON.stringify({state,credential,error:result.has('error') ? 'denied' : undefined})});
+  if (!response.ok) throw new Error();
+  const data = await response.json();
+  if (typeof data.redirect !== 'string' || !/^\\/(?!\\/)/.test(data.redirect) || data.redirect.includes('\\\\')) throw new Error();
+  location.replace(data.redirect);
+}
+finish().catch(() => {document.getElementById('status').textContent='登录未完成或授权已过期，请返回重试。';});
+</script></body></html>`);
+});
+
+async function completeCallback(req, res) {
   const provider = req.params.provider;
-  if (!validProvider(provider) || provider === 'google') return res.status(404).end();
+  if (!validProvider(provider)) return res.status(404).end();
+  const input = provider === 'google' ? req.body : req.query;
+  const respond = target => provider === 'google' ? res.json({ redirect: target }) : res.redirect(303, target);
   let state;
   try {
-    const inputState = req.query.state;
+    const inputState = input.state;
     const browser = readCookie(req, cookieName(provider));
     if (typeof inputState !== 'string' || !/^[a-f0-9]{64}$/.test(inputState) || !/^[a-f0-9]{64}$/.test(browser)) throw new Error('state_invalid');
     const connection = await db.getConnection();
@@ -273,25 +303,35 @@ router.get('/:provider/callback', limiter, async (req, res) => {
     } catch (error) { await connection.rollback(); throw error; }
     finally { connection.release(); }
     res.clearCookie(cookieName(provider), { ...cookieOptions(req), maxAge: undefined });
-    if (req.query.error || typeof req.query.code !== 'string' || !req.query.code || req.query.code.length > 2048) throw new Error('authorization_denied');
+    if (input.error || (provider !== 'google' && (typeof input.code !== 'string' || !input.code || input.code.length > 2048))) throw new Error('authorization_denied');
     if (state.user_id) {
       const user = await getUserFromRequest(req);
       if (!user || user.status === 'disabled' || user.id !== state.user_id || sha256(getAuthTokenFromRequest(req) || '') !== state.session_hash) throw new Error('session_expired');
     }
     const config = await getConfig(provider);
     if (!ready(config) || config.version !== state.config_version || config.client_id !== state.client_id) throw new Error('config_changed');
-    const identity = await adapters.exchange(provider, config, decrypt(config.secret_cipher, provider), req.query.code, state.verifier);
+    let identity;
+    if (provider === 'google') {
+      const payload = await verifyGoogleCredential(input.credential, config.client_id);
+      if (payload.nonce !== state.verifier) throw new Error('nonce_invalid');
+      const email = String(payload.email).toLowerCase();
+      identity = { subject: String(payload.sub), name: String(payload.name || 'Google 用户'), email, emailVerified: payload.email_verified === true && (email.endsWith('@gmail.com') || Boolean(payload.hd)) };
+    } else {
+      identity = await adapters.exchange(provider, config, decrypt(config.secret_cipher, provider), input.code, state.verifier);
+    }
     const user = await finishIdentity(provider, config, identity, state);
     if (!user) {
       await createPending(req, res, provider, config, identity, state);
-      return res.redirect(303, '/complete-registration');
+      return respond('/complete-registration');
     }
     if (!state.user_id) setAuthCookie(req, res, signToken(user, Number(state.started_at)));
     const target = state.user_id ? '/account/connections?oauth=bound' : state.return_to !== '/' ? state.return_to : ['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/';
-    res.redirect(303, target);
+    respond(target);
   } catch (error) {
     // Never log authorization codes, secrets, upstream URLs or access tokens.
-    res.redirect(303, state?.user_id ? '/account/connections?oauth=failed' : error.message === 'email_exists' ? '/login?oauth=email_exists' : '/login?oauth=failed');
+    respond(state?.user_id ? '/account/connections?oauth=failed' : error.message === 'email_exists' ? '/login?oauth=email_exists' : '/login?oauth=failed');
   }
-});
+}
+router.get('/:provider/callback', limiter, completeCallback);
+router.post('/google/callback', limiter, (req, res) => { req.params.provider = 'google'; return completeCallback(req, res); });
 module.exports = router;

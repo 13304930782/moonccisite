@@ -43,6 +43,6 @@ async function getConfig(provider, connection = db, lock = false) {
 }
 const ready = config => Boolean(config.enabled && config.client_id && (config.provider === 'google' || config.secret_cipher));
 function publicConfig(config) {
-  return { provider: config.provider, name: PROVIDERS[config.provider], enabled: config.enabled, ready: ready(config), client_id: config.client_id, has_secret: Boolean(config.secret_cipher), version: config.version, source: config.source, callback_url: config.provider === 'google' ? '' : callbackUrl(config.provider), origin: siteOrigin() };
+  return { provider: config.provider, name: PROVIDERS[config.provider], enabled: config.enabled, ready: ready(config), client_id: config.client_id, has_secret: Boolean(config.secret_cipher), version: config.version, source: config.source, callback_url: callbackUrl(config.provider), origin: siteOrigin() };
 }
 module.exports = { PROVIDERS, validProvider, sha256, encrypt, decrypt, getConfig, ready, publicConfig, siteOrigin, callbackUrl };

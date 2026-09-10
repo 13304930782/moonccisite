@@ -20,13 +20,13 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
     <fieldset disabled={saving} className="min-w-0 space-y-5">
       <div className="flex items-center justify-between gap-4"><h2 className="text-xl font-medium">{form.name}</h2><span className="text-sm text-muted-foreground">{initial.ready ? '已启用' : initial.client_id ? '已配置 · 未启用' : '等待配置'}</span></div>
       <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={form.enabled} onChange={e => setForm({ ...form, enabled: e.target.checked })} />启用 {form.name} 登录</label>
-      {google && <p className="text-sm text-muted-foreground">沿用现有 Google 登录，只需 Client ID，无需填写密钥。Google 控制台的“已获授权的 JavaScript 来源”填下方网站来源。</p>}
+      {google && <p className="text-sm text-muted-foreground">使用普通按钮跳转 Google 登录，只需现有 Client ID，无需密钥。请在 Google 控制台为此应用添加下方“已获授权的重定向 URI”；原有 CF 验签配置继续生效。</p>}
       <label className="block text-sm"><span className="mb-2 block">{google || ['github', 'gitee'].includes(form.provider) ? 'Client ID' : 'AppID'}</span><input className={inputClass} value={form.client_id} autoComplete="off" spellCheck={false} maxLength={255} onChange={e => setForm({ ...form, client_id: e.target.value })} /></label>
       {!google && <>
         <label className="block text-sm"><span className="mb-2 block">{form.provider === 'qq' ? 'AppKey' : form.provider === 'wechat' ? 'AppSecret' : 'Client Secret'}</span><input className={inputClass} type="password" autoComplete="new-password" value={form.client_secret || ''} maxLength={2048} placeholder={form.has_secret ? '已保存；留空保留原密钥' : '申请通过后填写'} onChange={e => setForm({ ...form, client_secret: e.target.value, clear_secret: false })} /></label>
         {form.has_secret && <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={form.clear_secret || false} onChange={e => setForm({ ...form, clear_secret: e.target.checked, client_secret: '', enabled: e.target.checked ? false : form.enabled })} />清除已保存的密钥并停用</label>}
       </>}
-      <div className="rounded-[8px] bg-muted p-4 text-sm"><p className="mb-2 text-muted-foreground">{google ? '网站来源' : '回调地址'}</p><code className="break-all select-all">{google ? form.origin : form.callback_url}</code>
+      <div className="rounded-[8px] bg-muted p-4 text-sm"><p className="mb-2 text-muted-foreground">{google ? '已获授权的重定向 URI' : '回调地址'}</p><code className="break-all select-all">{form.callback_url}</code>
         {form.provider === 'wechat' && <p className="mt-3">微信“授权回调域”填写：<code className="select-all">{new URL(form.origin).hostname}</code>。使用微信开放平台的网站应用 AppID。</p>}
       </div>
       <p className="text-xs text-muted-foreground">更换应用 ID 前先停用；更换后需重新填写密钥，原应用的账号绑定不会自动转移。</p>

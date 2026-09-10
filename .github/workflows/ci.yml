@@ -27,6 +27,7 @@ jobs:
       - run: npm run check:bundle
       - run: python3 scripts/test-offline-release.py
       - run: bash -n scripts/deploy-social-login.sh
+      - run: bash -n scripts/deploy-google-login.sh
       - run: bash -n scripts/deploy-admin-lists.sh
       - run: bash -n scripts/deploy-offline-frontend.sh
       - run: bash -n scripts/deploy-audit.sh
@@ -34,6 +35,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node scripts/test-browser.cjs
       - run: node scripts/test-updates-browser.cjs
+      - run: node scripts/test-google-button-browser.cjs
       - run: node scripts/test-admin-capacity-browser.cjs
       - run: npm audit --audit-level=moderate
       - run: npm audit --prefix server --audit-level=moderate
