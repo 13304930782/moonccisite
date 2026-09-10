@@ -1,3 +1,4 @@
+import '../components/AuthShell.css';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';

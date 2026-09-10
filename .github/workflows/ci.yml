@@ -34,6 +34,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node scripts/test-browser.cjs
       - run: node scripts/test-updates-browser.cjs
+      - run: node scripts/test-google-button-browser.cjs
       - run: node scripts/test-admin-capacity-browser.cjs
       - run: npm audit --audit-level=moderate
       - run: npm audit --prefix server --audit-level=moderate

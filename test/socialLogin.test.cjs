@@ -17,7 +17,7 @@ test('login and signup show only enabled providers, preserve Google row and requ
     };
     vm.runInNewContext(code, { module, exports: module.exports, require, window, fetch, FormData, Headers, console });
     await act(async () => { root = create(React.createElement(module.exports.SocialLoginButtons, { context, onCredential: () => {}, onError: assert.fail, returnTo: '/electricity' })); });
-    const buttons = root.root.findAllByType('button');
+    const buttons = root.root.findAllByType('button').filter(x => x.props['aria-label']);
     assert.equal(buttons.length, 1); assert.match(buttons[0].props['aria-label'], context === 'signup' ? /注册/ : /登录/);
     assert.equal(root.root.findAllByType('img')[0].props.src, '/login-icons/qq.svg');
     assert.equal(root.root.findAll(x => x.props.className === 'auth-google-button ').length, 1);
