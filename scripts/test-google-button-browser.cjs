@@ -47,6 +47,7 @@ async function main() {
     mode = 'ready';
     await local.click();
     await local.waitFor({ state: 'hidden' });
+    assert.equal(await page.locator('.auth-google-button-host iframe').evaluate(el => getComputedStyle(el).colorScheme), 'light');
     assert.equal(requests, 2, 'failed script is removed so retry makes a fresh request');
     assert.equal(await page.evaluate(() => window.googleOptions.theme), 'filled_black');
     assert.equal(await page.evaluate(() => window.googleInit.client_id), 'fixture-client');

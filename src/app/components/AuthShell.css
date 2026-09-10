@@ -203,7 +203,8 @@ html.auth-touch-page,
 
 .auth-google-slot { position: relative; height: 44px; width: 100%; max-width: 400px; margin: 0 auto; }
 .auth-google-button-host { width: 100%; height: 44px; align-items: center; color-scheme: light; }
-.dark .auth-google-button-host { color-scheme: dark; }
+/* Keep the embedded light document transparent; GIS theme controls the dark button. */
+.auth-google-button-host iframe { color-scheme: light; }
 .auth-google-local { position: absolute; inset: 2px 0; width: 100%; display: flex; align-items: center; gap: 12px; padding: 0 12px; border: 1px solid #747775; border-radius: 4px; background: #fff; color: #1f1f1f; font: 500 14px/20px Arial, sans-serif; cursor: pointer; }
 .auth-google-local span { flex: 1; text-align: center; padding-right: 20px; }
 .auth-google-local svg { flex: none; }
