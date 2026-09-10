@@ -15,6 +15,7 @@ async function main() {
       let body = {};
       if (path === '/api/auth/me') body = { user: loggedIn ? { ...user, id: 1, role: 'owner' } : null };
       else if (path === '/api/auth/logout') { loggedIn = false; body = { message: '退出成功' }; }
+      else if (path === '/api/admin/updates') body = {items:[],total:0,page:1,pageSize:20};
       else if (path === '/api/admin/users') body = { items: [user, { ...user, id: 3, username: 'long'.repeat(30), email: 'address'.repeat(20)+'@example.test' }], total: 2, page: 1, pageSize: 50 };
       else if (path === '/api/account' || path === '/api/admin/users/2/settings') {
         if (route.request().method() === 'PUT') { const data = route.request().postDataJSON(); assert.equal(data.version, user.version); user = { ...user, username: data.username, version: user.version + 1 }; }
@@ -52,6 +53,15 @@ async function main() {
         if (url === '/admin/users') assert.equal(await page.locator('table').count(), 0, 'mobile user management must not require a wide draggable table');
       }
     }
+    await page.goto('http://127.0.0.1:4196/admin/updates');
+    const statusSelect = page.getByRole('combobox', {name:'发布状态',exact:true});
+    await statusSelect.waitFor();
+    const alignment = await statusSelect.evaluate(el => {
+      const box=el.getBoundingClientRect(), icon=el.querySelector('svg').getBoundingClientRect();
+      return {right:box.right-icon.right, middle:Math.abs((box.top+box.bottom-icon.top-icon.bottom)/2)};
+    });
+    assert.ok(alignment.right < 24 && alignment.middle < 2, JSON.stringify(alignment));
+    await page.goto('http://127.0.0.1:4196/account/settings');
     await page.getByLabel('用户名', { exact: true }).fill('修改后的名字');
     await page.getByRole('button', { name: '保存资料', exact: true }).click();
     await page.getByText('资料已保存。', { exact: true }).waitFor();

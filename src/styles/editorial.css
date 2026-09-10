@@ -965,6 +965,11 @@ input[type='checkbox'] {
   width: 100%;
   margin-top: 8px;
 }
+.editor-panel .theme-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
