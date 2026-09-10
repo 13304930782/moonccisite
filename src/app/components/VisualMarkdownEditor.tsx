@@ -11,12 +11,14 @@ export default function VisualMarkdownEditor({
   uploadImage,
   onError,
   onBusy,
+  registerImageInsert,
 }: {
   value: string;
   onChange: (value: string) => void;
   uploadImage: (file: File) => Promise<string>;
   onError: (message: string) => void;
   onBusy: (busy: boolean) => void;
+  registerImageInsert?: (insert:(url:string,alt:string)=>void)=>void;
 }) {
   const host = useRef<HTMLDivElement>(null),
     instance = useRef<Editor | null>(null);
@@ -67,6 +69,7 @@ export default function VisualMarkdownEditor({
       },
     });
     instance.current = editor;
+    registerImageInsert?.((url,alt)=>{if(alive)editor.exec('addImage',{imageUrl:url,altText:alt});});
     lastValue.current = props.current.value;
     externalUpdate.current = false;
     editor.on('change', () => {
