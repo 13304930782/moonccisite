@@ -19,3 +19,12 @@
 .article-conflict-copy{max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;}
 
 .article-writing-fields > button{justify-self:start;padding:8px 12px;border:1px solid var(--border);border-radius:6px;}
+
+/* Keep publishing visually distinct from save and preview in both themes. */
+.article-save-bar button { min-height:44px; color:var(--foreground); background:transparent; transition:background-color 120ms, opacity 120ms; }
+.article-save-bar button:not(:disabled):hover { background:var(--muted); }
+.article-save-bar button.article-action-preview { border-color:transparent; color:var(--muted-foreground); }
+.article-save-bar button.article-action-publish { background:var(--foreground); color:var(--background); border-color:var(--foreground); font-weight:600; }
+.article-save-bar button.article-action-publish:not(:disabled):hover { background:var(--foreground); opacity:.85; }
+.article-save-bar button:disabled { opacity:.45; cursor:not-allowed; }
+.article-save-bar button:focus-visible { outline:2px solid var(--foreground); outline-offset:3px; }
