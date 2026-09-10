@@ -7,7 +7,7 @@
 .account-section p, .account-section small { color: var(--muted-foreground); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .account-fields { display: grid; gap: 16px; min-width: 0; }
 .account-fields label { display: grid; gap: 8px; font-size: 14px; }
-.account-fields :is(input,select) { width: 100%; min-width: 0; padding: 10px 12px; }
+.account-fields :is(input,select:not(.theme-select-native),.theme-select-trigger) { width: 100%; min-width: 0; padding: 10px 12px; }
 .account-fields button, .account-section > button { justify-self: start; }
 .account-avatar-row { display: flex; gap: 16px; align-items: center; min-width: 0; }
 .account-avatar { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex: none; }
@@ -19,4 +19,4 @@
 .account-provider { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--border); }
 .account-provider-actions { display: flex; gap: 12px; }
 .account-provider-actions button { font-size: 13px; }
-@media(max-width:760px) { .account-page { padding: 24px 16px 80px; } .account-section { grid-template-columns: minmax(0,1fr); gap: 18px; padding: 24px 0; } .account-fields :is(input,select) { font-size: 16px; } }
+@media(max-width:760px) { .account-page { padding: 24px 16px 80px; } .account-section { grid-template-columns: minmax(0,1fr); gap: 18px; padding: 24px 0; } .account-fields :is(input,select:not(.theme-select-native),.theme-select-trigger) { font-size: 16px; } }

@@ -30,6 +30,19 @@ async function main() {
         await page.getByRole('heading', { name: title, exact: true }).waitFor();
         if (url === '/admin/users') await page.getByText('测试读者', { exact: true }).waitFor();
         else await page.getByLabel('用户名', { exact: true }).waitFor();
+        if (url !== '/admin/users') {
+          const labels = url.includes('/admin/') ? ['角色', '状态', '评论权限'] : ['确认身份的方式'];
+          for (const dark of [false, true]) {
+            await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark);
+            for (const label of labels) {
+              await page.getByRole('combobox', {name: label, exact: true}).click();
+              await page.locator('.theme-select-menu').waitFor();
+              assert.ok(await page.getByRole('option').count() > 0);
+              await page.keyboard.press('Escape');
+            }
+          }
+          await page.evaluate(() => document.documentElement.classList.remove('dark'));
+        }
         const sizes = await page.evaluate(() => {
           const el = document.querySelector('.admin-main') || document.documentElement;
           return { width: el.clientWidth, scroll: el.scrollWidth, body: document.documentElement.scrollWidth, viewport: innerWidth };
