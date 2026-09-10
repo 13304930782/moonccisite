@@ -23,12 +23,22 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
  <fieldset hidden={preview} disabled={!d.ready||!!d.recovery} className="article-writing-fields"><label>标题<input value={d.form.title} maxLength={255} onChange={e=>change('title',e.target.value)} placeholder="未命名草稿"/></label>
  <button type="button" onClick={()=>setPicker('body')}>从媒体库插入正文图片</button>
  {d.ready&&<ArticleEditor registerImageInsert={fn=>{insert.current=fn;}} value={d.form.content} onChange={value=>change('content',value)} existing={!!postId||!!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={()=>{}}/>}
- <details className="article-settings"><summary>文章设置</summary><label>摘要<textarea value={d.form.summary} onChange={e=>change('summary',e.target.value)}/></label><label>封面地址<input value={d.form.cover_image} onChange={e=>change('cover_image',e.target.value)}/></label>
- <div className="inline-actions"><button onClick={()=>setPicker('cover')}>从媒体库选择封面</button><button disabled={!d.form.cover_image} onClick={()=>change('cover_image','')}>移除封面</button></div>
- <label>上传封面<input type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f)void upload(f).then(url=>change('cover_image',url)).catch(e=>setUploadError(e.message));e.target.value='';}}/></label>
- <label>图片质量<ThemeSelect value={quality} onValueChange={setQuality}><option value="low">较小</option><option value="medium">标准</option><option value="high">高清</option></ThemeSelect></label>
- <label>分类<input value={d.form.category} onChange={e=>change('category',e.target.value)}/></label><label>标签（逗号分隔）<input value={d.form.tags.join(', ')} onChange={e=>change('tags',e.target.value.split(',').map(x=>x.trim()))}/></label><label>链接别名<input value={d.form.slug} onChange={e=>change('slug',e.target.value)}/></label></details></fieldset>
+ <details className="article-settings"><summary>文章设置</summary>
+ <div className="article-settings-body">
+  <section className="article-settings-section"><h2>摘要</h2><label>文章简介<textarea rows={4} value={d.form.summary} onChange={e=>change('summary',e.target.value)} placeholder="简要介绍文章内容"/></label></section>
+  <section className="article-settings-section"><h2>封面</h2><div className="article-settings-grid">
+   <label className="article-field-wide">封面地址<input value={d.form.cover_image} onChange={e=>change('cover_image',e.target.value)} placeholder="输入图片地址，或从媒体库选择"/></label>
+   <div className="inline-actions article-field-wide"><button type="button" onClick={()=>setPicker('cover')}>从媒体库选择封面</button><button type="button" disabled={!d.form.cover_image} onClick={()=>change('cover_image','')}>移除封面</button></div>
+   <label>上传封面<input type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f)void upload(f).then(url=>change('cover_image',url)).catch(e=>setUploadError(e.message));e.target.value='';}}/></label>
+   <label>图片质量<ThemeSelect value={quality} onValueChange={setQuality}><option value="low">较小</option><option value="medium">标准</option><option value="high">高清</option></ThemeSelect></label>
+  </div></section>
+  <section className="article-settings-section"><h2>分类与链接</h2><div className="article-settings-grid">
+   <label>分类<input value={d.form.category} onChange={e=>change('category',e.target.value)}/></label>
+   <label>标签（逗号分隔）<input value={d.form.tags.join(', ')} onChange={e=>change('tags',e.target.value.split(',').map(x=>x.trim()))}/></label>
+   <label className="article-field-wide">链接别名<input value={d.form.slug} onChange={e=>change('slug',e.target.value)} placeholder="留空时自动生成"/></label>
+  </div></section>
+ </div></details></fieldset>
  {uploadError&&<p role="alert">{uploadError}</p>}{uploads>0&&<p role="status">正在上传图片…</p>}
- <div className="article-save-bar">{d.draft?.post_id&&<button disabled={d.busy||uploads>0} onClick={()=>{if(confirm('放弃这份修订稿和当前未保存内容？公开文章保持不变。需要保留的内容请先复制。'))void d.discard();}}>放弃未发布修改</button>}<button className="article-action-preview" disabled={!d.ready} onClick={()=>setPreview(!preview)}>{preview?'返回编辑':'预览'}</button><button disabled={!d.ready||d.busy||d.blocked} onClick={()=>void d.save()}>保存草稿</button><button className="article-action-publish" disabled={!d.ready||d.busy||d.blocked||uploads>0} onClick={()=>void d.action('publish')}>{d.draft?.post_status==='published'?'更新发布':'发布文章'}</button>{d.draft?.post_status==='published'&&<button disabled={d.busy||d.blocked} onClick={()=>{if(confirm('撤回后读者将无法访问这篇文章，确定撤回？'))void d.action('withdraw');}}>撤回为草稿</button>}{d.draft?.post_status==='published'&&<Link to={`/article/${d.draft.post_id}`}>查看文章</Link>}</div>
+ <div className="article-save-bar"><div className="article-save-bar-inner">{d.draft?.post_id&&<button disabled={d.busy||uploads>0} onClick={()=>{if(confirm('放弃这份修订稿和当前未保存内容？公开文章保持不变。需要保留的内容请先复制。'))void d.discard();}}>放弃未发布修改</button>}<button className="article-action-preview" disabled={!d.ready} onClick={()=>setPreview(!preview)}>{preview?'返回编辑':'预览'}</button><button disabled={!d.ready||d.busy||d.blocked} onClick={()=>void d.save()}>保存草稿</button><button className="article-action-publish" disabled={!d.ready||d.busy||d.blocked||uploads>0} onClick={()=>void d.action('publish')}>{d.draft?.post_status==='published'?'更新发布':'发布文章'}</button>{d.draft?.post_status==='published'&&<button disabled={d.busy||d.blocked} onClick={()=>{if(confirm('撤回后读者将无法访问这篇文章，确定撤回？'))void d.action('withdraw');}}>撤回为草稿</button>}{d.draft?.post_status==='published'&&<Link to={`/article/${d.draft.post_id}`}>查看文章</Link>}</div></div>
  </div>;
 }
