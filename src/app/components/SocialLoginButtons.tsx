@@ -4,7 +4,7 @@ import { api } from '../lib/api';
 
 type Props = { context?: 'signin' | 'signup'; disabled?: boolean; onCredential: (credential: string) => void | Promise<void>; onError: (message: string) => void; returnTo?: string };
 type Provider = { provider: string; name: string; client_id?: string };
-export function SocialLoginButtons({ context = 'signin', disabled, onCredential, onError, returnTo }: Props) {
+export function SocialLoginButtons({ context = 'signin', disabled, onError, returnTo }: Props) {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [busy, setBusy] = useState('');
   const [failed, setFailed] = useState(false);
@@ -26,7 +26,7 @@ export function SocialLoginButtons({ context = 'signin', disabled, onCredential,
   if (!providers.length) return null;
   return <div>
     <div className="auth-oauth-divider"><span>或使用快捷登录</span></div>
-    {providers.filter(p => p.provider === 'google').map(p => <GoogleSignInButton key={p.provider} clientId={p.client_id!} context={context} disabled={disabled || Boolean(busy)} onCredential={onCredential} onError={onError} />)}
+    {providers.filter(p => p.provider === 'google').map(p => <GoogleSignInButton key={p.provider} context={context} disabled={disabled || Boolean(busy)} onClick={() => void start('google')} busy={busy === 'google'} />)}
     <div className="auth-social-grid">
       {providers.filter(p => p.provider !== 'google').map(p =>
         <button type="button" className="auth-social-button" key={p.provider} disabled={disabled || Boolean(busy)} onClick={() => void start(p.provider)} aria-label={`使用 ${p.name} ${context === 'signup' ? '注册' : '登录'}`}>

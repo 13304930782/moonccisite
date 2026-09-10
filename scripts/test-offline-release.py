@@ -129,25 +129,35 @@ class OfflineReleaseTests(unittest.TestCase):
 
     @unittest.skipUnless(os.name != 'nt' and shutil.which('rsync'), 'Linux social deployment fault tests run in CI')
     def test_social_deployment_is_scoped_and_rolls_back(self):
+        self.check_social_deployment(False)
+
+    @unittest.skipUnless(os.name != 'nt' and shutil.which('rsync'), 'Linux Google deployment fault tests run in CI')
+    def test_google_deployment_is_scoped_and_rolls_back(self):
+        self.check_social_deployment(True)
+
+    def check_social_deployment(self, google):
         package = self.root / 'social'
         with tarfile.open(self.result['package']) as archive:
             archive.extractall(package, filter='data')
-        shutil.copy(HERE / 'deploy-social-login.sh', package / 'deploy.sh')
+        shutil.copy(HERE / ('deploy-google-login.sh' if google else 'deploy-social-login.sh'), package / 'deploy.sh')
         files = ['src/index.js', 'src/routes/auth-cookie.js', 'src/lib/authSession.js',
                  'database/migrations/202609100001_social_login.sql']
+        if google: files = ['src/routes/socialLogin.js', 'src/lib/socialConfig.js', 'src/lib/socialProviders.js']
+        checked_file = 'src/routes/socialLogin.js' if google else 'src/routes/auth-cookie.js'
         for name in files:
             target = package / 'server' / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text('-- fixture' if name.endswith('.sql') else 'module.exports = "new";')
-        (package / 'server/scripts').mkdir()
-        (package / 'server/scripts/migrate-social-login.js').write_text('// fixture migration')
+        if not google:
+            (package / 'server/scripts').mkdir()
+            (package / 'server/scripts/migrate-social-login.js').write_text('// fixture migration')
         (package / 'BACKEND_FILES').write_text('\n'.join(files) + '\n')
         (package / 'SHA256SUMS').write_bytes(''.join(
             f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(package).as_posix()}\n'
             for p in sorted(package.rglob('*')) if p.is_file() and p.name != 'SHA256SUMS'
         ).encode())
         live = self.root / 'live'
-        for name in ['src/index.js', 'src/routes/auth-cookie.js', 'src/lib/googleIdentity.js', 'src/lib/asyncRouter.js', 'src/middleware/auth.js']:
+        for name in ['src/index.js', 'src/routes/auth-cookie.js', 'src/lib/googleIdentity.js', 'src/lib/asyncRouter.js', 'src/middleware/auth.js'] + files:
             target = live / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text('module.exports = "original";')
@@ -161,7 +171,7 @@ class OfflineReleaseTests(unittest.TestCase):
             'su': '#!/bin/sh\necho restart >> "$QA_PM_COUNT"\nexit 0\n',
             'curl': '#!/bin/sh\nprintf \'{"ok":true,"providers":[]}\'\n',
             'install': '#!/usr/bin/env python3\nimport os,sys\na=sys.argv[1:]; b=[]\nwhile a:\n x=a.pop(0)\n if x in ["-o","-g"]: a.pop(0)\n else: b.append(x)\nos.execv("/usr/bin/install",["install"]+b)\n',
-            'node': f'#!/bin/sh\nif [ "$1" = server/scripts/migrate-social-login.js ]; then [ "$QA_MODE" != migration-failure ]; exit $?; fi\nexec "{real_node}" "$@"\n',
+            'node': f'#!/bin/sh\nif [ "$1" = server/scripts/migrate-social-login.js ] || [ "$1" = - ]; then [ "$QA_MODE" != migration-failure ]; exit $?; fi\nexec "{real_node}" "$@"\n',
             'rsync': '#!/bin/sh\nif [ "$QA_MODE" = corrupt ]; then printf corrupt > "$MOONCCI_WEB_ROOT/assets/app.js"; exit 0; fi\nexec /usr/bin/rsync "$@"\n',
         }
         for name, content in stubs.items():
@@ -174,7 +184,7 @@ class OfflineReleaseTests(unittest.TestCase):
             env['QA_MODE'] = mode
             (self.root / 'pm-count').write_text('')
             (live / 'src/index.js').write_text('module.exports = "original";')
-            (live / 'src/routes/auth-cookie.js').write_text('module.exports = "original";')
+            (live / checked_file).write_text('module.exports = "original";')
             (web / 'index.html').write_text('original page')
             result = subprocess.run(['bash', str(package / 'deploy.sh')], env=env, capture_output=True, timeout=20)
             with self.subTest(mode=mode):
@@ -183,7 +193,7 @@ class OfflineReleaseTests(unittest.TestCase):
                 self.assertEqual((live / 'src/lib/googleIdentity.js').read_text(), 'module.exports = "original";')
                 if mode != 'success':
                     self.assertEqual((web / 'index.html').read_text(), 'original page')
-                    self.assertEqual((live / 'src/routes/auth-cookie.js').read_text(), 'module.exports = "original";')
+                    self.assertEqual((live / checked_file).read_text(), 'module.exports = "original";')
                 self.assertEqual(len((self.root / 'pm-count').read_text().splitlines()), {'migration-failure': 0, 'corrupt': 2, 'success': 1}[mode])
 
 

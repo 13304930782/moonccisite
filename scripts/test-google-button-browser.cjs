@@ -17,64 +17,34 @@ async function main() {
         { provider: 'google', name: 'Google', client_id: 'fixture-client' }, { provider: 'qq', name: 'QQ' },
       ] } : {} });
     });
-    let mode = 'blocked';
-    let requests = 0;
-    await page.route('https://accounts.google.com/gsi/client*', route => {
-      requests++;
-      if (mode === 'blocked') return route.abort();
-      return route.fulfill({ contentType: 'application/javascript', body: `
-        window.google = { accounts: { id: {
-          initialize(options) { window.googleInit = options; },
-          renderButton(host, options) {
-            window.googleOptions = options;
-            const frame = document.createElement('iframe');
-            frame.style.cssText = 'border:0;width:100%;height:40px';
-            frame.srcdoc = '<button style="width:100%;height:40px;background:' +
-              (options.theme === 'filled_black' ? '#131314;color:#e3e3e3' : '#fff;color:#1f1f1f') +
-              ';border:1px solid #8e918f">Google fixture</button>';
-            host.appendChild(frame);
-          }
-        } } };
-      ` });
+    const external = [];
+    let startBody;
+    await page.route('**/api/auth/google/start', async route => {
+      startBody = route.request().postDataJSON();
+      await route.fulfill({ json: { url: 'https://accounts.google.com/o/oauth2/v2/auth?state=fixture' } });
     });
-    await page.goto('http://127.0.0.1:4196/login');
-    const local = page.locator('.auth-google-local');
-    await local.waitFor();
-    await page.getByRole('status').filter({ hasText: '暂时无法连接 Google' }).waitFor();
-    assert.equal(await local.evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(19, 19, 20)');
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    const before = await page.locator('.auth-google-slot').boundingBox();
-    mode = 'ready';
-    await local.click();
-    await local.waitFor({ state: 'hidden' });
-    assert.equal(await page.locator('.auth-google-button-host iframe').evaluate(el => getComputedStyle(el).colorScheme), 'light');
-    assert.equal(requests, 2, 'failed script is removed so retry makes a fresh request');
-    assert.equal(await page.evaluate(() => window.googleOptions.theme), 'filled_black');
-    assert.equal(await page.evaluate(() => window.googleInit.client_id), 'fixture-client');
-    assert.equal(await page.evaluate(() => window.googleInit.ux_mode), 'popup');
-    const after = await page.locator('.auth-google-slot').boundingBox();
-    assert.equal(after.height, before.height);
-    assert.equal(after.width, before.width);
-    await page.getByRole('button', { name: '切换浅色主题' }).click();
-    await page.waitForFunction(() => window.googleOptions.theme === 'outline');
-    await local.waitFor({ state: 'hidden' });
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await page.waitForFunction(() => window.googleOptions.width === 400);
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    // A stalled script also keeps the local button visible and expires instead of hanging forever.
-    await page.unroute('https://accounts.google.com/gsi/client*');
-    let release;
-    await page.route('https://accounts.google.com/gsi/client*', async route => {
-      await new Promise(resolve => { release = resolve; });
-      await route.abort();
+    await page.route('https://accounts.google.com/**', route => {
+      external.push(route.request().url());
+      return route.fulfill({ contentType: 'text/html', body: '<h1>Google authorization fixture</h1>' });
     });
-    await page.goto('http://127.0.0.1:4196/register', { waitUntil: 'domcontentloaded' });
-    await local.waitFor();
-    await page.getByRole('status').filter({ hasText: '暂时无法连接 Google' }).waitFor({ timeout: 15000 });
-    assert.match(await local.innerText(), /注册/);
-    release();
+    for (const path of ['/login', '/register']) {
+      await page.goto('http://127.0.0.1:4196' + path);
+      const local = page.locator('.auth-google-local');
+      await local.waitFor();
+      assert.equal(await local.evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(19, 19, 20)');
+      assert.equal(await page.locator('iframe').count(), 0);
+      assert.equal(await page.locator('script[src*="accounts.google.com"]').count(), 0);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      await page.getByRole('button', { name: '切换浅色主题' }).click();
+      await page.waitForFunction(() => getComputedStyle(document.querySelector('.auth-google-local')).backgroundColor === 'rgb(255, 255, 255)');
+      await local.click();
+      await page.waitForURL('https://accounts.google.com/**');
+      assert.ok(startBody && typeof startBody === 'object');
+    }
+    assert.equal(external.length, 2, 'Google is contacted only by the two explicit navigations');
+    assert.ok(external.every(url => url.includes('/o/oauth2/v2/auth?')));
     assert.deepEqual(errors, []);
-    console.log('PASS Google local display, blocked/stalled SDK, retry, native theme, responsive size and retained popup/client ID');
+    console.log('PASS Google local button: no SDK/iframe, light/dark styling, mobile layout, login/signup direct navigation');
   } finally {
     if (browser) await browser.close();
     await new Promise(resolve => server.httpServer.close(resolve));

@@ -130,13 +130,6 @@
   height: 1px;
   background: var(--border);
 }
-.auth-google-button {
-  min-height: 44px;
-}
-.auth-google-button-host {
-  display: flex;
-  justify-content: center;
-}
 .auth-success {
   padding-block: 24px;
 }
@@ -201,15 +194,11 @@ html.auth-touch-page,
 .auth-social-button:disabled { opacity: .5; cursor: wait; }
 .dark .auth-social-button img { filter: invert(1); }
 
-.auth-google-slot { position: relative; height: 44px; width: 100%; max-width: 400px; margin: 0 auto; }
-.auth-google-button-host { width: 100%; height: 44px; align-items: center; color-scheme: light; }
-/* Keep the embedded light document transparent; GIS theme controls the dark button. */
-.auth-google-button-host iframe { color-scheme: light; }
-.auth-google-local { position: absolute; inset: 2px 0; width: 100%; display: flex; align-items: center; gap: 12px; padding: 0 12px; border: 1px solid #747775; border-radius: 4px; background: #fff; color: #1f1f1f; font: 500 14px/20px Arial, sans-serif; cursor: pointer; }
+/* Local Google button: no external script, iframe or font required. */
+.auth-google-local { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #747775; border-radius: 6px; background: #fff; color: #1f1f1f; font: 500 14px/20px Arial, sans-serif; cursor: pointer; }
 .auth-google-local span { flex: 1; text-align: center; padding-right: 20px; }
 .auth-google-local svg { flex: none; }
 .dark .auth-google-local { background: #131314; border-color: #8e918f; color: #e3e3e3; }
 .auth-google-local:hover { filter: brightness(.95); }
 .auth-google-local:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
-.auth-google-button.is-disabled { opacity: .5; }
-.auth-google-status { margin: 8px 0 0; font-size: 12px; line-height: 1.6; color: var(--muted-foreground); }
+.auth-google-local:disabled { opacity: .5; cursor: wait; }

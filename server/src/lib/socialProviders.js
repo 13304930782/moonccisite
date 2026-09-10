@@ -1,6 +1,7 @@
 const { callbackUrl } = require('./socialConfig');
 const crypto = require('crypto');
 const endpoints = {
+  google: 'https://accounts.google.com/o/oauth2/v2/auth',
   github: 'https://github.com/login/oauth/authorize',
   gitee: 'https://gitee.com/oauth/authorize',
   qq: 'https://graph.qq.com/oauth2.0/authorize',
@@ -13,7 +14,13 @@ function authorizationUrl(provider, config, state, verifier) {
   url.searchParams.set('redirect_uri', callbackUrl(provider));
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('state', state);
-  url.searchParams.set('scope', { github: 'read:user user:email', gitee: 'user_info', qq: 'get_user_info', wechat: 'snsapi_login' }[provider]);
+  url.searchParams.set('scope', { google: 'openid email profile', github: 'read:user user:email', gitee: 'user_info', qq: 'get_user_info', wechat: 'snsapi_login' }[provider]);
+  if (provider === 'google') {
+    url.searchParams.set('response_type', 'id_token');
+    url.searchParams.set('response_mode', 'fragment');
+    url.searchParams.set('nonce', verifier);
+    url.searchParams.set('prompt', 'select_account');
+  }
   if (provider === 'github') {
     url.searchParams.set('code_challenge', crypto.createHash('sha256').update(verifier).digest('base64url'));
     url.searchParams.set('code_challenge_method', 'S256');

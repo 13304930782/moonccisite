@@ -16,16 +16,11 @@ export default function AccountConnectionsPage() {
     api('/auth/connections').then(data => { if (active) setProviders(data.providers); }).catch(e => { if (active) { setMessage(e.message); setFailed(true); } });
     return () => { active = false; };
   }, [attempt]);
-  const bind = async (provider: string, credential?: string) => {
+  const bind = async (provider: string) => {
     setBusy(provider); setMessage('');
     try {
-      if (provider === 'google') {
-        const data = await api('/auth/google/bind', { method: 'POST', body: JSON.stringify({ credential }) });
-        setMessage(data.message); setAttempt(x => x + 1); setBusy('');
-      } else {
-        const data = await api(`/auth/${provider}/start`, { method: 'POST', body: JSON.stringify({ mode: 'bind' }) });
-        window.location.assign(data.url);
-      }
+      const data = await api(`/auth/${provider}/start`, { method: 'POST', body: JSON.stringify({ mode: 'bind' }) });
+      window.location.assign(data.url);
     } catch (e: any) { setMessage(e.message); setBusy(''); }
   };
   return <main className="site-container page-content"><div className="max-w-2xl mx-auto">
@@ -35,7 +30,7 @@ export default function AccountConnectionsPage() {
     {!failed && !providers.length && <p role="status">正在加载…</p>}
     <div className="space-y-4">{providers.map(p => <section key={p.provider} className="border border-border bg-card rounded-[10px] p-5">
       <div className="flex justify-between gap-4 mb-3"><h2 className="font-medium">{p.name}</h2><span className="text-sm text-muted-foreground">{p.bound ? p.enabled ? '已绑定' : '已绑定 · 渠道未启用' : p.enabled ? '未绑定' : '暂未开放'}</span></div>
-      {!p.bound && p.enabled && (p.provider === 'google' ? <GoogleSignInButton clientId={p.client_id!} disabled={Boolean(busy)} onCredential={credential => bind('google', credential)} onError={setMessage} /> : <button className="neo-button" disabled={Boolean(busy)} onClick={() => void bind(p.provider)}>{busy === p.provider ? '正在跳转…' : `绑定 ${p.name}`}</button>)}
+      {!p.bound && p.enabled && (p.provider === 'google' ? <GoogleSignInButton disabled={Boolean(busy)} onClick={() => void bind('google')} busy={busy === 'google'} /> : <button className="neo-button" disabled={Boolean(busy)} onClick={() => void bind(p.provider)}>{busy === p.provider ? '正在跳转…' : `绑定 ${p.name}`}</button>)}
     </section>)}</div>
   </div></main>;
 }
