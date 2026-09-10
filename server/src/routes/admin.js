@@ -92,7 +92,7 @@ router.get('/users', adminOnly, async (req, res) => {
     const [[count]] = await db.query(`SELECT COUNT(*) AS total FROM users ${whereSql}`, params);
     total = Number(count.total); page = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
   }
-  const [rows] = await db.query(`SELECT id,username,email,role,status,can_comment,created_at FROM users ${whereSql} ORDER BY id DESC ${paginated ? 'LIMIT ? OFFSET ?' : ''}`,
+  const [rows] = await db.query(`SELECT id,username,IF(EXISTS(SELECT 1 FROM account_profiles ap WHERE ap.user_id=users.id AND ap.deleted_at IS NOT NULL),'',email) AS email,role,status,can_comment,created_at,(SELECT deleted_at FROM account_profiles ap WHERE ap.user_id=users.id) AS deleted_at FROM users ${whereSql} ORDER BY id DESC ${paginated ? 'LIMIT ? OFFSET ?' : ''}`,
     paginated ? [...params, pageSize, (page - 1) * pageSize] : params);
   res.json(paginated ? { items: rows, total, page, pageSize } : rows);
 });
@@ -102,6 +102,8 @@ router.put('/users/:id', adminOnly, async (req, res) => {
 
   const [oldRows] = await db.query('SELECT * FROM users WHERE id=? LIMIT 1', [req.params.id]);
   const old = oldRows[0];
+  const [deleted] = await db.query('SELECT user_id FROM account_profiles WHERE user_id=? AND deleted_at IS NOT NULL', [req.params.id]);
+  if (deleted.length) return res.status(400).json({ message: '已删除的账号不能恢复或修改。' });
 
   if (!old) return res.status(404).json({ message: '用户不存在' });
 
@@ -139,7 +141,7 @@ router.put('/users/:id', adminOnly, async (req, res) => {
   if (!accountPermissionChanges(old, updated).length)
     return res.json({ message: '设置未变化，未重复发送通知', notification: { status: 'not_needed' } });
   const written = await persistAccountChange(
-    'UPDATE users SET role=?, status=?, can_comment=? WHERE id=? AND role=? AND status=? AND can_comment <=> ?',
+    'UPDATE users SET role=?, status=?, can_comment=? WHERE id=? AND role=? AND status=? AND can_comment <=> ? AND NOT EXISTS (SELECT 1 FROM account_profiles ap WHERE ap.user_id=users.id AND ap.deleted_at IS NOT NULL)',
     [nextRole, nextStatus, nextCanComment, req.params.id, old.role, old.status, old.can_comment],
     nextStatus === 'disabled' ? old.id : undefined,
     old.role === 'owner' || nextRole === 'owner' ? req.user.id : undefined

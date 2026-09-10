@@ -137,7 +137,7 @@ router.get(['/post/:postId', '/update/:updateId'], async (req, res) => {
         c.ip_address,
         c.ip_location,
         c.created_at,
-        u.username AS author_name,
+        u.username AS author_name, (SELECT deleted_at FROM account_profiles ap WHERE ap.user_id=u.id) AS author_deleted, (SELECT avatar_url FROM account_profiles ap WHERE ap.user_id=u.id) AS author_avatar,
         u.role AS author_role,
         ru.username AS reply_to_name,
         (

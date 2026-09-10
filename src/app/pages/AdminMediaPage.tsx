@@ -591,11 +591,11 @@ export default function AdminMediaPage() {
       </div>
 
       {loading ? (
-        <div className="rounded-[10px] border border-border bg-card p-8 text-muted-foreground shadow-none">
+        <div className="py-6 text-muted-foreground">
           正在加载媒体库...
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-[10px] border border-border bg-card p-8 text-muted-foreground shadow-none">
+        <div className="py-6 text-muted-foreground">
           暂无媒体文件。
         </div>
       ) : (

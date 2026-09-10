@@ -55,7 +55,7 @@ export default function AdminEarlyAccessPage() {
 
   return (
     <div>
-      <div className="flex flex-col gap-6 border border-border bg-card p-6 shadow-none md:p-8">
+      <div className="admin-page-body flex flex-col gap-6">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
             <span className="neo-kicker bg-muted">PromptDock / Owner only</span>
@@ -94,14 +94,14 @@ export default function AdminEarlyAccessPage() {
       </div>
 
       <div className="mt-8 space-y-4">
-        {loading && <div className="border border-border bg-card p-6 font-medium shadow-none">正在加载申请…</div>}
-        {!loading && items.length === 0 && <div className="border border-border bg-card p-6 font-medium shadow-none">暂无符合条件的申请。</div>}
+        {loading && <div className="py-6 text-muted-foreground">正在加载申请…</div>}
+        {!loading && items.length === 0 && <div className="py-6 text-muted-foreground">暂无符合条件的申请。</div>}
 
         {items.map((item) => (
           <Link
             key={item.id}
             to={`/admin/early-access/${item.id}`}
-            className="group flex flex-col justify-between gap-5 border border-border bg-card p-5 shadow-none transition   shadow-none md:flex-row md:items-center"
+            className="admin-list-row group flex flex-col justify-between gap-3 md:flex-row md:items-center"
           >
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
@@ -128,7 +128,7 @@ export default function AdminEarlyAccessPage() {
       </div>
 
       {!loading && totalPages > 1 && (
-        <div className="mt-8 flex items-center justify-between border border-border bg-muted p-4 shadow-none">
+        <div className="admin-pagination mt-6">
           <button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="neo-button bg-card disabled:opacity-40">上一页</button>
           <span className="font-mono text-sm font-medium">{page} / {totalPages} · {total} 份申请</span>
           <button type="button" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)} className="neo-button bg-card disabled:opacity-40">下一页</button>

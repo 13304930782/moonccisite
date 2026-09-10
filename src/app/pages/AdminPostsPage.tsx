@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AdminPagination } from '../components/AdminPagination';
 import { api } from '../lib/api';
 
 export default function AdminPostsPage() {
@@ -39,8 +40,8 @@ export default function AdminPostsPage() {
   };
 
   return (
-    <div className="min-h-full bg-transparent px-6 py-10">
-      <div className="max-w-5xl mx-auto rounded-[10px] bg-card  border border-border p-8 shadow-none">
+    <div className="admin-page">
+      <div className="admin-page-body">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
             <Link to="/admin" className="text-sm text-foreground hover:underline">返回后台</Link>
@@ -54,17 +55,13 @@ export default function AdminPostsPage() {
 
         {message && <div className="mb-4 rounded-[6px] bg-muted px-4 py-3 text-foreground">{message}</div>}
 
-        <nav aria-label="文章管理分页" className="mb-4 flex flex-wrap items-center gap-3">
-          <button disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="rounded border px-4 py-2 disabled:opacity-50">上一页</button>
-          <span>共 {total} 篇，第 {page} / {Math.max(1, Math.ceil(total / 50))} 页</span>
-          <button disabled={loading || page * 50 >= total} onClick={() => setPage(page + 1)} className="rounded border px-4 py-2 disabled:opacity-50">下一页</button>
-        </nav>
+        <AdminPagination label="文章管理分页" page={page} total={total} disabled={loading} onPage={setPage} />
         {loading && <p role="status">正在加载文章…</p>}
         <div className="space-y-4">
           {!loading && !message && posts.length === 0 && <p className="text-muted-foreground">还没有文章，先点击右上角写文章。</p>}
 
           {posts.map((post) => (
-            <div key={post.id} className="rounded-[10px] border border-border bg-card p-5">
+            <div key={post.id} className="admin-list-row">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h2 className="text-xl font-medium text-foreground">{post.title}</h2>

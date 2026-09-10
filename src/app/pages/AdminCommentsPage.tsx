@@ -57,7 +57,7 @@ export default function AdminCommentsPage() {
   };
 
   return (
-    <div className="max-w-[1200px] mx-auto">
+    <div className="admin-page">
       <div className="py-2">
         <div className="mb-8">
           <h1 className="admin-title">评论管理</h1>

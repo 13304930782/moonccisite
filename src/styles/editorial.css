@@ -1557,3 +1557,34 @@ input[type='checkbox'] {
 .resource-content { min-width: 0; }
 html { scrollbar-gutter: stable; }
 @media(max-width:640px) { .content-skeleton { min-height:260px; } }
+
+/* Shared administration layout: one vertical scroll surface and compact sections. */
+.admin-frame { overflow: hidden; }
+.admin-main { min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: none; }
+.admin-content { min-width: 0; width: 100%; animation: none; }
+.admin-page, .admin-page-body { min-width: 0; width: 100%; }
+.admin-page h1 { margin-bottom: 24px; }
+.admin-content fieldset { min-width: 0; }
+.admin-content :is(input, textarea, select) { max-width: 100%; }
+.admin-list-row { padding: 18px 0; border-bottom: 1px solid var(--border); min-width: 0; overflow-wrap: anywhere; }
+.admin-list-row h2 { font-size: 17px; }
+.admin-settings-section { padding: 24px 0; border-top: 1px solid var(--border); }
+.admin-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0; font-size: 12px; }
+.admin-pagination button { flex: none; padding: 8px 12px; }
+.admin-pagination span { text-align: center; }
+.admin-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+.admin-search { display: flex; flex: 1 1 260px; gap: 8px; min-width: 0; }
+.admin-search input { min-width: 0; flex: 1; }
+.admin-user-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--border); }
+.admin-user-info { min-width: 0; overflow-wrap: anywhere; }
+.admin-user-info p { margin-top: 4px; color: var(--muted-foreground); font-size: 13px; }
+.deleted-account-label { display: inline-block; margin-left: 6px; padding: 1px 5px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted-foreground); font-size: 11px; vertical-align: middle; }
+@media(max-width:760px) {
+ .admin-main { padding: 24px 16px 80px; }
+ .admin-content :is(input, select, textarea) { font-size: 16px; }
+ .admin-content :is(h1, .admin-title) { font-size: 26px; }
+ .admin-content .admin-list-row h2 { font-size: 17px; }
+ .admin-pagination { gap: 8px; }
+ .admin-pagination button { padding: 8px; }
+ .admin-toolbar > * { min-width: 0; }
+}

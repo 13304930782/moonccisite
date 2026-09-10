@@ -15,6 +15,8 @@ type Comment = {
   status_text?: string;
   created_at: string;
   author_name: string;
+  author_deleted?: string;
+  author_avatar?: string;
   author_role?: 'owner' | 'admin' | 'editor' | 'user';
   reply_to_name?: string;
   ip_address_masked?: string;
@@ -229,8 +231,8 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
       <div key={item.id} className={isReply ? 'ml-5 md:ml-10 mt-3' : ''}>
         <div className={`comment-item comment-item--${item.status}`}>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground ">
-              {item.author_name}
+            <span className="font-medium text-foreground flex items-center gap-2">{item.author_avatar && <img src={item.author_avatar} alt="" width="28" height="28" className="rounded-full object-cover"/>}
+              {item.author_name}{item.author_deleted && <small className="deleted-account-label">已删除</small>}
             </span>
 
             {getRoleBadge(item.author_role)}

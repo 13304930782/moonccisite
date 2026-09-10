@@ -1,0 +1,22 @@
+.account-page { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; min-width: 0; }
+.account-heading { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+.account-heading h1 { font-size: 30px; letter-spacing: -.03em; }
+.account-heading nav { display: flex; gap: 18px; font-size: 14px; }
+.account-section { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(0, 2fr); gap: 32px; padding: 28px 0; border-top: 1px solid var(--border); align-items: start; }
+.account-section h2 { font-size: 18px; font-weight: 550; margin-bottom: 8px; }
+.account-section p, .account-section small { color: var(--muted-foreground); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.account-fields { display: grid; gap: 16px; min-width: 0; }
+.account-fields label { display: grid; gap: 8px; font-size: 14px; }
+.account-fields :is(input,select) { width: 100%; min-width: 0; padding: 10px 12px; }
+.account-fields button, .account-section > button { justify-self: start; }
+.account-avatar-row { display: flex; gap: 16px; align-items: center; min-width: 0; }
+.account-avatar { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex: none; }
+.account-avatar-empty { display: grid; place-items: center; background: var(--muted); font-size: 24px; }
+.account-upload { min-width: 0; }
+.account-upload input { padding: 0; font-size: 12px; }
+.account-message { margin: 16px 0; padding: 12px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.account-danger { color: var(--destructive); }
+.account-provider { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--border); }
+.account-provider-actions { display: flex; gap: 12px; }
+.account-provider-actions button { font-size: 13px; }
+@media(max-width:760px) { .account-page { padding: 24px 16px 80px; } .account-section { grid-template-columns: minmax(0,1fr); gap: 18px; padding: 24px 0; } .account-fields :is(input,select) { font-size: 16px; } }

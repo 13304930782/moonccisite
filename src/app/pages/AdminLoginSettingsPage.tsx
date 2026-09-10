@@ -16,7 +16,7 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
     } catch (error: any) { setMessage(error.message || '保存失败'); }
     finally { setSaving(false); }
   };
-  return <form onSubmit={save} className="rounded-[10px] border border-border bg-card p-5 sm:p-6">
+  return <form onSubmit={save} className="admin-settings-section">
     <fieldset disabled={saving} className="min-w-0 space-y-5">
       <div className="flex items-center justify-between gap-4"><h2 className="text-xl font-medium">{form.name}</h2><span className="text-sm text-muted-foreground">{initial.ready ? '已启用' : initial.client_id ? '已配置 · 未启用' : '等待配置'}</span></div>
       <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={form.enabled} onChange={e => setForm({ ...form, enabled: e.target.checked })} />启用 {form.name} 登录</label>
@@ -44,7 +44,7 @@ export default function AdminLoginSettingsPage() {
     api('/auth/providers/manage').then(data => { if (active) setProviders(data.providers); }).catch(e => { if (active) setError(e.message); });
     return () => { active = false; };
   }, [attempt]);
-  return <div className="max-w-5xl mx-auto py-2">
+  return <div className="admin-page">
     <h1 className="admin-title">第三方登录</h1>
     <p className="mt-2 mb-8 text-sm text-muted-foreground">审核通过后填写应用信息，再启用登录。设置仅站长可管理，密钥加密保存。未取得邮箱的注册需要邮件验证码，请先确认邮件设置可正常发送。</p>
     {error ? <div role="alert">{error}<button className="text-link ml-3" onClick={() => setAttempt(x => x + 1)}>重新加载</button></div> : !providers.length ? <p role="status">正在加载登录设置…</p> :

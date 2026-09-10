@@ -359,3 +359,14 @@ Google 使用 OIDC `id_token` 跳转模式和原有 `googleIdentity.js` 验签�
 已部署第三方登录管理后，执行 `python -X utf8 scripts/build-google-login-release.py` 构建本地离线包，再运行 `scripts/Upload-OfflineRelease.ps1` 上传。该包只替换 `socialLogin.js`、`socialConfig.js`、`socialProviders.js` 和前端；部署前只读检查现有表，不执行任何 SQL 迁移，不修改 `.env`、CF 验签模块或依赖，重启一次 `mooncci-api`，失败回退已备份的 API 文件与首页入口。
 
 上线前在 Google Web 客户端添加 `https://mooncci.site/api/auth/google/callback` 到“已获授权的重定向 URI”。无需提供 Client Secret，也不用改 CF Worker。缺少该设置会出现 `redirect_uri_mismatch`。真实账号授权需配置完成后联调；本地自动测试覆盖跳转、nonce/state、防重放、旧账号关联和强制邮箱验证。
+
+
+## 后台与个人设置离线更新（2026-09-10）
+
+本次使用 `python -X utf8 scripts/build-account-settings-release.py`。包包含已构建前端、明确列出的账号 API 文件及唯一新增迁移 `202609100002_account_settings.sql`。部署前检查已有第三方登录、会话撤销表和依赖；只创建 `account_profiles`、`account_challenges` 并登记迁移校验，不重跑或覆盖历史 SQL。保留 `.env`、Google CF 证书代理、依赖和上传目录。更新后仅重启 API，失败恢复原 API 文件和首页入口；新增表保留，账号删除操作本身不因代码回滚而恢复。
+
+个人设置位于 `/account/settings`，旧绑定页重定向到这里。头像支持 JPG/PNG/WebP，限制 2 MB 和 1600 万像素，转换为 256×256 WebP 保存到后端 `uploads/avatars`（需纳入日常上传备份）。换邮箱要求新邮箱验证码，加当前密码或重新授权已绑定第三方；成功后旧登录及密码重置链接失效。第三方换绑/解绑验证当前邮箱，新授权成功才替换旧绑定。
+
+用户管理的“设置”支持资料、登录邮箱、权限、重置邮件及删除。管理员不能修改站长或其他管理员；站长可管理其他账号，不能删除自己或站长账号。删除会停用账号、撤销登录、释放邮箱及第三方绑定，但保留用户名、头像、文章和评论，显示“已删除”；原用户名仍保留，不可重用。
+
+验证：`npm run check`、`npm test --prefix server`、`ACCOUNT_INTEGRATION=true node --test server/test/accountSettings.integration.test.js`（隔离 MySQL）、`node scripts/test-account-browser.cjs`（构建后运行）。验收覆盖手机无横向溢出、资料保存、退出、验证码、第三方换绑及删除保留内容。真实第三方授权和邮件投递仍需使用已配置应用验收。

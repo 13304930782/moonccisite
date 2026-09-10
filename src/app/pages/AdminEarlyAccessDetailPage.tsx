@@ -59,8 +59,8 @@ export default function AdminEarlyAccessDetailPage() {
     }
   };
 
-  if (loading) return <div className="border border-border bg-card p-6 font-medium shadow-none">正在加载申请…</div>;
-  if (!application) return <div className="border border-border bg-card p-6 font-medium shadow-none">{message || '申请不存在。'}</div>;
+  if (loading) return <div className="py-6 text-muted-foreground">正在加载申请…</div>;
+  if (!application) return <div className="py-6 text-muted-foreground">{message || '申请不存在。'}</div>;
 
   const features = Array.isArray(application.desired_features) ? application.desired_features : [];
 
@@ -68,7 +68,7 @@ export default function AdminEarlyAccessDetailPage() {
     <div>
       <Link to="/admin/early-access" className="neo-button bg-card"><ArrowLeft className="h-4 w-4" />返回申请列表</Link>
 
-      <div className="mt-7 border border-border bg-card p-6 shadow-none md:p-9">
+      <div className="admin-page-body mt-7">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
           <div>
             <div className="flex flex-wrap items-center gap-3">

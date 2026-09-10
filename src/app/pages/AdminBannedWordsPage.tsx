@@ -55,8 +55,8 @@ export default function AdminBannedWordsPage() {
   };
 
   return (
-    <div className="min-h-full bg-transparent px-6 py-10">
-      <div className="max-w-4xl mx-auto rounded-[10px] bg-card  border border-border p-8 shadow-none">
+    <div className="admin-page">
+      <div className="admin-page-body">
         <Link to="/admin" className="text-sm text-foreground hover:underline">返回后台</Link>
         <h1 className="admin-title">违禁词设置</h1>
 
@@ -79,7 +79,7 @@ export default function AdminBannedWordsPage() {
           {words.length === 0 && <p className="text-muted-foreground">暂无违禁词。</p>}
 
           {words.map((item) => (
-            <div key={item.id} className="rounded-[10px] border border-border bg-card px-5 py-4 flex items-center justify-between">
+            <div key={item.id} className="admin-list-row flex items-center justify-between gap-4">
               <div>
                 <div className="font-medium text-foreground">{item.word}</div>
                 <div className="text-sm text-muted-foreground">

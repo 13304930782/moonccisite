@@ -198,11 +198,32 @@ router.post('/:provider/start', limiter, async (req, res) => {
   if (!validProvider(provider)) return res.status(404).json({ message: '未知登录渠道。' });
   const config = await getConfig(provider);
   if (!ready(config)) return res.status(403).json({ message: '该登录渠道尚未启用。' });
-  const binding = req.body.mode === 'bind';
+  const replacing = req.body.mode === 'replace';
+  const verifyingEmail = req.body.mode === 'email';
+  const binding = req.body.mode === 'bind' || replacing || verifyingEmail;
+  let newEmail;
   let user = null;
   if (binding) {
     try { user = await getUserFromRequest(req); } catch { /* require a valid current session */ }
     if (!user || user.status === 'disabled') return res.status(401).json({ message: '请重新登录后绑定。' });
+  }
+  if (replacing || verifyingEmail) {
+    const c = await db.getConnection();
+    try {
+      await c.beginTransaction();
+      req.user = user;
+      const challenge=await require('../lib/accountSettings').consumeChallenge(c,req,verifyingEmail?'email':'social',req.body);
+      if(verifyingEmail) {
+        const [bound]=provider==='google' ? await c.query('SELECT id FROM users WHERE id=? AND google_sub IS NOT NULL',[user.id]) : await c.query('SELECT user_id FROM oauth_identities WHERE user_id=? AND provider=? AND client_id=?',[user.id,provider,config.client_id]);
+        if(!bound.length) {await c.rollback();return res.status(400).json({message:'请选择已经绑定的第三方账号。'});}
+        newEmail=challenge.new_email;
+      }
+      await c.commit();
+    } catch(error) {
+      await c.rollback();
+      if(error.status) return res.status(error.status).json({message:error.message});
+      throw error;
+    } finally { c.release(); }
   }
   const state = crypto.randomBytes(32).toString('hex');
   const browser = crypto.randomBytes(32).toString('hex');
@@ -210,7 +231,7 @@ router.post('/:provider/start', limiter, async (req, res) => {
   const now = Date.now();
   await db.query('DELETE FROM oauth_states WHERE expires_at<? LIMIT 100', [now]);
   await db.query(`INSERT INTO oauth_states (state_hash,browser_hash,provider,config_version,client_id,verifier,user_id,session_hash,started_at,expires_at,return_to) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-    [sha256(state), sha256(browser), provider, config.version, config.client_id, verifier, user?.id || null, binding ? sha256(getAuthTokenFromRequest(req)) : null, now, now + 600000, binding ? '/account/connections' : returnTo(req.body.return_to)]);
+    [sha256(state), sha256(browser), provider, config.version, config.client_id, verifier, user?.id || null, binding ? sha256(getAuthTokenFromRequest(req)) : null, now, now + 600000, verifyingEmail ? `/account/settings?email=${newEmail}` : replacing ? '/account/settings?replace=1' : binding ? '/account/settings' : returnTo(req.body.return_to)]);
   res.cookie(cookieName(provider), browser, cookieOptions(req));
   res.json({ url: adapters.authorizationUrl(provider, config, state, verifier) });
 });
@@ -248,7 +269,10 @@ async function finishIdentity(provider, config, identity, state) {
     }
     if (state.user_id && provider === 'google') {
       const [bound] = await connection.query('SELECT google_sub FROM users WHERE id=?', [userId]);
-      if (bound[0]?.google_sub && bound[0].google_sub !== identity.subject) throw new Error('already_bound');
+      if (bound[0]?.google_sub && bound[0].google_sub !== identity.subject && state.return_to !== '/account/settings?replace=1') throw new Error('already_bound');
+    }
+    if (state.user_id && state.return_to === '/account/settings?replace=1' && !existing && provider !== 'google') {
+      await connection.query('DELETE FROM oauth_identities WHERE provider=? AND client_id=? AND user_id=?',[provider,config.client_id,userId]);
     }
     if (!existing) {
       if (provider === 'google') await connection.query('UPDATE users SET google_sub=? WHERE id=?', [identity.subject, userId]);
@@ -319,17 +343,37 @@ async function completeCallback(req, res) {
     } else {
       identity = await adapters.exchange(provider, config, decrypt(config.secret_cipher, provider), input.code, state.verifier);
     }
-    const user = await finishIdentity(provider, config, identity, state);
+    let user;
+    const emailChange=state.user_id && state.return_to.startsWith('/account/settings?email=');
+    if(emailChange) {
+      const c=await db.getConnection();
+      try {
+        await c.beginTransaction();
+        const helpers=require('../lib/accountSettings');
+        const current=await helpers.profile(c,state.user_id,true);
+        const liveConfig=await getConfig(provider,c,true);
+        if(!ready(liveConfig)||liveConfig.version!==config.version)throw new Error('config_changed');
+        const [bound]=provider==='google' ? await c.query('SELECT id FROM users WHERE id=? AND google_sub=?',[state.user_id,identity.subject]) : await c.query('SELECT user_id FROM oauth_identities WHERE user_id=? AND provider=? AND client_id=? AND subject=?',[state.user_id,provider,config.client_id,identity.subject]);
+        if(!bound.length || current.status!=='active')throw new Error('identity_mismatch');
+        const session=await getUserFromRequest(req);
+        if(!session||session.id!==state.user_id)throw new Error('session_expired');
+        user=await helpers.changeEmail(c,current,state.return_to.slice('/account/settings?email='.length));
+        await c.commit();
+      }catch(error){await c.rollback();throw error;}finally{c.release();}
+      setAuthCookie(req,res,signToken(user,Date.now()+1));
+      return respond('/account/settings?email=updated');
+    }
+    user = await finishIdentity(provider, config, identity, state);
     if (!user) {
       await createPending(req, res, provider, config, identity, state);
       return respond('/complete-registration');
     }
     if (!state.user_id) setAuthCookie(req, res, signToken(user, Number(state.started_at)));
-    const target = state.user_id ? '/account/connections?oauth=bound' : state.return_to !== '/' ? state.return_to : ['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/';
+    const target = state.user_id ? '/account/settings?oauth=bound' : state.return_to !== '/' ? state.return_to : ['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/';
     respond(target);
   } catch (error) {
     // Never log authorization codes, secrets, upstream URLs or access tokens.
-    respond(state?.user_id ? '/account/connections?oauth=failed' : error.message === 'email_exists' ? '/login?oauth=email_exists' : '/login?oauth=failed');
+    respond(state?.user_id ? '/account/settings?oauth=failed' : error.message === 'email_exists' ? '/login?oauth=email_exists' : '/login?oauth=failed');
   }
 }
 router.get('/:provider/callback', limiter, completeCallback);
