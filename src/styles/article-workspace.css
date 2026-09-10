@@ -28,3 +28,29 @@
 .article-save-bar button.article-action-publish:not(:disabled):hover { background:var(--foreground); opacity:.85; }
 .article-save-bar button:disabled { opacity:.45; cursor:not-allowed; }
 .article-save-bar button:focus-visible { outline:2px solid var(--foreground); outline-offset:3px; }
+
+/* Settings content needs its own grid: details does not lay out its children as grid items. */
+.article-settings[open] { display:block; }
+.article-settings > summary { padding:16px 0; font-weight:600; cursor:pointer; }
+.article-settings-body { display:grid; gap:32px; padding:12px 0 32px; }
+.article-settings-section { display:grid; gap:16px; min-width:0; }
+.article-settings-section + .article-settings-section { border-top:1px solid var(--border); padding-top:28px; }
+.article-settings-section h2 { margin:0; font-size:16px; font-weight:600; }
+.article-settings-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px 24px; }
+.article-field-wide { grid-column:1 / -1; }
+.article-settings-body label { gap:8px; font-size:14px; }
+.article-settings-body textarea { min-height:120px; resize:vertical; }
+.article-settings-body input[type=file] { width:100%; min-width:0; padding:10px; }
+.article-settings-body .inline-actions button { padding:8px 12px; border:1px solid var(--border); border-radius:6px; }
+.article-save-bar { position:fixed; left:0; right:0; bottom:0; display:block; padding:12px 24px calc(12px + env(safe-area-inset-bottom)); }
+.article-save-bar-inner { max-width:1100px; margin:auto; display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:12px; }
+.article-workspace { padding-bottom:180px; }
+@media(min-width:761px){ .admin-frame .article-save-bar { left:224px; padding-left:48px; padding-right:48px; } }
+@media(max-width:600px){
+ .article-settings-grid { grid-template-columns:minmax(0,1fr); }
+ .article-settings-body { gap:24px; }
+ .article-save-bar { padding:10px 16px calc(10px + env(safe-area-inset-bottom)); }
+ .article-save-bar-inner { gap:8px; justify-content:center; }
+}
+
+.admin-frame:has(.article-workspace) .admin-back-top { bottom:calc(180px + env(safe-area-inset-bottom)); }
