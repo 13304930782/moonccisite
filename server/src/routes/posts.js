@@ -229,6 +229,7 @@ router.put('/:id', authRequired, editorOrAdmin, async (req, res) => {
       return res.status(403).json({ message: '无权限编辑这篇文章' });
     }
 
+    if (req.body.version !== old.version) return res.status(409).json({message:'文章版本已变化或缺少版本号，请刷新编辑页后重试。'});
     const normalized = normalizePostInput(req.body, old);
 
     if (normalized.error) {
@@ -238,8 +239,8 @@ router.put('/:id', authRequired, editorOrAdmin, async (req, res) => {
     const p = normalized.value;
     const publishedAt = old.published_at || (p.status === 'published' ? new Date() : null);
 
-    await db.query(
-      'UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,category=?,tags=?,status=?,published_at=? WHERE id=?',
+    const [updated] = await db.query(
+      'UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,category=?,tags=?,status=?,published_at=?,version=version+1 WHERE id=? AND version=?',
       [
         p.title,
         p.slug,
@@ -251,9 +252,11 @@ router.put('/:id', authRequired, editorOrAdmin, async (req, res) => {
         p.status,
         publishedAt,
         req.params.id,
+        old.version,
       ]
     );
 
+    if (!updated.affectedRows) return res.status(409).json({message:'文章已被更新，请刷新后重试。'});
     res.json({ message: '更新成功' });
   } catch (err) {
     console.error('[posts/update]', err);

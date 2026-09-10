@@ -136,6 +136,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authLimiter, require('./routes/socialLogin'));
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api/article-drafts', require('./routes/articleDrafts'));
 app.use('/api/comments', commentRoutes);
 app.use('/api/early-access', earlyAccessLimiter, earlyAccessRoutes.publicRouter);
 app.use('/api/electricity/rss', require('./routes/electricityRss'));

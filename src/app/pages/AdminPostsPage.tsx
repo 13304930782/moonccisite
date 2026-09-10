@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AdminPagination } from '../components/AdminPagination';
+import { ThemeSelect } from '../components/ThemeSelect';
 import { api } from '../lib/api';
 
 export default function AdminPostsPage() {
+  const [drafts,setDrafts]=useState<any[]>([]);
+  const [draftPage,setDraftPage]=useState(1),[draftTotal,setDraftTotal]=useState(0);
+  const [filter,setFilter]=useState('all');
   const [posts, setPosts] = useState<any[]>([]);
   const [message, setMessage] = useState('');
 
@@ -15,7 +19,8 @@ export default function AdminPostsPage() {
     const version = ++requestVersion.current;
     setLoading(true);
     try {
-      const data = await api(`/admin/posts?page=${page}&pageSize=50`);
+      const [data, working] = await Promise.all([api(`/admin/posts?page=${page}&pageSize=50&status=${filter}`),api(`/article-drafts?page=${draftPage}`)]);
+      setDraftTotal(working.total||0);setDrafts(prev=>draftPage===1?(working.items||[]):[...new Map([...prev,...(working.items||[])].map(d=>[d.id,d])).values()]);
       if (version !== requestVersion.current) return;
       setPosts(data.items); setTotal(data.total);
       if (data.page !== page) setPage(data.page);
@@ -25,7 +30,7 @@ export default function AdminPostsPage() {
   useEffect(() => {
     setPosts([]); setMessage(''); void loadPosts();
     return () => { requestVersion.current++; };
-  }, [page]);
+  }, [page,filter,draftPage]);
 
   const removePost = async (id: number) => {
     if (!window.confirm('确定要删除这篇文章吗？')) return;
@@ -55,6 +60,9 @@ export default function AdminPostsPage() {
 
         {message && <div className="mb-4 rounded-[6px] bg-muted px-4 py-3 text-foreground">{message}</div>}
 
+        <ThemeSelect aria-label="筛选文章状态" value={filter} onValueChange={v=>{setFilter(v);setPage(1);}}><option value="all">全部</option><option value="published">已发布</option><option value="draft">草稿</option></ThemeSelect>
+        {filter!=='published' && drafts.filter(d=>!d.post_id).map(d=><div className="admin-list-row" key={d.id}><h2>{d.payload.title||'未命名草稿'}</h2><p>草稿 · {new Date(d.updated_at).toLocaleString()}</p><Link to={`/admin/write?draft=${d.id}`}>继续编辑 / 预览</Link><button onClick={async()=>{if(confirm('删除这份未发布草稿？')){try{await api(`/article-drafts/${d.id}`,{method:'DELETE',body:JSON.stringify({version:d.version})});setDrafts(prev=>prev.filter(item=>item.id!==d.id));void loadPosts();}catch(e:any){setMessage(e.message);}}}}>删除草稿</button></div>)}
+        {draftPage*20<draftTotal&&<button onClick={()=>setDraftPage(n=>n+1)}>加载更多草稿</button>}
         <AdminPagination label="文章管理分页" page={page} total={total} disabled={loading} onPage={setPage} />
         {loading && <p role="status">正在加载文章…</p>}
         <div className="space-y-4">
@@ -64,7 +72,7 @@ export default function AdminPostsPage() {
             <div key={post.id} className="admin-list-row">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h2 className="text-xl font-medium text-foreground">{post.title}</h2>
+                  <h2 className="text-xl font-medium text-foreground">{post.title}{(Boolean(post.has_unpublished)||drafts.some(d=>d.post_id===post.id))&&<small> · 有未发布修改</small>}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
                     作者：{post.author_name || '-'} ｜ 状态：{post.status === 'published' ? '已发布' : '草稿'} ｜ 分类：{post.category || '-'}
                   </p>

@@ -1,0 +1,21 @@
+.article-writing-fields { position:relative; z-index:0; display:grid;gap:24px;min-width:0;border:0;padding:0;margin-top:24px; }
+.article-writing-fields label { display:grid;gap:8px;min-width:0; }
+.article-writing-fields input:not([type=file]),.article-writing-fields textarea {width:100%;min-width:0;padding:12px;}
+.article-settings {border-top:1px solid var(--border);padding-top:20px;}
+.article-settings[open] {display:grid;gap:20px;}
+.article-save-bar {position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:12px;align-items:center;background:var(--background);border-top:1px solid var(--border);padding:16px 0;z-index:15;}
+.article-save-bar button {padding:10px 14px;border:1px solid var(--border);border-radius:6px;}
+.article-workspace {padding-bottom:100px;}
+@media(max-width:600px){.article-save-bar{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));font-size:12px;}.article-save-bar button{padding:8px;}.article-writing-fields input,.article-writing-fields textarea{font-size:16px;}}
+
+.article-writing-fields[hidden]{display:none;}
+.article-preview-mobile{max-width:390px;margin:auto;border:1px solid var(--border);padding:16px;}
+.article-modal-overlay{position:fixed;inset:0;background:#0008;z-index:200;}
+.article-media-dialog{position:fixed;inset:5vh max(16px,calc((100vw - 900px)/2));max-height:90vh;overflow:auto;background:var(--background);padding:24px;z-index:201;border:1px solid var(--border);border-radius:8px;}
+.article-media-dialog input{max-width:100%;padding:10px;}.article-media-dialog button{padding:8px;}
+.article-media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin:16px 0;}
+.article-media-grid img{width:100%;height:100px;object-fit:contain;}.article-media-grid span{display:block;overflow-wrap:anywhere;font-size:12px;}.article-media-grid button[aria-pressed=true]{outline:2px solid var(--foreground);}
+
+.article-conflict-copy{max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;}
+
+.article-writing-fields > button{justify-self:start;padding:8px 12px;border:1px solid var(--border);border-radius:6px;}
