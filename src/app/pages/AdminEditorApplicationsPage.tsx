@@ -41,8 +41,8 @@ export default function AdminEditorApplicationsPage() {
   };
 
   return (
-    <div className="min-h-full bg-transparent px-6 py-10">
-      <div className="max-w-6xl mx-auto rounded-[10px] bg-card  border border-border p-8 shadow-none">
+    <div className="admin-page">
+      <div className="admin-page-body">
         <Link to="/admin" className="text-sm text-foreground hover:underline">返回后台</Link>
 
         <div className="mt-2 mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -65,7 +65,7 @@ export default function AdminEditorApplicationsPage() {
           {applications.length === 0 && <p className="text-muted-foreground">暂无申请。</p>}
 
           {applications.map((item) => (
-            <div key={item.id} className="rounded-[10px] border border-border bg-card p-5">
+            <div key={item.id} className="admin-list-row">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                   <div className="text-sm text-muted-foreground">

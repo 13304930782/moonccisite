@@ -37,6 +37,7 @@ jobs:
       - run: node scripts/test-updates-browser.cjs
       - run: node scripts/test-google-button-browser.cjs
       - run: node scripts/test-admin-capacity-browser.cjs
+      - run: node scripts/test-account-browser.cjs
       - run: npm audit --audit-level=moderate
       - run: npm audit --prefix server --audit-level=moderate
   mysql-integration:
@@ -68,4 +69,9 @@ jobs:
       - run: node --test server/test/socialLogin.integration.test.js
         env:
           SOCIAL_INTEGRATION: 'true'
+          TEST_DB_PORT: '3306'
+
+      - run: node --test server/test/accountSettings.integration.test.js
+        env:
+          ACCOUNT_INTEGRATION: 'true'
           TEST_DB_PORT: '3306'

@@ -82,7 +82,7 @@ test('social login, owner settings, mandatory email, binding, revocation and rep
   flow = await start('qq'); r = await req(flow.path, 'GET', null, flow.cookie); assert.equal(r.headers.get('location'), '/'); assert.ok(cookieOf(r, 'mooncci_token'));
   flow = await start('qq', member, 'bind'); r = await req(flow.path, 'GET', null, flow.cookie); assert.match(r.headers.get('location'), /failed/, 'cannot steal another user identity');
   identity = { subject: 'new-gitee-binding', name: 'Member', emailVerified: false };
-  flow = await start('gitee', member, 'bind'); r = await req(flow.path, 'GET', null, flow.cookie); assert.equal(r.headers.get('location'), '/account/connections?oauth=bound');
+  flow = await start('gitee', member, 'bind'); r = await req(flow.path, 'GET', null, flow.cookie); assert.equal(r.headers.get('location'), '/account/settings?oauth=bound');
   identity = { subject: 'wechat-after-logout', name: 'Member' };
   flow = await start('wechat', member, 'bind'); await req('/logout', 'POST', {}, member);
   r = await req(flow.path, 'GET', null, flow.cookie); assert.match(r.headers.get('location'), /failed/);

@@ -47,7 +47,7 @@ export default function AdminSendMailPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="admin-page">
       <div className="py-2">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-[10px] bg-muted border border-border text-foreground flex items-center justify-center shadow-none">

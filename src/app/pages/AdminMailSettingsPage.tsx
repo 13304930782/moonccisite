@@ -144,7 +144,7 @@ export default function AdminMailSettingsPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="admin-page">
       <div className="py-2">
         <div className="mb-8">
           <h1 className="admin-title">邮件提醒设置</h1>
@@ -160,7 +160,7 @@ export default function AdminMailSettingsPage() {
         )}
 
         <div className="space-y-6">
-          <div className="rounded-[10px] border border-border bg-card p-6">
+          <div className="admin-settings-section">
             <h2 className="text-xl font-medium text-foreground">基础开关</h2>
 
             <div className="mt-5">
@@ -176,7 +176,7 @@ export default function AdminMailSettingsPage() {
             </div>
           </div>
 
-          <div className="rounded-[10px] border border-border bg-card p-6">
+          <div className="admin-settings-section">
             <h2 className="text-xl font-medium text-foreground">SMTP 配置</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Resend 通常填写 smtp.resend.com / 465 / resend / SMTP 密码。
@@ -241,7 +241,7 @@ export default function AdminMailSettingsPage() {
             </div>
           </div>
 
-          <div className="rounded-[10px] border border-border bg-card p-6">
+          <div className="admin-settings-section">
             <h2 className="text-xl font-medium text-foreground">发件与收件</h2>
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">

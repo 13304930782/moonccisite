@@ -112,7 +112,7 @@ function buildListQuery(query) {
 
   return {
     sql: `
-      SELECT p.*, u.username AS author_name
+      SELECT p.*, u.username AS author_name, (SELECT deleted_at FROM account_profiles ap WHERE ap.user_id=u.id) AS author_deleted, (SELECT avatar_url FROM account_profiles ap WHERE ap.user_id=u.id) AS author_avatar
       FROM posts p
       JOIN users u ON u.id = p.author_id
       ${whereSql}
@@ -171,7 +171,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const viewer = await optionalUser(req);
   const [rows] = await db.query(
-    'SELECT p.*,u.username AS author_name FROM posts p JOIN users u ON u.id=p.author_id WHERE p.id=?',
+    'SELECT p.*,u.username AS author_name, (SELECT deleted_at FROM account_profiles ap WHERE ap.user_id=u.id) AS author_deleted, (SELECT avatar_url FROM account_profiles ap WHERE ap.user_id=u.id) AS author_avatar FROM posts p JOIN users u ON u.id=p.author_id WHERE p.id=?',
     [req.params.id]
   );
 

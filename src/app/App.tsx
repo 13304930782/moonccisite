@@ -26,7 +26,8 @@ const EditorApplyPage = lazy(() => import('./pages/EditorApplyPage'));
 const AdminEditorApplicationsPage = lazy(() => import('./pages/AdminEditorApplicationsPage'));
 const AdminSiteSettingsPage = lazy(() => import('./pages/AdminSiteSettingsPage'));
 const AdminLoginSettingsPage = lazy(() => import('./pages/AdminLoginSettingsPage'));
-const AccountConnectionsPage = lazy(() => import('./pages/AccountConnectionsPage'));
+const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'));
+const AdminUserSettingsPage = lazy(() => import('./pages/AdminUserSettingsPage'));
 const CompleteRegistrationPage = lazy(() => import('./pages/CompleteRegistrationPage'));
 const AdminMailSettingsPage = lazy(() => import('./pages/AdminMailSettingsPage'));
 const AdminSendMailPage = lazy(() => import('./pages/AdminSendMailPage'));
@@ -154,7 +155,9 @@ export default function App() {
           <Route path="/admin/editor-applications" element={<Guard adminOnly><AdminShell><AdminEditorApplicationsPage /></AdminShell></Guard>} />
           <Route path="/admin/site-settings" element={<Guard adminOnly><AdminShell><AdminSiteSettingsPage /></AdminShell></Guard>} />
           <Route path="/complete-registration" element={<CompleteRegistrationPage />} />
-          <Route path="/account/connections" element={<Guard><AccountConnectionsPage /></Guard>} />
+          <Route path="/account/connections" element={<Navigate to="/account/settings" replace />} />
+          <Route path="/account/settings" element={<Guard><AccountSettingsPage /></Guard>} />
+          <Route path="/admin/users/:id/settings" element={<Guard adminOnly><AdminShell><AdminUserSettingsPage /></AdminShell></Guard>} />
           <Route path="/admin/login-settings" element={<Guard ownerOnly><AdminShell><AdminLoginSettingsPage /></AdminShell></Guard>} />
           <Route path="/admin/mail-settings" element={<Guard adminOnly><AdminShell><AdminMailSettingsPage /></AdminShell></Guard>} />
           <Route path="/admin/send-mail" element={<Guard adminOnly><AdminShell><AdminSendMailPage /></AdminShell></Guard>} />

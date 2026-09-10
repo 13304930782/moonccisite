@@ -262,6 +262,7 @@ export function AdminShell({ children }: AdminShellProps) {
             <span>{item.title}</span>
           </NavLink>
         ))}
+        <Link to="/account/settings" onClick={closeMobile}><Settings /><span>个人设置</span></Link>
         <Link to="/" onClick={closeMobile}>
           <Home />
           <span>返回首页</span>

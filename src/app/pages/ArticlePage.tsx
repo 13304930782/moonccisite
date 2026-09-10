@@ -39,7 +39,7 @@ export default function ArticlePage() {
                 </div>
                 <h1 className="article-title">{post.title}</h1>
                 <div className="inline-actions muted">
-                  <span>{post.author_name || '作者'}</span>
+                  <span className="inline-flex items-center gap-2">{post.author_avatar && <img src={post.author_avatar} alt="" className="h-7 w-7 rounded-full object-cover"/>}{post.author_name || '作者'}{post.author_deleted && <small className="deleted-account-label">已删除</small>}</span>
                   <time>{formatDate(post.published_at || post.created_at)}</time>
                   {post.category && (
                     <Link to={`/category/${encodeURIComponent(post.category)}`}>
