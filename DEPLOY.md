@@ -370,3 +370,11 @@ Google 使用 OIDC `id_token` 跳转模式和原有 `googleIdentity.js` 验签�
 用户管理的“设置”支持资料、登录邮箱、权限、重置邮件及删除。管理员不能修改站长或其他管理员；站长可管理其他账号，不能删除自己或站长账号。删除会停用账号、撤销登录、释放邮箱及第三方绑定，但保留用户名、头像、文章和评论，显示“已删除”；原用户名仍保留，不可重用。
 
 验证：`npm run check`、`npm test --prefix server`、`ACCOUNT_INTEGRATION=true node --test server/test/accountSettings.integration.test.js`（隔离 MySQL）、`node scripts/test-account-browser.cjs`（构建后运行）。验收覆盖手机无横向溢出、资料保存、退出、验证码、第三方换绑及删除保留内容。真实第三方授权和邮件投递仍需使用已配置应用验收。
+
+
+## 文章草稿与发布机制（2026-09-11）
+使用 `python -X utf8 scripts/build-article-drafts-release.py` 构建独立离线包。唯一增量迁移 `202609110001_article_drafts.sql` 添加 posts.version 和 article_drafts。自动保存仅写工作稿，明确发布后更新公开内容。脚本保留历史 SQL、配置、上传和依赖；只重启 API。失败恢复原 API 与首页入口，新增表和已保存草稿继续保留。新安装快照同步登记新迁移，升级不要执行 init-db.js。
+
+本机草稿保存在按用户和草稿隔离的 IndexedDB 中，默认 7 天。服务器与本机内容不同时要求明确选择恢复；本机存储不可用会提示。并发编辑返回 409，不自动覆盖。真实线上验收仅使用指定测试文章，不修改正式内容。
+
+旧文章 PUT 接口现要求携带读取到的 version，缺失或过期返回 409。新编辑页统一使用草稿接口，不能让旧客户端绕过版本校验覆盖新内容。

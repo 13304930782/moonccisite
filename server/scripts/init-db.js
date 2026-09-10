@@ -18,6 +18,7 @@ const baseline = [
   '202609090001_electricity_rooms.sql',
   '202609090002_auth_revocation.sql',
   '202609090003_update_comments.sql',
+  '202609110001_article_drafts.sql',
 ];
 async function main() {
   const connection = await mysql.createConnection({

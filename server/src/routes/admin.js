@@ -217,6 +217,7 @@ router.get('/posts', editorOrAdmin, async (req, res) => {
   const params = [];
   let where = '';
   if (!isAdminLike(req.user)) { where = 'WHERE p.author_id=?'; params.push(req.user.id); }
+  if (['draft','published'].includes(req.query.status)) { where += (where?' AND ':'WHERE ') + 'p.status=?'; params.push(req.query.status); }
   const paginated = req.query.page !== undefined || req.query.pageSize !== undefined;
   let { page, pageSize } = require('../lib/listPagination').listPagination(req.query);
   let total;
@@ -226,7 +227,7 @@ router.get('/posts', editorOrAdmin, async (req, res) => {
     page = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
   }
   const [rows] = await db.query(`
-    SELECT p.id,p.title,p.summary,p.status,p.category,p.author_id,p.updated_at,u.username AS author_name
+    SELECT p.id,p.title,p.summary,p.status,p.category,p.author_id,p.updated_at,u.username AS author_name,EXISTS(SELECT 1 FROM article_drafts d WHERE d.post_id=p.id AND d.dirty=1) AS has_unpublished
     FROM posts p JOIN users u ON u.id=p.author_id
     ${where} ORDER BY p.updated_at DESC,p.id DESC
     ${paginated ? 'LIMIT ? OFFSET ?' : ''}
