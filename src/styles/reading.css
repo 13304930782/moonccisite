@@ -49,7 +49,7 @@ html[data-reading-color=contrast] { --background:#000; --foreground:#fff; --card
  .neo-page .article-layout { max-width:1280px; }
  .neo-page .article-presentation { display:grid; grid-template-columns:minmax(0,960px) 220px; column-gap:48px; align-items:start; }
  .neo-page .article-presentation > * { grid-column:1; min-width:0; }
- .neo-page .article-presentation > .article-toc { grid-column:2; grid-row:1 / span 9; position:sticky; top:96px; }
+ .neo-page .article-presentation > .article-toc { grid-column:2; grid-row:1 / span 9; position:sticky; top:96px; right:auto; left:auto; width:auto; }
  .neo-page .article-layout > :not(.article-presentation) { max-width:960px; }
 }
 @media(max-width:760px){
