@@ -58,7 +58,7 @@ export function UpdateDetailPage() {
       </Link>
       <ResourceState resource={resource}>
         {resource.data && (
-          <div className="update-detail"><article>
+          <div className="update-detail"><article data-reading-content>
             <PageHeading eyebrow="NOTE" title="一则近况">
               <time>{formatDate(resource.data.published_at)}</time>
             </PageHeading>

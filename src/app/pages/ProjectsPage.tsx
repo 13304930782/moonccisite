@@ -10,7 +10,7 @@ import {
   labels,
   useResource,
 } from "../components/ContentUI";
-import { MarkdownContent } from "../components/MarkdownContent";
+import { MarkdownContent, headingsFor } from "../components/MarkdownContent";
 import { safeImageSrc, safeHref } from "../lib/safeUrl";
 export default function ProjectsPage() {
   const [params, setParams] = useSearchParams();
@@ -62,17 +62,19 @@ export function ProjectDetailPage() {
         ?.scrollIntoView({ block: "start" });
   }, [p, focusedId]);
   return (
-    <SitePage narrow>
+    <SitePage>
       <Link className="text-link" to="/projects">
         ← 全部作品
       </Link>
       <ResourceState resource={resource}>
         {p && (
-          <>
+          <article className="project-reading" data-reading-content>
+            <header className="project-intro">
             <PageHeading eyebrow={labels[p.stage]} title={p.name}>
               <p>{p.summary}</p>
             </PageHeading>
-            <div className="inline-actions">
+            </header><div className="project-reading-layout">
+            <aside className="project-reading-aside" data-reading-ignore><h2>作品信息</h2><div className="inline-actions">
               {p.demo_url && (
                 <a
                   className="quiet-button"
@@ -94,7 +96,9 @@ export function ProjectDetailPage() {
                 </a>
               )}
             </div>
-            <p className="muted">{p.tech_stack}</p>
+            {p.tech_stack && <div className="project-tech"><h3>技术栈</h3><p>{p.tech_stack}</p></div>}
+            <details className="project-reading-toc" open={window.matchMedia('(min-width:761px)').matches}><summary>本页目录</summary><nav aria-label="作品目录">{headingsFor(p.content).map(h=><a key={h.id} href={`#project-${h.id}`}>{h.title}</a>)}<a href="#project-releases">版本记录</a></nav></details>
+            </aside><div className="project-reading-body">
             {safeImageSrc(p.cover_image) && (
               <img
                 className="content-image"
@@ -102,8 +106,8 @@ export function ProjectDetailPage() {
                 alt={p.name}
               />
             )}
-            <MarkdownContent content={p.content} />
-            <section className="home-section">
+            <MarkdownContent content={p.content} headingPrefix="project-heading" />
+            <section className="project-releases" id="project-releases" data-reading-ignore>
               <h2>版本记录</h2>
               {!p.releases.items.length && (
                 <p className="quiet-state">暂无正式版本记录。</p>
@@ -113,15 +117,16 @@ export function ProjectDetailPage() {
                 ? [p.focusedRelease, ...p.releases.items]
                 : p.releases.items
               ).map((r: any) => (
-                <article
+                <details
+                  open={String(r.id)===focusedId}
                   className="release-record"
                   key={r.id}
                   id={`release-${r.id}`}
                 >
-                  <time className="muted">
+                  <summary><time className="muted">
                     {formatDate(r.published_at)} · GitHub Releases
                   </time>
-                  <h3>{r.title}</h3>
+                  <span>{r.title}</span></summary>
                   <MarkdownContent content={r.content} />
                   <a
                     className="text-link"
@@ -131,14 +136,14 @@ export function ProjectDetailPage() {
                   >
                     查看原始发布 ↗
                   </a>
-                </article>
+                </details>
               ))}
               <Pagination
                 data={p.releases}
                 onPage={(page) => setParams({ page: String(page) })}
               />
-            </section>
-          </>
+            </section></div></div>
+          </article>
         )}
       </ResourceState>
     </SitePage>

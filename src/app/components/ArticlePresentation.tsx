@@ -7,7 +7,7 @@ export function ArticlePresentation({post,preview=false}:{post:any;preview?:bool
  const [tocOpen,setTocOpen]=useState(()=>window.matchMedia('(min-width:1280px)').matches);
  const headings=headingsFor(post?.content||'');
  let tags:string[]=[];try{tags=Array.isArray(post.tags)?post.tags:JSON.parse(post.tags||'[]');}catch{}
- return (<article className="article-presentation">
+ return (<article className="article-presentation" data-reading-content={preview?undefined:true}>
                 <Link className="text-link" to="/articles">
                   ← 文章库
                 </Link>
@@ -34,7 +34,7 @@ export function ArticlePresentation({post,preview=false}:{post:any;preview?:bool
                 )}
                 {headings.length >= 3 && (
                   <details
-                    className="article-toc"
+                    className="article-toc" data-reading-ignore
                     open={tocOpen}
                     onToggle={(e) => setTocOpen(e.currentTarget.open)}
                   >

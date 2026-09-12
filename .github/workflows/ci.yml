@@ -39,6 +39,7 @@ jobs:
       - run: node scripts/test-admin-capacity-browser.cjs
       - run: node scripts/test-account-browser.cjs
       - run: node scripts/test-article-drafts-browser.cjs
+      - run: node scripts/test-reading-browser.cjs
       - run: npm audit --audit-level=moderate
       - run: npm audit --prefix server --audit-level=moderate
   mysql-integration:

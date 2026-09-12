@@ -50,6 +50,7 @@ import { ThemeProvider } from './context/ThemeContext';
 
 const ElectricityPage = lazy(() => import('./pages/ElectricityPage'));
 const AdminElectricityPage = lazy(() => import('./pages/AdminElectricityPage'));
+const ReadingTools = lazy(() => import('./components/ReadingTools'));
 const WeatherCompanion = lazy(() => import('./components/WeatherCompanion'));
 function PublicWeatherCompanion() {
   const { pathname } = useLocation();
@@ -167,7 +168,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" />} />
           </Routes></Suspense>
-          <PublicWeatherCompanion />
+          <PublicWeatherCompanion /><Suspense fallback={null}><ReadingTools /></Suspense>
         </BrowserRouter>
       </AuthProvider>
       </SiteSettingsProvider>
