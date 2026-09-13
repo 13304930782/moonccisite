@@ -384,3 +384,7 @@ Google 使用 OIDC `id_token` 跳转模式和原有 `googleIdentity.js` 验签�
 Build the scoped offline release with `python scripts/build-oauth-diagnostics-release.py` after checks pass and the branch is merged. This package updates the frontend and only `server/src/routes/socialLogin.js` and `server/src/lib/socialProviders.js`; it restarts `mooncci-api` without migrations or dependency changes. It preserves environment settings, uploads and Google certificate proxy configuration.
 
 After reproducing a failed authorization, inspect the `[oauth-failure]` log entry matching the error reference on the account page. Entries contain only a fixed failure category, processing stage, reference and allowlisted upstream error/status; never add tokens, authorization codes, client secrets or raw upstream responses to these logs. Successful root URL connectivity alone does not establish successful OAuth token exchange.
+
+### 可选 GitHub CF 代理
+
+见 `cloudflare/github-oauth/README.md`。本地执行 `python scripts/build-github-proxy-release.py` 生成限定后端范围的离线包；Worker 单独部署到自己的 CF 账号。默认不启用，部署网站包不会改 `.env`。该包沿用授权诊断的双文件更新和回滚脚本，无迁移；启用需配置 Worker 域名和共享 Secret。

@@ -28,7 +28,23 @@ function authorizationUrl(provider, config, state, verifier) {
   if (provider === 'wechat') url.hash = 'wechat_redirect';
   return url.href;
 }
+function githubTransport(url, options) {
+  const routes = {
+    'https://github.com/login/oauth/access_token': '/token',
+    'https://api.github.com/user': '/user',
+    'https://api.github.com/user/emails': '/emails',
+  };
+  if (!Object.hasOwn(routes, url)) return { url, options };
+  const origin = (process.env.GITHUB_OAUTH_PROXY_URL || '').trim();
+  const key = (process.env.GITHUB_OAUTH_PROXY_KEY || '').trim();
+  if (!origin && !key) return { url, options };
+  let parsed;
+  try { parsed = new URL(origin); } catch { throw new Error('proxy_config_invalid'); }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== '/' || !/^[a-f0-9]{64}$/.test(key)) throw new Error('proxy_config_invalid');
+  return { url: parsed.origin + routes[url], options: { ...options, headers: { ...options.headers, 'X-Mooncci-Proxy-Key': key } } };
+}
 async function request(url, options = {}) {
+  ({ url, options } = githubTransport(url, options));
   const response = await fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(10000), headers: { Accept: 'application/json', 'User-Agent': 'mooncci-login', ...options.headers } });
   if (!response.ok) throw Object.assign(new Error('provider_http'), { oauthStatus: response.status });
   // Bound streaming response before parsing; do not include upstream bodies/URLs in logs.
@@ -85,7 +101,7 @@ async function exchange(provider, config, secret, code, verifier) {
   return { subject: subject(id), email, emailVerified, name: String(profile.name || profile.nickname || profile.login || provider).slice(0, 80) };
 }
 function failureCode(error) {
-  const known = ['state_invalid','state_expired','authorization_denied','session_expired','config_changed','already_bound','email_exists','disabled','identity_mismatch','nonce_invalid','provider_http','provider_rejected'];
+  const known = ['state_invalid','state_expired','authorization_denied','session_expired','config_changed','already_bound','email_exists','disabled','identity_mismatch','nonce_invalid','provider_http','provider_rejected','proxy_config_invalid'];
   if (known.includes(error?.message)) return error.message;
   if (['TimeoutError','AbortError'].includes(error?.name)) return 'provider_timeout';
   if (['ETIMEDOUT','ECONNRESET','ECONNREFUSED','ENOTFOUND','EAI_AGAIN','UND_ERR_CONNECT_TIMEOUT'].includes(error?.cause?.code)) return 'provider_network';
