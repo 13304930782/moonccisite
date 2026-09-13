@@ -78,11 +78,11 @@ export function ResourceState({
     {children}
   </div>;
 }
-export function SitePage({ children, narrow = false }: { children: ReactNode; narrow?: boolean }) {
+export function SitePage({ children, narrow = false, detail = false }: { children: ReactNode; narrow?: boolean; detail?: boolean }) {
   return (
     <div className="neo-page">
       <Header />
-      <main className={`site-container page-content ${narrow ? 'reading-page' : ''}`}>
+      <main className={`site-container page-content ${narrow ? 'reading-page' : ''} ${detail ? 'detail-container' : ''}`}>
         {children}
       </main>
       <SiteFooter />

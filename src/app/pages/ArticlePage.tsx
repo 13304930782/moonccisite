@@ -14,7 +14,7 @@ export default function ArticlePage() {
   const post = resource.data;
   const views=usePageView(post?.id?`/article/${post.id}`:null,post?.id);
   return (
-    <SitePage>
+    <SitePage detail>
       <ResourceState resource={resource}>
         {post && (
           <>

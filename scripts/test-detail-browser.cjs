@@ -7,6 +7,7 @@ const { chromium } = require('playwright');
   try {
     browser = await chromium.launch({ headless:true, ...(process.env.PLAYWRIGHT_CHANNEL ? {channel:process.env.PLAYWRIGHT_CHANNEL} : {}) });
     const page = await browser.newPage({ reducedMotion:'reduce' });
+    const measurements=[];
     const errors=[]; page.on('pageerror', e=>errors.push(e.message));
     const content='## 阅读体验\n\n统一正文、标题和侧边信息的位置，让阅读更轻松。\n\n## 功能说明\n\n正文内容保留原有的 Markdown 格式。\n\n## 使用方式\n\n在手机与电脑上打开页面。';
     const author={author_name:'这是用于检验窄屏排版的很长用户名', author_avatar:'/login-icons/microsoft.svg',published_at:'2026-09-14T00:00:00Z'};
@@ -27,6 +28,12 @@ const { chromium } = require('playwright');
         await page.locator('.detail-title').waitFor();
         if(name==='article')await page.getByLabel('123456 次阅读',{exact:true}).waitFor();
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} ${width} page overflow`);
+        const outer=await page.locator('main.detail-container').evaluate(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return {left:r.left,right:el.parentElement.getBoundingClientRect().right-r.right,width:r.width,paddingLeft:s.paddingLeft,paddingRight:s.paddingRight};});
+        assert.ok(Math.abs(outer.left-outer.right)<1, `${name} ${width}: equal outer gutters ${JSON.stringify(outer)}`);
+        assert.equal(outer.paddingLeft,'0px');assert.equal(outer.paddingRight,'0px');
+        if(width>=1440){assert.equal(outer.width,1200);measurements.push({name,viewport:width,...outer});}
+        const pill=await page.locator('.detail-category').evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,radius:s.borderRadius};});
+        assert.notEqual(pill.background,'rgba(0, 0, 0, 0)');assert.equal(pill.radius,'999px');
         const body=await page.locator('.detail-body').boundingBox();
         if(expected){assert.ok(Math.abs(body.x-expected.x)<1);assert.ok(Math.abs(body.width-expected.width)<1);}
         expected=body;
@@ -55,6 +62,7 @@ const { chromium } = require('playwright');
         if(width===375){await page.evaluate(()=>document.documentElement.classList.add('dark'));await page.screenshot({path:`.cache/detail-${name}-dark.png`,fullPage:true});}
       }
     }
+    require('node:fs').writeFileSync('.cache/centering-measurements.json',JSON.stringify(measurements,null,2)+'\n');
     assert.deepEqual(errors,[]);
     console.log('PASS: shared 640–680px column, aligned atomic metadata, 375px/320px navigation, sidebar folding, dark theme and no page overflow.');
   } finally { await browser?.close(); await server.httpServer.close(); }

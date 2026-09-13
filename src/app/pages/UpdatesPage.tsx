@@ -52,7 +52,7 @@ export function UpdateDetailPage() {
   const { id } = useParams(),
     resource = useResource(`/updates/${id}`);
   return (
-    <SitePage>
+    <SitePage detail>
       <ResourceState resource={resource}>
         {resource.data && (
           <div className="update-detail"><DetailPage backTo="/updates" backLabel="最近更新" label="近况" title="一则近况"

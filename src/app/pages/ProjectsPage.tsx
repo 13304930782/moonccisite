@@ -64,7 +64,7 @@ export function ProjectDetailPage() {
       }
   }, [p, focusedId]);
   return (
-    <SitePage>
+    <SitePage detail>
       <ResourceState resource={resource}>
         {p && (
           <DetailPage className="project-reading" backTo="/projects" backLabel="全部作品" label={labels[p.stage] || '作品'} title={p.name}

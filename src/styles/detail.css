@@ -1,10 +1,12 @@
 /* Shared detail system: 680px body + 20px gap + sidebar filling the container edge. */
-.neo-page .page-content:has(.detail-page) { width:min(1000px,calc(100% - 80px)); max-width:1000px; padding-top:48px; }
+.neo-page .page-content.detail-container { width:calc(100% - 80px); max-width:1200px; margin:0 auto; padding-inline:0; box-sizing:border-box; padding-top:48px; }
 .neo-page .article-layout { max-width:none; margin:0; }
 .neo-page .detail-page { display:grid; grid-template-columns:minmax(0,680px) minmax(0,1fr); column-gap:20px; align-items:start; }
 .detail-header { grid-column:1; min-width:0; padding-bottom:24px; border-bottom:1px solid var(--border); }
 .detail-breadcrumb { margin-bottom:24px; font-size:14px; }
 .detail-label { min-height:20px; margin-bottom:12px; font-size:13px; line-height:20px; color:var(--muted-foreground); }
+.detail-category { display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; background:#eaf2ff; color:#245695; white-space:nowrap; }
+.dark .detail-category { background:#1b304b; color:#b6d6ff; }
 .neo-page .detail-title { font-size:40px; font-weight:600; line-height:1.35; letter-spacing:-.025em; margin:0 0 12px; overflow-wrap:anywhere; text-wrap:pretty; }
 .neo-page .detail-page .detail-body { grid-column:1; min-width:0; padding-top:28px; }
 .neo-page .detail-page .detail-body .markdown-body { margin:0; font-size:var(--reading-size,18px); line-height:1.8; overflow-wrap:anywhere; }
@@ -56,14 +58,14 @@
 .comment-submit:hover { opacity:.85; }
 .comment-submit:disabled { opacity:.45; cursor:not-allowed; }
 @media(max-width:1099px) {
- .neo-page .page-content:has(.detail-page) { max-width:680px; }
+ .neo-page .page-content.detail-container { max-width:680px; }
  .neo-page .detail-page { grid-template-columns:minmax(0,1fr); }
  .detail-aside { position:static; grid-column:1; grid-row:auto; margin-top:28px; }
  .detail-panel-content { max-height:360px; }
  .neo-page .detail-panel > summary { min-height:44px; padding:11px 0; }
 }
 @media(max-width:600px) {
- .neo-page .page-content:has(.detail-page) { width:calc(100% - 40px); padding-top:28px; }
+ .neo-page .page-content.detail-container { width:calc(100% - 40px); padding-top:28px; }
  .detail-breadcrumb { margin-bottom:20px; font-size:13px; }
  .detail-label { margin-bottom:8px; font-size:12px; }
  .neo-page .detail-title { font-size:24px; line-height:1.4; font-weight:600; }
