@@ -1,3 +1,4 @@
+import { DetailPage, DetailMeta, EmptyState, SingleLine } from '../components/DetailUI';
 import { ProjectCard } from '../components/ProjectCard';
 import { useEffect } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
@@ -57,48 +58,27 @@ export function ProjectDetailPage() {
   const focusedId = params.get("release");
   useEffect(() => {
     if (p && focusedId && /^\d+$/.test(focusedId))
-      document
-        .getElementById(`release-${focusedId}`)
-        ?.scrollIntoView({ block: "start" });
+      {
+        const release = document.getElementById(`release-${focusedId}`);
+        if (release) window.scrollTo({ top: window.scrollY + release.getBoundingClientRect().top - 100 });
+      }
   }, [p, focusedId]);
   return (
     <SitePage>
-      <Link className="text-link" to="/projects">
-        ← 全部作品
-      </Link>
       <ResourceState resource={resource}>
         {p && (
-          <article className="project-reading" data-reading-content>
-            <header className="project-intro">
-            <PageHeading eyebrow={labels[p.stage]} title={p.name}>
-              <p>{p.summary}</p>
-            </PageHeading>
-            </header><div className="project-reading-layout">
-            <aside className="project-reading-aside" data-reading-ignore><h2>作品信息</h2><div className="inline-actions">
-              {p.demo_url && (
-                <a
-                  className="quiet-button"
-                  href={safeHref(p.demo_url)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  打开作品 ↗
-                </a>
-              )}
-              {p.repo && (
-                <a
-                  className="text-link"
-                  href={`https://github.com/${p.repo}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  GitHub ↗
-                </a>
-              )}
-            </div>
-            {p.tech_stack && <div className="project-tech"><h3>技术栈</h3><p>{p.tech_stack}</p></div>}
-            <details className="project-reading-toc" open={window.matchMedia('(min-width:761px)').matches}><summary>本页目录</summary><nav aria-label="作品目录">{headingsFor(p.content).map(h=><a key={h.id} href={`#project-${h.id}`}>{h.title}</a>)}<a href="#project-releases">版本记录</a></nav></details>
-            </aside><div className="project-reading-body">
+          <DetailPage className="project-reading" backTo="/projects" backLabel="全部作品" label={labels[p.stage] || '作品'} title={p.name}
+            meta={<DetailMeta author={p.author_name} avatar={p.author_avatar} date={p.published_at || p.created_at} />}
+            asideTitle="作品信息" aside={<>
+              <SingleLine className="project-actions" label="作品链接">
+                {p.demo_url && <a className="quiet-button project-primary" href={safeHref(p.demo_url)} target="_blank" rel="noreferrer">打开作品 ↗</a>}
+                {p.repo && <a className="quiet-button" href={`https://github.com/${p.repo}`} target="_blank" rel="noreferrer">GitHub ↗</a>}
+              </SingleLine>
+              {p.tech_stack && <div className="project-tech"><h2>技术栈</h2><p>{p.tech_stack}</p></div>}
+              <nav className="project-reading-toc" aria-label="作品目录"><h2>本页目录</h2>{headingsFor(p.content).map(h => <a key={h.id} href={`#project-${h.id}`}>{h.title}</a>)}<a href="#project-releases">版本记录</a></nav>
+            </>}>
+            {p.summary && <p className="article-summary">{p.summary}</p>}
+            <div className="project-reading-body">
             {safeImageSrc(p.cover_image) && (
               <img
                 className="content-image"
@@ -110,7 +90,7 @@ export function ProjectDetailPage() {
             <section className="project-releases" id="project-releases" data-reading-ignore>
               <h2>版本记录</h2>
               {!p.releases.items.length && (
-                <p className="quiet-state">暂无正式版本记录。</p>
+                <EmptyState>暂无正式版本记录。</EmptyState>
               )}
               {(p.focusedRelease &&
               !p.releases.items.some((r: any) => r.id === p.focusedRelease.id)
@@ -142,8 +122,8 @@ export function ProjectDetailPage() {
                 data={p.releases}
                 onPage={(page) => setParams({ page: String(page) })}
               />
-            </section></div></div>
-          </article>
+            </section></div>
+          </DetailPage>
         )}
       </ResourceState>
     </SitePage>

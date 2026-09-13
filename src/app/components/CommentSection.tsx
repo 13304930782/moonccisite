@@ -1,3 +1,4 @@
+import { EmptyState } from './DetailUI';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Heart, MessageCircle, Reply, Send, Trash2, X } from 'lucide-react';
 import { api } from '../lib/api';
@@ -416,11 +417,11 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
         </div>
       )}
 
-      <form onSubmit={submit} className="mt-6">
+      <form onSubmit={submit} className="comment-compose">
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          rows={4}
+          rows={3}
           placeholder={
             user
               ? ['owner', 'admin', 'editor'].includes(user.role)
@@ -434,7 +435,7 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
         <div className="mt-3 flex justify-end">
           <button
             disabled={loading || !user}
-            className="inline-flex items-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-foreground hover:bg-muted disabled:opacity-60"
+            className="comment-submit"
           >
             <Send className="w-4 h-4" />
             {loading ? '提交中...' : '发表评论'}
@@ -445,9 +446,7 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
       <div className="mt-8 space-y-2" aria-busy={commentsLoading}>
         {commentsLoading && comments.length === 0 && <p className="quiet-state" role="status">正在读取评论…</p>}
         {!commentsLoading && !message && comments.length === 0 && (
-          <div className="rounded-[10px] bg-muted  px-5 py-8 text-center text-muted-foreground">
-            暂无评论
-          </div>
+          <EmptyState>暂无评论</EmptyState>
         )}
 
         {commentTree.map((item) => renderCommentItem(item, false))}

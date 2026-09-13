@@ -1,5 +1,6 @@
+import { DetailPage, DetailMeta } from '../components/DetailUI';
 import { CommentSection } from '../components/CommentSection';
-import { useSearchParams, useParams, Link } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import {
   SitePage,
   PageHeading,
@@ -7,7 +8,6 @@ import {
   ResourceState,
   Pagination,
   useResource,
-  formatDate,
 } from '../components/ContentUI';
 import { MarkdownContent } from '../components/MarkdownContent';
 import { safeImageSrc } from '../lib/safeUrl';
@@ -52,16 +52,11 @@ export function UpdateDetailPage() {
   const { id } = useParams(),
     resource = useResource(`/updates/${id}`);
   return (
-    <SitePage narrow>
-      <Link to="/updates" className="text-link">
-        ← 最近更新
-      </Link>
+    <SitePage>
       <ResourceState resource={resource}>
         {resource.data && (
-          <div className="update-detail"><article data-reading-content>
-            <PageHeading eyebrow="NOTE" title="一则近况">
-              <time>{formatDate(resource.data.published_at)}</time>
-            </PageHeading>
+          <div className="update-detail"><DetailPage backTo="/updates" backLabel="最近更新" label="近况" title="一则近况"
+            meta={<DetailMeta author={resource.data.author_name} avatar={resource.data.author_avatar} date={resource.data.published_at} />}>
             <MarkdownContent content={resource.data.content} />
             {safeImageSrc(resource.data.image_url) && (
               <img
@@ -70,7 +65,7 @@ export function UpdateDetailPage() {
                 alt="动态配图"
               />
             )}
-          </article><CommentSection key={id} updateId={resource.data.id} /></div>
+          </DetailPage><CommentSection key={id} updateId={resource.data.id} /></div>
         )}
       </ResourceState>
     </SitePage>
