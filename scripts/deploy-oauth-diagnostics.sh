@@ -92,7 +92,7 @@ for file in "${backend_files[@]}"; do
   install -d -o mooncci -g mooncci -m 755 "$(dirname "$live/$file")"
   install -o mooncci -g mooncci -m 644 "server/$file" "$live/$file"
 done
-sed -n 's|  server/|  |p' SHA256SUMS | grep -v '  scripts/migrate-social-login.js$' > "$backup/backend-checksums"
+sed -n 's|  server/|  |p' SHA256SUMS > "$backup/backend-checksums"
 (cd "$live" && sha256sum --strict -c "$backup/backend-checksums") > "$backup/backend-verification.log"
 pm restart mooncci-api
 check_api
@@ -113,4 +113,4 @@ if ! (cd "$web" && LC_ALL=C sha256sum --strict -c "$backup/frontend-checksums") 
   exit 1
 fi
 printf '%s\n' "$revision" > "$backup/deployed-commit.txt"
-log "Google 普通按钮登录部署完成：$revision"
+log "第三方授权诊断部署完成：$revision"
