@@ -28,6 +28,7 @@ jobs:
       - run: python3 scripts/test-offline-release.py
       - run: bash -n scripts/deploy-social-login.sh
       - run: bash -n scripts/deploy-google-login.sh
+      - run: bash -n scripts/deploy-oauth-diagnostics.sh
       - run: bash -n scripts/deploy-admin-lists.sh
       - run: bash -n scripts/deploy-offline-frontend.sh
       - run: bash -n scripts/deploy-audit.sh

@@ -5,12 +5,13 @@ import { api } from '../lib/api';
 import { AccountProfileForm, AccountProfile } from '../components/AccountProfileForm';
 import { AccountEmailForm } from '../components/AccountEmailForm';
 import '../../styles/account.css';
+const oauthReasons:Record<string,string>={already_bound:'该第三方账号已绑定其他网站账号。',session_expired:'登录会话已失效，请重新登录后绑定。',config_changed:'登录配置发生变化，请重新发起绑定。',provider_rejected:'第三方平台拒绝了授权交换，请核对应用配置。',provider_http:'第三方接口返回错误，请稍后重试。',provider_timeout:'第三方接口请求超时，请重新发起绑定。',provider_network:'服务器连接第三方接口失败。',authorization_denied:'授权未完成，请重新发起绑定。'};
 type Provider = { provider:string; name:string; enabled:boolean; bound:boolean };
 export default function AccountSettingsPage() {
   const { logout, loggingOut, logoutError, refreshUser }=useAuth();
   const navigate=useNavigate();const [params]=useSearchParams();
   const [user,setUser]=useState<AccountProfile|null>(null),[providers,setProviders]=useState<Provider[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false);
-  const [message,setMessage]=useState(params.get('email')==='updated'?'登录邮箱已更新。':params.get('oauth')==='bound'?'账号绑定已更新。':params.get('oauth')==='failed'?'授权未完成，原有绑定保持不变。':''),[challenge,setChallenge]=useState(''),[code,setCode]=useState('');
+  const [message,setMessage]=useState(params.get('email')==='updated'?'登录邮箱已更新。':params.get('oauth')==='bound'?'账号绑定已更新。':params.get('oauth')==='failed'?(oauthReasons[params.get('reason')||'']||'授权未完成，原有绑定保持不变。'):''),[challenge,setChallenge]=useState(''),[code,setCode]=useState('');
   const load=async()=>{try{const [p,c]=await Promise.all([api('/account'),api('/auth/connections')]);setUser(p.user);setProviders(c.providers);setError('');}catch(e:any){setError(e.message);}};
   useEffect(()=>{void load();},[]);
   const run=async(fn:()=>Promise<void>)=>{setBusy(true);setMessage('');try{await fn();}catch(e:any){setMessage(e.message);}finally{setBusy(false);}};
@@ -35,7 +36,7 @@ export default function AccountSettingsPage() {
           {p.bound&&<button className="text-link account-danger" disabled={busy||!challenge||code.length!==6} onClick={()=>void change(p.provider,'unlink')}>解绑</button>}
         </div></div>)}
       </div></section>
-      {message&&<p className="account-message" role="status">{message}</p>}
+      {message&&<p className="account-message" role="status">{message}{params.get('oauth')==='failed'&&/^[a-f0-9]{12}$/.test(params.get('ref')||'')&&<small> 错误编号：{params.get('ref')}</small>}</p>}
     </>}
   </main>;
 }
