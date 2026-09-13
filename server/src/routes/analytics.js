@@ -19,8 +19,8 @@ async function publicPage(input) {
  match=input.match(/^\/(projects|updates)\/([^/]+)$/);
  if (match) {
   let id;try{id=decodeURIComponent(match[2]);}catch{return null;}
-  const table=match[1],field=table==='projects'?'slug':'id';
-  const [[item]]=await db.query(`SELECT ${field} AS id FROM ${table} WHERE ${field}=? AND status='published'`,[id]);
+  const table=match[1]==='projects'?'projects':'updates';
+  const [[item]]=await db.query(table==='projects'?"SELECT slug AS id FROM projects WHERE slug=? AND status='published'":"SELECT id FROM updates WHERE id=? AND status='published'",[id]);
   return item?{path:`/${table}/${encodeURIComponent(item.id)}`}:null;
  }
  // Search terms and arbitrary category/tag values are deliberately not collected.
@@ -65,7 +65,7 @@ router.post('/analytics/view',async(req,res)=>{
  if(now-cleanedAt>3600000){cleanedAt=now;db.query('DELETE FROM analytics_visits WHERE day<? LIMIT 5000',[day(now-90*86400000)]).catch(()=>{cleanedAt=0;});}
  res.json({counted,views:await total(page.postId)});
 });
-router.get('/admin/analytics',authRequired,adminOnly,async(req,res)=>{
+router.get('/admin/analytics',require('express-rate-limit')({windowMs:60000,limit:30,standardHeaders:true,legacyHeaders:false}),authRequired,adminOnly,async(req,res)=>{
  const days=Number(req.query.days||30);if(![7,30,90].includes(days))return res.status(400).json({message:'请选择7、30或90天'});
  const now=Date.now(),start=day(now-(days-1)*86400000),end=day(now);
  const since=Date.parse(start+'T00:00:00Z')/1000;
