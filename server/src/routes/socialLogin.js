@@ -312,6 +312,7 @@ async function completeCallback(req, res) {
   const input = provider === 'google' ? req.body : req.query;
   const respond = target => provider === 'google' ? res.json({ redirect: target }) : res.redirect(303, target);
   let state;
+  let stage = 'state';
   try {
     const inputState = input.state;
     const browser = readCookie(req, cookieName(provider));
@@ -328,12 +329,15 @@ async function completeCallback(req, res) {
     finally { connection.release(); }
     res.clearCookie(cookieName(provider), { ...cookieOptions(req), maxAge: undefined });
     if (input.error || (provider !== 'google' && (typeof input.code !== 'string' || !input.code || input.code.length > 2048))) throw new Error('authorization_denied');
+    stage = 'session';
     if (state.user_id) {
       const user = await getUserFromRequest(req);
       if (!user || user.status === 'disabled' || user.id !== state.user_id || sha256(getAuthTokenFromRequest(req) || '') !== state.session_hash) throw new Error('session_expired');
     }
+    stage = 'configuration';
     const config = await getConfig(provider);
     if (!ready(config) || config.version !== state.config_version || config.client_id !== state.client_id) throw new Error('config_changed');
+    stage = 'exchange';
     let identity;
     if (provider === 'google') {
       const payload = await verifyGoogleCredential(input.credential, config.client_id);
@@ -343,6 +347,7 @@ async function completeCallback(req, res) {
     } else {
       identity = await adapters.exchange(provider, config, decrypt(config.secret_cipher, provider), input.code, state.verifier);
     }
+    stage = 'identity';
     let user;
     const emailChange=state.user_id && state.return_to.startsWith('/account/settings?email=');
     if(emailChange) {
@@ -373,7 +378,11 @@ async function completeCallback(req, res) {
     respond(target);
   } catch (error) {
     // Never log authorization codes, secrets, upstream URLs or access tokens.
-    respond(state?.user_id ? '/account/settings?oauth=failed' : error.message === 'email_exists' ? '/login?oauth=email_exists' : '/login?oauth=failed');
+    const reference = crypto.randomBytes(6).toString('hex');
+    const diagnostic = adapters.safeFailure(error, provider, stage, reference);
+    console.warn('[oauth-failure]', JSON.stringify(diagnostic));
+    const target = state?.user_id ? '/account/settings?oauth=failed' : error.message === 'email_exists' ? '/login?oauth=email_exists' : '/login?oauth=failed';
+    respond(`${target}&reason=${encodeURIComponent(diagnostic.reason)}&ref=${reference}`);
   }
 }
 router.get('/:provider/callback', limiter, completeCallback);

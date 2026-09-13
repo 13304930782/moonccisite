@@ -378,3 +378,9 @@ Google 使用 OIDC `id_token` 跳转模式和原有 `googleIdentity.js` 验签�
 本机草稿保存在按用户和草稿隔离的 IndexedDB 中，默认 7 天。服务器与本机内容不同时要求明确选择恢复；本机存储不可用会提示。并发编辑返回 409，不自动覆盖。真实线上验收仅使用指定测试文章，不修改正式内容。
 
 旧文章 PUT 接口现要求携带读取到的 version，缺失或过期返回 409。新编辑页统一使用草稿接口，不能让旧客户端绕过版本校验覆盖新内容。
+
+### OAuth failure diagnostics
+
+Build the scoped offline release with `python scripts/build-oauth-diagnostics-release.py` after checks pass and the branch is merged. This package updates the frontend and only `server/src/routes/socialLogin.js` and `server/src/lib/socialProviders.js`; it restarts `mooncci-api` without migrations or dependency changes. It preserves environment settings, uploads and Google certificate proxy configuration.
+
+After reproducing a failed authorization, inspect the `[oauth-failure]` log entry matching the error reference on the account page. Entries contain only a fixed failure category, processing stage, reference and allowlisted upstream error/status; never add tokens, authorization codes, client secrets or raw upstream responses to these logs. Successful root URL connectivity alone does not establish successful OAuth token exchange.
