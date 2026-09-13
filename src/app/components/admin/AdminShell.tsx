@@ -132,6 +132,7 @@ export function AdminShell({ children }: AdminShellProps) {
   }, []);
 
   const menus: MenuItem[] = [
+    { title: '访问统计', to: '/admin/analytics', icon: Gauge, show: manager },
     {
       title: '近况与动态',
       to: '/admin/updates',

@@ -388,3 +388,17 @@ After reproducing a failed authorization, inspect the `[oauth-failure]` log entr
 ### 可选 GitHub CF 代理
 
 见 `cloudflare/github-oauth/README.md`。本地执行 `python scripts/build-github-proxy-release.py` 生成限定后端范围的离线包；Worker 单独部署到自己的 CF 账号。默认不启用，部署网站包不会改 `.env`。该包沿用授权诊断的双文件更新和回滚脚本，无迁移；启用需配置 Worker 域名和共享 Secret。
+
+### 访问统计与 Microsoft 登录
+
+本地构建：`python scripts/build-analytics-release.py`。这是独立后端包：新增四张 analytics 表，仅应用 `202609140001_analytics.sql`，更新入口、analytics 路由、socialConfig/socialProviders 和前端，重启 API。无新增依赖，不替换 `.env`、上传目录、历史迁移或 Google 验签模块。回滚恢复旧入口及 API；新增统计表保留，不执行删除数据的逆向迁移。
+
+部署后，后台「访问统计」提供 7/30/90 天趋势、累计浏览量、按浏览器去重访客、注册增长、热门页面、来源域名、按页面宽度分类的设备、当前账号状态/角色/第三方绑定数量。流量日期按 UTC。新增注册日期由数据库时间戳换算为 UTC；旧注册记录只按现有数据展示。
+
+浏览量不是浏览器访问日志的精确替代：同一浏览器同一页面 30 秒去重；排除管理员、后台、预览、登录/注册/授权、已识别机器人和 DNT。匿名随机 cookie 保留 90 天，服务端只存 HMAC 后的标识，不存 IP、完整来源 URL、查询参数或搜索词；清除 cookie、不同浏览器和拦截脚本会影响访客统计。明细以访问时触发的每小时限量清理保留约 90 天，汇总浏览量长期保留。不展示虚构历史访问量。
+
+验收：退出管理员账号后打开公开文章，作者/日期旁有灰色眼睛数字；连续刷新 30 秒内不增加，30 秒后增加；后台显示同期趋势。草稿预览和管理员访问不增计数。普通用户访问 `/api/admin/analytics` 应返回 403，未登录为 401。
+
+Microsoft 配置：在 https://entra.microsoft.com/ 的应用注册中新建应用，支持账号类型选择“任何组织目录中的账号和个人 Microsoft 账号”，平台 Web，回调填写 `https://mooncci.site/api/auth/microsoft/callback`。创建客户端密码后，将应用（客户端）ID 和密码的“值”（不是 Secret ID）填到网站后台「第三方登录 → Microsoft」，保存启用。只使用 openid/profile/email，不申请通讯录、邮件读取或离线访问权限。密码到期需更新。注册需要本地验证邮箱；已有账号主动绑定，不按 Microsoft 返回的邮箱自动合并。组织策略可能需要管理员同意；真实授权须使用用户自己的应用验收。
+
+Microsoft 官方资料：https://learn.microsoft.com/en-us/entra/identity-platform/userinfo 。图标来自官方登录品牌素材：https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-branding-in-apps ，保存在 `public/login-icons/microsoft.svg`。

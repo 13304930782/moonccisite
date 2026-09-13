@@ -1,9 +1,10 @@
+import {Eye} from 'lucide-react';
 import {Link} from 'react-router-dom';
 import {useState} from 'react';
 import {MarkdownContent,headingsFor} from './MarkdownContent';
 import {formatDate} from './ContentUI';
 import {safeImageSrc} from '../lib/safeUrl';
-export function ArticlePresentation({post,preview=false}:{post:any;preview?:boolean}) {
+export function ArticlePresentation({post,preview=false,views=null}:{post:any;preview?:boolean;views?:number|null}) {
  const [tocOpen,setTocOpen]=useState(()=>window.matchMedia('(min-width:1280px)').matches);
  const headings=headingsFor(post?.content||'');
  let tags:string[]=[];try{tags=Array.isArray(post.tags)?post.tags:JSON.parse(post.tags||'[]');}catch{}
@@ -22,6 +23,7 @@ export function ArticlePresentation({post,preview=false}:{post:any;preview?:bool
                 <div className="inline-actions muted">
                   <span className="inline-flex items-center gap-2">{post.author_avatar && <img src={post.author_avatar} alt="" className="h-7 w-7 rounded-full object-cover"/>}{post.author_name || '作者'}{post.author_deleted && <small className="deleted-account-label">已删除</small>}</span>
                   <time>{preview?'预览 · 未发布':formatDate(post.published_at || post.created_at)}</time>
+                  {!preview&&views!==null&&<span className="article-view-count" aria-label={`${views} 次阅读`} title="阅读量"><Eye size={15} aria-hidden="true"/><span>{views.toLocaleString('zh-CN')}</span></span>}
                   {post.category && (
                     <Link to={`/category/${encodeURIComponent(post.category)}`}>
                       {post.category}

@@ -29,6 +29,7 @@ jobs:
       - run: bash -n scripts/deploy-social-login.sh
       - run: bash -n scripts/deploy-google-login.sh
       - run: bash -n scripts/deploy-oauth-diagnostics.sh
+      - run: bash -n scripts/deploy-analytics.sh
       - run: bash -n scripts/deploy-admin-lists.sh
       - run: bash -n scripts/deploy-offline-frontend.sh
       - run: bash -n scripts/deploy-audit.sh
@@ -41,6 +42,7 @@ jobs:
       - run: node scripts/test-account-browser.cjs
       - run: node scripts/test-article-drafts-browser.cjs
       - run: node scripts/test-reading-browser.cjs
+      - run: node scripts/test-analytics-browser.cjs
       - run: npm audit --audit-level=moderate
       - run: npm audit --prefix server --audit-level=moderate
   mysql-integration:
@@ -82,4 +84,9 @@ jobs:
       - run: node --test server/test/articleDrafts.integration.test.js
         env:
           DRAFT_INTEGRATION: "true"
+          TEST_DB_PORT: "3306"
+
+      - run: node --test server/test/analytics.integration.test.js
+        env:
+          ANALYTICS_INTEGRATION: "true"
           TEST_DB_PORT: "3306"
