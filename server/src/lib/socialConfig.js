@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const db = require('../db');
-const PROVIDERS = Object.freeze({ github: 'GitHub', google: 'Google', qq: 'QQ', wechat: '微信', gitee: 'Gitee' });
+const PROVIDERS = Object.freeze({ github: 'GitHub', google: 'Google', qq: 'QQ', wechat: '微信', gitee: 'Gitee', microsoft: 'Microsoft' });
 const DEFAULT_GOOGLE_CLIENT_ID = '614401761904-4g7soo2d1clsnui71h5tb9ia4j1t530m.apps.googleusercontent.com';
 const validProvider = value => Object.hasOwn(PROVIDERS, value);
 const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');

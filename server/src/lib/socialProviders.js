@@ -4,6 +4,7 @@ const endpoints = {
   google: 'https://accounts.google.com/o/oauth2/v2/auth',
   github: 'https://github.com/login/oauth/authorize',
   gitee: 'https://gitee.com/oauth/authorize',
+  microsoft: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
   qq: 'https://graph.qq.com/oauth2.0/authorize',
   wechat: 'https://open.weixin.qq.com/connect/qrconnect',
 };
@@ -14,14 +15,14 @@ function authorizationUrl(provider, config, state, verifier) {
   url.searchParams.set('redirect_uri', callbackUrl(provider));
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('state', state);
-  url.searchParams.set('scope', { google: 'openid email profile', github: 'read:user user:email', gitee: 'user_info', qq: 'get_user_info', wechat: 'snsapi_login' }[provider]);
+  url.searchParams.set('scope', { google: 'openid email profile', github: 'read:user user:email', gitee: 'user_info', microsoft: 'openid profile email', qq: 'get_user_info', wechat: 'snsapi_login' }[provider]);
   if (provider === 'google') {
     url.searchParams.set('response_type', 'id_token');
     url.searchParams.set('response_mode', 'fragment');
     url.searchParams.set('nonce', verifier);
     url.searchParams.set('prompt', 'select_account');
   }
-  if (provider === 'github') {
+  if (provider === 'github' || provider === 'microsoft') {
     url.searchParams.set('code_challenge', crypto.createHash('sha256').update(verifier).digest('base64url'));
     url.searchParams.set('code_challenge_method', 'S256');
   }
@@ -69,7 +70,9 @@ async function exchange(provider, config, secret, code, verifier) {
   const params = { client_id: config.client_id, client_secret: secret, code, redirect_uri: callbackUrl(provider), grant_type: 'authorization_code' };
   let token, profile, id, email = '';
   let emailVerified = false;
-  if (provider === 'github' || provider === 'gitee') {
+  if (provider === 'microsoft') {
+    token = await post('https://login.microsoftonline.com/common/oauth2/v2.0/token', { ...params, code_verifier: verifier, scope: 'openid profile email' });
+  } else if (provider === 'github' || provider === 'gitee') {
     if (provider === 'github') params.code_verifier = verifier;
     token = await post(provider === 'github' ? 'https://github.com/login/oauth/access_token' : 'https://gitee.com/oauth/token', params);
   } else if (provider === 'qq') {
@@ -78,7 +81,11 @@ async function exchange(provider, config, secret, code, verifier) {
     token = await get('https://api.weixin.qq.com/sns/oauth2/access_token', { appid: config.client_id, secret, code, grant_type: 'authorization_code' });
   } else throw new Error('Unknown provider');
   if (typeof token.access_token !== 'string' || !token.access_token || token.access_token.length > 8192) throw new Error('Missing access token');
-  if (provider === 'github') {
+  if (provider === 'microsoft') {
+    profile = await request('https://graph.microsoft.com/oidc/userinfo', { headers: { Authorization: `Bearer ${token.access_token}` } });
+    id = profile.sub;
+    // Microsoft email is optional and is not proof of mailbox ownership. Use local verification.
+  } else if (provider === 'github') {
     profile = await request('https://api.github.com/user', { headers: { Authorization: `Bearer ${token.access_token}` } });
     id = profile.id;
     const emails = await request('https://api.github.com/user/emails', { headers: { Authorization: `Bearer ${token.access_token}` } });

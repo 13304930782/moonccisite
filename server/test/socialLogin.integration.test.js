@@ -48,7 +48,7 @@ test('social login, owner settings, mandatory email, binding, revocation and rep
   const save = (provider, data) => req(`/providers/manage/${provider}`, 'PUT', data, owner);
   assert.equal((await save('qq', { enabled: true, client_id: '123', version: 0 })).status, 400);
   assert.equal((await save('__proto__', { enabled: false, client_id: '', version: 0 })).status, 404);
-  for (const provider of ['qq', 'github', 'wechat', 'gitee']) {
+  for (const provider of ['qq', 'github', 'wechat', 'gitee', 'microsoft']) {
     const r = await save(provider, { enabled: true, client_id: '123', client_secret: 'fixture-secret', version: 0 });
     assert.equal(r.status, 200); const body = await r.text(); assert.ok(!body.includes('fixture-secret')); assert.ok(!body.includes('secret_cipher'));
   }
@@ -83,6 +83,11 @@ test('social login, owner settings, mandatory email, binding, revocation and rep
   flow = await start('qq', member, 'bind'); r = await req(flow.path, 'GET', null, flow.cookie); assert.match(r.headers.get('location'), /failed/, 'cannot steal another user identity');
   identity = { subject: 'new-gitee-binding', name: 'Member', emailVerified: false };
   flow = await start('gitee', member, 'bind'); r = await req(flow.path, 'GET', null, flow.cookie); assert.equal(r.headers.get('location'), '/account/settings?oauth=bound');
+  identity = { subject: 'microsoft-bound', name: 'Microsoft member', emailVerified: false };
+  flow = await start('microsoft', member, 'bind'); r = await req(flow.path, 'GET', null, flow.cookie); assert.equal(r.headers.get('location'), '/account/settings?oauth=bound');
+  flow = await start('microsoft'); r = await req(flow.path, 'GET', null, flow.cookie); assert.ok(cookieOf(r, 'mooncci_token'));
+  identity = { subject: 'microsoft-new', name: 'New Microsoft member', emailVerified: false };
+  flow = await start('microsoft'); r = await req(flow.path, 'GET', null, flow.cookie); assert.equal(r.headers.get('location'), '/complete-registration');
   identity = { subject: 'wechat-after-logout', name: 'Member' };
   flow = await start('wechat', member, 'bind'); await req('/logout', 'POST', {}, member);
   r = await req(flow.path, 'GET', null, flow.cookie); assert.match(r.headers.get('location'), /failed/);
