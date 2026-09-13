@@ -20,7 +20,7 @@ const { chromium } = require('playwright');
       if(path.startsWith('/api/analytics/'))json={views:123456};
       return route.fulfill({json});
     });
-    for(const width of [1440,1100,768,375,320]){
+    for(const width of [1920,1440,1100,768,375,320]){
       await page.setViewportSize({width,height:900}); let expected;
       for(const [name,path] of [['article','/article/1'],['project','/projects/promptdock'],['update','/updates/1']]){
         await page.goto('http://127.0.0.1:4202'+path);
@@ -38,7 +38,17 @@ const { chromium } = require('playwright');
         const aside=page.locator('.detail-aside');
         if(await aside.count()){
           if(width<1100){assert.ok((await aside.boundingBox()).y>=body.y+body.height-1);assert.equal(await page.locator('.detail-panel').getAttribute('open'),null);await page.locator('.detail-panel summary').click();await page.locator('.detail-panel-content').waitFor({state:'visible'});await page.locator('.detail-panel summary').click();}
-          else assert.ok((await aside.boundingBox()).x>=body.x+body.width);
+          else {
+            const box=await aside.boundingBox();
+            const container=await page.locator('.page-content').boundingBox();
+            assert.ok(Math.abs(box.x+box.width-container.x-container.width)<1, 'sidebar reaches container right edge');
+            assert.ok(box.x-body.x-body.width>=16 && box.x-body.x-body.width<=24, 'body to divider gap');
+            const style=await aside.evaluate(el=>({left:getComputedStyle(el).borderLeftWidth,padding:getComputedStyle(el).paddingLeft}));
+            assert.equal(style.left,'1px');assert.ok(parseFloat(style.padding)>=16 && parseFloat(style.padding)<=24);
+          }
+          const panel=await page.locator('.detail-panel').evaluate(el=>{const s=getComputedStyle(el);return {borders:[s.borderTopWidth,s.borderRightWidth,s.borderBottomWidth,s.borderLeftWidth],background:s.backgroundColor,radius:s.borderRadius};});
+          assert.deepEqual(panel.borders,['0px','0px','0px','0px']);assert.equal(panel.background,'rgba(0, 0, 0, 0)');assert.equal(panel.radius,'0px');
+          assert.equal(await page.locator('.detail-panel-content').evaluate(el=>getComputedStyle(el).paddingRight),'0px');
         }
         if(width<=375){assert.equal(await page.locator('.detail-title').evaluate(el=>getComputedStyle(el).fontSize),'24px');await page.getByRole('button',{name:'打开菜单',exact:true}).click();await page.getByRole('navigation',{name:'手机导航'}).waitFor();await page.keyboard.press('Escape');}
         await page.screenshot({path:`.cache/detail-${name}-${width}.png`,fullPage:true});
