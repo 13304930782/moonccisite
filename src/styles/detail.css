@@ -1,7 +1,7 @@
-/* Shared detail system: 680px body + 20px gap + sidebar filling the container edge. */
-.neo-page .page-content.detail-container { width:calc(100% - 80px); max-width:1200px; margin:0 auto; padding-inline:0; box-sizing:border-box; padding-top:48px; }
+/* Shared detail system: 680px body + 20px gap + 220px sidebar; center the actual content group. */
+.neo-page .page-content.detail-container { width:calc(100% - 80px); max-width:920px; margin:0 auto; padding-inline:0; box-sizing:border-box; padding-top:48px; }
 .neo-page .article-layout { max-width:none; margin:0; }
-.neo-page .detail-page { display:grid; grid-template-columns:minmax(0,680px) minmax(0,1fr); column-gap:20px; align-items:start; }
+.neo-page .detail-page { display:grid; grid-template-columns:minmax(0,680px) 220px; column-gap:20px; align-items:start; }
 .detail-header { grid-column:1; min-width:0; padding-bottom:24px; border-bottom:1px solid var(--border); }
 .detail-breadcrumb { margin-bottom:24px; font-size:14px; }
 .detail-label { min-height:20px; margin-bottom:12px; font-size:13px; line-height:20px; color:var(--muted-foreground); }

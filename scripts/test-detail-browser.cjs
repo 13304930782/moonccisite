@@ -31,7 +31,7 @@ const { chromium } = require('playwright');
         const outer=await page.locator('main.detail-container').evaluate(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return {left:r.left,right:el.parentElement.getBoundingClientRect().right-r.right,width:r.width,paddingLeft:s.paddingLeft,paddingRight:s.paddingRight};});
         assert.ok(Math.abs(outer.left-outer.right)<1, `${name} ${width}: equal outer gutters ${JSON.stringify(outer)}`);
         assert.equal(outer.paddingLeft,'0px');assert.equal(outer.paddingRight,'0px');
-        if(width>=1440){assert.equal(outer.width,1200);measurements.push({name,viewport:width,...outer});}
+        if(width>=1440){assert.equal(outer.width,920);measurements.push({name,viewport:width,...outer});}
         const pill=await page.locator('.detail-category').evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,radius:s.borderRadius};});
         assert.notEqual(pill.background,'rgba(0, 0, 0, 0)');assert.equal(pill.radius,'999px');
         const body=await page.locator('.detail-body').boundingBox();
@@ -47,6 +47,7 @@ const { chromium } = require('playwright');
           if(width<1100){assert.ok((await aside.boundingBox()).y>=body.y+body.height-1);assert.equal(await page.locator('.detail-panel').getAttribute('open'),null);await page.locator('.detail-panel summary').click();await page.locator('.detail-panel-content').waitFor({state:'visible'});await page.locator('.detail-panel summary').click();}
           else {
             const box=await aside.boundingBox();
+            assert.equal(box.width,220, 'sidebar must not absorb unused container width');
             const container=await page.locator('.page-content').boundingBox();
             assert.ok(Math.abs(box.x+box.width-container.x-container.width)<1, 'sidebar reaches container right edge');
             assert.ok(box.x-body.x-body.width>=16 && box.x-body.x-body.width<=24, 'body to divider gap');
