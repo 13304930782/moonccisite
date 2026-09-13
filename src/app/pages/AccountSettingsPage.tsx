@@ -5,7 +5,7 @@ import { api } from '../lib/api';
 import { AccountProfileForm, AccountProfile } from '../components/AccountProfileForm';
 import { AccountEmailForm } from '../components/AccountEmailForm';
 import '../../styles/account.css';
-const oauthReasons:Record<string,string>={already_bound:'该第三方账号已绑定其他网站账号。',session_expired:'登录会话已失效，请重新登录后绑定。',config_changed:'登录配置发生变化，请重新发起绑定。',provider_rejected:'第三方平台拒绝了授权交换，请核对应用配置。',provider_http:'第三方接口返回错误，请稍后重试。',provider_timeout:'第三方接口请求超时，请重新发起绑定。',provider_network:'服务器连接第三方接口失败。',authorization_denied:'授权未完成，请重新发起绑定。'};
+const oauthReasons:Record<string,string>={proxy_config_invalid:'GitHub 代理配置不完整或格式不正确，请联系管理员。',already_bound:'该第三方账号已绑定其他网站账号。',session_expired:'登录会话已失效，请重新登录后绑定。',config_changed:'登录配置发生变化，请重新发起绑定。',provider_rejected:'第三方平台拒绝了授权交换，请核对应用配置。',provider_http:'第三方接口返回错误，请稍后重试。',provider_timeout:'第三方接口请求超时，请重新发起绑定。',provider_network:'服务器连接第三方接口失败。',authorization_denied:'授权未完成，请重新发起绑定。'};
 type Provider = { provider:string; name:string; enabled:boolean; bound:boolean };
 export default function AccountSettingsPage() {
   const { logout, loggingOut, logoutError, refreshUser }=useAuth();
