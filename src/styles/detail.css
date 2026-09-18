@@ -84,3 +84,5 @@
 .detail-preview .detail-aside { grid-column:1; grid-row:auto; position:static; margin-top:28px; }
 
 .comment-compose textarea::placeholder { color:var(--muted-foreground); opacity:1; }
+
+.article-age-notice { margin:0 0 20px; padding:10px 14px; border-left:2px solid var(--border); background:var(--muted); color:var(--muted-foreground); font-size:14px; line-height:1.7; }
