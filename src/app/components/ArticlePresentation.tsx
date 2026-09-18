@@ -1,3 +1,4 @@
+import {distinctArticleSummary} from '../lib/articleSummary';
 import {useEffect,useState} from 'react';
 import {isArticleOld,stripLegacyAgeNotice} from '../lib/articleAge';
 import { Link } from 'react-router-dom';
@@ -6,7 +7,7 @@ import { DetailPage, DetailMeta, EmptyState, SingleLine } from './DetailUI';
 import { safeImageSrc } from '../lib/safeUrl';
 export function ArticlePresentation({ post, preview = false, views = null }: { post: any; preview?: boolean; views?: number | null }) {
   const content=stripLegacyAgeNotice(post?.content);
-  const summary=stripLegacyAgeNotice(post?.summary);
+  const summary=distinctArticleSummary(stripLegacyAgeNotice(post?.summary),content);
   const [now,setNow]=useState(()=>new Date());
   useEffect(()=>{const timer=setInterval(()=>setNow(new Date()),60000);return()=>clearInterval(timer);},[]);
   const old=isArticleOld(post.published_at,now);

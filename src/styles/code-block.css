@@ -6,3 +6,21 @@
 .markdown-body .code-copy:disabled { opacity:.6; cursor:wait; }
 .markdown-body .code-copy-feedback { position:absolute; top:12px; right:50px; font:12px/1.5 system-ui,sans-serif; color:var(--foreground); background:var(--muted); padding:2px 6px; border-radius:4px; }
 @media(pointer:coarse){.markdown-body .code-copy{width:44px;height:44px;top:2px;right:2px;}.markdown-body .code-copy-feedback{right:52px;}}
+
+/* Darcula-inspired palette, scoped to fenced code in all Markdown views. */
+.markdown-body .code-block pre {background:#2b2b2b;color:#a9b7c6;border-color:#414349;color-scheme:dark;}
+.markdown-body .code-block pre code {background:transparent;color:inherit;}
+.markdown-body .code-language {position:absolute;top:15px;left:20px;right:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:12px/18px system-ui,sans-serif;color:#a9b7c6;}
+.markdown-body .code-copy {background:#343638;color:#a9b7c6;border-color:#505356;}
+.markdown-body .code-copy:hover {background:#414349;color:#fff;}
+.markdown-body .code-copy-feedback {background:#343638;color:#fff;z-index:1;}
+.markdown-body .hljs-keyword,.markdown-body .hljs-selector-tag,.markdown-body .hljs-literal,.markdown-body .hljs-type {color:#cc7832;}
+.markdown-body .hljs-string,.markdown-body .hljs-regexp,.markdown-body .hljs-addition {color:#6aab73;}
+.markdown-body .hljs-number {color:#6897bb;}
+.markdown-body .hljs-comment,.markdown-body .hljs-quote {color:#929292;font-style:italic;}
+.markdown-body .hljs-title,.markdown-body .hljs-section {color:#ffc66d;}
+.markdown-body .hljs-built_in,.markdown-body .hljs-attr,.markdown-body .hljs-attribute {color:#c792ea;}
+.markdown-body .hljs-meta,.markdown-body .hljs-symbol {color:#bbb529;}
+.markdown-body .hljs-variable,.markdown-body .hljs-template-variable {color:#a9b7c6;}
+.markdown-body .hljs-tag,.markdown-body .hljs-name {color:#e8bf6a;}
+.markdown-body .hljs-deletion {color:#ff8080;}
