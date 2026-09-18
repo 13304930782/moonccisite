@@ -1,3 +1,4 @@
+import {CodeBlock} from './CodeBlock';
 import { createElement } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -52,6 +53,7 @@ export function MarkdownContent({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          pre: ({children}) => <CodeBlock>{children}</CodeBlock>,
           h1: heading(1),
           h2: heading(2),
           h3: heading(3),
