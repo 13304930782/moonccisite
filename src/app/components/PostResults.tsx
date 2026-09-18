@@ -29,7 +29,8 @@ export function PostResults({
               id={post.id}
               title={post.title}
               excerpt={post.summary}
-              date={post.published_at || post.created_at}
+              date={post.updated_at || post.published_at || post.created_at}
+              dateLabel="更新于"
               tags={tags}
               image={post.cover_image}
               category={post.category}

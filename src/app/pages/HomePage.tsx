@@ -122,7 +122,8 @@ export default function HomePage() {
                   id={p.id}
                   title={p.title}
                   excerpt={p.summary}
-                  date={p.published_at || p.created_at}
+                  date={p.updated_at || p.published_at || p.created_at}
+                  dateLabel="更新于"
                   tags={Array.isArray(p.tags) ? p.tags : []}
                   readTime=""
                   image={p.cover_image}

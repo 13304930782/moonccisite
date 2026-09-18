@@ -116,7 +116,7 @@ function buildListQuery(query) {
       FROM posts p
       JOIN users u ON u.id = p.author_id
       ${whereSql}
-      ORDER BY p.published_at DESC, p.created_at DESC
+      ORDER BY COALESCE(p.updated_at, p.published_at, p.created_at) DESC, p.id DESC
       LIMIT ? OFFSET ?
     `,
     params: [...params, pageSize, offset],
@@ -240,7 +240,7 @@ router.put('/:id', authRequired, editorOrAdmin, async (req, res) => {
     const publishedAt = old.published_at || (p.status === 'published' ? new Date() : null);
 
     const [updated] = await db.query(
-      'UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,category=?,tags=?,status=?,published_at=?,version=version+1 WHERE id=? AND version=?',
+      'UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,category=?,tags=?,status=?,published_at=?,updated_at=NOW(),version=version+1 WHERE id=? AND version=?',
       [
         p.title,
         p.slug,

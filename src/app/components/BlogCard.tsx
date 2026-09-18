@@ -6,6 +6,7 @@ interface BlogCardProps {
   title: string;
   excerpt: string;
   date: string;
+  dateLabel?: string;
   readTime?: string;
   tags: string[];
   image: string;
@@ -17,6 +18,7 @@ export function BlogCard({
   title,
   excerpt,
   date,
+  dateLabel,
   readTime,
   tags,
   image,
@@ -30,7 +32,7 @@ export function BlogCard({
       <h3>{title}</h3>
       {excerpt && <p>{excerpt}</p>}
       <div className="inline-actions">
-        <small>{formatDate(date)}</small>
+        <small>{dateLabel && `${dateLabel} `}{formatDate(date)}</small>
         {readTime && readTime !== "-" && <small>{readTime}</small>}
       </div>
     </article>

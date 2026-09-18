@@ -10,12 +10,13 @@ export function SingleLine({ children, className = '', label }: { children: Reac
   return <div className={`single-line ${className}`} role="group" aria-label={label} tabIndex={0}>{children}</div>;
 }
 
-export function DetailMeta({ author, avatar, deleted, date, dateLabel, views, category }: {
-  author?: string; avatar?: string; deleted?: boolean; date?: string; dateLabel?: string; views?: number | null; category?: string;
+export function DetailMeta({ author, avatar, deleted, date, dateLabel, updatedDate, views, category }: {
+  author?: string; avatar?: string; deleted?: boolean; date?: string; dateLabel?: string; updatedDate?: string; views?: number | null; category?: string;
 }) {
   return <SingleLine className="detail-meta" label="发布信息">
     {author && <span className="detail-author">{safeImageSrc(avatar) ? <img src={safeImageSrc(avatar)} alt="" /> : <UserRound className="detail-avatar" aria-hidden="true" />}<span>{author}</span>{deleted && <small>已删除</small>}</span>}
-    {(dateLabel || date) && <time dateTime={date || undefined}>{dateLabel || formatDate(date!)}</time>}
+    {(dateLabel || date) && <time dateTime={date || undefined}>{dateLabel || `${updatedDate ? '发布于 ' : ''}${formatDate(date!)}`}</time>}
+    {updatedDate && <time dateTime={updatedDate}>更新于 {formatDate(updatedDate)}</time>}
     {views != null && <span className="article-view-count" aria-label={`${views} 次阅读`} title="阅读量"><Eye size={15} aria-hidden="true" /><span>{views.toLocaleString('zh-CN')}</span></span>}
     {category && <Link to={`/category/${encodeURIComponent(category)}`}>{category}</Link>}
   </SingleLine>;

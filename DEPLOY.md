@@ -415,3 +415,19 @@ Microsoft 官方资料：https://learn.microsoft.com/en-us/entra/identity-platfo
 发布前检查验证标题、正文与图片加载，外链仅做格式检查；提供 375px、768px、1024px 独立 iframe 视口。此检查是编辑器辅助流程，不替代后端权限与字段校验。Safari 系统阅读器仍需真机验收。
 
 本版本包含新依赖 `turndown`、`@mixmark-io/domino`，使用专用 `build-article-import-release.py` 离线打包。无需 SQL 迁移，但服务器必须已安装 `article_drafts`、`media_assets` 和 `posts.version`。部署脚本先检查旧文件版本，备份后只替换清单中的文件、两项纯 JavaScript 依赖和前端资源，重启 `mooncci-api`；保留 `.env`、上传目录和历史 SQL。失败自动恢复原后端及前端入口。上线后通过后台导入一篇未迁移的文章进行实测。
+
+
+### Article update dates release
+
+The article dates package contains the built frontend and only `server/src/routes/posts.js`
+and `server/src/routes/articleDrafts.js`. It reuses the existing `posts.updated_at` column;
+no migration or dependency installation is required. Published edits explicitly set
+`updated_at=NOW()` while preserving `published_at`. Public article lists sort by update
+time (with publication/creation fallback and descending ID ties). Draft autosaves do not
+change the public timestamp. Existing timestamps are retained without a bulk rewrite.
+
+Build locally with `python scripts/build-article-dates-release.py`. The scoped deployer
+checks production file hashes against the baseline, backs up both backend files and the
+frontend entry, restarts `mooncci-api`, and checks health before publishing the frontend.
+Run `deploy.sh` in a child shell through `nohup`; never source it. `.env`, uploads and SQL
+history are untouched. Unknown server edits stop deployment rather than being overwritten.
