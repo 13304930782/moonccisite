@@ -1,0 +1,6 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const express=require('express');const helmet=require('helmet');const fs=require('node:fs');const os=require('node:os');const path=require('node:path');const headers=require('../src/lib/publicImageHeaders');
+test('only public raster responses permit reader embedding; API and non-images retain CORP',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'reader-'));fs.writeFileSync(path.join(dir,'image.png'),'image');fs.writeFileSync(path.join(dir,'file.txt'),'text');
+ const app=express();app.use(helmet());app.use('/api/uploads',express.static(dir,{setHeaders:headers}));app.get('/api/private',(_q,r)=>r.json({ok:true}));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
+ try{for(const [url,expected] of [['/api/uploads/image.png','cross-origin'],['/api/uploads/file.txt','same-origin'],['/api/private','same-origin'],['/api/uploads/missing.png','same-origin']]){const r=await fetch(base+url);assert.equal(r.headers.get('cross-origin-resource-policy'),expected);assert.equal(r.headers.get('x-content-type-options'),'nosniff');await r.arrayBuffer();}}finally{await new Promise(r=>server.close(r));fs.rmSync(dir,{recursive:true});}
+});

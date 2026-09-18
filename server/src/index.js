@@ -48,7 +48,9 @@ app.use(cors({
 
 // Body 大小限制
 app.use(express.json({ limit: '1mb' }));
-app.use('/api/uploads', express.static(uploadRoutes.uploadDir));
+app.use('/api/uploads', express.static(uploadRoutes.uploadDir, {
+  setHeaders: require('./lib/publicImageHeaders'),
+}));
 
 const trustedRequestOrigins = new Set(
   String(process.env.CSRF_TRUSTED_ORIGINS || process.env.CORS_ORIGINS || 'https://mooncci.site,https://www.mooncci.site')
