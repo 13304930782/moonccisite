@@ -1,0 +1,20 @@
+{
+  "src/routes/articleDrafts.js": [
+    "447bac04e1663e22f1342ef4ca3eade5fef901d98450596291fe7414d83da0b0"
+  ],
+  "src/lib/articleImport.js": [
+    null
+  ],
+  "src/lib/articleImportFetch.js": [
+    null
+  ],
+  "src/lib/articleImportConvert.js": [
+    null
+  ],
+  "package.json": [
+    "fc9223b6f571167d2bcc424fc659651e29100ef6b1f995910fe68355e88feb48"
+  ],
+  "package-lock.json": [
+    "4c6370d4ae10297fbbc4d1e1a968a04cb5aff962b33066b9d9279d1bbd4d0e41"
+  ]
+}

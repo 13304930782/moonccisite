@@ -402,3 +402,16 @@ After reproducing a failed authorization, inspect the `[oauth-failure]` log entr
 Microsoft 配置：在 https://entra.microsoft.com/ 的应用注册中新建应用，支持账号类型选择“任何组织目录中的账号和个人 Microsoft 账号”，平台 Web，回调填写 `https://mooncci.site/api/auth/microsoft/callback`。创建客户端密码后，将应用（客户端）ID 和密码的“值”（不是 Secret ID）填到网站后台「第三方登录 → Microsoft」，保存启用。只使用 openid/profile/email，不申请通讯录、邮件读取或离线访问权限。密码到期需更新。注册需要本地验证邮箱；已有账号主动绑定，不按 Microsoft 返回的邮箱自动合并。组织策略可能需要管理员同意；真实授权须使用用户自己的应用验收。
 
 Microsoft 官方资料：https://learn.microsoft.com/en-us/entra/identity-platform/userinfo 。图标来自官方登录品牌素材：https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-branding-in-apps ，保存在 `public/login-icons/microsoft.svg`。
+
+
+## 旧站文章导入与发布前检查
+
+文章管理中的“从旧站导入文章”仅对站长和管理员开放。当前支持 WordPress 公开 REST API：输入旧站固定文章链接，图片下载并登记到媒体库，内容保存到 `article_drafts`；不会立即发布。相同来源或已有链接别名会返回已有文章/草稿。首次发布保留旧站的本地发布时间，编辑已有公开文章不会重置日期。
+
+`ARTICLE_IMPORT_ORIGINS` 是逗号分隔的 HTTPS 来源白名单，默认 `https://moooncci.cn`；正文和封面若使用独立图片域名，也须由服务器管理员加入白名单。禁止私网 DNS 地址及未授权跳转，连接固定使用已校验的 IPv4 地址。若服务器 DNS 返回代理保留地址（例如 198.18.0.0/15），请修复服务器 DNS，不要放宽私网校验。
+
+单次最多 40 张图片、原始单图 8MB、总下载 50MB、解码 2000 万像素。图片重新编码为无损 WebP，动图仅导入首帧并提示。失败不创建草稿并清理本次新增文件。旧站脚本、表单及嵌入框架不导入；音视频需手动核对。不迁移评论与旧阅读量。
+
+发布前检查验证标题、正文与图片加载，外链仅做格式检查；提供 375px、768px、1024px 独立 iframe 视口。此检查是编辑器辅助流程，不替代后端权限与字段校验。Safari 系统阅读器仍需真机验收。
+
+本版本包含新依赖 `turndown`、`@mixmark-io/domino`，使用专用 `build-article-import-release.py` 离线打包。无需 SQL 迁移，但服务器必须已安装 `article_drafts`、`media_assets` 和 `posts.version`。部署脚本先检查旧文件版本，备份后只替换清单中的文件、两项纯 JavaScript 依赖和前端资源，重启 `mooncci-api`；保留 `.env`、上传目录和历史 SQL。失败自动恢复原后端及前端入口。上线后通过后台导入一篇未迁移的文章进行实测。

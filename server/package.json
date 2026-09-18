@@ -9,6 +9,7 @@
     "worker": "node src/worker.js"
   },
   "dependencies": {
+    "@mixmark-io/domino": "^2.2.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
@@ -21,7 +22,8 @@
     "multer": "^2.3.0",
     "mysql2": "^3.15.3",
     "nodemailer": "^9.1.1",
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.4",
+    "turndown": "^7.2.0"
   },
   "engines": {
     "node": ">=24.0.0"

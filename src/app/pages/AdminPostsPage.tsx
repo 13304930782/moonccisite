@@ -1,3 +1,6 @@
+import {ArticleImport} from '../components/ArticleImport';
+import {useAuth} from '../context/AuthContext';
+import '../../styles/article-workspace.css';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AdminPagination } from '../components/AdminPagination';
@@ -5,6 +8,7 @@ import { ThemeSelect } from '../components/ThemeSelect';
 import { api } from '../lib/api';
 
 export default function AdminPostsPage() {
+  const {user}=useAuth();
   const [drafts,setDrafts]=useState<any[]>([]);
   const [draftPage,setDraftPage]=useState(1),[draftTotal,setDraftTotal]=useState(0);
   const [filter,setFilter]=useState('all');
@@ -58,6 +62,7 @@ export default function AdminPostsPage() {
           </Link>
         </div>
 
+        {['owner','admin'].includes(user?.role||'')&&<ArticleImport/>}
         {message && <div className="mb-4 rounded-[6px] bg-muted px-4 py-3 text-foreground">{message}</div>}
 
         <ThemeSelect aria-label="筛选文章状态" value={filter} onValueChange={v=>{setFilter(v);setPage(1);}}><option value="all">全部</option><option value="published">已发布</option><option value="draft">草稿</option></ThemeSelect>

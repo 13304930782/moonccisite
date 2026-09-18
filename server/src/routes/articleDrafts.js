@@ -1,5 +1,5 @@
 const db = require('../db');
-const {authRequired,editorOrAdmin,isAdminLike,getUserFromRequest}=require('../middleware/auth');
+const {authRequired,editorOrAdmin,isAdminLike,getUserFromRequest,adminOnly}=require('../middleware/auth');
 const router=require('../lib/asyncRouter')();
 const rateLimit=require('express-rate-limit');
 router.use(authRequired,editorOrAdmin,rateLimit({windowMs:60000,limit:120,standardHeaders:true,legacyHeaders:false}));
@@ -10,13 +10,21 @@ function payload(input={}) {
   const p=Object.fromEntries(keys.map(k=>[k,String(input[k]??'')]));
   p.tags=Array.isArray(input.tags)?input.tags.map(String).map(x=>x.trim()).filter(Boolean).slice(0,20):[];
   if(p.title.length>255||p.slug.length>255||p.category.length>100||p.cover_image.length>500||p.content.length>500000||p.summary.length>10000)throw error('内容超出长度限制。');
-  return p;
+  p.published_at=input.published_at instanceof Date ? input.published_at.toISOString().slice(0,19).replace('T',' ') : String(input.published_at||'').replace('T',' ');
+ if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(p.published_at))p.published_at=p.published_at.slice(0,19);
+ if(p.published_at && (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(p.published_at)||!Number.isFinite(Date.parse(p.published_at.replace(' ','T')))))throw error('原始发布时间无效。');
+ p.source_url=String(input.source_url||'').slice(0,1000);
+ return p;
 }
 function present(row){return {...row,payload:typeof row.payload==='string'?JSON.parse(row.payload):row.payload};}
 const run=fn=>async(req,res,next)=>{try{await fn(req,res);}catch(e){if(e.code==='ER_DUP_ENTRY')return res.status(409).json({message:'链接别名或草稿已存在，请重新加载后重试。'});if(e.status)return res.status(e.status).json({message:e.message});next(e);}};
 async function transaction(req,fn){const c=await db.getConnection();try{await c.beginTransaction();const user=await getUserFromRequest(req);if(!user||user.status!=='active'||!['owner','admin','editor'].includes(user.role))throw error('请重新登录。',401);const r=await fn(c,user);await c.commit();return r;}catch(e){await c.rollback();throw e;}finally{c.release();}}
 async function get(c,id,user,lock=false){const [[row]]=await c.query(`SELECT d.*,p.status AS post_status FROM article_drafts d LEFT JOIN posts p ON p.id=d.post_id WHERE d.id=?${lock?' FOR UPDATE':''}`,[id]);if(!row||!allowed(user,row))throw error('草稿不存在或无权限。',404);return present(row);}
 const fields=p=>[p.title.trim(),p.slug.trim(),p.summary,p.content,p.cover_image,p.category,JSON.stringify(p.tags)];
+router.post('/import',adminOnly,rateLimit({windowMs:60000,limit:3,standardHeaders:true,legacyHeaders:false}),run(async(req,res)=>{
+ const {importArticle}=require('../lib/articleImport');
+ res.json(await importArticle(db,req.user,String(req.body.url||'')));
+}));
 router.get('/',run(async(req,res)=>{
   const where=`WHERE d.dirty=1 ${isAdminLike(req.user)?'':'AND d.author_id=?'}`;
   const params=isAdminLike(req.user)?[]:[req.user.id];
@@ -48,7 +56,7 @@ router.post('/:id/publish',run(async(req,res)=>{
     if(!p.slug.trim())p.slug=`article-${d.id}`;
     let postId=d.post_id, nextVersion=1;
     if(postId){const [[post]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[postId]);if(!post||!allowed(user,post))throw error('无权限发布。',403);if(post.version!==d.base_version)throw error('公开文章已有新版本，请重新加载后编辑。',409);nextVersion=post.version+1;await c.query('UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,category=?,tags=?,status="published",published_at=COALESCE(published_at,NOW()),version=version+1 WHERE id=?',[...fields(p),postId]);}
-    else {const [r]=await c.query('INSERT INTO posts(title,slug,summary,content,cover_image,category,tags,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,"published",?,NOW())',[...fields(p),d.author_id]);postId=r.insertId;}
+    else {const [r]=await c.query('INSERT INTO posts(title,slug,summary,content,cover_image,category,tags,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,"published",?,COALESCE(?,NOW()))',[...fields(p),d.author_id,p.published_at||null]);postId=r.insertId;}
     await c.query('UPDATE article_drafts SET post_id=?,base_version=?,dirty=0,published_version=version WHERE id=?',[postId,nextVersion,d.id]);return get(c,d.id,user);
   }));
 }));
