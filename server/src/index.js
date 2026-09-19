@@ -154,6 +154,7 @@ app.use('/api/admin/early-access', earlyAccessRoutes.adminRouter);
 app.use('/api/admin/electricity/rooms', require('./routes/adminElectricityRooms'));
 app.use('/api/admin/electricity', adminElectricityRoutes);
 app.use('/api', require('./routes/account'));
+app.use('/api/bookmarks', require('./routes/bookmarks'));
 app.use('/api/admin', adminRoutes);
 app.use('/api', contentPlatform.router);
 app.use('/api/admin', contentPlatform.admin);

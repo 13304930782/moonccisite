@@ -32,6 +32,7 @@ const EditorApplyPage = lazy(() => import('./pages/EditorApplyPage'));
 const AdminEditorApplicationsPage = lazy(() => import('./pages/AdminEditorApplicationsPage'));
 const AdminSiteSettingsPage = lazy(() => import('./pages/AdminSiteSettingsPage'));
 const AdminLoginSettingsPage = lazy(() => import('./pages/AdminLoginSettingsPage'));
+const BookmarksPage = lazy(() => import('./pages/BookmarksPage'));
 const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'));
 const AdminUserSettingsPage = lazy(() => import('./pages/AdminUserSettingsPage'));
 const CompleteRegistrationPage = lazy(() => import('./pages/CompleteRegistrationPage'));
@@ -92,6 +93,7 @@ function Guard({
   writerOnly?: boolean;
 }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -101,7 +103,7 @@ function Guard({
     );
   }
 
-  if (!user) return <Navigate to="/login" />;
+  if (!user) return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   if (ownerOnly && !isOwnerRole(user.role)) return <Navigate to="/admin" />;
   if (adminOnly && !isAdminRole(user.role)) return <Navigate to="/admin" />;
   if (writerOnly && !isWriterRole(user.role)) return <Navigate to="/admin/editor-apply" />;
@@ -166,6 +168,7 @@ export default function App() {
           <Route path="/admin/site-settings" element={<Guard adminOnly><AdminShell><AdminSiteSettingsPage /></AdminShell></Guard>} />
           <Route path="/complete-registration" element={<CompleteRegistrationPage />} />
           <Route path="/account/connections" element={<Navigate to="/account/settings" replace />} />
+          <Route path="/account/bookmarks" element={<Guard><BookmarksPage /></Guard>} />
           <Route path="/account/settings" element={<Guard><AccountSettingsPage /></Guard>} />
           <Route path="/admin/users/:id/settings" element={<Guard adminOnly><AdminShell><AdminUserSettingsPage /></AdminShell></Guard>} />
           <Route path="/admin/login-settings" element={<Guard ownerOnly><AdminShell><AdminLoginSettingsPage /></AdminShell></Guard>} />

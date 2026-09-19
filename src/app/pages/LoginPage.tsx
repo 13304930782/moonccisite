@@ -17,7 +17,7 @@ export default function LoginPage() {
   const finishLogin = (user: { role: string }) => {
     const redirect = params.get('redirect') || '';
     navigate(
-      /^\/electricity(?:\?roomId=[a-f0-9-]{36})?$/.test(redirect)
+      /^(?:\/electricity(?:\?roomId=[a-f0-9-]{36})?|\/article\/[1-9]\d*|\/account\/bookmarks(?:\?page=[1-9]\d*)?)$/.test(redirect)
         ? redirect
         : ['owner', 'admin', 'editor'].includes(user.role)
           ? '/admin'

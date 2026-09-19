@@ -21,7 +21,7 @@ export default function AccountSettingsPage() {
     else {const r=await api(`/auth/${provider}/start`,{method:'POST',body:JSON.stringify(body)});window.location.assign(r.url);}
   });
   return <main className="account-page">
-    <header className="account-heading"><h1>个人设置</h1><nav><Link to="/">返回网站</Link><button disabled={loggingOut} onClick={async()=>{if(await logout())navigate('/login');}}>{loggingOut?'正在退出…':'退出登录'}</button></nav></header>
+    <header className="account-heading"><h1>个人设置</h1><nav><Link to="/account/bookmarks">我的收藏</Link><Link to="/">返回网站</Link><button disabled={loggingOut} onClick={async()=>{if(await logout())navigate('/login');}}>{loggingOut?'正在退出…':'退出登录'}</button></nav></header>
     {logoutError&&<p role="alert">{logoutError}</p>}
     {error?<p role="alert">{error}<button className="text-link" onClick={()=>void load()}>重试</button></p>:!user?<p role="status">正在加载个人资料…</p>:<>
       <AccountProfileForm user={user} base="/account" onSaved={p=>{setUser(p);void refreshUser();}}/>

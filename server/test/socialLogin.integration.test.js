@@ -39,6 +39,11 @@ test('social login, owner settings, mandatory email, binding, revocation and rep
   const token = id => `mooncci_token=${jwt.sign({ id, sessionStartedAt: Date.now(), jti: String(Math.random()) }, process.env.JWT_SECRET, { expiresIn: '1h' })}`;
   const owner = token(await makeUser('owner')), memberId = await makeUser('user'), member = token(memberId);
   const cookieOf = (r, name) => r.headers.getSetCookie().find(c => c.startsWith(`${name}=`))?.split(';')[0] || '';
+  for(const [target,expected] of [['/article/42','/article/42'],['/account/bookmarks?page=2','/account/bookmarks?page=2'],['//evil.test','/'],['/article/42?next=https://evil.test','/']]){
+    const response=await req('/google/start','POST',{return_to:target});assert.equal(response.status,200);
+    const state=new URL((await response.json()).url).searchParams.get('state');
+    const [[row]]=await db.query('SELECT return_to FROM oauth_states WHERE state_hash=?',[require('../src/lib/socialConfig').sha256(state)]);assert.equal(row.return_to,expected);
+  }
   const initial = await (await req('/providers')).json();
   assert.deepEqual(initial.providers.map(p => p.provider), ['google']);
   assert.equal((await req('/providers/manage')).status, 401);

@@ -553,3 +553,68 @@ Validation: `REVISION_INTEGRATION=true TEST_DB_PORT=33079 node --test server/tes
 against a local, empty-password QA MySQL only; it creates/drops its own mooncci_qa database.
 Browser validation: `node scripts/test-article-revisions-browser.cjs` (set
 PLAYWRIGHT_CHANNEL=msedge on Windows). These commands never target production data.
+
+### Stage 2: private bookmarks (deploy after stage 1)
+
+Build: `python -X utf8 scripts/build-reader-release.py bookmarks`.
+Upload: `powershell -ExecutionPolicy Bypass -File scripts/Upload-ReaderRelease.ps1 -Stage bookmarks`.
+The package contains a complete frontend plus exactly four backend files:
+`src/index.js`, `src/routes/account.js`, `src/routes/socialLogin.js`,
+`src/routes/bookmarks.js`. Its only SQL is `202609190002_article_bookmarks.sql`.
+It verifies the revisions table already exists, applies the additive migration,
+and restarts only mooncci-api. It does not execute the historical migration set,
+install dependencies, restart the worker, or replace .env/uploads. If stage 1
+was rolled back, redeploy stage 1 before stage 2; the table existing alone does
+not confirm that revision-history routes are active.
+
+Before either stage, use BaoTa Database > the blog database > Backup and confirm
+a downloadable backup completed. The deploy script additionally backs up each
+replaced backend file and index.html under its printed `/www/backup/mooncci-reader.*`
+folder. Keep that backup and the deployment log. Deploy stage 1, validate history
+list/diff/restore with an editor account, then deploy stage 2 and validate bookmarks
+with a reader account. Packages are local; neither new feature is pushed to GitHub
+or installed in production automatically.
+
+Private endpoints: GET `/api/bookmarks?page=1` (12 items), GET/PUT/DELETE
+`/api/bookmarks/:postId`. Only the authenticated user's rows are accessible;
+responses are no-store. Unpublished rows expose only relation ID, article ID,
+collection time and available=false. No titles, covers, summaries or body leak.
+Hard deletion cascades, and the existing administrator account-deletion transaction
+clears private bookmarks during soft deletion. Focus/visibility refreshes local UI;
+failed writes retain their error message. Login returns to an allowlisted article
+or bookmarks URL and never automatically adds a bookmark.
+
+Validation: `BOOKMARK_INTEGRATION=true TEST_DB_PORT=33079 node --test server/test/articleBookmarks.integration.test.js`;
+`READER_MIGRATION_INTEGRATION=true TEST_DB_PORT=33079 node --test server/test/readerMigrations.integration.test.js`;
+`node scripts/test-bookmarks-browser.cjs`. Use a disposable local test MySQL, not the
+production database. The migration test executes the actual package migrator twice
+per stage and verifies existing bookmarks survive.
+
+Manual rollback (replace BACKUP with the path printed by the failed stage; roll
+back stage 2 before stage 1). Run in a child shell, never source into SSH:
+
+```bash
+nohup bash -c '
+set -euo pipefail
+backup="$1"
+stage="$2"
+case "$backup" in /www/backup/mooncci-reader.*) ;; *) exit 1;; esac
+case "$stage" in revisions|bookmarks) ;; *) exit 1;; esac
+exec 9>/www/backup/mooncci-deploy.lock
+flock -w 120 9
+test -f "$backup/server-before.tar"
+test -f "$backup/index.html"
+tar -xpf "$backup/server-before.tar" -C /www/wwwroot/mooncci-source/server
+cp -p "$backup/index.html" /www/wwwroot/mooncci.site/index.html
+su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; pm2 restart mooncci-api"
+if [ "$stage" = revisions ]; then
+ su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; pm2 restart mooncci-worker"
+fi
+' bash /www/backup/mooncci-reader.BACKUP bookmarks > /www/backup/mooncci-reader-rollback.log 2>&1 < /dev/null &
+tail -n 40 /www/backup/mooncci-reader-rollback.log
+```
+
+Rollback keeps both new tables and their data, all uploads and configuration;
+new unreferenced backend modules/assets may remain harmlessly on disk. Do not
+restore a whole historical SQL dump or drop these tables for a code rollback.
+After restart, check `/api/health` and the signed-in page for the deployed stage.

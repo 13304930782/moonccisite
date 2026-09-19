@@ -1,0 +1,22 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('fs'),path=require('path'),os=require('os'),{spawnSync}=require('child_process');
+test('scoped additive migrations are repeatable and retain data',{skip:process.env.READER_MIGRATION_INTEGRATION!=='true'},async t=>{
+ const dbName=`mooncci_qa_reader_migration_${process.pid}`,mysql=require('mysql2/promise');
+ const c=await mysql.createConnection({host:'127.0.0.1',port:Number(process.env.TEST_DB_PORT||33079),user:'root',multipleStatements:true});
+ const live=fs.mkdtempSync(path.join(os.tmpdir(),'mooncci-reader-'));
+ fs.symlinkSync(path.resolve(__dirname,'../node_modules'),path.join(live,'node_modules'),'junction');
+ t.after(async()=>{await c.query(`DROP DATABASE IF EXISTS ${dbName}`);await c.end();fs.rmSync(live,{recursive:true,force:true});});
+ await c.query(`CREATE DATABASE ${dbName} CHARACTER SET utf8mb4; USE ${dbName}`);
+ await c.query(fs.readFileSync(path.join(__dirname,'../database/schema.sql'),'utf8'));
+ await c.query('DROP TABLE article_bookmarks; DROP TABLE article_revisions; CREATE TABLE schema_migrations(filename VARCHAR(255) PRIMARY KEY,checksum CHAR(64) NOT NULL)');
+ const env={...process.env,DB_HOST:'127.0.0.1',DB_PORT:String(process.env.TEST_DB_PORT||33079),DB_USER:'root',DB_PASSWORD:'',DB_NAME:dbName};
+ const run=stage=>{const r=spawnSync(process.execPath,[path.join(__dirname,'../scripts/migrate-reader-features.js'),live,stage],{env,encoding:'utf8'});assert.equal(r.status,0,r.stderr);};
+ run('revisions');run('revisions');run('bookmarks');
+ await c.query('INSERT INTO users(username,email,password_hash) VALUES ("reader","reader@example.test","unused")');
+ const [[u]]=await c.query('SELECT id FROM users WHERE username="reader"');
+ await c.query('INSERT INTO posts(title,slug,content,status,author_id) VALUES ("Keep","keep","text","published",?)',[u.id]);
+ const [[p]]=await c.query('SELECT id FROM posts WHERE slug="keep"');
+ await c.query('INSERT INTO article_bookmarks(user_id,post_id) VALUES (?,?)',[u.id,p.id]);
+ run('bookmarks');run('revisions');
+ const [[n]]=await c.query('SELECT COUNT(*) n FROM article_bookmarks');assert.equal(Number(n.n),1);
+ const [rows]=await c.query('SELECT filename FROM schema_migrations');assert.equal(rows.length,2);
+});

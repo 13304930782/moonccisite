@@ -5,7 +5,7 @@ root=Path(__file__).resolve().parent.parent
 stage=sys.argv[1] if len(sys.argv)>1 else 'revisions'
 scopes={
 'revisions':['src/routes/articleDrafts.js','src/routes/posts.js','src/routes/upload.js','src/jobs/contentScheduler.js','src/lib/articleRevisions.js'],
-'bookmarks':['src/index.js','src/routes/account.js','src/routes/bookmarks.js','src/lib/socialConfig.js'],
+'bookmarks':['src/index.js','src/routes/account.js','src/routes/bookmarks.js','src/routes/socialLogin.js'],
 }
 if stage not in scopes:raise ValueError('Invalid stage')
 subprocess.run([sys.executable,str(root/'scripts/build-offline-release.py')],check=True)

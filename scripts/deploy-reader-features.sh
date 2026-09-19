@@ -36,7 +36,7 @@ for(const [name,accepted] of Object.entries(hashes)){const file=path.join(live,n
 NODE
 : > "$backup/existing-files"
 while IFS= read -r file;do
- case "$file" in src/index.js|src/routes/account.js|src/routes/bookmarks.js|src/lib/socialConfig.js|src/routes/articleDrafts.js|src/routes/posts.js|src/routes/upload.js|src/jobs/contentScheduler.js|src/lib/articleRevisions.js) ;; *) echo 'Unexpected file manifest';exit 1;; esac
+ case "$file" in src/index.js|src/routes/account.js|src/routes/bookmarks.js|src/routes/socialLogin.js|src/routes/articleDrafts.js|src/routes/posts.js|src/routes/upload.js|src/jobs/contentScheduler.js|src/lib/articleRevisions.js) ;; *) echo 'Unexpected file manifest';exit 1;; esac
  test -s "server/$file"
  if [ -e "$live/$file" ];then printf '%s\n' "$file" >> "$backup/existing-files";fi
  if [[ "$file" == *.js ]];then node --check "server/$file";fi

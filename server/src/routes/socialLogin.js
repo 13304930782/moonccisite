@@ -25,7 +25,7 @@ function readCookie(req, name) {
   return part ? part.slice(name.length + 1) : '';
 }
 function returnTo(value) {
-  return typeof value === 'string' && /^\/electricity(?:\?roomId=[a-f0-9-]{36})?$/.test(value) ? value : '/';
+  return typeof value === 'string' && /^(?:\/electricity(?:\?roomId=[a-f0-9-]{36})?|\/article\/[1-9]\d*|\/account\/bookmarks(?:\?page=[1-9]\d*)?)$/.test(value) ? value : '/';
 }
 const validEmail = value => typeof value === 'string' && value.length <= 120 && /^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i.test(value) && !value.endsWith('.invalid');
 const pendingCookie = 'mooncci_registration';

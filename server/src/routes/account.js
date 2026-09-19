@@ -170,6 +170,7 @@ router.delete('/admin/users/:id/account', writeLimit, authRequired, adminOnly, h
     if (req.body.username !== user.username) throw fail('请准确输入该用户的用户名以确认删除。');
     await c.query('INSERT INTO account_profiles(user_id,deleted_at) VALUES (?,NOW()) ON DUPLICATE KEY UPDATE deleted_at=NOW(),version=version+1', [user.id]);
     await c.query('UPDATE users SET email=?,google_sub=NULL,password_hash=?,status="disabled",can_comment=0 WHERE id=?', [`deleted-${user.id}-${crypto.randomBytes(8).toString('hex')}@account.invalid`, await require('bcryptjs').hash(crypto.randomBytes(32).toString('hex'), 10), user.id]);
+    await c.query('DELETE FROM article_bookmarks WHERE user_id=?', [user.id]);
     await c.query('DELETE FROM oauth_identities WHERE user_id=?', [user.id]);
     await c.query('DELETE FROM oauth_states WHERE user_id=?', [user.id]);
     await invalidate(c, user.id);
