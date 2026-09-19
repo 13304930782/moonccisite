@@ -518,3 +518,38 @@ accepted as upgrade baselines.
 
 This release also includes the pending frontend fix preserving the Microsoft
 four-color logo in dark mode. No GitHub push is required for offline deployment.
+
+
+## Article revisions / private bookmarks staged releases
+
+Stage 1: `python -X utf8 scripts/build-reader-release.py revisions` then
+`powershell -ExecutionPolicy Bypass -File scripts/Upload-ReaderRelease.ps1 -Stage revisions`.
+Before production migration, create a BaoTa database backup. The upload script
+prints verified child-shell/nohup commands, log path and frontend verification.
+The revisions package applies ONLY `202609190001_article_revisions.sql`, replaces
+five explicit backend files, restarts mooncci-api and mooncci-worker, and publishes
+frontend assets after health verification. Existing backend file hashes must match
+the accepted baseline. No historical SQL, .env, uploads or dependencies are replaced.
+Fresh installs use updated schema.sql/init-db.js; never import that snapshot into
+an existing database. The dedicated migrator uses the installed dependencies and
+normal schema migration lock/checksum ledger. On failure the deployer restores
+backed-up code and index.html, restarts the affected processes, and retains the
+additive table and all saved revision data. For manual rollback, restore
+server-before.tar into the backend root and index.html from the printed backup
+folder, then restart the same processes; do not DROP the revision table.
+
+Revisions are private to article authors and administrators. Autosaves consolidate
+into five-minute server-time buckets with at most 200 automatic snapshots and a
+30-day lifetime; manual/published/pre-restore snapshots remain until deletion.
+Restoring only updates the working draft, never original publication time or
+public article contents. An old article receives a baseline when first opened or
+modified after installation, with the actual baseline capture time. Media URL
+replacement also versions affected articles; history preserves the old URL, not
+a copy of the underlying image file. Permanently removed media cannot be restored
+by restoring article text. Daily worker cleanup and save-time caps use the same
+retention rules. SQL rollback tests intentionally log an ER_SIGNAL_EXCEPTION.
+
+Validation: `REVISION_INTEGRATION=true TEST_DB_PORT=33079 node --test server/test/articleRevisions.integration.test.js`
+against a local, empty-password QA MySQL only; it creates/drops its own mooncci_qa database.
+Browser validation: `node scripts/test-article-revisions-browser.cjs` (set
+PLAYWRIGHT_CHANNEL=msedge on Windows). These commands never target production data.

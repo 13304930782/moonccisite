@@ -70,3 +70,19 @@
 .article-review-result h2 { font-size:16px; font-weight:600; }
 .article-review button.article-review-publish { background:var(--foreground); color:var(--background); }
 @media(max-width:600px){.article-import-input{flex-direction:column;}}
+
+.revision-history { margin: 16px 0; min-width: 0; }
+.revision-panel { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }
+.revision-list { list-style: none; padding: 0; display: grid; gap: 8px; }
+.revision-list button { text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.revision-list button[aria-pressed="true"] { color: var(--foreground); text-decoration: underline; }
+.revision-compare { margin-top: 20px; min-width: 0; }
+.revision-compare pre { max-width: 100%; overflow: auto; font-size: 12px; line-height: 1.65; }
+.revision-compare details { margin: 12px 0; }
+.revision-line { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
+.revision-added, .revision-field ins { background: #e4f4ea; color: #185735; text-decoration: none; }
+.revision-removed, .revision-field del { background: #fde9e7; color: #852c28; text-decoration: none; }
+.dark .revision-added, .dark .revision-field ins { background: #173c2a; color: #afe2c1; }
+.dark .revision-removed, .dark .revision-field del { background: #472523; color: #f0b7b1; }
+.revision-field { display: grid; gap: 6px; margin: 12px 0; overflow-wrap: anywhere; }
+.revision-field ins, .revision-field del { padding: 6px 10px; }

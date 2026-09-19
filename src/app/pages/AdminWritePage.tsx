@@ -1,3 +1,4 @@
+import {ArticleRevisionHistory} from '../components/ArticleRevisionHistory';
 import {ArticleReview} from '../components/ArticleReview';
 import {ArticlePresentation} from '../components/ArticlePresentation';
 import {ArticleMediaPicker} from '../components/ArticleMediaPicker';
@@ -15,13 +16,14 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
  const change=(key:string,value:any)=>d.update((previous:any)=>({...previous,[key]:value}));
  const upload=async(file:File)=>{setUploads(n=>n+1);setUploadError('');try{const body=new FormData();body.append('image',file);body.append('quality',quality);const res=await fetch('/api/upload/image',{method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'},body});const r=await res.json();if(!res.ok)throw new Error(r.message||'上传失败');return r.url as string;}finally{setUploads(n=>Math.max(0,n-1));}};
  return <div className="admin-page article-workspace"><Link to="/admin/posts">返回文章管理</Link><h1 className="admin-title">{postId?'编辑文章':'写文章'}</h1>
- <p role="status">{d.status}</p>{!d.localAvailable&&<p role="alert">本地恢复副本不可用，请确认服务器保存成功后再离开。</p>}
+ <p role="status">{d.status}</p>
+ {d.ready&&<ArticleRevisionHistory draftId={d.draft.id} version={d.draft.version} current={d.form} disabled={d.busy||d.blocked||d.isRestoring||uploads>0} onRestore={d.restore}/>}{!d.localAvailable&&<p role="alert">本地恢复副本不可用，请确认服务器保存成功后再离开。</p>}
  {d.error&&<div role="alert">{d.error}<div className="inline-actions"><a href="/login" target="_blank" rel="noopener noreferrer">重新登录（新窗口）</a><button onClick={()=>void d.save()}>重试保存</button><button onClick={()=>void d.inspect()}>查看服务器版本</button><button onClick={()=>void navigator.clipboard.writeText(JSON.stringify(d.form,null,2)).catch(()=>setUploadError('无法访问剪贴板，请在 Markdown 源码中手动复制。'))}>复制当前内容</button><button onClick={()=>{if(confirm('请先复制需要保留的内容，重新加载服务器版本？'))location.reload();}}>重新加载</button></div></div>}
  {d.serverCopy&&<section><h2>服务器版本</h2><pre className="article-conflict-copy">{JSON.stringify(d.serverCopy.payload,null,2)}</pre><button onClick={()=>{if(confirm('使用服务器版本替换当前编辑内容？请先复制需要保留的内容。'))d.adopt();}}>使用此版本</button></section>}
  {d.recovery&&<div role="alert">发现未同步的本地内容。<button onClick={()=>d.resolve(true)}>恢复本地内容</button><button onClick={()=>d.resolve(false)}>使用服务器内容</button></div>}
  {picker&&<ArticleMediaPicker onClose={()=>setPicker(null)} onSelect={(url,alt)=>{if(picker==='cover')change('cover_image',url);else insert.current(url,alt);}}/>}
- {preview&&<section className="article-full-preview"><button onClick={()=>setPreview(false)}>返回编辑</button><ArticleReview post={{...d.form,author_name:'当前作者'}} busy={d.busy||d.blocked||uploads>0} onPublish={()=>void d.action('publish')}/></section>}
- <fieldset hidden={preview} disabled={!d.ready||!!d.recovery} className="article-writing-fields"><label>标题<input value={d.form.title} maxLength={255} onChange={e=>change('title',e.target.value)} placeholder="未命名草稿"/></label>
+ {preview&&<section className="article-full-preview"><button onClick={()=>setPreview(false)}>返回编辑</button><ArticleReview post={{...d.form,author_name:'当前作者'}} busy={d.busy||d.isRestoring||d.blocked||uploads>0} onPublish={()=>void d.action('publish')}/></section>}
+ <fieldset hidden={preview} disabled={!d.ready||!!d.recovery||d.isRestoring} className="article-writing-fields"><label>标题<input value={d.form.title} maxLength={255} onChange={e=>change('title',e.target.value)} placeholder="未命名草稿"/></label>
  <button type="button" onClick={()=>setPicker('body')}>从媒体库插入正文图片</button>
  {d.ready&&<ArticleEditor registerImageInsert={fn=>{insert.current=fn;}} value={d.form.content} onChange={value=>change('content',value)} existing={!!postId||!!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={()=>{}}/>}
  <details className="article-settings"><summary>文章设置</summary>
@@ -41,6 +43,6 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
   </div></section>
  </div></details></fieldset>
  {uploadError&&<p role="alert">{uploadError}</p>}{uploads>0&&<p role="status">正在上传图片…</p>}
- <div className="article-save-bar"><div className="article-save-bar-inner">{d.draft?.post_id&&<button disabled={d.busy||uploads>0} onClick={()=>{if(confirm('放弃这份修订稿和当前未保存内容？公开文章保持不变。需要保留的内容请先复制。'))void d.discard();}}>放弃未发布修改</button>}<button className="article-action-preview" disabled={!d.ready} onClick={()=>setPreview(!preview)}>{preview?'返回编辑':'预览'}</button><button disabled={!d.ready||d.busy||d.blocked} onClick={()=>void d.save()}>保存草稿</button><button className="article-action-publish" disabled={!d.ready||d.busy||d.blocked||uploads>0} onClick={()=>setPreview(true)}>{d.draft?.post_status==='published'?'检查并更新':'检查并发布'}</button>{d.draft?.post_status==='published'&&<button disabled={d.busy||d.blocked} onClick={()=>{if(confirm('撤回后读者将无法访问这篇文章，确定撤回？'))void d.action('withdraw');}}>撤回为草稿</button>}{d.draft?.post_status==='published'&&<Link to={`/article/${d.draft.post_id}`}>查看文章</Link>}</div></div>
+ <div className="article-save-bar"><div className="article-save-bar-inner">{d.draft&&<button disabled={d.busy||d.isRestoring||uploads>0} onClick={()=>{if(confirm(d.draft.post_id?'放弃这份修订稿和当前未保存内容？公开文章和历史保持不变。':'永久删除这份未发布草稿及其全部历史？'))void d.discard();}}>{d.draft.post_id?'放弃未发布修改':'删除草稿及历史'}</button>}<button className="article-action-preview" disabled={!d.ready} onClick={()=>setPreview(!preview)}>{preview?'返回编辑':'预览'}</button><button disabled={!d.ready||d.busy||d.blocked||d.isRestoring} onClick={()=>void d.save('manual')}>保存草稿</button><button className="article-action-publish" disabled={!d.ready||d.busy||d.isRestoring||d.blocked||uploads>0} onClick={()=>setPreview(true)}>{d.draft?.post_status==='published'?'检查并更新':'检查并发布'}</button>{d.draft?.post_status==='published'&&<button disabled={d.busy||d.isRestoring||d.blocked} onClick={()=>{if(confirm('撤回后读者将无法访问这篇文章，确定撤回？'))void d.action('withdraw');}}>撤回为草稿</button>}{d.draft?.post_status==='published'&&<Link to={`/article/${d.draft.post_id}`}>查看文章</Link>}</div></div>
  </div>;
 }

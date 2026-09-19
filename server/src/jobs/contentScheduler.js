@@ -28,7 +28,10 @@ function startContentScheduler() {
     if (process.env.GITHUB_SYNC_ENABLED === 'true') await syncAll();
   });
   const stopNewsletter = repeat('newsletter', () => deliverWeek());
+  let lastCleanup=0;
+  const stopRevisions=repeat('revision-cleanup',async()=>{if(Date.now()-lastCleanup<86400000)return;lastCleanup=Date.now();await require('../lib/articleRevisions').cleanup(require('../db'));});
   return () => {
+    stopRevisions();
     stopGithub();
     stopNewsletter();
   };

@@ -217,9 +217,19 @@ async function findMedia(filename, status = null) {
   return rows[0] || null;
 }
 
-async function updateReferences(oldUrl, newUrl) {
-  await db.query('UPDATE posts SET content=REPLACE(content, ?, ?) WHERE content LIKE ?', [oldUrl, newUrl, `%${oldUrl}%`]);
-  await db.query('UPDATE posts SET cover_image=? WHERE cover_image=?', [newUrl, oldUrl]);
+async function updateReferences(oldUrl, newUrl, actorId) {
+  const c=await db.getConnection();const revisions=require('../lib/articleRevisions');
+  try {
+    await c.beginTransaction();
+    const [posts]=await c.query('SELECT * FROM posts WHERE content LIKE ? OR cover_image=? ORDER BY id FOR UPDATE',[`%${oldUrl}%`,oldUrl]);
+    for(const post of posts){
+      await revisions.baseline(c,post,actorId);
+      const next={...post,content:post.content.split(oldUrl).join(newUrl),cover_image:post.cover_image===oldUrl?newUrl:post.cover_image};
+      await c.query('UPDATE posts SET content=?,cover_image=?,version=version+1,updated_at=NOW() WHERE id=?',[next.content,next.cover_image,post.id]);
+      await revisions.record(c,{post_id:post.id},next,post.status==='published'?'publish':'manual',actorId,post.status==='published'?post.version+1:null);
+    }
+    await c.commit();
+  } catch(e){await c.rollback();throw e;} finally{c.release();}
 
   try {
     await db.query('UPDATE site_settings SET setting_value=REPLACE(setting_value, ?, ?) WHERE setting_value LIKE ?', [oldUrl, newUrl, `%${oldUrl}%`]);
@@ -617,7 +627,7 @@ router.put('/media/:filename/rename', authRequired, editorOrAdmin, async (req, r
 
     const oldUrl = toPublicUrl(filename);
     const nextUrl = toPublicUrl(nextFilename);
-    await updateReferences(oldUrl, nextUrl);
+    await updateReferences(oldUrl, nextUrl, req.user.id);
 
     await db.query(
       'UPDATE media_assets SET filename=?, url=?, updated_at=CURRENT_TIMESTAMP WHERE filename=?',
@@ -741,7 +751,7 @@ router.post('/media/:filename/recompress', authRequired, editorOrAdmin, async (r
     });
 
     const oldUrl = media.url;
-    await updateReferences(oldUrl, meta.url);
+    await updateReferences(oldUrl, meta.url, req.user.id);
 
     if (file.filename !== filename) {
       await db.query('DELETE FROM media_assets WHERE filename=?', [filename]);
