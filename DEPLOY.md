@@ -503,8 +503,18 @@ to the global API limiter. Clients cannot specify target URLs. Only non-sensitiv
 status, timestamp and elapsed time are public. Probes run on demand, not on a timer;
 Better Stack supplies the schedule. A cached response retains its probe timestamp.
 These are connectivity/dependency checks, not full OAuth login or client-secret
-validation. GitHub currently returns 503 not_configured; do not add its monitor
-until use of the proxy credential has been approved and implemented.
+validation. GitHub monitoring has been approved and uses the existing
+GITHUB_OAUTH_PROXY_URL and GITHUB_OAUTH_PROXY_KEY only. Add
+`/api/health/dependencies/github` after deploying this release. It sends an
+intentionally invalid token to the proxy /user route and requires HTTP 401 plus
+Worker v3 diagnostic upstream_http_401. Local proxy rejection, generic 401,
+redirects, rate limits and timeouts fail the check. Missing configuration returns
+503. The public endpoint converts this verified upstream rejection to HTTP 200;
+Better Stack should monitor this endpoint, not the proxy /user route directly.
+No real user token, OAuth state or login session is created. The key never appears
+in the public response; redirects are disabled. This verifies the /user transport,
+not token exchange or complete login. Previous dependency-health packages are
+accepted as upgrade baselines.
 
 This release also includes the pending frontend fix preserving the Microsoft
 four-color logo in dark mode. No GitHub push is required for offline deployment.

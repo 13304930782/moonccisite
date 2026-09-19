@@ -16,7 +16,7 @@ function createDependencyHealth({ env = process.env, fetcher = fetch, now = Date
   const cache = new Map(); const pending = new Map();
   async function probe(id) {
     const started = now(); const signal = AbortSignal.timeout(timeout);
-    const get = url => fetcher(httpsUrl(url), { signal, redirect: 'error', headers: { Accept: 'application/json', 'User-Agent': 'mooncci-dependency-health' } });
+    const get = (url, headers = {}) => fetcher(httpsUrl(url), { signal, redirect: 'error', headers: { Accept: 'application/json', 'User-Agent': 'mooncci-dependency-health', ...headers } });
     let timer;
     const work = async () => {
       if (id === 'google') {
@@ -25,6 +25,18 @@ function createDependencyHealth({ env = process.env, fetcher = fetch, now = Date
         if (!certs.length || !certs.some(value => {
           try { const cert = new X509Certificate(value); return Date.parse(cert.validFrom) <= now() && Date.parse(cert.validTo) > now(); } catch { return false; }
         })) throw Error('certificates');
+      } else if (id === 'github') {
+        const origin = new URL(httpsUrl(env.GITHUB_OAUTH_PROXY_URL || ''));
+        const key = env.GITHUB_OAUTH_PROXY_KEY || '';
+        if (origin.pathname !== '/' || origin.search || !/^[a-f0-9]{64}$/.test(key)) throw Error('config');
+        // Probe only the existing configured proxy. Never follow redirects with its key.
+        // An intentionally invalid token verifies upstream reachability, not user login.
+        const response = await get(origin.origin + '/user', {
+          'X-Mooncci-Proxy-Key': key,
+          Authorization: 'Bearer mooncci_monitor_invalid_token',
+        });
+        await response.body?.cancel();
+        if (response.status !== 401 || response.headers.get('X-Mooncci-Proxy-Diagnostic') !== 'upstream_http_401' || response.headers.get('X-Mooncci-Proxy-Version') !== '3') throw Error('upstream');
       } else {
         const data = await json(await get('https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration'));
         const jwks = new URL(httpsUrl(data.jwks_uri));
@@ -44,7 +56,6 @@ function createDependencyHealth({ env = process.env, fetcher = fetch, now = Date
   }
   return async id => {
     if (!['google', 'microsoft', 'github'].includes(id)) return null;
-    if (id === 'github') return { ok: false, service: id, status: 'not_configured', scope: 'dependency-connectivity' };
     const saved = cache.get(id);
     if (saved && now() - saved.at < ttl) return saved.result;
     if (!pending.has(id)) pending.set(id, probe(id).then(result => { cache.set(id, { at: now(), result }); return result; }).finally(() => pending.delete(id)));

@@ -47,3 +47,31 @@ test('route uses failure status codes and no-store', async t => {
    assert.equal(response.status, status); assert.equal(response.headers.get('cache-control'), 'no-store'); await response.text();
  }
 });
+
+const proxyEnv = { GITHUB_OAUTH_PROXY_URL: 'https://proxy.example', GITHUB_OAUTH_PROXY_KEY: 'a'.repeat(64) };
+const proxyResponse = (status = 401, diagnostic = 'upstream_http_401', version = '3') => new Response('{}', { status, headers: { 'X-Mooncci-Proxy-Diagnostic': diagnostic, 'X-Mooncci-Proxy-Version': version } });
+test('GitHub only sends the key to the configured proxy and caches confirmed upstream rejection', async () => {
+ let calls = 0;
+ const check = createDependencyHealth({ env: proxyEnv, fetcher: async (url, options) => {
+   calls++; assert.equal(url, 'https://proxy.example/user'); assert.equal(options.redirect, 'error');
+   assert.equal(options.headers['X-Mooncci-Proxy-Key'], proxyEnv.GITHUB_OAUTH_PROXY_KEY);
+   assert.equal(options.headers.Authorization, 'Bearer mooncci_monitor_invalid_token'); return proxyResponse();
+ } });
+ const results = await Promise.all([check('github'), check('github')]);
+ assert(results.every(r => r.ok)); await check('github'); assert.equal(calls, 1);
+ assert(!JSON.stringify(results).includes(proxyEnv.GITHUB_OAUTH_PROXY_KEY));
+ assert(!JSON.stringify(results).includes('proxy.example'));
+});
+test('GitHub does not treat arbitrary 401, forbidden, redirect or success as probe success', async () => {
+ for (const args of [[401,'request_rejected','3'],[401,'upstream_http_401','2'],[403,'request_rejected','3'],[502,'upstream_timeout','3'],[302,'upstream_http_401','3'],[200,'upstream_ok','3'],[429,'upstream_http_429','3']]) {
+  const check = createDependencyHealth({ env: proxyEnv, fetcher: async () => proxyResponse(...args) });
+  assert.equal((await check('github')).ok, false);
+ }
+});
+test('GitHub rejects missing or malformed config before sending a key', async () => {
+ for (const env of [{}, {...proxyEnv,GITHUB_OAUTH_PROXY_KEY:'bad'}, ...['http://proxy.example','https://user:pass@proxy.example','https://proxy.example/path','https://proxy.example/?x=1','https://proxy.example/#x'].map(url => ({...proxyEnv,GITHUB_OAUTH_PROXY_URL:url}))]) {
+  let calls = 0;
+  const check = createDependencyHealth({ env, fetcher: async () => { calls++; return proxyResponse(); } });
+  assert.equal((await check('github')).ok,false); assert.equal(calls,0);
+ }
+});
