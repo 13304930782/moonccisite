@@ -15,7 +15,9 @@ baseline={n:known.get(n,[None]) for n in files}
 for n in files:
  data=(root/'server'/n).read_text(encoding='utf-8-sig').replace('\r\n','\n').encode();entries['server/'+n]=data;baseline[n].append(hashlib.sha256(data).hexdigest())
 entries['deploy.sh']=(root/'scripts/deploy-blog-foundation.sh').read_text(encoding='utf-8-sig').replace('\r\n','\n').encode()
-if stage==3:entries['nginx-blog-seo.conf']=(root/'scripts/nginx-blog-seo.conf').read_bytes()
+if stage==3:
+ for name in ['nginx-blog-seo.conf','enable-blog-seo.sh','verify-blog-seo.mjs']:
+  entries[name]=(root/'scripts'/name).read_text(encoding='utf-8-sig').replace('\r\n','\n').encode()
 entries['BASELINE.json']=(json.dumps(baseline,indent=2)+'\n').encode()
 entries['BACKEND_FILES']=(''.join(n+'\n' for n in files)).encode()
 entries.pop('SHA256SUMS');entries['SHA256SUMS']=''.join(hashlib.sha256(b).hexdigest()+'  '+n+'\n' for n,b in sorted(entries.items())).encode()

@@ -159,6 +159,7 @@ app.use('/api/admin', contentPlatform.admin);
 app.use('/api', subscriptions.router);
 app.use('/api/admin', subscriptions.admin);
 
+app.use(require('./routes/seo').createSeoRouter({db:require('./db')}));
 app.use('/api', (_req, res) => res.status(404).json({ message: '接口不存在。' }));
 
 app.use((error, _req, res, _next) => {

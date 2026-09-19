@@ -120,8 +120,8 @@ export default function App() {
     <ThemeProvider>
       <SiteSettingsProvider>
       <AuthProvider>
-        <SiteMeta />
         <BrowserRouter>
+          <SiteMeta />
           <ScrollToPageTop /><PageAnalytics />
           <Suspense fallback={<RouteLoader />}><Routes>
           <Route path="/" element={<HomePage />} />

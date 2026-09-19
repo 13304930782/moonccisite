@@ -1,3 +1,6 @@
+import {useLocation} from 'react-router-dom';
+import {api} from '../lib/api';
+import {applyPageMeta} from '../lib/pageMeta';
 import { brandText } from '../lib/brand';
 import { useEffect } from 'react';
 import { safeImageSrc } from '../lib/safeUrl';
@@ -17,10 +20,18 @@ function ensureFavicon() {
 
 export function SiteMeta() {
   const { data } = useSiteSettings();
+  const {pathname}=useLocation();
+  const name=brandText(data?.brand?.site_title||'mooncci');
+  useEffect(()=>{
+    const controller=new AbortController();
+    const canonical=document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if(!canonical || new URL(canonical.href).pathname!==pathname)applyPageMeta({title:name,description:'记录文章、日常近况与作品进展。',robots:'noindex, follow'});
+    api(`/seo?path=${encodeURIComponent(pathname)}`,{signal:controller.signal}).then(meta=>{if(!controller.signal.aborted)applyPageMeta(meta);}).catch(()=>{});
+    return()=>controller.abort();
+  },[pathname,name]);
   useEffect(() => {
     if (!data) return;
     const brand = data.brand;
-    document.title = brandText(brand.site_title || 'mooncci');
     const favicon = safeImageSrc(brand.favicon_url);
     if (favicon) ensureFavicon().href = favicon;
     else

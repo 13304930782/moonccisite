@@ -436,3 +436,41 @@ history are untouched. Unknown server edits stop deployment rather than being ov
 ## Blog foundation releases
 
 Build stages separately: `python scripts/build-blog-foundation-release.py 1` (discovery), `2` (about/links), `3` (SEO). Later packages include prior stages. Each scoped package preserves database, uploads and environment; it checks server file baselines, backs up replaced files and restarts the API. No dependencies or migrations are introduced. Never use the frontend-only packer for these releases.
+
+
+### Third-stage SEO activation (separate from API/frontend deployment)
+
+The SEO backend reads `SEO_HTML_TEMPLATE`, defaulting to `/www/wwwroot/mooncci.site/index.html`.
+Keep `SITE_URL=https://mooncci.site` (or the real canonical HTTPS origin). No `.env` overwrite is performed.
+The built `default-share.png` is the fallback for articles without covers. Public article HTML is generated
+from the deployed Vite HTML template; this is metadata rendering, not server rendering of the full article body.
+
+After `deploy.sh` reports exit code 0, activate the separate Nginx configuration:
+
+```bash
+nohup bash /www/backup/PACKAGE_DIRECTORY/enable-blog-seo.sh > /www/backup/PACKAGE_DIRECTORY/seo-nginx.log 2>&1 < /dev/null &
+tail -n 40 /www/backup/PACKAGE_DIRECTORY/seo-nginx.log
+```
+
+Replace `PACKAGE_DIRECTORY` with this release's extracted directory. The upload script prints the exact path.
+The default BaoTa vhost is `/www/server/panel/vhost/nginx/mooncci.site.conf`; pass a different confirmed vhost
+path as the script's first argument when necessary. The script requires exactly one matching HTTPS server
+block, adds `/www/server/panel/vhost/nginx/mooncci-blog-seo.inc`, backs up the original configuration, runs
+`nginx -t`, and reloads only if valid. Failures restore the saved vhost/snippet. Its log prints the exact
+child-shell rollback command. If the vhost layout is ambiguous, manually include the supplied snippet inside
+the HTTPS `server` block, then run `nginx -t` before reload. Do not replace the existing API/assets locations.
+
+The snippet forwards `/article/:id`, `/sitemap.xml`, `/robots.txt` to Node and adds `X-Robots-Tag: noindex`
+to private frontend routes. After activation:
+
+```bash
+/opt/mooncci-node-v24.20.0/bin/node /www/backup/PACKAGE_DIRECTORY/verify-blog-seo.mjs https://mooncci.site
+```
+
+If rolling back to a package without the SEO backend, first use the Nginx rollback command, then restore the
+backend files/frontend entry from that package's deployment backup. Older assets are retained for rollback.
+
+Local acceptance: `npm run check`, `npm --prefix server test`, `node scripts/test-blog-foundation-browser.cjs`,
+`node scripts/test-blog-pages-admin-browser.cjs`. MySQL-dependent integration tests still require the configured
+test database; skipped tests are not evidence of a live database deployment. Production Nginx checks run on
+activation, not in the Windows development environment.
