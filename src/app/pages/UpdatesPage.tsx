@@ -19,7 +19,7 @@ export default function UpdatesPage() {
   return (
     <SitePage>
       <PageHeading eyebrow="JOURNAL" title="最近更新">
-        <p>文章、近况，以及作品向前走的一小步。</p>
+        <p>文章、近况，以及作品的更新</p>
       </PageHeading>
       <nav className="filter-tabs" aria-label="更新类型">
         {[
