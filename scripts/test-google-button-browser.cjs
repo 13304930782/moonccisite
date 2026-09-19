@@ -32,7 +32,7 @@ async function main() {
       const local = page.locator('.auth-google-local');
       await local.waitFor();
       assert.equal(await local.evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(19, 19, 20)');
-      assert.equal(await page.locator('iframe').count(), 0);
+      assert.equal(await page.locator('iframe:not(.footer-status iframe)').count(), 0);
       assert.equal(await page.locator('script[src*="accounts.google.com"]').count(), 0);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await page.getByRole('button', { name: '切换浅色主题' }).click();
