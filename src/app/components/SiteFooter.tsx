@@ -1,8 +1,10 @@
+import { useMoonTheme } from '../context/ThemeContext';
 import { brandText } from '../lib/brand';
 import { Link } from 'react-router-dom';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { safeHref, safeImageSrc } from '../lib/safeUrl';
 export function SiteFooter() {
+  const { theme } = useMoonTheme();
   const { data: settings } = useSiteSettings();
   const footer = settings?.footer || {};
   return (
@@ -19,7 +21,20 @@ export function SiteFooter() {
             <Link to="/about">关于我</Link><Link to="/links">友情链接</Link>
             <Link to="/archives">文章归档</Link>
             <Link to="/rss">RSS 订阅</Link>
+            <a href="https://status.mooncci.site" target="_blank" rel="noopener noreferrer">服务状态</a>
           </nav>
+        </div>
+        <div className="footer-status">
+          <iframe
+            title="mooncci 实时服务状态"
+            src={`https://status.mooncci.site/badge?theme=${theme}`}
+            width="250"
+            height="30"
+            loading="lazy"
+            scrolling="no"
+            referrerPolicy="no-referrer"
+            style={{ border: 0, maxWidth: '100%', colorScheme: 'normal', display: 'block' }}
+          />
         </div>
         <div className="footer-legal">
           <span>{brandText(footer.copyright)}</span>

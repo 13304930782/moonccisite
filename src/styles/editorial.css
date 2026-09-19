@@ -385,6 +385,9 @@ input[type='checkbox'] {
   gap: 24px;
   flex-wrap: wrap;
 }
+.footer-status {
+  margin-bottom: 20px;
+}
 .footer-legal {
   display: flex;
   justify-content: space-between;
