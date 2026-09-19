@@ -618,3 +618,43 @@ Rollback keeps both new tables and their data, all uploads and configuration;
 new unreferenced backend modules/assets may remain harmlessly on disk. Do not
 restore a whole historical SQL dump or drop these tables for a code rollback.
 After restart, check `/api/health` and the signed-in page for the deployed stage.
+
+## Dependency diagnostics hotfix (backend only)
+
+Build `python -X utf8 scripts/build-dependency-diagnostics-release.py`, then upload
+with `powershell -ExecutionPolicy Bypass -File scripts/Upload-DependencyDiagnostics.ps1`.
+The verified offline archive replaces ONLY `server/src/lib/dependencyHealth.js`;
+it does not contain frontend assets, unrelated pending features, SQL, dependencies,
+.env or uploads. It accepts the previous deployed dependency checker hash or this
+patch's hash, backs up the file, restarts mooncci-api and checks local health.
+Failure restores the previous file and restarts the API. No worker restart.
+The upload script prints child-shell/nohup deployment and log commands.
+
+Logs use the prefix `[dependency-health]` and one JSON object per actual failed
+probe, plus one `recovered` event when the next probe succeeds. Cache hits and
+healthy steady-state checks do not log. Public 200/503 responses, their fields,
+60-second caching and 10-second timeout stay unchanged. Correlate `checkedAt`
+with Better Stack's response body; timestamps are UTC. Logs cannot reconstruct
+failures that occurred before deploying this patch.
+
+`responseStatus` is the status received from the proxy/upstream, NOT the public
+health endpoint's 503. `proxyDiagnostic` contains only known Worker diagnostic
+labels (`request_rejected`, `upstream_http_429`, `upstream_fetch_timeout`, etc.).
+Missing/unknown diagnostic headers are labelled `missing`/`unrecognized`.
+`proxyVersion` accepts only known versions 1, 2, 3. `reason` differentiates config,
+network, timeout, malformed responses and unexpected proxy responses; `networkCode`
+is limited to fixed DNS/TLS/connection error codes. No raw error message, URL,
+request headers, response body, key, cookie or user token is logged.
+
+Manual rollback: replace BACKUP with the printed backup folder, in a child shell:
+
+```bash
+nohup bash -c '
+set -eu
+exec 9>/www/backup/mooncci-deploy.lock
+flock -w 120 9
+tar -xpf /www/backup/mooncci-dependency-diagnostics.BACKUP/server-before.tar -C /www/wwwroot/mooncci-source/server
+su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; pm2 restart mooncci-api"
+' > /www/backup/dependency-diagnostics-rollback.log 2>&1 < /dev/null &
+tail -n 40 /www/backup/dependency-diagnostics-rollback.log
+```
