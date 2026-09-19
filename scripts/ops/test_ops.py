@@ -21,6 +21,16 @@ class OperationsTests(unittest.TestCase):
    with self.assertRaises(ValueError):deploy.validate(package,{'backend':live})
    row['path']='src/test.js';manifest['migrations']=['unreviewed.sql'];save()
    with self.assertRaises(ValueError):deploy.validate(package,{'backend':live})
+ def test_path_checks_without_python39_api(self):
+  with tempfile.TemporaryDirectory() as temp, patch.object(pathlib.Path,'is_relative_to',side_effect=AttributeError('old Python'),create=True):
+   root=pathlib.Path(temp)
+   self.assertEqual(deploy.safe(root,'src/file.js'),root/'src/file.js')
+   with self.assertRaises(ValueError):deploy.safe(root,'../outside')
+   with self.assertRaises(ValueError):deploy.safe(root,'/absolute')
+   files={}
+   for name in ['database.sql','app.env']:
+    (root/name).write_bytes(b'test');files[name]=hashlib.sha256(b'test').hexdigest()
+   (root/'MANIFEST.json').write_text(json.dumps({'files':files}));restore.verify(root)
  def test_restore_detects_corruption_and_escape(self):
   with tempfile.TemporaryDirectory() as temp:
    root=pathlib.Path(temp);files={}

@@ -705,7 +705,7 @@ tail -n 40 /www/backup/proxy-ipv4-rollback.log
 
 新增 `/admin/runtime`，接口 `/api/admin/runtime` 仅 owner/admin 可读，响应 no-store。API 启动时间、worker 存活记录、真实迁移清单及应用磁盘状态分开显示。worker 90 秒无更新标为未知，不将进程存活当作任务成功。`server/runtime` 不进 Git，不包含账号或密钥；可用 `MOONCCI_RUNTIME_DIR` 改目录（部署记录仍使用默认目录，改目录时需同步部署工具）。
 
-构建：提交本地变更后运行 `python scripts/build-maintenance-release.py`，上传：`powershell -ExecutionPolicy Bypass -File scripts/Upload-Maintenance.ps1`。上传器验证 SHA256 并输出 nohup 子进程部署命令。服务器需 Python 3.9+。本包包含前端及 MANIFEST.json 中列出的后端文件，无依赖安装和迁移；旧哈希资源不删除。后台功能要求先完成修订历史、收藏两批迁移，缺失则部署停止，不自动执行历史 SQL。
+构建：提交本地变更后运行 `python scripts/build-maintenance-release.py`，上传：`powershell -ExecutionPolicy Bypass -File scripts/Upload-Maintenance.ps1`。上传器验证 SHA256 并输出 nohup 子进程部署命令。服务器需 Python 3.6+。本包包含前端及 MANIFEST.json 中列出的后端文件，无依赖安装和迁移；旧哈希资源不删除。后台功能要求先完成修订历史、收藏两批迁移，缺失则部署停止，不自动执行历史 SQL。
 
 部署前逐项比对生产文件 SHA256，只接受已知基线或本次目标文件，发现未知改动停止。备份位于 `/www/backup/mooncci-manifest-*`。发生执行失败按清单恢复原文件并重启 API/worker；数据库、.env、uploads 和历史 SQL 始终不在替换范围。成功后记录发布包版本，不能把这个版本理解成所有后端文件均来自该提交。
 

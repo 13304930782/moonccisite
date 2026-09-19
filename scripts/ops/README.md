@@ -4,7 +4,7 @@
 
 ## 备份
 
-需要 Linux Python 3.9+、mysqldump、restic。配置文件、数据库凭据及 restic 密码使用独立的 /etc/mooncci-backup 目录、目录 700、文件 600；密码另存离线副本，丢失无法解密。备份工具不读取网站账号密码，不自动创建或购买远端服务。
+需要 Linux Python 3.6+、mysqldump、restic。配置文件、数据库凭据及 restic 密码使用独立的 /etc/mooncci-backup 目录、目录 700、文件 600；密码另存离线副本，丢失无法解密。备份工具不读取网站账号密码，不自动创建或购买远端服务。
 
 1. 将 backup.py 放到 /opt/mooncci-ops/，按 backup.example.json 创建 /etc/mooncci-backup/config.json。
 2. 数据库账号仅有备份所需权限，mysql.cnf 使用 [client]、host、user、password；不将密码放入命令行。app_env 路径必须指向已存在的后端 .env，工具不会改它。

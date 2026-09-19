@@ -9,7 +9,11 @@ def verify(directory):
         raise ValueError('Incomplete manifest')
     for name,expected in manifest['files'].items():
         p=root/name
-        if p.is_symlink() or not p.resolve().is_relative_to(root): raise ValueError('Unsafe restored path')
+        if p.is_symlink(): raise ValueError('Unsafe restored path')
+        try:
+            p.resolve().relative_to(root)
+        except ValueError:
+            raise ValueError('Unsafe restored path')
         h=hashlib.sha256()
         with p.open('rb') as stream:
             for block in iter(lambda:stream.read(1024*1024),b''): h.update(block)

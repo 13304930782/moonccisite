@@ -7,7 +7,10 @@ def safe(root,name):
     rel=pathlib.PurePosixPath(name)
     if rel.is_absolute() or '..' in rel.parts or not rel.parts or '\\' in name: raise ValueError('Unsafe manifest path')
     p=root.joinpath(*rel.parts)
-    if not p.resolve().is_relative_to(root.resolve()): raise ValueError('Path outside root')
+    try:
+        p.resolve().relative_to(root.resolve())
+    except ValueError:
+        raise ValueError('Path outside root')
     cursor=p
     while cursor!=root:
         if cursor.is_symlink(): raise ValueError('Symlink destination')
