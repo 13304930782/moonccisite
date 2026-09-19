@@ -6,3 +6,8 @@ scripts/*-baseline.json text eol=lf
 scripts/ops/* text eol=lf
 scripts/build-maintenance-release.py text eol=lf
 scripts/Upload-Maintenance.ps1 text eol=lf
+
+edge/** text eol=lf
+cloudflare/read-router/* text eol=lf
+scripts/build-reader-node-package.py text eol=lf
+scripts/Probe-ReaderHost.ps1 text eol=lf

@@ -1,0 +1,20 @@
+[Unit]
+Description=mooncci isolated public reader
+After=network-online.target
+[Service]
+Type=simple
+User=mooncci-reader
+Group=mooncci-reader
+WorkingDirectory=/opt/mooncci-reader/current
+EnvironmentFile=/etc/mooncci-reader.env
+ExecStart=/opt/mooncci-reader-node/bin/node /opt/mooncci-reader/current/edge/reader/server.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+MemoryMax=256M
+TasksMax=64
+[Install]
+WantedBy=multi-user.target
