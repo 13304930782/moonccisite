@@ -202,6 +202,9 @@ export function AdminShell({ children }: AdminShellProps) {
       show: manager,
     },
     {
+      title: '关于与友链', to: '/admin/blog-pages', icon: Settings, show: manager,
+    },
+    {
       title: '站点设置',
       to: '/admin/site-settings',
       icon: Settings,

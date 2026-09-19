@@ -532,4 +532,5 @@ router.post('/mail/send-custom', authRequired, adminOnly, async (req, res) => {
   }
 });
 
+require('../lib/blogPages').attachBlogPages(router,{getSetting,saveSetting,authRequired,adminOnly,defaultProfile});
 module.exports = router;

@@ -121,7 +121,7 @@ export function Header() {
           className="mobile-navigation"
           aria-label="手机导航"
         >
-          {links.map(([to, label]) => (
+          {[...links,['/archives','文章归档'],['/about','关于我'],['/links','友情链接'],['/rss','RSS 订阅']].map(([to, label]) => (
             <Link key={to} to={to}>
               {label}
             </Link>

@@ -16,6 +16,7 @@ export function SiteFooter() {
             <Link to="/articles">文章</Link>
             <Link to="/projects">作品</Link>
             <Link to="/updates">最近更新</Link>
+            <Link to="/about">关于我</Link><Link to="/links">友情链接</Link>
             <Link to="/archives">文章归档</Link>
             <Link to="/rss">RSS 订阅</Link>
           </nav>
