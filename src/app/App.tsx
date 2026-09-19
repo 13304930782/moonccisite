@@ -1,3 +1,4 @@
+const ArchivesPage = lazy(() => import('./pages/ArchivesPage'));
 import {PageAnalytics} from './components/PageAnalytics';
 import { SiteSettingsProvider } from './context/SiteSettingsContext';
 const RssPage = lazy(() => import('./pages/RssPage'));
@@ -130,6 +131,7 @@ export default function App() {
           <Route path="/admin/updates" element={<Guard adminOnly><AdminShell><AdminUpdatesPage/></AdminShell></Guard>}/>
           <Route path="/admin/projects" element={<Guard adminOnly><AdminShell><AdminProjectsPage/></AdminShell></Guard>}/>
           <Route path="/admin/newsletter" element={<Guard ownerOnly><AdminShell><AdminNewsletterPage/></AdminShell></Guard>}/>
+          <Route path="/archives" element={<ArchivesPage/>}/>
           <Route path="/articles" element={<ArticlesPage />} />
           <Route path="/tag/:tag" element={<TagPage />} />
           <Route path="/tags" element={<TagsPage />} />

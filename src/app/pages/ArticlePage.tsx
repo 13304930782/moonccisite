@@ -1,3 +1,4 @@
+import {ArticleDiscovery} from '../components/ArticleDiscovery';
 import {usePageView} from '../components/PageAnalytics';
 import {ArticlePresentation} from '../components/ArticlePresentation';
 import { useParams } from 'react-router-dom';
@@ -20,7 +21,7 @@ export default function ArticlePage() {
           <>
             <div className="article-layout">
               <ArticlePresentation post={post} views={views}/>
-              <CommentSection postId={post.id} />
+              <ArticleDiscovery key={post.id} id={post.id} title={post.title}/><CommentSection postId={post.id} />
             </div>
             <SubscribeForm />
           </>

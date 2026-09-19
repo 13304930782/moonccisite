@@ -431,3 +431,8 @@ checks production file hashes against the baseline, backs up both backend files 
 frontend entry, restarts `mooncci-api`, and checks health before publishing the frontend.
 Run `deploy.sh` in a child shell through `nohup`; never source it. `.env`, uploads and SQL
 history are untouched. Unknown server edits stop deployment rather than being overwritten.
+
+
+## Blog foundation releases
+
+Build stages separately: `python scripts/build-blog-foundation-release.py 1` (discovery), `2` (about/links), `3` (SEO). Later packages include prior stages. Each scoped package preserves database, uploads and environment; it checks server file baselines, backs up replaced files and restarts the API. No dependencies or migrations are introduced. Never use the frontend-only packer for these releases.

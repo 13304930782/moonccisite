@@ -1,0 +1,11 @@
+{
+  "src/routes/posts.js": [
+    "a4e5e16934f08d2e4857d98ddbbbdd2c5a9e2f2fdb4c495a52c34a5b632069b5"
+  ],
+  "src/routes/settings.js": [
+    "afd419410bb8a0b8240d1e27f9aa06cddc235c5d35edcdd2139aa84f8eacb940"
+  ],
+  "src/index.js": [
+    "7c4666273572a6f9677f9d42f3ea5260f04a4ef833e8640f6fe8c55e30f4daf4"
+  ]
+}

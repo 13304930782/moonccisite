@@ -162,9 +162,16 @@ router.get('/meta/tags', async (_req, res) => {
   res.json(result);
 });
 
+require('../lib/articleDiscovery').attachDiscovery(router,db);
+
 router.get('/', async (req, res) => {
   const { sql, params } = buildListQuery(req.query);
   const [rows] = await db.query(sql, params);
+  if(req.query.format==='paged'){
+    const countSql=sql.replace(/SELECT[\s\S]+?FROM posts p/,'SELECT COUNT(*) AS total FROM posts p').replace(/ORDER BY[\s\S]+$/,'');
+    const [[count]]=await db.query(countSql,params.slice(0,-2));
+    return res.json({items:rows,total:Number(count.total),page:clampInt(req.query.page,1,1,100000),pageSize:clampInt(req.query.pageSize||req.query.limit,50,1,100)});
+  }
   res.json(rows);
 });
 
