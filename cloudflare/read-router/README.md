@@ -34,8 +34,13 @@ Route：https://developers.cloudflare.com/workers/configuration/routing/routes/
 
 Windows 执行 `powershell -ExecutionPolicy Bypass -File "C:\Users\Administrator\Documents\mooncci site\scripts\Upload-ReaderNode.ps1"`，上传到美国服务器 root 家目录；复制脚本输出的命令到美国服务器 SSH 窗口。安装在 nohup 子进程执行，日志写入 `/www/backup/mooncci-reader-preview-版本.log`。
 
-首次安装器会检查所有包内 SHA256、精确 Node 22.23.1、服务/账号/目录未被占用和 3102 端口，然后在服务器实际 Node 上跑隔离测试。通过后只创建 mooncci-reader 用户、/opt/mooncci-reader、/etc/mooncci-reader.env 及专用 systemd 服务。生成随机 64 位十六进制节点密钥，配置文件权限 600，不打印密钥。CPU 上限半核，内存上限 256MB。已有目录、账号或配置一律停止，避免覆盖未知内容。
+首次安装器会检查所有包内 SHA256、精确 Node 22.23.1、服务/账号/目录未被占用和 3102 端口，然后在服务器实际 Node 上跑隔离测试。通过后只创建 mooncci-reader 用户、/opt/mooncci-reader、/etc/mooncci-reader.env 及专用 systemd 服务。生成随机 64 位十六进制节点密钥，配置文件权限 600，不打印密钥。CPU 上限半核，内存上限 256MB。已有账号或配置一律停止；仅 e56dcf2 首次安装留下的已知失败目录，且每个文件与基线一致、无额外文件时，允许重命名保留现场后重试，其余已有目录拒绝覆盖。
 
 成功标志为 `Reader local installation complete. Public routing remains OFF.`，仅证明本机节点进程可用。源站域名/TLS、宝塔新增域名和 Cloudflare 尚未配置，不能据此认定海外分流上线。后续需要 `origin-cn.mooncci.site`（国内 IP 182.92.179.81）与 `reader-origin.mooncci.site`（美国 IP 107.174.123.42）两个源站子域；当前只是约定名称，没有自动创建 DNS。
 
 查看日志：`journalctl -u mooncci-reader.service -n 60 --no-pager`。停用/回退这个本机节点：`systemctl disable --now mooncci-reader.service`，不会停用 cuegroveapp.com、邮件、MySQL 或现有 PM2。若未来分流已上线，先将 ROUTING_ENABLED=false，再停节点。安装失败会停用本次新服务并移除本次新配置，保留隔离目录供排查，不自动删除未知目录。
+
+
+### current 符号链接入口修复
+
+旧 e56dcf2 包的命令行入口错误比较符号链接路径与真实模块路径，会以 0 退出而不监听；旧单元测试只导入模块没有覆盖入口。新版将 argv 解析为真实路径，新增 Node 22 CLI 子进程通过目录链接启动并检查健康接口的回归测试。重试只接受 INSTALL_FAILED 标记和完整已知文件哈希；保留旧目录为 /opt/mooncci-reader-failed-时间戳，不删除旧现场。已成功安装的节点不使用这个首次安装器。

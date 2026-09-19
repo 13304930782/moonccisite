@@ -61,7 +61,7 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
     finally { if(counted)active--; }
   });
 }
-if (process.argv[1] && import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href) {
+if (process.argv[1] && import.meta.url===pathToFileURL(await realpath(process.argv[1])).href) {
   const server=createReader({origin:process.env.PRIMARY_ORIGIN,key:process.env.READER_KEY,dist:process.env.READER_DIST});
-  server.listen(Number(process.env.READER_PORT||3102),'127.0.0.1',()=>console.log('[reader] listening on loopback'));
+  server.listen(Number(process.env.READER_PORT||3102),'127.0.0.1',()=>console.log('[reader] listening on loopback:'+server.address().port));
 }

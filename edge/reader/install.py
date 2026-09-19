@@ -23,13 +23,35 @@ def check_package(package):
     if not re.fullmatch('[a-f0-9]{40}',revision):raise ValueError('Invalid revision')
     return revision
 
+def failed_install_matches(root,baseline):
+    # Recovery is limited to the exact known failed first-install tree, never a working node.
+    if root.is_symlink() or not root.is_dir() or (root/'INSTALL.json').exists():return False
+    marker=root/'INSTALL_FAILED'
+    if marker.is_symlink() or not marker.is_file() or marker.read_text()!='Inspect this isolated directory before retry.\n':return False
+    release=root/'releases'/baseline['revision']
+    current=root/'current'
+    if not current.is_symlink() or current.resolve()!=release.resolve():return False
+    expected={'INSTALL_FAILED','current'}
+    for name,sha in baseline['files'].items():
+        file=release/name
+        if file.is_symlink() or not file.is_file() or hashlib.sha256(file.read_bytes()).hexdigest()!=sha:return False
+        expected.add(file.relative_to(root).as_posix())
+    for item in root.rglob('*'):
+        if (item.is_symlink() or item.is_file()) and item.relative_to(root).as_posix() not in expected:return False
+    return True
+
 def main(package):
     if os.geteuid()!=0:raise ValueError('Root required')
     import fcntl,pwd
     with open('/run/mooncci-reader-install.lock','w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         revision=check_package(package)
-        if ROOT.exists() or ROOT.is_symlink() or ENV.exists() or ENV.is_symlink() or UNIT.exists() or UNIT.is_symlink():raise ValueError('Existing installation/config detected; first-install tool refuses overwrite')
+        if ENV.exists() or ENV.is_symlink() or UNIT.exists() or UNIT.is_symlink():raise ValueError('Existing configuration detected; refusing overwrite')
+        recover=False
+        if ROOT.exists() or ROOT.is_symlink():
+            baseline=json.loads((package/'edge/reader/failed-install-baseline.json').read_text())
+            if not failed_install_matches(ROOT,baseline):raise ValueError('Unknown existing installation; refusing overwrite')
+            recover=True
         loaded=subprocess.check_output(['systemctl','show','mooncci-reader.service','--property=LoadState','--value'],text=True).strip()
         if loaded!='not-found':raise ValueError('A reader unit already exists; refusing replacement')
         try:pwd.getpwnam('mooncci-reader')
@@ -40,6 +62,12 @@ def main(package):
         if version!='v22.23.1':raise ValueError('Unexpected runtime; inspect before install')
         with socket.socket() as sock:sock.bind(('127.0.0.1',3102))
         run([str(NODE),'--test',str(package/'test/read-router.test.cjs')],cwd=package)
+        if recover:
+            # Same filesystem rename preserves all failed files; no recursive deletion.
+            saved=ROOT.with_name(ROOT.name+'-failed-'+str(time.time_ns()))
+            if saved.exists():raise ValueError('Recovery backup collision')
+            ROOT.rename(saved)
+            print('Preserved verified failed installation: '+str(saved),flush=True)
         print('Preflight passed; installing isolated reader only.',flush=True)
         user_created=False;root_created=False;unit_created=False;env_created=False
         try:
@@ -63,7 +91,7 @@ def main(package):
             for attempt in range(30):
                 try:
                     request=urllib.request.Request('http://127.0.0.1:3102/_reader/health',headers={'X-Mooncci-Reader-Key':key})
-                    with urllib.request.urlopen(request,timeout=2) as response:
+                    with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request,timeout=2) as response:
                         if response.status==200 and response.read()==b'ok':break
                 except Exception:pass
                 time.sleep(1)
@@ -75,6 +103,7 @@ def main(package):
         except BaseException:
             # Remove only files/accounts created by this invocation; retain failed release for diagnosis.
             if unit_created:
+                subprocess.run(['journalctl','-u','mooncci-reader.service','-n','40','--no-pager'],check=False)
                 subprocess.run(['systemctl','disable','--now','mooncci-reader.service'],check=False)
                 UNIT.unlink();subprocess.run(['systemctl','daemon-reload'],check=False)
             if env_created:ENV.unlink()

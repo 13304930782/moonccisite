@@ -56,3 +56,19 @@ test('reader bounds concurrent upstream work and rejects routed origin configura
  release();for(const response of await Promise.all(pending))assert.equal(await response.text(),'ok');
  assert.equal((await fetch(endpoint,{headers})).status,200);
 });
+
+test('CLI starts through current directory symlink and serves protected health',async t=>{
+ const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:os'),{spawn}=require('node:child_process');
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'mooncci-entry-'));
+ await fs.symlink(path.resolve(__dirname,'../edge'),path.join(root,'current'),process.platform==='win32'?'junction':'dir');
+ const child=spawn(process.execPath,[path.join(root,'current/reader/server.mjs')],{env:{...process.env,PRIMARY_ORIGIN:'https://origin.example.test',READER_KEY:key,READER_DIST:root,READER_PORT:'0'},stdio:['ignore','pipe','pipe']});
+ t.after(async()=>{if(child.exitCode===null){const ended=new Promise(r=>child.once('exit',r));child.kill();await ended;}await fs.rm(root,{recursive:true,force:true});});
+ const port=await new Promise((resolve,reject)=>{
+  let output='';const timer=setTimeout(()=>reject(Error('CLI did not listen')),8000);
+  child.once('exit',code=>{clearTimeout(timer);reject(Error('CLI exited before listening: '+code));});
+  child.once('error',error=>{clearTimeout(timer);reject(error);});
+  child.stdout.on('data',data=>{output+=data;const m=output.match(/loopback:(\d+)/);if(m){clearTimeout(timer);resolve(Number(m[1]));}});
+ });
+ const r=await fetch(`http://127.0.0.1:${port}/_reader/health`,{headers:{'X-Mooncci-Reader-Key':key}});
+ assert.equal(r.status,200);assert.equal(await r.text(),'ok');
+});
