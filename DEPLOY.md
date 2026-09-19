@@ -719,8 +719,11 @@ tail -n 40 /www/backup/proxy-ipv4-rollback.log
 
 ## 双服务器内部验证版（未切换流量）
 
-美国主机 107.174.123.42 / Ubuntu / 宝塔，已有 cuegroveapp.com。使用独立用户、目录、3102 本机端口及独立源站域名，禁止覆盖原网站或默认 Nginx 配置。当前 SSH 无可用密钥，待用户在 PowerShell 运行 `scripts/Probe-ReaderHost.ps1` 返回只读环境信息后生成匹配该机的安装命令。
+美国主机 107.174.123.42 / Ubuntu / 宝塔，已有 cuegroveapp.com。使用独立用户、目录、3102 本机端口及独立源站域名，禁止覆盖原网站或默认 Nginx 配置。当前 SSH 无可用密钥，用户已提供只读环境信息：Ubuntu 24.04.4、宝塔 Node 22.23.1、3102 空闲；专用首次安装器据此准备。
 
-`python scripts/build-reader-node-package.py` 生成美国阅读节点专用离线包，复用 `.cache/maintenance-release.json` 对应生产版本的静态资源，不在美国服务器构建前端或拉取 GitHub。Worker 单文件为包内 WORKER.mjs；默认关闭、仅准备 preview 模式。Node 24+ 运行时独立安装，不改已有网站的运行时。无需 MySQL、生产 .env 或账号密钥。
+`python scripts/build-reader-node-package.py` 生成美国阅读节点专用离线包，复用 `.cache/maintenance-release.json` 对应生产版本的静态资源，不在美国服务器构建前端或拉取 GitHub。Worker 单文件为包内 WORKER.mjs；默认关闭、仅准备 preview 模式。独立服务使用已验证的宝塔 Node 22.23.1 路径，不升级或替换已有网站的运行时。无需 MySQL、生产 .env 或账号密钥。
 
 动态 HTML/API 继续 no-store，草稿附件不进入节点；当前仅静态资源及公开匿名转发，不宣称已完成动态缓存与失效。账号额度监控、公开媒体同步及跨境性能实测仍在上线门槛内。完整操作边界见 cloudflare/read-router/README.md。
+
+
+美国首次安装入口为 `scripts/Upload-ReaderNode.ps1`。服务器安装器只使用已有 `/www/server/nodejs/v22.23.1/bin/node`，精确版本不符则停止；通过节点本机测试后，启用独立 systemd 服务，不改宝塔 Nginx/DNS，不重启 PM2。检查日志出现 `Reader local installation complete. Public routing remains OFF.` 后，再进行源站域名、证书和 Worker 内部验证。BOM 问题已在只读检查工具中改用无 BOM UTF-8 的 Base64 传输修复。

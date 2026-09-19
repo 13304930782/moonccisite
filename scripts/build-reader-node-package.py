@@ -18,6 +18,7 @@ for directory in ['edge/shared','edge/reader','cloudflare/read-router']:
  for p in (root/directory).iterdir():
   if p.is_file():entries[p.relative_to(root).as_posix()]=p.read_bytes()
 subprocess.run(['node','-e',"require('esbuild').buildSync({entryPoints:['cloudflare/read-router/worker.mjs'],bundle:true,format:'esm',platform:'browser',target:'es2022',outfile:'.cache/read-router-worker.mjs'})"],cwd=root,check=True)
+entries['test/read-router.test.cjs']=(root/'test/read-router.test.cjs').read_bytes()
 entries['WORKER.mjs']=(root/'.cache/read-router-worker.mjs').read_bytes()
 entries['REVISION']=(revision+'\n').encode();entries['FRONTEND_REVISION']=(release['revision']+'\n').encode()
 entries['SHA256SUMS']=''.join(hashlib.sha256(b).hexdigest()+'  '+n+'\n' for n,b in sorted(entries.items())).encode()

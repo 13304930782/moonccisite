@@ -12,12 +12,16 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
   if (['mooncci.site','www.mooncci.site'].includes(new URL(origin).hostname)) throw new Error('Use a direct primary origin, never the routed public domain');
   if (!key || key.length < 32 || /REPLACE|EXAMPLE/i.test(key)) throw new Error('Reader key must contain at least 32 characters');
   dist = path.resolve(dist);
+  let active=0;
   return http.createServer(async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-Content-Type-Options','nosniff');
+    let counted=false;
     const stop=(status,text)=>{res.writeHead(status,{'Content-Type':'text/plain; charset=utf-8'});res.end(text);};
     try {
       if (!equal(req.headers['x-mooncci-reader-key'],key)) return stop(403,'Forbidden');
+      if(active>=8)return stop(503,'Reader busy');
+      active++;counted=true;
       if (req.method==='GET' && req.url==='/_reader/health') return stop(200,'ok');
       if (!req.url.startsWith('/') || req.url.startsWith('//') || /%|\\/.test(req.url.split('?')[0])) return stop(404,'Not found');
       const url=new URL(req.url,'https://mooncci.site');
@@ -54,6 +58,7 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
       for(const name of ['content-type','etag','last-modified','x-robots-tag']) if(response.headers.has(name))outgoing[name]=response.headers.get(name);
       res.writeHead(response.status,outgoing);res.end(req.method==='HEAD'?undefined:body);
     } catch { if(!res.headersSent)stop(502,'Reader upstream unavailable');else res.destroy(); }
+    finally { if(counted)active--; }
   });
 }
 if (process.argv[1] && import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href) {

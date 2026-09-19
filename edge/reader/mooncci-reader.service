@@ -7,7 +7,7 @@ User=mooncci-reader
 Group=mooncci-reader
 WorkingDirectory=/opt/mooncci-reader/current
 EnvironmentFile=/etc/mooncci-reader.env
-ExecStart=/opt/mooncci-reader-node/bin/node /opt/mooncci-reader/current/edge/reader/server.mjs
+ExecStart=/www/server/nodejs/v22.23.1/bin/node --max-old-space-size=128 /opt/mooncci-reader/current/edge/reader/server.mjs
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
@@ -16,5 +16,6 @@ ProtectSystem=strict
 ProtectHome=true
 MemoryMax=256M
 TasksMax=64
+CPUQuota=50%
 [Install]
 WantedBy=multi-user.target

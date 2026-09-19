@@ -1,6 +1,6 @@
 # 免费分流：内部验证版，尚未上线
 
-美国主机：107.174.123.42，Ubuntu + 宝塔，现有站点 cuegroveapp.com。已有 SSH 密钥无法登录；尚未检查版本、端口、站点配置或证书。
+美国主机：107.174.123.42，Ubuntu + 宝塔，现有站点 cuegroveapp.com。已有 SSH 密钥无法登录；已通过用户只读输出确认 Ubuntu 24.04.4、Node 22.23.1、3102 空闲，现有 cuegroveapp.com 与 mail.cuegroveapp.com；证书与源站域名仍待配置。
 
 ## 当前行为
 
@@ -13,7 +13,7 @@ ROUTING_ENABLED 默认 false；MODE 默认 preview；没有生产 Route。previe
 ## 部署顺序
 
 1. 运行 scripts/Probe-ReaderHost.ps1，确认系统、Node、3102 端口与宝塔站点；不要在聊天里发 SSH 密码。
-2. 独立 mooncci-reader 用户及 /opt/mooncci-reader 目录；Node 24+ 使用独立 /opt/mooncci-reader-node/bin/node，不升级旧站正在使用的运行时。离线包 SHA256SUMS 校验后解压到版本目录，current 指向它。不要覆盖未知目录。
+2. 独立 mooncci-reader 用户及 /opt/mooncci-reader 目录；使用已验证的 /www/server/nodejs/v22.23.1/bin/node，只读取该运行时，不升级或替换原站 Node。离线包 SHA256SUMS 校验后解压到版本目录，current 指向它。不要覆盖未知目录。
 3. /etc/mooncci-reader.env 使用 root:root 600。PRIMARY_ORIGIN 必须直达国内独立 HTTPS 源站域名（例如 origin-cn.mooncci.site），不能填 mooncci.site 或美国节点域名，避免循环。国内新域名使用同一 Nginx 公开读取路由及有效 TLS；不改主域 DNS。新源站域名尚未创建。
 4. 安装专用 service，确保 3102 仅监听本机。宝塔新建 reader-origin.mooncci.site，仅该新站使用 nginx-location.conf。配置证书，nginx -t 后才 reload，前后检查 cuegroveapp.com；不修改原站配置。
 5. 上传 Worker，设置 READER_ORIGIN、READER_KEY、PREVIEW_KEY；先 ROUTING_ENABLED=false。创建 mooncci.site/* Route，不覆盖更具体的登录代理路由，不给源站子域加 Worker。主域 DNS 保持国内，Route 超额设 Fail open。
@@ -28,3 +28,14 @@ ROUTING_ENABLED 默认 false；MODE 默认 preview；没有生产 Route。previe
 
 官方额度与 Fail open：https://developers.cloudflare.com/workers/platform/limits/
 Route：https://developers.cloudflare.com/workers/configuration/routing/routes/
+
+
+## Ubuntu 24.04 宝塔主机首次安装
+
+Windows 执行 `powershell -ExecutionPolicy Bypass -File "C:\Users\Administrator\Documents\mooncci site\scripts\Upload-ReaderNode.ps1"`，上传到美国服务器 root 家目录；复制脚本输出的命令到美国服务器 SSH 窗口。安装在 nohup 子进程执行，日志写入 `/www/backup/mooncci-reader-preview-版本.log`。
+
+首次安装器会检查所有包内 SHA256、精确 Node 22.23.1、服务/账号/目录未被占用和 3102 端口，然后在服务器实际 Node 上跑隔离测试。通过后只创建 mooncci-reader 用户、/opt/mooncci-reader、/etc/mooncci-reader.env 及专用 systemd 服务。生成随机 64 位十六进制节点密钥，配置文件权限 600，不打印密钥。CPU 上限半核，内存上限 256MB。已有目录、账号或配置一律停止，避免覆盖未知内容。
+
+成功标志为 `Reader local installation complete. Public routing remains OFF.`，仅证明本机节点进程可用。源站域名/TLS、宝塔新增域名和 Cloudflare 尚未配置，不能据此认定海外分流上线。后续需要 `origin-cn.mooncci.site`（国内 IP 182.92.179.81）与 `reader-origin.mooncci.site`（美国 IP 107.174.123.42）两个源站子域；当前只是约定名称，没有自动创建 DNS。
+
+查看日志：`journalctl -u mooncci-reader.service -n 60 --no-pager`。停用/回退这个本机节点：`systemctl disable --now mooncci-reader.service`，不会停用 cuegroveapp.com、邮件、MySQL 或现有 PM2。若未来分流已上线，先将 ROUTING_ENABLED=false，再停节点。安装失败会停用本次新服务并移除本次新配置，保留隔离目录供排查，不自动删除未知目录。

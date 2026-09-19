@@ -41,3 +41,18 @@ test('reader HTTP service refuses authentication, writes and draft uploads; uses
  let r=await fetch(url+'/api/posts',{headers:auth});assert.equal(await r.text(),'public');assert.equal(r.headers.get('cache-control'),'no-store');assert.equal(calls[0].url.origin,'https://primary.example.test');assert.equal(calls[0].options.headers.has('X-Mooncci-Reader-Key'),false);
  r=await fetch(url+'/assets/index-abcd.js',{headers:auth});assert.equal(await r.text(),'console.log(1)');assert.match(r.headers.get('cache-control'),/immutable/);
 });
+
+test('reader bounds concurrent upstream work and rejects routed origin configuration',async t=>{
+ const {createReader}=await import('../edge/reader/server.mjs');
+ assert.throws(()=>createReader({origin:'https://mooncci.site',key,dist:'.'}),/direct primary/);
+ assert.throws(()=>createReader({origin:'https://origin.example.test',key:'REPLACE_WITH_RANDOM_SECRET_AT_LEAST_32_CHARACTERS',dist:'.'}),/Reader key/);
+ let release,started=0;const gate=new Promise(r=>release=r);
+ const server=createReader({origin:'https://primary.example.test',key,dist:'.',fetcher:async()=>{started++;await gate;return new Response('ok');}});
+ server.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(async()=>{release();await new Promise(r=>server.close(r));});
+ const endpoint=`http://127.0.0.1:${server.address().port}/api/posts`;const headers={'X-Mooncci-Reader-Key':key};
+ const pending=Array.from({length:8},()=>fetch(endpoint,{headers}));
+ for(let n=0;n<100&&started<8;n++)await new Promise(r=>setTimeout(r,10));
+ assert.equal(started,8);assert.equal((await fetch(endpoint,{headers})).status,503);
+ release();for(const response of await Promise.all(pending))assert.equal(await response.text(),'ok');
+ assert.equal((await fetch(endpoint,{headers})).status,200);
+});

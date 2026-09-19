@@ -16,5 +16,7 @@ printf '\n--- Free disk and memory ---\n'
 df -h / /www 2>/dev/null
 free -m
 "@
-$probe | & ssh -o ConnectTimeout=15 $Server "tr -d '\r' | bash"
+$cleanProbe = $probe.Replace("`r", '').TrimStart([char]0xFEFF)
+$encodedProbe = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($cleanProbe))
+& ssh -o ConnectTimeout=15 $Server "printf '%s' '$encodedProbe' | base64 -d | bash"
 if ($LASTEXITCODE -ne 0) { throw 'Read-only probe failed; no deployment was attempted.' }
