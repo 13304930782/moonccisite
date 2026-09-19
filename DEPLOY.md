@@ -658,3 +658,44 @@ su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; p
 ' > /www/backup/dependency-diagnostics-rollback.log 2>&1 < /dev/null &
 tail -n 40 /www/backup/dependency-diagnostics-rollback.log
 ```
+
+## Proxy-only IPv4 mitigation
+
+Build `python -X utf8 scripts/build-proxy-ipv4-release.py`; upload with
+`powershell -ExecutionPolicy Bypass -File scripts/Upload-ProxyIPv4.ps1`.
+This package requires the dependency diagnostics patch baseline and contains only
+`src/lib/proxyTransport.js`, `src/lib/dependencyHealth.js`,
+`src/lib/socialProviders.js`, `src/lib/googleIdentity.js`. It replaces no frontend,
+configuration, dependencies, uploads or SQL; unrelated reader features are excluded.
+The API is restarted after backing up existing files. Failure restores those files.
+The new unreferenced helper may remain after rollback. The uploader prints the
+verified child-shell/nohup commands and PM2 diagnostic log command.
+
+Only the configured Google certificate URL and configured GitHub proxy routes
+/token, /user, /emails use HTTPS family=4 and autoSelectFamily=false. TLS hostname
+and certificate verification remain enabled; DNS still resolves current IPv4
+addresses (no pinned Cloudflare IPs). Other providers keep their existing fetch
+transport. OAuth request bodies/headers and response validation are preserved.
+There are no redirects or retries, especially no replay of token exchange.
+All affected calls retain a 10-second total AbortSignal deadline; Google's old
+6-second socket inactivity timeout is replaced with a 10-second total deadline.
+Health-probe result fields/cache and sanitized diagnostics remain unchanged.
+
+This mitigates unavailable IPv6 and premature dual-stack address attempts on the
+current host, but does not establish the prior incident's unique root cause or
+eliminate IPv4 packet loss. After deployment, confirm both dependency endpoints
+return 200/ok=true, and perform Google/GitHub login using a real account. Observe
+subsequent Better Stack events and correlate checkedAt with diagnostic logs.
+Read-only diagnosis remains available in scripts/diagnose-dependency-network.cjs.
+
+Manual rollback (replace BACKUP with the printed backup directory):
+```bash
+nohup bash -c '
+set -eu
+exec 9>/www/backup/mooncci-deploy.lock
+flock -w 120 9
+tar -xpf /www/backup/mooncci-proxy-ipv4.BACKUP/server-before.tar -C /www/wwwroot/mooncci-source/server
+su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; pm2 restart mooncci-api"
+' > /www/backup/proxy-ipv4-rollback.log 2>&1 < /dev/null &
+tail -n 40 /www/backup/proxy-ipv4-rollback.log
+```

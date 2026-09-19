@@ -1,3 +1,4 @@
+const proxyTransport = require('./proxyTransport');
 const { X509Certificate, createPublicKey } = require('node:crypto');
 class ProbeError extends Error { constructor(reason) { super(reason); this.reason = reason; } }
 const fail = reason => new ProbeError(reason);
@@ -19,7 +20,7 @@ async function json(response) {
   }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw fail('invalid_json'); }
 }
-function createDependencyHealth({ env = process.env, fetcher = fetch, now = Date.now, ttl = 60000, timeout = 10000, logger = event => console.warn('[dependency-health]', JSON.stringify(event)) } = {}) {
+function createDependencyHealth({ env = process.env, fetcher = (...args) => proxyTransport.fetch(...args), now = Date.now, ttl = 60000, timeout = 10000, logger = event => console.warn('[dependency-health]', JSON.stringify(event)) } = {}) {
   const cache = new Map(); const pending = new Map(); const previous = new Map();
   async function probe(id) {
     const started = now(); const signal = AbortSignal.timeout(timeout);
