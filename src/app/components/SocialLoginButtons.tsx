@@ -30,7 +30,7 @@ export function SocialLoginButtons({ context = 'signin', disabled, onError, retu
     <div className="auth-social-grid">
       {providers.filter(p => p.provider !== 'google').map(p =>
         <button type="button" className="auth-social-button" key={p.provider} disabled={disabled || Boolean(busy)} onClick={() => void start(p.provider)} aria-label={`使用 ${p.name} ${context === 'signup' ? '注册' : '登录'}`}>
-          <img src={`/login-icons/${p.provider}.svg`} alt="" width="22" height="22" />
+          <img className={['github', 'gitee', 'qq', 'wechat'].includes(p.provider) ? 'auth-social-icon-monochrome' : undefined} src={`/login-icons/${p.provider}.svg`} alt="" width="22" height="22" />
           <span>{busy === p.provider ? '跳转中…' : p.name}</span>
         </button>)}
     </div>

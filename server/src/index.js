@@ -135,6 +135,7 @@ app.get('/api/health', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json({ ok: true });
 });
+app.use('/api/health/dependencies', require('./routes/dependencyHealth').createRouter());
 app.use('/api/auth', authLimiter, require('./routes/socialLogin'));
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);

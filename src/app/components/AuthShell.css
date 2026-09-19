@@ -192,7 +192,7 @@ html.auth-touch-page,
 .auth-social-button:hover { background: var(--muted); }
 .auth-social-button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 .auth-social-button:disabled { opacity: .5; cursor: wait; }
-.dark .auth-social-button img { filter: invert(1); }
+.dark .auth-social-icon-monochrome { filter: invert(1); }
 
 /* Local Google button: no external script, iframe or font required. */
 .auth-google-local { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #747775; border-radius: 6px; background: #fff; color: #1f1f1f; font: 500 14px/20px Arial, sans-serif; cursor: pointer; }

@@ -474,3 +474,37 @@ Local acceptance: `npm run check`, `npm --prefix server test`, `node scripts/tes
 `node scripts/test-blog-pages-admin-browser.cjs`. MySQL-dependent integration tests still require the configured
 test database; skipped tests are not evidence of a live database deployment. Production Nginx checks run on
 activation, not in the Windows development environment.
+
+
+## Dependency monitoring (Better Stack)
+
+Build: `python -X utf8 scripts/build-dependency-health-release.py`.
+Upload: `powershell -ExecutionPolicy Bypass -File scripts/Upload-DependencyHealth.ps1`.
+Run the printed server commands in a child shell; deploy uses nohup, backs up the
+three scoped backend files and frontend entry, and restarts only mooncci-api.
+No migrations, dependency installs, environment replacement or upload changes.
+Requires the already deployed blog-foundation stage 3 index baseline; unexpected
+production modifications stop the release. Failure restores the old entry and
+backend files; new unreferenced modules may remain on disk after rollback.
+
+Create GET monitors at 3 minute intervals, with a request timeout of at least
+15 seconds:
+- `/api/posts?format=paged&page=1&pageSize=1`: public article/database service.
+- `/api/health/dependencies/google`: server to configured GOOGLE_CERTS_URL,
+  requiring a parseable currently valid X509 certificate in the response.
+- `/api/health/dependencies/microsoft`: server to Microsoft discovery and RSA
+  signing keys, restricted to Microsoft's identity host.
+
+Dependency endpoints return 200 with ok=true or 503 with ok=false. Unknown IDs
+return 404. Results (including failures) are cached for 60 seconds per API process;
+concurrent requests share one probe. Checks have a 10 second total timeout, 256 KiB
+response limit, no redirects, and a 30 requests/minute/IP route limit in addition
+to the global API limiter. Clients cannot specify target URLs. Only non-sensitive
+status, timestamp and elapsed time are public. Probes run on demand, not on a timer;
+Better Stack supplies the schedule. A cached response retains its probe timestamp.
+These are connectivity/dependency checks, not full OAuth login or client-secret
+validation. GitHub currently returns 503 not_configured; do not add its monitor
+until use of the proxy credential has been approved and implemented.
+
+This release also includes the pending frontend fix preserving the Microsoft
+four-color logo in dark mode. No GitHub push is required for offline deployment.
