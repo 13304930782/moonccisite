@@ -2,3 +2,7 @@
 *.sql text eol=lf
 *.sha256 text eol=lf
 scripts/*-baseline.json text eol=lf
+
+scripts/ops/* text eol=lf
+scripts/build-maintenance-release.py text eol=lf
+scripts/Upload-Maintenance.ps1 text eol=lf

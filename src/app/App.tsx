@@ -21,6 +21,7 @@ const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const AdminRuntimePage = lazy(() => import('./pages/AdminRuntimePage'));
 const AdminAnalyticsPage = lazy(() => import('./pages/AdminAnalyticsPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const AdminPostsPage = lazy(() => import('./pages/AdminPostsPage'));
@@ -159,6 +160,7 @@ export default function App() {
           <Route path="/admin/write" element={<Guard writerOnly><AdminShell><AdminWritePage /></AdminShell></Guard>} />
           <Route path="/admin/media" element={<Guard adminOnly><AdminShell><AdminMediaPage /></AdminShell></Guard>} />
           <Route path="/admin/posts/:id/edit" element={<Guard writerOnly><AdminShell><AdminWritePage /></AdminShell></Guard>} />
+          <Route path="/admin/runtime" element={<Guard adminOnly><AdminShell><AdminRuntimePage /></AdminShell></Guard>} />
           <Route path="/admin/analytics" element={<Guard adminOnly><AdminShell><AdminAnalyticsPage /></AdminShell></Guard>} />
           <Route path="/admin/users" element={<Guard adminOnly><AdminShell><AdminUsersPage /></AdminShell></Guard>} />
           <Route path="/admin/comments" element={<Guard adminOnly><AdminShell><AdminCommentsPage /></AdminShell></Guard>} />

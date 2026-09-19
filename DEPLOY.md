@@ -699,3 +699,19 @@ su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; p
 ' > /www/backup/proxy-ipv4-rollback.log 2>&1 < /dev/null &
 tail -n 40 /www/backup/proxy-ipv4-rollback.log
 ```
+
+
+## 2026-09 维护基础专用包
+
+新增 `/admin/runtime`，接口 `/api/admin/runtime` 仅 owner/admin 可读，响应 no-store。API 启动时间、worker 存活记录、真实迁移清单及应用磁盘状态分开显示。worker 90 秒无更新标为未知，不将进程存活当作任务成功。`server/runtime` 不进 Git，不包含账号或密钥；可用 `MOONCCI_RUNTIME_DIR` 改目录（部署记录仍使用默认目录，改目录时需同步部署工具）。
+
+构建：提交本地变更后运行 `python scripts/build-maintenance-release.py`，上传：`powershell -ExecutionPolicy Bypass -File scripts/Upload-Maintenance.ps1`。上传器验证 SHA256 并输出 nohup 子进程部署命令。服务器需 Python 3.9+。本包包含前端及 MANIFEST.json 中列出的后端文件，无依赖安装和迁移；旧哈希资源不删除。后台功能要求先完成修订历史、收藏两批迁移，缺失则部署停止，不自动执行历史 SQL。
+
+部署前逐项比对生产文件 SHA256，只接受已知基线或本次目标文件，发现未知改动停止。备份位于 `/www/backup/mooncci-manifest-*`。发生执行失败按清单恢复原文件并重启 API/worker；数据库、.env、uploads 和历史 SQL 始终不在替换范围。成功后记录发布包版本，不能把这个版本理解成所有后端文件均来自该提交。
+
+运维脚本在包内 ops/，**不会随网站部署自动安装、启用计时器或修改备份配置**。配置与验证步骤见 `scripts/ops/README.md`。每日备份、异地复制、月度完整恢复演练和 RPO/RTO 验收尚需目标环境配置及实际运行；仓库校验不等同于可恢复性验收。
+
+回滚成功部署时先停止下一次发布，用 MANIFEST.json 与备份逐项比对，确认在线文件仍为该包哈希；恢复备份中同名文件，对原来不存在的新文件仅删除清单记录的新增文件。保留旧哈希前端资源及全部新增数据表。不得整目录覆盖源站。自动失败回滚已包含上述文件级恢复；人工成功发布回滚在完成演练前不要用于生产。
+
+
+成功部署后如需回滚，使用该包内 `ops/rollback.py`，与同目录 `deploy.py` 一起放置后，在子进程运行：`nohup python3 /www/backup/包目录/ops/rollback.py /www/backup/mooncci-manifest-对应备份目录 > /www/backup/mooncci-rollback.log 2>&1 < /dev/null &`。工具先校验所有在线文件和备份，再恢复；发现后续修改即拒绝。用 `tail -n 60 /www/backup/mooncci-rollback.log` 检查结果。恢复中断时保留现场和备份，不重复覆盖未知文件。

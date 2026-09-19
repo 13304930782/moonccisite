@@ -204,6 +204,7 @@ export function AdminShell({ children }: AdminShellProps) {
     {
       title: '关于与友链', to: '/admin/blog-pages', icon: Settings, show: manager,
     },
+    { to: '/admin/runtime', title: '运行信息', icon: Gauge, show: isManager(role) },
     {
       title: '站点设置',
       to: '/admin/site-settings',
