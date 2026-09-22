@@ -21,3 +21,9 @@ test('highlighted HTML escapes article code instead of executing it',()=>{
  const result=highlightCode('<script>alert(1)</script><img src=x onerror=alert(1)>','html');
  assert.ok(!result.html.includes('<script>'));assert.ok(!result.html.includes('<img '));assert.match(result.html,/&lt;/);
 });
+
+test('summary comparison handles nested markup without emitting transformed HTML',()=>{
+ const summary='<scrip<script>removed</script>t>alert(1)</script>';
+ assert.equal(distinctArticleSummary(summary,'An unrelated article'),summary);
+ assert.equal(distinctArticleSummary('<b>abcdefghijklmnop</b>...', 'abcdefghijklmnop and more'), '');
+});
