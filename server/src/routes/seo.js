@@ -1,6 +1,8 @@
 const fs=require('node:fs/promises');const path=require('node:path');const seo=require('../lib/seo');
 function createSeoRouter({db,readTemplate=()=>fs.readFile(process.env.SEO_HTML_TEMPLATE||'/www/wwwroot/mooncci.site/index.html','utf8')}={}){
  const router=require('../lib/asyncRouter')();
+ // Includes document and sitemap routes outside the global /api limiter.
+ router.use(require('express-rate-limit')({windowMs:60000,limit:120,standardHeaders:true,legacyHeaders:false,message:{message:'Too many requests. Please try again later.'}}));
  async function metadata(pathname){
   const [[row]]=await db.query("SELECT setting_value FROM site_settings WHERE setting_key='brand' LIMIT 1");let brand={};try{brand=JSON.parse(row?.setting_value||'{}');}catch{}
   if(/^\/article\/\d+$/.test(pathname)){const [[post]]=await db.query("SELECT p.*,u.username AS author_name FROM posts p JOIN users u ON u.id=p.author_id WHERE p.id=? AND p.status='published'",[pathname.split('/').pop()]);if(post)return {status:200,meta:seo.articleMeta(post,brand)};return {status:404,meta:{...seo.baseMeta(pathname,brand),title:'文章不存在',description:'这篇文章不存在或未公开。',robots:'noindex, nofollow'}};}
