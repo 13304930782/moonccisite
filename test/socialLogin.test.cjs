@@ -15,7 +15,7 @@ test('login and signup show only enabled providers, preserve Google row and requ
       if (url.endsWith('/providers')) return Response.json({ providers: [{ provider: 'google', name: 'Google', client_id: 'retained-client' }, { provider: 'qq', name: 'QQ' }] });
       sent = [url, JSON.parse(options.body)]; return Response.json({ url: 'https://graph.qq.com/oauth2.0/authorize?state=fixture' });
     };
-    vm.runInNewContext(code, { module, exports: module.exports, require, window, fetch, FormData, Headers, console });
+    vm.runInNewContext(code, { module, exports: module.exports, require, window, fetch, FormData, Headers, AbortController, AbortSignal, setTimeout, clearTimeout, console });
     await act(async () => { root = create(React.createElement(module.exports.SocialLoginButtons, { context, onCredential: () => {}, onError: assert.fail, returnTo: '/electricity' })); });
     const buttons = root.root.findAllByType('button').filter(x => x.props['aria-label']);
     assert.equal(buttons.length, 2); assert.match(buttons[1].props['aria-label'], context === 'signup' ? /注册/ : /登录/);
