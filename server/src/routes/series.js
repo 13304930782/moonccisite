@@ -1,3 +1,5 @@
+// Keep sensitive routes bounded even when mounted independently of the main app.
+const routeLimiter = require('express-rate-limit')({windowMs:60000,limit:200,standardHeaders:true,legacyHeaders:false});
 const db=require('../db');
 const {authRequired,adminOnly}=require('../middleware/auth');
 const {error}=require('../lib/articlePublishing');
@@ -5,25 +7,25 @@ const router=require('../lib/asyncRouter')();
 router.use((req,res,next)=>require('../services/articleWorkflow').enabled()?next():res.status(404).json({message:'专栏功能尚未开启。'}));
 router.use((_req,res,next)=>{res.set('Cache-Control','no-store');res.vary('Cookie');res.vary('Authorization');next();});
 const guarded=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){if(e.status)return res.status(e.status).json({message:e.message});if(e.code==='ER_DUP_ENTRY')return res.status(409).json({message:'专栏链接已存在。'});throw e;}};
-router.get('/',guarded(async(req,res)=>{
+router.get('/',routeLimiter,guarded(async(req,res)=>{
  const admin=req.query.manage==='true';
  if(admin){const u=await require('../middleware/auth').getUserFromRequest(req);if(!u||u.status!=='active'||!['owner','admin'].includes(u.role))throw error('无权限。',403);res.set('Cache-Control','private, no-store');}
  const [items]=await db.query("SELECT s.*,COUNT(p.id) article_count FROM article_series s LEFT JOIN article_series_posts sp ON sp.series_id=s.id LEFT JOIN posts p ON p.id=sp.post_id AND p.status='published' GROUP BY s.id ORDER BY s.updated_at DESC");
  res.json({items:admin?items:items.filter(s=>Number(s.article_count)>0)});
 }));
-router.get('/article/:id',guarded(async(req,res)=>{
+router.get('/article/:id',routeLimiter,guarded(async(req,res)=>{
  const [[row]]=await db.query("SELECT s.* FROM article_series s JOIN article_series_posts sp ON sp.series_id=s.id JOIN posts p ON p.id=sp.post_id WHERE p.id=? AND p.status='published'",[req.params.id]);
  if(!row)return res.json(null);
  const [items]=await db.query("SELECT p.id,p.title FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? AND p.status='published' ORDER BY sp.position,p.id",[row.id]);
  const index=items.findIndex(x=>String(x.id)===req.params.id);
  res.json({series:row,previous:items[index-1]||null,next:items[index+1]||null});
 }));
-router.get('/manage/:id/articles',authRequired,adminOnly,guarded(async(req,res)=>{
+router.get('/manage/:id/articles',routeLimiter,authRequired,adminOnly,guarded(async(req,res)=>{
  res.set('Cache-Control','private, no-store');
  const [items]=await db.query('SELECT p.id,p.title,p.status FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? ORDER BY sp.position,p.id',[req.params.id]);
  res.json({items});
 }));
-router.get('/:slug',guarded(async(req,res)=>{
+router.get('/:slug',routeLimiter,guarded(async(req,res)=>{
  const [[series]]=await db.query('SELECT * FROM article_series WHERE slug=?',[req.params.slug]);
  if(!series)throw error('专栏不存在。',404);
  const [items]=await db.query("SELECT p.id,p.title,p.summary,p.cover_image,p.published_at FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? AND p.status='published' ORDER BY sp.position,p.id",[series.id]);
@@ -36,7 +38,7 @@ function values(body){
  if(!title||title.length>255||!/^[a-z0-9][a-z0-9-]{0,190}$/.test(slug)||description.length>10000||cover.length>500)throw error('请填写有效名称和小写字母、数字或连字符组成的链接。');
  return [title,slug,description,cover];
 }
-router.post('/',guarded(async(req,res)=>{
+router.post('/',routeLimiter,guarded(async(req,res)=>{
  const automatic=!String(req.body.slug||'').trim();
  for(let attempt=0;attempt<3;attempt++){
   const slug=automatic?(String(req.body.title||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'series')+'-'+require('crypto').randomBytes(6).toString('hex'):req.body.slug;
@@ -44,8 +46,8 @@ router.post('/',guarded(async(req,res)=>{
  }
  throw error('链接暂时无法生成，请重试。',503);
 }));
-router.put('/:id',guarded(async(req,res)=>{await db.query('UPDATE article_series SET title=?,slug=?,description=?,cover_image=? WHERE id=?',[...values(req.body),req.params.id]);res.json({ok:true});}));
-router.put('/:id/articles',guarded(async(req,res)=>{
+router.put('/:id',routeLimiter,guarded(async(req,res)=>{await db.query('UPDATE article_series SET title=?,slug=?,description=?,cover_image=? WHERE id=?',[...values(req.body),req.params.id]);res.json({ok:true});}));
+router.put('/:id/articles',routeLimiter,guarded(async(req,res)=>{
  const ids=req.body.post_ids;
  if(!Array.isArray(ids)||ids.length>300||ids.some(x=>!Number.isSafeInteger(x)||x<1)||new Set(ids).size!==ids.length)throw error('文章列表无效。');
  const c=await db.getConnection();try{await c.beginTransaction();
@@ -56,5 +58,6 @@ router.put('/:id/articles',guarded(async(req,res)=>{
  await c.commit();res.json({ok:true});
  }catch(e){await c.rollback();throw e;}finally{c.release();}
 }));
-router.delete('/:id',guarded(async(req,res)=>{await db.query('DELETE FROM article_series WHERE id=?',[req.params.id]);res.json({ok:true});}));
+router.delete('/:id',routeLimiter,guarded(async(req,res)=>{await db.query('DELETE FROM article_series WHERE id=?',[req.params.id]);res.json({ok:true});}));
 module.exports=router;
+

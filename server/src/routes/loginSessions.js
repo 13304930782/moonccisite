@@ -1,3 +1,5 @@
+// Keep sensitive routes bounded even when mounted independently of the main app.
+const routeLimiter = require('express-rate-limit')({windowMs:60000,limit:200,standardHeaders:true,legacyHeaders:false});
 const router=require('../lib/asyncRouter')();
 const db=require('../db');
 const crypto=require('crypto');
@@ -8,7 +10,7 @@ const {enabled,hash}=require('../services/loginSessions');
 router.use(authRequired);
 router.get('/security-config',(_req,res)=>res.json({enabled:enabled()}));
 router.use((_req,res,next)=>enabled()?next():res.status(404).json({message:'会话管理尚未启用。'}));
-router.get('/sessions',async(req,res)=>{
+router.get('/sessions',routeLimiter,async(req,res)=>{
  const [items]=await db.query(`SELECT s.id,s.first_seen,s.last_seen,s.expires_at,s.browser,s.os,s.legacy
  FROM login_sessions s WHERE s.user_id=? AND s.expires_at>?
  AND NOT EXISTS(SELECT 1 FROM auth_revocations r WHERE r.token_hash=s.token_hash)
@@ -16,14 +18,14 @@ router.get('/sessions',async(req,res)=>{
  ORDER BY s.last_seen DESC LIMIT 100`,[req.user.id,Date.now()]);
  res.json({items:items.map(s=>({...s,current:s.id===req.loginSessionId})),activityThrottleSeconds:300});
 });
-router.delete('/sessions/:id',async(req,res)=>{
+router.delete('/sessions/:id',routeLimiter,async(req,res)=>{
  const [[session]]=await db.query('SELECT token_hash,expires_at FROM login_sessions WHERE id=? AND user_id=?',[req.params.id,req.user.id]);
  if(!session)return res.status(404).json({message:'会话不存在。'});
  await db.query('INSERT IGNORE INTO auth_revocations(token_hash,expires_at) VALUES (?,?)',[session.token_hash,session.expires_at]);
  const current=session.token_hash===hash(getAuthTokenFromRequest(req));if(current)clearAuthCookie(req,res);
  res.json({ok:true,current});
 });
-router.post('/sessions/revoke-others',async(req,res)=>{
+router.post('/sessions/revoke-others',routeLimiter,async(req,res)=>{
  const token=getAuthTokenFromRequest(req),payload=jwt.verify(token,process.env.JWT_SECRET),c=await db.getConnection();let fresh;
  try{
  await c.beginTransaction();
@@ -45,3 +47,4 @@ router.post('/sessions/revoke-others',async(req,res)=>{
  setAuthCookie(req,res,fresh);res.json({ok:true});
 });
 module.exports=router;
+

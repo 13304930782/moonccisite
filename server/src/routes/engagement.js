@@ -1,3 +1,5 @@
+// Keep sensitive routes bounded even when mounted independently of the main app.
+const routeLimiter = require('express-rate-limit')({windowMs:60000,limit:200,standardHeaders:true,legacyHeaders:false});
 const db=require('../db'),crypto=require('crypto');
 const {authRequired}=require('../middleware/auth');
 const service=require('../services/engagement');
@@ -6,13 +8,14 @@ const fail=(message,status=400)=>Object.assign(Error(message),{status});
 router.use((_req,res,next)=>{res.set('Cache-Control','private, no-store');res.vary('Cookie');res.vary('Authorization');next();});
 router.get('/config',(_req,res)=>res.json({enabled:service.enabled()}));
 router.use((_req,res,next)=>service.enabled()?next():res.status(404).json({message:'功能尚未启用。'}));
-router.get('/unsubscribe',(req,res)=>{
+router.get('/unsubscribe',routeLimiter,(req,res)=>{
  if(!/^[a-f0-9]{64}$/.test(String(req.query.token))||!['comment','reply'].includes(req.query.kind))return res.status(400).send('链接无效');
  // A GET only displays confirmation, so mail security scanners cannot unsubscribe users.
- const token=String(req.query.token),kind=req.query.kind;
+ const {escape}=require('../lib/seo');
+ const token=escape(String(req.query.token)),kind=escape(req.query.kind);
  res.type('html').send('<meta charset="utf-8"><title>取消邮件通知</title><form method="post"><p>是否关闭这类评论邮件？站内通知会继续保留。</p><input type="hidden" name="token" value="'+token+'"><input type="hidden" name="kind" value="'+kind+'"><button>确认退订</button></form>');
 });
-router.post('/unsubscribe',require('express').urlencoded({extended:false}),async(req,res)=>{
+router.post('/unsubscribe',routeLimiter,require('express').urlencoded({extended:false}),async(req,res)=>{
  const {token,kind}=req.body;
  if(!/^[a-f0-9]{64}$/.test(String(token))||!['comment','reply'].includes(kind))throw fail('链接无效');
  await db.query('UPDATE engagement_preferences SET '+kind+'_email=0 WHERE unsubscribe_token=?',[token]);res.type('text').send('已关闭此类邮件通知。');
@@ -93,3 +96,4 @@ router.delete(['/history','/history/:postId'],async(req,res)=>service.transactio
 }));
 router.use((e,_req,res,_next)=>{if(!e.status)console.error('[engagement]',e.code||e.message);res.status(e.status||500).json({message:e.status?e.message:'操作失败，请稍后重试。'});});
 module.exports=router;
+

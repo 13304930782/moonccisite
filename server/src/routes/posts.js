@@ -1,3 +1,5 @@
+// Keep sensitive routes bounded even when mounted independently of the main app.
+const routeLimiter = require('express-rate-limit')({windowMs:60000,limit:200,standardHeaders:true,legacyHeaders:false});
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
@@ -217,7 +219,7 @@ router.put('/:id',authRequired,editorOrAdmin,publishGuard,writeHandler(async(c,r
  return {message:'更新成功'};
 }));
 
-router.delete('/:id', authRequired, editorOrAdmin, publishGuard, async (req, res) => {
+router.delete('/:id',routeLimiter, authRequired, editorOrAdmin, publishGuard, async (req, res) => {
  const c=await db.getConnection();
  try{
   await c.beginTransaction();
@@ -234,3 +236,4 @@ router.delete('/:id', authRequired, editorOrAdmin, publishGuard, async (req, res
 });
 
 module.exports = router;
+

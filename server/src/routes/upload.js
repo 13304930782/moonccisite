@@ -1,3 +1,5 @@
+// Keep sensitive routes bounded even when mounted independently of the main app.
+const routeLimiter = require('express-rate-limit')({windowMs:60000,limit:200,standardHeaders:true,legacyHeaders:false});
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -427,7 +429,7 @@ async function permanentlyDeleteMedia(filename) {
   return { filename, ok: true };
 }
 
-router.get('/media', authRequired, contributor, async (req, res) => {
+router.get('/media',routeLimiter, authRequired, contributor, async (req, res) => {
   try {
     if(isManager(req.user)||!require('../services/articleWorkflow').enabled())await syncMediaRecords();
 
@@ -836,3 +838,4 @@ module.exports = {
   router,
   uploadDir,
 };
+

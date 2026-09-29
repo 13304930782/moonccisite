@@ -1,9 +1,11 @@
+// Keep sensitive routes bounded even when mounted independently of the main app.
+const routeLimiter = require('express-rate-limit')({windowMs:60000,limit:200,standardHeaders:true,legacyHeaders:false});
 const router=require('../lib/asyncRouter')(),db=require('../db');
 const {authRequired,adminOnly}=require('../middleware/auth');
 router.use(authRequired,adminOnly);
 router.get('/config',(_req,res)=>res.json({enabled:require('../services/loginSessions').enabled()}));
 router.use((_req,res,next)=>require('../services/loginSessions').enabled()?next():res.status(404).json({message:'运营概览尚未启用。'}));
-router.get('/mail-failures',async(_req,res)=>{
+router.get('/mail-failures',routeLimiter,async(_req,res)=>{
  const [items]=await db.query("SELECT notification_id,attempts,last_error FROM notification_mail_jobs WHERE state='failed' ORDER BY notification_id DESC LIMIT 20");
  res.json({items:items.map(j=>({id:j.notification_id,attempts:j.attempts,reason:'邮件发送失败；现有记录未保留更细的原因。'}))});
 });
@@ -31,7 +33,7 @@ function range(query){
  if(span<1||span>90||end>today)throw Error('日期范围须为 1 至 90 天，且不能晚于今天。');
  return {start,end,days:span};
 }
-router.get('/',async(req,res)=>{
+router.get('/',routeLimiter,async(req,res)=>{
  let r;try{r=range(req.query);}catch{return res.status(400).json({message:'请选择有效的 1 至 90 天日期范围。'});}
  const {start,end}=r,startEpoch=Date.parse(start+'T00:00:00Z')/1000,endEpoch=Date.parse(end+'T00:00:00Z')/1000+86400;
  const [[workflows],[totals],[rank],[trend],[meta],[tasks],[mailFailures]]=await Promise.all([
@@ -48,3 +50,4 @@ router.get('/',async(req,res)=>{
  res.json({...r,timezone:'UTC',startedAt,partial:!startedDay||start<startedDay,summary:{pending:counts.submitted||0,scheduled:counts.scheduled||0,failed:counts.failed||0,mailFailed:Number(mailFailures[0].count),comments:Number(totals[0].comments),bookmarks:Number(totals[0].bookmarks),views:trend.reduce((n,x)=>n+Number(x.views),0)},articles:rank,tasks,trend:Array.from({length:r.days},(_,i)=>{const day=new Date(Date.parse(start)+i*86400000).toISOString().slice(0,10);return {day,views:!startedDay||day<startedDay?null:map.get(day)||0};})});
 });
 module.exports=router;
+
