@@ -19,3 +19,24 @@ test('archive and discovery limits reject excessive requests before querying',as
  for(const path of ['/archives','/1/discovery'])assert.equal((await fetch(base+path)).status,429);
  assert.equal(reads,before);
 });
+
+test('SEO limits isolate forwarded clients and do not consume unrelated API requests',async t=>{
+ const app=express();app.set('trust proxy','loopback');
+ app.use(createSeoRouter({db:{query:async()=>[[]]}}));
+ app.get('/api/health',(_req,res)=>res.json({ok:true}));
+ const base=await listen(t,app);
+ const first={'X-Forwarded-For':'198.51.100.10'},second={'X-Forwarded-For':'198.51.100.11'};
+ for(let i=0;i<125;i++)assert.equal((await fetch(base+'/api/health',{headers:first})).status,200);
+ for(let i=0;i<120;i++)assert.equal((await fetch(base+'/sitemap.xml',{headers:first})).status,200);
+ assert.equal((await fetch(base+'/sitemap.xml',{headers:first})).status,429);
+ assert.equal((await fetch(base+'/sitemap.xml',{headers:second})).status,200);
+ assert.equal((await fetch(base+'/api/health',{headers:first})).status,200);
+});
+
+test('SEO Nginx proxy locations forward client addresses',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const config=fs.readFileSync(path.join(__dirname,'../../scripts/nginx-blog-seo.conf'),'utf8');
+ const blocks=[...config.matchAll(/location\s+[^\{]+\{([^}]+)\}/g)].map(match=>match[1]).filter(body=>body.includes('proxy_pass'));
+ assert.equal(blocks.length,3);
+ for(const block of blocks)assert.match(block,/proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;/);
+});
