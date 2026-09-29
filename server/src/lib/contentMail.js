@@ -1,8 +1,8 @@
 const { renderBrandedEmail } = require('./mailTemplate');
-function subscriptionConfirmation(url) {
+function subscriptionConfirmation(url, unsubscribe) {
   return {
-    text: `确认订阅 mooncci 周报\n\n确认后，每周一北京时间 09:00 有更新时发送上周摘要。此链接 24 小时内有效。\n\n确认订阅：${url}\n\n如果不是你本人操作，请忽略此邮件。`,
-    html: renderBrandedEmail({ eyebrow: '邮件订阅', title: '确认订阅 mooncci 周报', intro: '再确认一步，就能收到文章、近况与作品进展。', paragraphs: ['确认后，每周一北京时间 09:00 有更新时发送上周摘要，没有新内容时不发送。', '确认链接在 24 小时内有效。如果不是你本人操作，请忽略此邮件。'], cta: { label: '确认订阅', url } }),
+    text: `确认订阅 mooncci 周报\n\n确认后，每周一北京时间 09:00 有更新时发送上周摘要。此链接 24 小时内有效。\n\n确认订阅：${url}\n\n如果不是你本人操作，请忽略此邮件。${unsubscribe ? `\n\n取消订阅（无需登录）：${unsubscribe}` : ''}`,
+    html: renderBrandedEmail({ eyebrow: '邮件订阅', title: '确认订阅 mooncci 周报', intro: '再确认一步，就能收到文章、近况与作品进展。', paragraphs: ['确认后，每周一北京时间 09:00 有更新时发送上周摘要，没有新内容时不发送。', '确认链接在 24 小时内有效。如果不是你本人操作，请忽略此邮件。'], cta: { label: '确认订阅', url }, actions: unsubscribe ? [{label:'取消订阅（无需登录）',url:unsubscribe}] : [], footer: '你可以随时通过邮件底部的链接取消周报订阅。' }),
   };
 }
 function newsletterMessage(items, origin, unsubscribe) {

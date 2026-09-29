@@ -24,9 +24,8 @@ function readCookie(req, name) {
   const part = String(req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith(`${name}=`));
   return part ? part.slice(name.length + 1) : '';
 }
-function returnTo(value) {
-  return typeof value === 'string' && /^\/electricity(?:\?roomId=[a-f0-9-]{36})?$/.test(value) ? value : '/';
-}
+const {loginDestination}=require('../lib/loginDestination');
+const returnTo=value=>loginDestination(value)||'/';
 const validEmail = value => typeof value === 'string' && value.length <= 120 && /^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i.test(value) && !value.endsWith('.invalid');
 const pendingCookie = 'mooncci_registration';
 async function createPending(req, res, provider, config, identity, state) {
@@ -42,9 +41,9 @@ function pendingHash(req) {
   return /^[a-f0-9]{64}$/.test(token) ? sha256(token) : '';
 }
 router.get('/registration', readLimiter, async (req, res) => {
-  const [rows] = await db.query('SELECT provider FROM oauth_registrations WHERE token_hash=? AND expires_at>?', [pendingHash(req), Date.now()]);
+  const [rows] = await db.query('SELECT provider,return_to FROM oauth_registrations WHERE token_hash=? AND expires_at>?', [pendingHash(req), Date.now()]);
   if (!rows[0]) return res.status(401).json({ message: '注册授权已过期，请重新选择第三方登录。' });
-  res.json({ provider: PROVIDERS[rows[0].provider] });
+  res.json({ provider: PROVIDERS[rows[0].provider], redirect:returnTo(rows[0].return_to) });
 });
 const emailLimiter = rateLimit({ windowMs: 3600000, limit: 5, standardHeaders: true, legacyHeaders: false,
   keyGenerator: req => sha256(String(req.body.email || '').trim().toLowerCase()), message: { message: '该邮箱请求过于频繁，请稍后重试。' } });
@@ -109,7 +108,7 @@ router.post('/google', limiter, async (req, res) => {
     const payload = await verifyGoogleCredential(req.body.credential, config.client_id);
     const email = String(payload.email).toLowerCase();
     const identity = { subject: String(payload.sub), name: String(payload.name || 'Google 用户'), email, emailVerified: payload.email_verified === true && (email.endsWith('@gmail.com') || Boolean(payload.hd)) };
-    const state = { started_at, return_to: '/' };
+    const state = { started_at, return_to: returnTo(req.body.return_to) };
     const user = await finishIdentity('google', config, identity, state);
     if (!user) {
       await createPending(req, res, 'google', config, identity, state);
@@ -288,7 +287,7 @@ router.get('/google/callback', readLimiter, (_req, res) => {
   const nonce = crypto.randomBytes(24).toString('base64');
   res.setHeader('Content-Security-Policy', `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`);
   res.type('html').send(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Google 登录 · mooncci</title>
-<style nonce="${nonce}">:root{color-scheme:light dark}body{font:16px/1.7 system-ui,sans-serif;max-width:440px;margin:20vh auto;padding:24px}a{color:inherit}</style></head><body><h1>Google 登录</h1><p id="status" role="status">正在确认登录…</p><a href="/login">返回登录页</a>
+<style nonce="${nonce}">:root{color-scheme:light dark}body{font:16px/1.7 system-ui,sans-serif;max-width:440px;margin:20vh auto;padding:24px}a{color:inherit}</style></head><body><h1>Google 登录</h1><p id="status" role="status">正在确认登录…</p><a href="/login?oauth=failed">返回登录页</a>
 <script nonce="${nonce}">
 const result = new URLSearchParams(location.hash.slice(1));
 history.replaceState(null, '', location.pathname);
@@ -371,10 +370,10 @@ async function completeCallback(req, res) {
     user = await finishIdentity(provider, config, identity, state);
     if (!user) {
       await createPending(req, res, provider, config, identity, state);
-      return respond('/complete-registration');
+      return respond('/complete-registration'+(returnTo(state.return_to)!=='/'?'?redirect='+encodeURIComponent(returnTo(state.return_to)):''));
     }
     if (!state.user_id) setAuthCookie(req, res, signToken(user, Number(state.started_at)));
-    const target = state.user_id ? '/account/settings?oauth=bound' : state.return_to !== '/' ? state.return_to : ['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/';
+    const target = state.user_id ? '/account/settings?oauth=bound' : returnTo(state.return_to) !== '/' ? returnTo(state.return_to) : ['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/';
     respond(target);
   } catch (error) {
     // Never log authorization codes, secrets, upstream URLs or access tokens.
@@ -382,7 +381,9 @@ async function completeCallback(req, res) {
     const diagnostic = adapters.safeFailure(error, provider, stage, reference);
     console.warn('[oauth-failure]', JSON.stringify(diagnostic));
     const target = state?.user_id ? '/account/settings?oauth=failed' : error.message === 'email_exists' ? '/login?oauth=email_exists' : '/login?oauth=failed';
-    respond(`${target}&reason=${encodeURIComponent(diagnostic.reason)}&ref=${reference}`);
+    const resume=!state?.user_id&&loginDestination(state?.return_to);
+    const continuation=resume?'&redirect='+encodeURIComponent(resume):'';
+    respond(`${target}${continuation}&reason=${encodeURIComponent(diagnostic.reason)}&ref=${reference}`);
   }
 }
 router.get('/:provider/callback', limiter, completeCallback);

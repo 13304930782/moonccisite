@@ -39,7 +39,7 @@ router.get(
   a(async (_req, res) =>
     res.json({
       available:
-        process.env.NEWSLETTER_DELIVERY_ENABLED === 'true' && isMailEnabled(await getMailConfig()),
+        process.env.NEWSLETTER_DELIVERY_ENABLED === 'true' && isMailEnabled(await getMailConfig(), 'news'),
     }),
   ),
 );
@@ -49,7 +49,7 @@ router.post(
   a(async (req, res) => {
     const email = emailAddress(req.body.email),
       config = await getMailConfig();
-    if (process.env.NEWSLETTER_DELIVERY_ENABLED !== 'true' || !isMailEnabled(config))
+    if (process.env.NEWSLETTER_DELIVERY_ENABLED !== 'true' || !isMailEnabled(config, 'news'))
       throw fail('邮件订阅尚未开放，请先使用 RSS', 503);
     const message = '如果该邮箱需要确认，我们已发送确认邮件，请检查收件箱。';
     await db.query('INSERT IGNORE INTO subscribers (email) VALUES (?)', [email]);
@@ -60,11 +60,16 @@ router.post(
     );
     if (claim.affectedRows) {
       const url = `${siteOrigin()}/subscription/confirm#${raw}`;
+      const unsubscribe = token();
       try {
-        const delivery = await sendMail({
+        await db.query(
+          'INSERT INTO newsletter_tokens (token_hash,subscriber_id,expires_at) SELECT ?,id,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 YEAR) FROM subscribers WHERE email=? AND confirm_hash=?',
+          [hash(unsubscribe), email, hash(raw)],
+        );
+        const delivery = await sendMail({ channel: 'news',
           to: email,
           subject: '确认订阅 mooncci 周报',
-          ...subscriptionConfirmation(url),
+          ...subscriptionConfirmation(url, `${siteOrigin()}/subscription/unsubscribe#${unsubscribe}`),
           config,
         });
         if (!delivery.sent) throw new Error('Confirmation was not sent');
@@ -85,23 +90,30 @@ router.post(
   limited,
   a(async (req, res) => {
     const [r] = await db.query(
-      "UPDATE subscribers SET status='active',confirm_hash=NULL,confirm_expires=NULL,confirmed_at=UTC_TIMESTAMP() WHERE confirm_hash=? AND confirm_expires>UTC_TIMESTAMP() AND status='pending'",
+      "UPDATE subscribers SET status='active',confirmed_at=UTC_TIMESTAMP() WHERE confirm_hash=? AND confirm_expires>UTC_TIMESTAMP() AND status='pending'",
       [validToken(req)],
     );
-    if (!r.affectedRows) throw fail('链接无效、已使用或已过期');
-    res.json({ message: '订阅已确认。每周一有新内容时，你将收到周报。' });
+    if (!r.affectedRows) {
+      const [existing] = await db.query("SELECT id FROM subscribers WHERE confirm_hash=? AND confirm_expires>UTC_TIMESTAMP() AND status='active'", [validToken(req)]);
+      if (!existing.length) throw fail('链接无效或已过期，请重新申请订阅。');
+    }
+    res.json({ message: '您已成功订阅 mooncci 周报。每周一北京时间 09:00，有新内容时会收到文章、近况与作品进展摘要。' });
   }),
 );
 router.post(
   '/subscriptions/unsubscribe',
   limited,
   a(async (req, res) => {
-    const [r] = await db.query(
+    const [existing] = await db.query(
+      'SELECT s.id FROM subscribers s JOIN newsletter_tokens t ON t.subscriber_id=s.id WHERE t.token_hash=? AND t.expires_at>UTC_TIMESTAMP()',
+      [validToken(req)],
+    );
+    if (!existing.length) throw fail('退订链接无效或已过期，请使用最近一封邮件中的链接，或联系 support@mooncci.site。');
+    await db.query(
       "UPDATE subscribers s JOIN newsletter_tokens t ON t.subscriber_id=s.id SET s.status='unsubscribed',s.confirm_hash=NULL WHERE t.token_hash=? AND t.expires_at>UTC_TIMESTAMP()",
       [validToken(req)],
     );
-    if (!r.affectedRows) throw fail('链接无效或已过期，可联系站长取消订阅');
-    res.json({ message: '已取消订阅。你仍可通过 RSS 关注更新。' });
+    res.json({ message: '已取消 mooncci 周报订阅。后续周报将不再发送；已经发出的邮件可能仍会到达。你仍可通过网站或 RSS 关注更新。' });
   }),
 );
 admin.use(authRequired, ownerOnly);

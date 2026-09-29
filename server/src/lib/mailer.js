@@ -1,3 +1,4 @@
+const {resolveConfig}=require('./mailChannels');
 const {siteOrigin, brandText}=require('./siteIdentity');
 const addressparser = require('nodemailer/lib/addressparser');
 const nodemailer = require('nodemailer');
@@ -70,7 +71,8 @@ async function getMailConfig() {
   };
 }
 
-function isMailEnabled(config) {
+function isMailEnabled(config, channel) {
+  if(channel)config=resolveConfig(config,channel);
   return Boolean(
     bool(config.enabled) &&
     config.smtp_host &&
@@ -82,6 +84,9 @@ function isMailEnabled(config) {
 function createTransporter(config) {
   return nodemailer.createTransport({
     host: config.smtp_host,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 30000,
     port: Number(config.smtp_port || 465),
     secure: bool(config.smtp_secure),
     auth: {
@@ -91,8 +96,8 @@ function createTransporter(config) {
   });
 }
 
-async function sendMail({ to, subject, text, html, config: providedConfig }) {
-  const config = providedConfig || await getMailConfig();
+async function sendMail({ to, subject, text, html, config: providedConfig, channel = 'account' }) {
+  const config = resolveConfig(providedConfig || await getMailConfig(),channel);
 
   if (!isMailEnabled(config)) {
     console.log('[mail] Mail is disabled or SMTP config is incomplete.');
@@ -107,7 +112,8 @@ async function sendMail({ to, subject, text, html, config: providedConfig }) {
   const transporter = createTransporter(config);
 
   await transporter.sendMail({
-    from: { name: 'mooncci', address: addressparser(cleanMailHeader(config.smtp_from || config.smtp_user))[0]?.address || config.smtp_user },
+    from: { name: cleanMailHeader(config.sender_name || 'mooncci'), address: addressparser(cleanMailHeader(config.smtp_from || config.smtp_user))[0]?.address || config.smtp_user },
+    ...(config.reply_to ? {replyTo:config.reply_to} : {}),
     to,
     subject: `[mooncci] ${brandText(cleanMailHeader(subject)).replace(/^(?:\[mooncci\]\s*)+/i, '').replace(/^mooncci\s+(?=周报)/, '') || '站点通知'}`,
     text,
@@ -158,6 +164,7 @@ async function sendCommentNotification(comment) {
   });
 
   return sendMail({
+    channel: 'notifications',
     to: config.notify_to,
     subject: `[mooncci] 新评论待审核： ${postTitle}`,
     text,
@@ -205,6 +212,7 @@ async function sendCommentReviewNotification(comment, status) {
   });
 
   return sendMail({
+    channel: 'notifications',
     to: comment.authorEmail,
     subject,
     text,
@@ -255,6 +263,7 @@ async function sendEarlyAccessOwnerNotification(application) {
   });
 
   return sendMail({
+    channel: 'promptdock',
     to: config.notify_to,
     subject: `[mooncci] PromptDock Early Access 申请 #${application.id}`,
     text,
@@ -298,6 +307,7 @@ async function sendEarlyAccessApprovalEmail(application) {
   });
 
   return sendMail({
+    channel: 'promptdock',
     to: application.email,
     subject: '[mooncci] PromptDock Early Access 申请已通过',
     text,
@@ -327,7 +337,8 @@ async function sendUserPermissionsNotification(before, after) {
   paragraphs.push('如对这次调整有疑问，请联系站点管理员。');
   const title = '你的账号权限已更新';
   const intro = `你好，${after.username || '用户'}。站点管理人员更新了你的 mooncci 账号权限。`;
-  return sendMail({ to: after.email, subject: '[mooncci] 账号权限已更新', config,
+  return sendMail({
+    channel: 'account', to: after.email, subject: '[mooncci] 账号权限已更新', config,
     text: [title, intro, ...details.map(item => `${item.label}：${item.value}`), ...paragraphs, '', `查看 mooncci：${url}`].join('\n'),
     html: renderBrandedEmail({ eyebrow: '账号通知', title, intro, details, paragraphs,
       cta: { label: enabled ? '登录 mooncci' : '访问 mooncci', url } }),

@@ -1,4 +1,7 @@
 require('dotenv').config();
+const { writeWorkerState } = require('./lib/runtimeStatus');
+const startedAt = new Date().toISOString();
+const recordState = stopped => writeWorkerState(startedAt, stopped).catch(() => console.error('[worker] runtime_state_write_failed'));
 const { acquireWorkerLease, releaseWorkerLease } = require('./jobs/workerLease');
 async function main() {
   const lease = await acquireWorkerLease();
@@ -12,14 +15,16 @@ async function main() {
   const { startElectricityScheduler } = require('./jobs/electricityScheduler');
   const stopContent = startContentScheduler();
   await startElectricityScheduler();
+  await recordState(false);
   // Keep the independent worker alive and fail closed if its dedicated lock connection is lost.
   const heartbeat = setInterval(
-    () => lease.query('SELECT 1').catch(() => process.exit(1)),
+    () => lease.query('SELECT 1').then(() => recordState(false)).catch(() => process.exit(1)),
     30000,
   );
   const shutdown = async () => {
     clearInterval(heartbeat);
     stopContent();
+    await recordState(true);
     await releaseWorkerLease(lease).catch(() => {});
     process.exit(0);
   };

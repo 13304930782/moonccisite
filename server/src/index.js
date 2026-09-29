@@ -74,7 +74,7 @@ function requireRequestedWith(req, res, next) {
     return next();
   }
 
-  if (req.get('X-Requested-With') !== 'XMLHttpRequest') {
+  if (!(req.method === 'POST' && req.path === '/engagement/unsubscribe') && req.get('X-Requested-With') !== 'XMLHttpRequest') {
     return res.status(403).json({ message: 'Invalid request source.' });
   }
 
@@ -140,6 +140,8 @@ app.use('/api/auth', authLimiter, require('./routes/socialLogin'));
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api', require('./routes/analytics'));
+app.use('/api/series', require('./routes/series'));
+app.use('/api/publishing', require('./routes/publishing'));
 app.use('/api/article-drafts', require('./routes/articleDrafts'));
 app.use('/api/comments', commentRoutes);
 app.use('/api/early-access', earlyAccessLimiter, earlyAccessRoutes.publicRouter);
@@ -154,6 +156,12 @@ app.use('/api/admin/early-access', earlyAccessRoutes.adminRouter);
 app.use('/api/admin/electricity/rooms', require('./routes/adminElectricityRooms'));
 app.use('/api/admin/electricity', adminElectricityRoutes);
 app.use('/api', require('./routes/account'));
+app.get('/api/operations/config', (_req,res)=>{res.setHeader('Cache-Control','no-store');res.json({enabled:require('./services/loginSessions').enabled()});});
+app.use('/api/account', require('./routes/loginSessions'));
+app.use('/api/admin/operations', require('./routes/operations'));
+app.use('/api/engagement', require('./routes/engagement'));
+app.use('/api/bookmark-folders', require('./routes/bookmarkFolders'));
+app.use('/api/bookmarks', require('./routes/bookmarks'));
 app.use('/api/admin', adminRoutes);
 app.use('/api', contentPlatform.router);
 app.use('/api/admin', contentPlatform.admin);

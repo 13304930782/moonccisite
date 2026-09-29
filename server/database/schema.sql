@@ -309,6 +309,7 @@ CREATE TABLE IF NOT EXISTS project_releases (
   hidden TINYINT(1) NOT NULL DEFAULT 0,
   source_visible TINYINT(1) NOT NULL DEFAULT 1,
   historical TINYINT(1) NOT NULL DEFAULT 0,
+  prerelease TINYINT(1) NOT NULL DEFAULT 0,
   UNIQUE KEY release_identity (project_id, repo, github_id),
   INDEX release_public (published_at, hidden),
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -319,6 +320,7 @@ CREATE TABLE IF NOT EXISTS github_sync_state (
   repo VARCHAR(200) NOT NULL,
   etag VARCHAR(255) NULL,
   initialized TINYINT(1) NOT NULL DEFAULT 0,
+  release_policy_version TINYINT NOT NULL DEFAULT 0,
   baseline_at DATETIME NULL,
   last_success_at DATETIME NULL,
   next_attempt_at DATETIME NULL,
@@ -627,4 +629,151 @@ CREATE TABLE IF NOT EXISTS analytics_daily (
 CREATE TABLE IF NOT EXISTS analytics_article_totals (
  post_id INT NOT NULL PRIMARY KEY, views BIGINT UNSIGNED NOT NULL DEFAULT 0,
  CONSTRAINT fk_analytics_post FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS article_revisions (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ post_id INT NULL,
+ draft_id CHAR(36) CHARACTER SET ascii NULL,
+ actor_id INT NULL,
+ kind ENUM('baseline','auto','manual','publish','restore') NOT NULL,
+ payload JSON NOT NULL,
+ content_hash CHAR(64) CHARACTER SET ascii NOT NULL,
+ published_version INT NULL,
+ auto_bucket BIGINT NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ UNIQUE KEY revision_publication(post_id,published_version),
+ INDEX revision_post(post_id,id),
+ INDEX revision_draft(draft_id,id),
+ INDEX revision_expiry(kind,updated_at),
+ FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE,
+ FOREIGN KEY(actor_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS article_bookmarks (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ user_id INT NOT NULL,
+ post_id INT NOT NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ UNIQUE KEY uq_article_bookmark (user_id,post_id),
+ KEY ix_bookmark_list (user_id,created_at,id),
+ CONSTRAINT fk_bookmark_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+ CONSTRAINT fk_bookmark_post FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS article_workflows (
+ draft_id CHAR(36) NOT NULL PRIMARY KEY,
+ state VARCHAR(20) NOT NULL DEFAULT 'draft',
+ draft_version INT NOT NULL,
+ snapshot JSON NOT NULL,
+ reviewer_id INT NULL,
+ reason VARCHAR(1000) NOT NULL DEFAULT '',
+ scheduled_at BIGINT NULL,
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ KEY idx_workflow_due (state,scheduled_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS article_series (
+ id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ slug VARCHAR(191) NOT NULL UNIQUE,
+ title VARCHAR(255) NOT NULL,
+ description TEXT NOT NULL,
+ cover_image VARCHAR(500) NOT NULL DEFAULT '',
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS article_series_posts (
+ post_id INT NOT NULL PRIMARY KEY,
+ series_id INT NOT NULL,
+ position INT NOT NULL DEFAULT 0,
+ KEY idx_series_order (series_id,position,post_id),
+ FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+ FOREIGN KEY (series_id) REFERENCES article_series(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Phase two: private reading and notifications
+CREATE TABLE IF NOT EXISTS engagement_preferences (
+ user_id INT NOT NULL PRIMARY KEY,
+ comment_email TINYINT NOT NULL DEFAULT 0,
+ reply_email TINYINT NOT NULL DEFAULT 0,
+ history_enabled TINYINT NOT NULL DEFAULT 1,
+ history_epoch BIGINT NOT NULL DEFAULT 1,
+ verified_email VARCHAR(120) NOT NULL DEFAULT '',
+ verify_hash CHAR(64) NOT NULL DEFAULT '',
+ verify_expires BIGINT NOT NULL DEFAULT 0,
+ verify_sent BIGINT NOT NULL DEFAULT 0,
+ verify_attempts INT NOT NULL DEFAULT 0,
+ unsubscribe_token CHAR(64) NOT NULL,
+ FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS account_notifications (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ user_id INT NOT NULL,
+ event_key VARCHAR(160) CHARACTER SET ascii NOT NULL,
+ kind VARCHAR(24) NOT NULL,
+ post_id INT NULL,
+ comment_id INT NULL,
+ draft_id VARCHAR(36) NULL,
+ message VARCHAR(1000) NOT NULL DEFAULT '',
+ is_read TINYINT NOT NULL DEFAULT 0,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE KEY recipient_event(user_id,event_key),
+ KEY recipient_order(user_id,id),
+ FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS notification_mail_jobs (
+ notification_id BIGINT UNSIGNED PRIMARY KEY,
+ state VARCHAR(16) NOT NULL DEFAULT 'pending',
+ attempts INT NOT NULL DEFAULT 0,
+ available_at BIGINT NOT NULL DEFAULT 0,
+ locked_at BIGINT NOT NULL DEFAULT 0,
+ lock_token CHAR(36) NOT NULL DEFAULT '',
+ last_error VARCHAR(200) NOT NULL DEFAULT '',
+ KEY mail_due(state,available_at),
+ FOREIGN KEY (notification_id) REFERENCES account_notifications(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS article_reading_history (
+ user_id INT NOT NULL,
+ post_id INT NOT NULL,
+ anchor VARCHAR(200) NOT NULL DEFAULT '',
+ progress DOUBLE NOT NULL DEFAULT 0,
+ revision BIGINT NOT NULL DEFAULT 1,
+ updated_at BIGINT NOT NULL,
+ PRIMARY KEY(user_id,post_id),
+ KEY history_recent(user_id,updated_at),
+ FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+ FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS bookmark_folders (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ user_id INT NOT NULL,
+ name VARCHAR(60) NOT NULL,
+ UNIQUE KEY folder_name(user_id,name),
+ FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS bookmark_folder_members (
+ bookmark_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+ folder_id INT NOT NULL,
+ FOREIGN KEY (bookmark_id) REFERENCES article_bookmarks(id) ON DELETE CASCADE,
+ FOREIGN KEY (folder_id) REFERENCES bookmark_folders(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS engagement_workflow_cycles (
+ draft_id CHAR(36) NOT NULL PRIMARY KEY,
+ cycle BIGINT NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS login_sessions (
+ id CHAR(36) CHARACTER SET ascii NOT NULL PRIMARY KEY,
+ user_id INT NOT NULL,
+ token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,
+ started_at BIGINT NOT NULL,
+ first_seen BIGINT NOT NULL,
+ last_seen BIGINT NOT NULL,
+ expires_at BIGINT NOT NULL,
+ browser VARCHAR(80) NOT NULL,
+ os VARCHAR(80) NOT NULL,
+ legacy TINYINT NOT NULL DEFAULT 0,
+ KEY sessions_user(user_id,last_seen),
+ KEY sessions_expiry(expires_at),
+ FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

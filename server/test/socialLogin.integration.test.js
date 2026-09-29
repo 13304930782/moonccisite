@@ -39,6 +39,11 @@ test('social login, owner settings, mandatory email, binding, revocation and rep
   const token = id => `mooncci_token=${jwt.sign({ id, sessionStartedAt: Date.now(), jti: String(Math.random()) }, process.env.JWT_SECRET, { expiresIn: '1h' })}`;
   const owner = token(await makeUser('owner')), memberId = await makeUser('user'), member = token(memberId);
   const cookieOf = (r, name) => r.headers.getSetCookie().find(c => c.startsWith(`${name}=`))?.split(';')[0] || '';
+  for(const [target,expected] of [['/article/42','/article/42'],['/account/bookmarks?page=2','/account/bookmarks?page=2'],['//evil.test','/'],['/article/42?next=https://evil.test','/article/42'],['/account/submissions','/account/submissions']]){
+    const response=await req('/google/start','POST',{return_to:target});assert.equal(response.status,200);
+    const state=new URL((await response.json()).url).searchParams.get('state');
+    const [[row]]=await db.query('SELECT return_to FROM oauth_states WHERE state_hash=?',[require('../src/lib/socialConfig').sha256(state)]);assert.equal(row.return_to,expected);
+  }
   const initial = await (await req('/providers')).json();
   assert.deepEqual(initial.providers.map(p => p.provider), ['google']);
   assert.equal((await req('/providers/manage')).status, 401);
@@ -57,15 +62,15 @@ test('social login, owner settings, mandatory email, binding, revocation and rep
   assert.equal((await save('qq', { enabled: true, client_id: '123', client_secret: '', version: 1 })).status, 200);
   const [[preserved]] = await db.query("SELECT * FROM oauth_providers WHERE provider='qq'"); assert.equal(preserved.secret_cipher, stored.secret_cipher);
   assert.equal((await save('qq', { enabled: true, client_id: 'changed', version: 2 })).status, 400);
-  async function start(provider, cookie = '', mode = 'login') {
-    const r = await req(`/${provider}/start`, 'POST', { mode, return_to: '//evil.test' }, cookie);
+  async function start(provider, cookie = '', mode = 'login', destination='//evil.test') {
+    const r = await req(`/${provider}/start`, 'POST', { mode, return_to: destination }, cookie);
     assert.equal(r.status, 200);
     const url = new URL((await r.json()).url);
     return { path: `/${provider}/callback?code=code&state=${url.searchParams.get('state')}`, cookie: [cookie, cookieOf(r, `mooncci_oauth_${provider}`)].filter(Boolean).join('; ') };
   }
-  let flow = await start('qq');
+  let flow = await start('qq','','login','/account/submissions');
   let r = await req(flow.path, 'GET', null, ''); assert.match(r.headers.get('location'), /failed/); assert.equal(exchanges, 0);
-  r = await req(flow.path, 'GET', null, flow.cookie); assert.equal(r.headers.get('location'), '/complete-registration'); assert.equal(cookieOf(r, 'mooncci_token'), '');
+  r = await req(flow.path, 'GET', null, flow.cookie); assert.equal(r.headers.get('location'), '/complete-registration?redirect=%2Faccount%2Fsubmissions'); assert.equal(cookieOf(r, 'mooncci_token'), '');
   const pending = cookieOf(r, 'mooncci_registration'); assert.ok(pending);
   assert.equal((await req('/me', 'GET', null, pending)).status, 401, 'pending registration is not an authenticated user');
   assert.match((await req(flow.path, 'GET', null, flow.cookie)).headers.get('location'), /failed/); assert.equal(exchanges, 1, 'state is single-use');
@@ -74,6 +79,7 @@ test('social login, owner settings, mandatory email, binding, revocation and rep
   assert.equal((await req('/registration/email', 'POST', { email: 'new@example.test' }, pending)).status, 429);
   assert.equal((await req('/registration/complete', 'POST', { email: 'new@example.test', code: '000000' }, pending)).status, 400);
   r = await req('/registration/complete', 'POST', { email: 'new@example.test', code: mailedCode }, pending); assert.equal(r.status, 200);
+  assert.equal((await r.json()).redirect,'/account/submissions');
   const auth = cookieOf(r, 'mooncci_token'); assert.ok(auth);
   const current = await (await req('/me', 'GET', null, auth)).json(); assert.equal(current.user.email, 'new@example.test'); assert.equal(current.user.role, 'user');
   assert.equal((await req('/registration/complete', 'POST', { email: 'new@example.test', code: mailedCode }, pending)).status, 400);
@@ -93,6 +99,11 @@ test('social login, owner settings, mandatory email, binding, revocation and rep
   r = await req(flow.path, 'GET', null, flow.cookie); assert.match(r.headers.get('location'), /failed/);
   identity = { subject: 'github1', name: 'GitHub', email: 'verified@example.test', emailVerified: true };
   flow = await start('github'); r = await req(flow.path, 'GET', null, flow.cookie); assert.ok(cookieOf(r, 'mooncci_token'));
+  const deniedFlow=await start('github','','login','/account/notifications');
+  const denied=await req(deniedFlow.path+'&error=access_denied','GET',null,deniedFlow.cookie);
+  assert.equal(new URL(denied.headers.get('location'),'https://mooncci.site').searchParams.get('redirect'),'/account/notifications');
+  const successFlow=await start('github','','login','/account/history');
+  assert.equal((await req(successFlow.path,'GET',null,successFlow.cookie)).headers.get('location'),'/account/history');
   const githubUser = await (await req('/me', 'GET', null, cookieOf(r, 'mooncci_token'))).json();
   await db.query("UPDATE users SET status='disabled' WHERE id=?", [githubUser.user.id]);
   flow = await start('github'); r = await req(flow.path, 'GET', null, flow.cookie); assert.match(r.headers.get('location'), /failed/); assert.equal(cookieOf(r, 'mooncci_token'), '');

@@ -75,7 +75,7 @@ async function sendElectricityDailyReport({
     },
     footer: '宿舍电量监控 · 北京时间采集',
   });
-  return sendMail({
+  return sendMail({ channel: 'electricity',
     to: recipient,
     subject: `[mooncci] 宿舍电量${label} · ${snapshot.snapshotDate}`,
     text,
@@ -121,7 +121,7 @@ async function sendElectricityLowAlert({ snapshot, status, notifyTo }) {
     },
     footer: '宿舍电量监控 · 状态变化提醒',
   });
-  return sendMail({
+  return sendMail({ channel: 'electricity',
     to: recipient,
     subject: `[mooncci] 宿舍低电量提醒 · ${snapshot.snapshotDate}`,
     text,

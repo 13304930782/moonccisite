@@ -10,7 +10,7 @@ test('Google credentials still use CF certificates, configured URL, issuer and a
   const certificate = keys.publicKey.export({ format: 'pem', type: 'spki' });
   let requested;
   t.mock.method(https, 'get', (url, options, callback) => {
-    requested = url; assert.equal(options.timeout, 6000);
+    requested = url; assert.equal(options.family, 4); assert.equal(options.autoSelectFamily, false); assert.ok(options.signal);
     const request = new EventEmitter(); request.destroy = () => {};
     process.nextTick(() => {
       const response = new EventEmitter(); response.statusCode = 200; response.headers = {}; response.setEncoding = () => {};

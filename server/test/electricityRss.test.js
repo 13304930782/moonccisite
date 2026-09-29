@@ -154,3 +154,25 @@ test('scheduled mail renders the persisted report fields with the existing butto
   assert.match(captured.html, /采集完成，部分数据缺失/);
   assert.doesNotMatch(captured.text, /今日用电（截至采集时）：0/);
 });
+
+
+test('report accepts DATETIME second rounding but rejects real future, expired and missing timestamps', () => {
+  const at = new Date('2026-09-20T23:00:14.800Z');
+  const build = (recordedAt, failed=false) => buildReport({snapshot:{...snapshot,recordedAt},config,period:'morning',now:at,failed,forecast:{estimatedDaysRemaining:7}});
+  const rounded=build('2026-09-20T23:00:15.000Z');
+  assert.equal(rounded.collectionOutcome,'success');
+  assert.equal(rounded.metrics.estimatedDaysRemaining,7);
+  assert.equal(rounded.publishedAt,at.toISOString());
+  assert.equal(rounded.snapshot.recordedAt,'2026-09-20T23:00:15.000Z');
+  const future=build('2026-09-20T23:00:15.001Z');
+  assert.equal(future.collectionOutcome,'stale');assert.match(future.collectionStatus,/时间异常/);assert.equal(future.metrics.estimatedDaysRemaining,null);
+  assert.equal(build(new Date(at.getTime()-86400000).toISOString()).collectionOutcome,'success');
+  assert.match(build(new Date(at.getTime()-86400001).toISOString()).collectionStatus,/超过 24 小时/);
+  for(const missing of [null,undefined,'','invalid'])assert.match(build(missing).collectionStatus,/缺失或无效/);
+  assert.equal(build(null,true).collectionOutcome,'failed');
+  for(const ms of [0,499,500,999]){
+    const now=new Date(Date.parse('2026-09-20T23:00:14Z')+ms);
+    const recordedAt=new Date(Math.round(now.getTime()/1000)*1000).toISOString();
+    assert.equal(buildReport({snapshot:{...snapshot,recordedAt},config,period:'morning',now}).collectionOutcome,'success');
+  }
+});

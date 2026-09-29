@@ -75,3 +75,31 @@ test('GitHub rejects missing or malformed config before sending a key', async ()
   assert.equal((await check('github')).ok,false); assert.equal(calls,0);
  }
 });
+
+test('diagnostics distinguish proxy rejection, missing headers and upstream responses', async () => {
+ for (const [status,header,version] of [[403,'request_rejected','3'],[502,'upstream_fetch_timeout','3'],[429,'upstream_http_429','3'],[401,'',''],[401,'upstream_http_401','2']]) {
+  const logs=[];const check=createDependencyHealth({env:proxyEnv,logger:e=>logs.push(e),fetcher:async()=>proxyResponse(status,header,version)});
+  const result=await check('github');assert.equal(result.ok,false);assert.equal(logs.length,1);
+  assert.equal(logs[0].reason,'unexpected_proxy_response');assert.equal(logs[0].responseStatus,status);
+  assert.equal(logs[0].proxyDiagnostic,header||'missing');assert.equal(logs[0].proxyVersion,version||'missing');
+  assert.equal(logs[0].checkedAt,result.checkedAt);assert(!Object.hasOwn(result,'reason'));
+ }
+});
+test('cache and concurrency log once; recovery logs once after a real successful probe', async () => {
+ let clock=Date.now(),healthy=false;const logs=[];
+ const check=createDependencyHealth({env:proxyEnv,now:()=>clock,logger:e=>logs.push(e),fetcher:async()=>healthy?proxyResponse():proxyResponse(502,'upstream_fetch_type_error')});
+ await Promise.all(Array.from({length:20},()=>check('github')));await check('github');assert.equal(logs.length,1);
+ healthy=true;clock+=61000;await check('github');assert.equal(logs[1].event,'recovered');assert.equal(logs[1].reason,null);
+ clock+=61000;await check('github');assert.equal(logs.length,2);
+});
+test('logs never serialize raw exceptions, keys, unknown response headers or response bodies', async () => {
+ const secret='private-token-url-and-user-data';const logs=[];
+ for(const fetcher of [async()=>{throw Object.assign(Error(secret),{cause:{code:'ECONNRESET',message:secret}});},async()=>new Response(secret,{status:502,headers:{'X-Mooncci-Proxy-Diagnostic':secret,'X-Mooncci-Proxy-Version':secret,'Set-Cookie':secret}})]){
+  await createDependencyHealth({env:proxyEnv,logger:e=>logs.push(e),fetcher})('github');
+ }
+ assert.equal(logs[0].networkCode,'ECONNRESET');assert.equal(logs[0].reason,'network');
+ assert.equal(logs[1].proxyDiagnostic,'unrecognized');assert.equal(logs[1].proxyVersion,'unrecognized');
+ for(const value of [secret,proxyEnv.GITHUB_OAUTH_PROXY_URL,proxyEnv.GITHUB_OAUTH_PROXY_KEY,'mooncci_monitor_invalid_token'])assert(!JSON.stringify(logs).includes(value));
+ const timeoutLogs=[];await createDependencyHealth({timeout:5,logger:e=>timeoutLogs.push(e),fetcher:()=>new Promise(()=>{})})('google');assert.equal(timeoutLogs[0].reason,'timeout');
+ assert.equal((await createDependencyHealth({env:proxyEnv,logger:()=>{throw Error('logger failure');},fetcher:async()=>proxyResponse(502)})('github')).ok,false);
+});

@@ -116,13 +116,13 @@ function releaseRecords(releases, historical) {
     .filter(
       (r) =>
         !r.draft &&
-        !r.prerelease &&
         r.published_at &&
         Number.isSafeInteger(r.id) &&
         /^https:\/\/github\.com\//.test(r.html_url || ''),
     )
     .map((r) => ({
       github_id: r.id,
+      prerelease: r.prerelease ? 1 : 0,
       title: String(r.name || r.tag_name).slice(0, 255),
       content: String(r.body || '').slice(0, 100000),
       url: r.html_url,

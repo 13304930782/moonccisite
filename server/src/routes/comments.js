@@ -319,7 +319,8 @@ router.post(['/post/:postId', '/update/:updateId'], authRequired, async (req, re
     // 管理员和编辑的评论直接通过，普通用户评论进入审核
     const initialStatus = ['owner', 'admin', 'editor'].includes(user.role) ? 'visible' : 'pending';
 
-    const [result] = await db.query(
+    const result = await require('../services/engagement').transaction(async c => {
+    const [insert] = await c.query(
       `
       INSERT INTO comments
       (${column}, user_id, parent_id, reply_to_user_id, content, ip_address, ip_location, user_agent, status)
@@ -337,6 +338,10 @@ router.post(['/post/:postId', '/update/:updateId'], authRequired, async (req, re
         initialStatus,
       ]
     );
+
+    await require('../services/engagement').commentEvent(c,insert.insertId);
+    return insert;
+    });
 
     console.log('[comments/create] 评论已入库，ID:', result.insertId, '状态:', initialStatus);
 

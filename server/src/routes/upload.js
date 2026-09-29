@@ -8,6 +8,8 @@ const { sanitizeNamePart } = require('../lib/mediaName');
 const { authRequired, editorOrAdmin, adminOnly } = require('../middleware/auth');
 
 const router = require('../lib/asyncRouter')();
+const contributor=(req,res,next)=>require('../services/articleWorkflow').enabled()?next():editorOrAdmin(req,res,next);
+const isManager=user=>['owner','admin'].includes(user.role);
 // The media library is shared; mutations can rewrite or remove other authors' images.
 router.use('/media', authRequired, (req, res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
@@ -217,9 +219,19 @@ async function findMedia(filename, status = null) {
   return rows[0] || null;
 }
 
-async function updateReferences(oldUrl, newUrl) {
-  await db.query('UPDATE posts SET content=REPLACE(content, ?, ?) WHERE content LIKE ?', [oldUrl, newUrl, `%${oldUrl}%`]);
-  await db.query('UPDATE posts SET cover_image=? WHERE cover_image=?', [newUrl, oldUrl]);
+async function updateReferences(oldUrl, newUrl, actorId) {
+  const c=await db.getConnection();const revisions=require('../lib/articleRevisions');
+  try {
+    await c.beginTransaction();
+    const [posts]=await c.query('SELECT * FROM posts WHERE content LIKE ? OR cover_image=? ORDER BY id FOR UPDATE',[`%${oldUrl}%`,oldUrl]);
+    for(const post of posts){
+      await revisions.baseline(c,post,actorId);
+      const next={...post,content:post.content.split(oldUrl).join(newUrl),cover_image:post.cover_image===oldUrl?newUrl:post.cover_image};
+      await c.query('UPDATE posts SET content=?,cover_image=?,version=version+1,updated_at=NOW() WHERE id=?',[next.content,next.cover_image,post.id]);
+      await revisions.record(c,{post_id:post.id},next,post.status==='published'?'publish':'manual',actorId,post.status==='published'?post.version+1:null);
+    }
+    await c.commit();
+  } catch(e){await c.rollback();throw e;} finally{c.release();}
 
   try {
     await db.query('UPDATE site_settings SET setting_value=REPLACE(setting_value, ?, ?) WHERE setting_value LIKE ?', [oldUrl, newUrl, `%${oldUrl}%`]);
@@ -415,9 +427,9 @@ async function permanentlyDeleteMedia(filename) {
   return { filename, ok: true };
 }
 
-router.get('/media', authRequired, editorOrAdmin, async (req, res) => {
+router.get('/media', authRequired, contributor, async (req, res) => {
   try {
-    await syncMediaRecords();
+    if(isManager(req.user)||!require('../services/articleWorkflow').enabled())await syncMediaRecords();
 
     const status = ['active', 'trashed', 'all'].includes(req.query.status) ? req.query.status : 'active';
     const keyword = String(req.query.q || '').trim().slice(0, 255);
@@ -425,6 +437,7 @@ router.get('/media', authRequired, editorOrAdmin, async (req, res) => {
     let { page, pageSize } = require('../lib/listPagination').listPagination(req.query);
     const where = [];
     const params = [];
+    if(require('../services/articleWorkflow').enabled()&&!isManager(req.user)){where.push('uploaded_by=?');params.push(req.user.id);}
 
     if (status !== 'all') {
       where.push('status=?');
@@ -617,7 +630,7 @@ router.put('/media/:filename/rename', authRequired, editorOrAdmin, async (req, r
 
     const oldUrl = toPublicUrl(filename);
     const nextUrl = toPublicUrl(nextFilename);
-    await updateReferences(oldUrl, nextUrl);
+    await updateReferences(oldUrl, nextUrl, req.user.id);
 
     await db.query(
       'UPDATE media_assets SET filename=?, url=?, updated_at=CURRENT_TIMESTAMP WHERE filename=?',
@@ -741,7 +754,7 @@ router.post('/media/:filename/recompress', authRequired, editorOrAdmin, async (r
     });
 
     const oldUrl = media.url;
-    await updateReferences(oldUrl, meta.url);
+    await updateReferences(oldUrl, meta.url, req.user.id);
 
     if (file.filename !== filename) {
       await db.query('DELETE FROM media_assets WHERE filename=?', [filename]);
@@ -762,7 +775,7 @@ router.post('/media/:filename/recompress', authRequired, editorOrAdmin, async (r
   }
 });
 
-router.post('/image', authRequired, editorOrAdmin, (req, res) => {
+router.post('/image', authRequired, contributor, require('express-rate-limit')({windowMs:3600000,limit:30,skip:req=>isManager(req.user)||!require('../services/articleWorkflow').enabled(),standardHeaders:true,legacyHeaders:false}), (req, res) => {
   upload.single('image')(req, res, async (err) => {
     if (err) {
       return res.status(400).json({ message: err.message || '图片上传失败' });

@@ -53,7 +53,7 @@ test('Shanghai weekly window does not send before Monday 09:00 and crosses years
   assert.equal(after.end, '2026-09-06 16:00:00');
   assert.equal(previousWeek(new Date('2026-01-05T01:00:00Z')).key, '2025-12-29');
 });
-test('release ingestion accepts only public formal releases with stable numeric identities', () => {
+test('release ingestion accepts public formal and prereleases, excluding drafts, with stable numeric identities', () => {
   const base = {
     id: 7,
     name: 'v1.0',
@@ -70,7 +70,9 @@ test('release ingestion accepts only public formal releases with stable numeric 
     ],
     true,
   );
-  assert.equal(records.length, 1);
+  assert.equal(records.length, 2);
+  assert.equal(records[0].prerelease, 0);
+  assert.equal(records[1].prerelease, 1);
   assert.equal(records[0].historical, 1);
   assert.equal(records[0].github_id, 7);
 });

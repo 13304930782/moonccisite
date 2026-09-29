@@ -242,7 +242,7 @@ router.post('/forgot-password', authRateLimit({ name: 'forgot-password', windowM
 
     const config = await getMailConfig();
     const siteUrl = safeSiteUrl(config.site_url || process.env.SITE_URL);
-    const resetUrl = `${siteUrl}/reset-password?token=${rawToken}`;
+    const resetUrl = require('../lib/loginDestination').resetLink(siteUrl,rawToken,req.body.return_to);
     const mailResult = await sendMail({
       to: user.email,
       subject: '[mooncci] 重置账户密码',
@@ -301,7 +301,7 @@ router.post('/reset-password', authRateLimit({ name: 'reset-password', windowMs:
       const record = rows[0];
       if (!record) {
         await connection.rollback();
-        return res.status(400).json({ message: 'Reset link is invalid or expired.' });
+        return res.status(400).json({ message: '重置链接无效或已过期，请重新获取。' });
       }
 
       const [consumeResult] = await connection.query(
@@ -311,7 +311,7 @@ router.post('/reset-password', authRateLimit({ name: 'reset-password', windowMs:
 
       if (consumeResult.affectedRows !== 1) {
         await connection.rollback();
-        return res.status(400).json({ message: 'Reset link is invalid or expired.' });
+        return res.status(400).json({ message: '重置链接无效或已过期，请重新获取。' });
       }
 
       await connection.query('UPDATE users SET password_hash=? WHERE id=?', [passwordHash, record.user_id]);
@@ -328,7 +328,7 @@ router.post('/reset-password', authRateLimit({ name: 'reset-password', windowMs:
       connection.release();
     }
 
-    res.json({ message: 'Password has been reset. Please log in again.' });
+    res.json({ message: '密码已重置，请使用新密码登录。' });
   } catch (err) {
     console.error('[auth/reset-password]', err);
     res.status(500).json({ message: '密码重置失败，请稍后再试。' });

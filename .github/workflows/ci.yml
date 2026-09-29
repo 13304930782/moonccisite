@@ -92,3 +92,14 @@ jobs:
         env:
           ANALYTICS_INTEGRATION: "true"
           TEST_DB_PORT: "3306"
+
+      - name: Verify synchronized business workflows
+        run: node --test server/test/publishing.integration.test.js server/test/engagement.integration.test.js server/test/operations.integration.test.js server/test/guidance.integration.test.js server/test/articleConflict.integration.test.js server/test/subscriptionFeedback.test.js
+        env:
+          TEST_DB_PORT: '3306'
+          PUBLISHING_INTEGRATION: 'true'
+          ENGAGEMENT_INTEGRATION: 'true'
+          OPERATIONS_INTEGRATION: 'true'
+          GUIDANCE_INTEGRATION: 'true'
+          CONFLICT_INTEGRATION: 'true'
+          SUBSCRIPTION_INTEGRATION: 'true'

@@ -269,7 +269,7 @@ adminRouter.post('/:id/approve', asyncHandler(async (req, res) => {
   if (!safeHttpsUrl(config.early_access_download_url)) {
     return res.status(400).json({ message: '请先在邮件设置中配置有效的 HTTPS Early Access 下载地址。' });
   }
-  if (!isMailEnabled(config)) {
+  if (!isMailEnabled(config, 'promptdock')) {
     return res.status(400).json({ message: '请先启用邮件功能并完成 SMTP 配置，再批准申请。' });
   }
 
@@ -358,7 +358,7 @@ adminRouter.post('/:id/resend-approval-email', asyncHandler(async (req, res) => 
   if (!safeHttpsUrl(config.early_access_download_url)) {
     return res.status(400).json({ message: '请先配置有效的 HTTPS Early Access 下载地址。' });
   }
-  if (!isMailEnabled(config)) {
+  if (!isMailEnabled(config, 'promptdock')) {
     return res.status(400).json({ message: '请先启用邮件功能并完成 SMTP 配置。' });
   }
 
