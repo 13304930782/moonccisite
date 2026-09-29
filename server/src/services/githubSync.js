@@ -45,7 +45,7 @@ async function syncProject(id, manual = false) {
     let [[state]] = await db.query('SELECT * FROM github_sync_state WHERE project_id=?', [id]);
     if (!state || state.repo !== project.repo) {
       await db.query(
-        'INSERT INTO github_sync_state (project_id,repo) VALUES (?,?) ON DUPLICATE KEY UPDATE repo=VALUES(repo),etag=NULL,initialized=0,baseline_at=NULL,last_success_at=NULL,next_attempt_at=NULL,error=NULL',
+        'INSERT INTO github_sync_state (project_id,repo) VALUES (?,?) ON DUPLICATE KEY UPDATE repo=VALUES(repo),etag=NULL,initialized=0,release_policy_version=0,baseline_at=NULL,last_success_at=NULL,next_attempt_at=NULL,error=NULL',
         [id, project.repo],
       );
       state = { initialized: 0 };
@@ -61,6 +61,7 @@ async function syncProject(id, manual = false) {
       await db.query('UPDATE github_sync_state SET etag=NULL WHERE project_id=?', [id]);
       throw new Error('仅允许同步公开仓库');
     }
+    const backfill = Number(state.release_policy_version || 0) < 1;
     let page = 1,
       records = [],
       firstEtag = null,
@@ -68,7 +69,7 @@ async function syncProject(id, manual = false) {
     do {
       const result = await github(
         `/repos/${project.repo}/releases?per_page=100&page=${page}`,
-        page === 1 && new Date().getUTCHours() !== 0 ? state.etag : null,
+        !backfill && page === 1 && new Date().getUTCHours() !== 0 ? state.etag : null,
       );
       if (result.unchanged) {
         unchanged = true;
@@ -99,7 +100,8 @@ async function syncProject(id, manual = false) {
         [id, project.repo],
       );
       const known = new Set(existing.map((r) => String(r.github_id)));
-      records = records.filter((r) => !r.historical || known.has(String(r.github_id)));
+      const recent = new Set(backfill ? records.slice(0,10).map(r => String(r.github_id)) : []);
+      records = records.filter((r) => !r.historical || known.has(String(r.github_id)) || recent.has(String(r.github_id)));
     }
     // A missing item in a list is only a candidate. Confirm its state by stable Release ID.
     const removedIds = [];
@@ -115,7 +117,7 @@ async function syncProject(id, manual = false) {
           const single = await github(`/repos/${project.repo}/releases/${previous.github_id}`);
           if (!single.body || String(single.body.id) !== String(previous.github_id))
             throw new Error('GitHub release identity mismatch');
-          if (single.body.draft || single.body.prerelease) removedIds.push(previous.github_id);
+          if (single.body.draft) removedIds.push(previous.github_id);
           else {
             const formal = releaseRecords([single.body], Boolean(previous.historical));
             if (!formal.length) throw new Error('GitHub release state is incomplete');
@@ -143,7 +145,7 @@ async function syncProject(id, manual = false) {
       );
     for (const r of records)
       await connection.query(
-        'INSERT INTO project_releases (project_id,repo,github_id,title,content,url,published_at,historical) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE source_visible=1,title=VALUES(title),content=VALUES(content),url=VALUES(url)',
+        'INSERT INTO project_releases (project_id,repo,github_id,title,content,url,published_at,historical,prerelease) VALUES (?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE source_visible=1,title=VALUES(title),content=VALUES(content),url=VALUES(url),prerelease=VALUES(prerelease)',
         [
           id,
           project.repo,
@@ -153,10 +155,11 @@ async function syncProject(id, manual = false) {
           r.url,
           r.published_at,
           r.historical,
+          r.prerelease,
         ],
       );
     await connection.query(
-      'UPDATE github_sync_state SET etag=COALESCE(?,etag),baseline_at=COALESCE(baseline_at,UTC_TIMESTAMP()),initialized=1,last_success_at=UTC_TIMESTAMP(),next_attempt_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE),error=NULL WHERE project_id=?',
+      'UPDATE github_sync_state SET etag=COALESCE(?,etag),baseline_at=COALESCE(baseline_at,UTC_TIMESTAMP()),initialized=1,release_policy_version=1,last_success_at=UTC_TIMESTAMP(),next_attempt_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE),error=NULL WHERE project_id=?',
       [firstEtag, manual ? 15 : 60, id],
     );
     await connection.commit();

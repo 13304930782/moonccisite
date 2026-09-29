@@ -1,3 +1,5 @@
+import { notify } from '../lib/feedback';
+import { confirmAction } from '../lib/confirmAction';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -57,29 +59,7 @@ function encoded(filename: string) {
   return encodeURIComponent(filename);
 }
 
-async function requestJson(path: string, options: RequestInit = {}) {
-  const res = await fetch(`/api${path}`, {
-    credentials: 'same-origin',
-    ...options,
-    headers: {
-      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-      'X-Requested-With': 'XMLHttpRequest',
-      ...(options.headers || {}),
-    },
-  });
-
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
-
-  if (!res.ok) {
-    const err: any = new Error(data.message || '请求失败');
-    err.status = res.status;
-    err.data = data;
-    throw err;
-  }
-
-  return data;
-}
+const requestJson = api;
 
 async function uploadImage(file: File, quality = 'medium') {
   const formData = new FormData();
@@ -104,6 +84,7 @@ export default function AdminMediaPage() {
   const requestVersion = useRef(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [keyword, setKeyword] = useState('');
   const [uploading, setUploading] = useState(false);
   const [imageQuality, setImageQuality] = useState('medium');
@@ -123,6 +104,7 @@ export default function AdminMediaPage() {
     const version = ++requestVersion.current;
     const current = () => version === requestVersion.current && currentQuery.current === queryKey;
     setLoading(true);
+    setLoadError('');
     setMessage('');
     try {
       const data = await api(`/upload/media?${new URLSearchParams({ status, q: search, page: String(page), pageSize: '50' })}`);
@@ -131,7 +113,7 @@ export default function AdminMediaPage() {
       setTotal(data.total);
       if (data.page !== page) setPage(data.page);
     } catch (err: any) {
-      if (current()) { setItems([]); setMessage(err.message || '媒体库加载失败'); }
+      if (current()) { setLoadError(err.message || '媒体库加载失败'); }
     } finally { if (current()) setLoading(false); }
   };
   useEffect(() => {
@@ -234,9 +216,9 @@ export default function AdminMediaPage() {
 
       setItems((current) => current.map((item) => (item.filename === selected.filename ? updated : item)));
       refreshSelected(updated);
-      setMessage('媒体信息已保存');
+      notify.success('媒体信息已保存');
     } catch (err: any) {
-      setMessage(err.message || '保存失败');
+      setMessage(err.message || '保存失败'); notify.error(err.message || '保存失败');
     } finally {
       setSaving(false);
     }
@@ -257,9 +239,9 @@ export default function AdminMediaPage() {
       setItems((current) => current.map((item) => (item.filename === selected.filename ? updated : item)));
       setSelectedFilenames((current) => current.map((filename) => (filename === selected.filename ? updated.filename : filename)));
       refreshSelected(updated);
-      setMessage('文件名已修改，文章和站点设置中的旧链接已同步替换');
+      notify.success('文件名已修改，文章和站点设置中的旧链接已同步替换');
     } catch (err: any) {
-      setMessage(err.message || '改名失败');
+      setMessage(err.message || '改名失败'); notify.error(err.message || '改名失败');
     } finally {
       setSaving(false);
     }
@@ -280,9 +262,9 @@ export default function AdminMediaPage() {
       setItems((current) => current.map((item) => (item.filename === selected.filename ? updated : item)));
       setSelectedFilenames((current) => current.map((filename) => (filename === selected.filename ? updated.filename : filename)));
       refreshSelected(updated);
-      setMessage(`二次压缩完成：${updated.size_text}`);
+      notify.success(`二次压缩完成：${updated.size_text}`);
     } catch (err: any) {
-      setMessage(err.message || '二次压缩失败');
+      setMessage(err.message || '二次压缩失败'); notify.error(err.message || '二次压缩失败');
     } finally {
       setSaving(false);
     }
@@ -301,17 +283,17 @@ export default function AdminMediaPage() {
 
       setSelected(null);
       setSelectedFilenames((current) => current.filter((filename) => filename !== selected.filename));
-      setMessage('媒体文件已移入回收站');
+      notify.success('媒体文件已移入回收站');
       await load();
     } catch (err: any) {
       if (err.status === 409 && !force) {
-        const ok = window.confirm(`${err.message}\n\n强制删除会让文章里的图片链接失效，确定继续？`);
+        const ok = (await confirmAction(`${err.message}\n\n强制删除会让文章里的图片链接失效，确定继续？`));
         if (ok) {
           await deleteFile(true);
           return;
         }
       } else {
-        setMessage(err.message || '删除失败');
+        setMessage(err.message || '删除失败'); notify.error(err.message || '删除失败');
       }
     } finally {
       setSaving(false);
@@ -331,10 +313,10 @@ export default function AdminMediaPage() {
 
       setSelected(null);
       setSelectedFilenames((current) => current.filter((filename) => filename !== selected.filename));
-      setMessage('媒体文件已恢复');
+      notify.success('媒体文件已恢复');
       await load();
     } catch (err: any) {
-      setMessage(err.message || '恢复失败');
+      setMessage(err.message || '恢复失败'); notify.error(err.message || '恢复失败');
     } finally {
       setSaving(false);
     }
@@ -342,7 +324,7 @@ export default function AdminMediaPage() {
 
   const permanentDelete = async () => {
     if (!selected) return;
-    if (!window.confirm('确定彻底删除？这一步不可恢复。')) return;
+    if (!(await confirmAction('确定彻底删除？这一步不可恢复。'))) return;
 
     setSaving(true);
     setMessage('');
@@ -354,10 +336,10 @@ export default function AdminMediaPage() {
 
       setSelected(null);
       setSelectedFilenames((current) => current.filter((filename) => filename !== selected.filename));
-      setMessage('媒体文件已彻底删除');
+      notify.success('媒体文件已彻底删除');
       await load();
     } catch (err: any) {
-      setMessage(err.message || '彻底删除失败');
+      setMessage(err.message || '彻底删除失败'); notify.error(err.message || '彻底删除失败');
     } finally {
       setSaving(false);
     }
@@ -380,17 +362,17 @@ export default function AdminMediaPage() {
 
       setSelected(null);
       setSelectedFilenames([]);
-      setMessage(data.message || '批量删除完成');
+      notify.success(data.message || '批量删除完成');
       await load();
     } catch (err: any) {
       if (err.status === 409 && !force) {
-        const ok = window.confirm(`${err.message}\n\n强制删除会让文章里的图片链接失效，确定继续？`);
+        const ok = (await confirmAction(`${err.message}\n\n强制删除会让文章里的图片链接失效，确定继续？`));
         if (ok) {
           await batchDelete(true);
           return;
         }
       } else {
-        setMessage(err.message || '批量删除失败');
+        setMessage(err.message || '批量删除失败'); notify.error(err.message || '批量删除失败');
       }
     } finally {
       setSaving(false);
@@ -411,10 +393,10 @@ export default function AdminMediaPage() {
 
       setSelected(null);
       setSelectedFilenames([]);
-      setMessage(data.message || '批量恢复完成');
+      notify.success(data.message || '批量恢复完成');
       await load();
     } catch (err: any) {
-      setMessage(err.message || '批量恢复失败');
+      setMessage(err.message || '批量恢复失败'); notify.error(err.message || '批量恢复失败');
     } finally {
       setSaving(false);
     }
@@ -422,7 +404,7 @@ export default function AdminMediaPage() {
 
   const batchPermanentDelete = async () => {
     if (!selectedCount) return;
-    if (!window.confirm(`确定彻底删除选中的 ${selectedCount} 个文件？这一步不可恢复。`)) return;
+    if (!(await confirmAction(`确定彻底删除选中的 ${selectedCount} 个文件？这一步不可恢复。`))) return;
 
     setSaving(true);
     setMessage('');
@@ -435,10 +417,10 @@ export default function AdminMediaPage() {
 
       setSelected(null);
       setSelectedFilenames([]);
-      setMessage(data.message || '批量彻底删除完成');
+      notify.success(data.message || '批量彻底删除完成');
       await load();
     } catch (err: any) {
-      setMessage(err.message || '批量彻底删除失败');
+      setMessage(err.message || '批量彻底删除失败'); notify.error(err.message || '批量彻底删除失败');
     } finally {
       setSaving(false);
     }
@@ -467,13 +449,13 @@ export default function AdminMediaPage() {
               <option value="original">原图</option>
             </ThemeSelect>
 
-            <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-sm text-foreground hover:bg-muted">
+            <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-border bg-card focus-within:ring-2 focus-within:ring-ring px-5 py-3 text-sm text-foreground hover:bg-muted">
               <Upload className="h-4 w-4" />
               {uploading ? '上传中...' : '上传图片'}
               <input
                 type="file"
                 accept={IMAGE_ACCEPT}
-                className="hidden"
+                className="sr-only"
                 disabled={uploading}
                 onChange={(e) => handleUpload(e.target.files?.[0])}
               />
@@ -495,20 +477,23 @@ export default function AdminMediaPage() {
             <button
               type="button"
               onClick={() => { setPage(1); setStatus('active'); }}
-              className={`rounded-[10px] px-4 py-2 text-sm ${status === 'active' ? 'bg-muted text-foreground' : 'bg-muted text-foreground'}`}
+              aria-pressed={status === 'active'}
+              className={`rounded-[10px] border px-4 py-2 text-sm ${status === 'active' ? 'bg-foreground text-background border-foreground' : 'bg-card text-foreground border-border'}`}
             >
               正常文件
             </button>
             <button
               type="button"
               onClick={() => { setPage(1); setStatus('trashed'); }}
-              className={`rounded-[10px] px-4 py-2 text-sm ${status === 'trashed' ? 'bg-muted text-foreground' : 'bg-muted text-foreground'}`}
+              aria-pressed={status === 'trashed'}
+              className={`rounded-[10px] border px-4 py-2 text-sm ${status === 'trashed' ? 'bg-foreground text-background border-foreground' : 'bg-card text-foreground border-border'}`}
             >
               回收站
             </button>
           </div>
 
           <input
+            aria-label="搜索媒体文件"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring lg:max-w-md"
@@ -520,11 +505,11 @@ export default function AdminMediaPage() {
           </p>
         </div>
 
-        <nav aria-label="媒体库分页" className="mt-4 flex flex-wrap items-center gap-3">
+        {(total > 50 || page > 1) && <nav aria-label="媒体库分页" className="mt-4 flex flex-wrap items-center gap-3">
           <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="rounded border px-4 py-2 disabled:opacity-50">上一页</button>
           <span>第 {page} / {Math.max(1, Math.ceil(total / 50))} 页</span>
           <button type="button" disabled={loading || page * 50 >= total} onClick={() => setPage(page + 1)} className="rounded border px-4 py-2 disabled:opacity-50">下一页</button>
-        </nav>
+        </nav>}
         <div className="mt-5 flex flex-col gap-3 rounded-[10px] bg-muted p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -545,7 +530,7 @@ export default function AdminMediaPage() {
               清空选择
             </button>
 
-            <span className="text-sm text-muted-foreground">已选择 {selectedCount} 个</span>
+            <span className="text-sm text-muted-foreground">{selectedCount ? `已选择 ${selectedCount} 个` : '先选择图片，再执行批量操作'}</span>
           </div>
 
           {status === 'active' ? (
@@ -553,7 +538,7 @@ export default function AdminMediaPage() {
               type="button"
               disabled={selectedCount === 0 || saving}
               onClick={() => batchDelete(false)}
-              className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-red-600 px-5 py-2.5 text-sm text-foreground hover:bg-red-700 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-border bg-card px-5 py-2.5 text-sm text-foreground hover:bg-muted disabled:opacity-50"
             >
               <Trash2 className="h-4 w-4" />
               批量删除到回收站
@@ -574,7 +559,7 @@ export default function AdminMediaPage() {
                 type="button"
                 disabled={selectedCount === 0 || saving}
                 onClick={batchPermanentDelete}
-                className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-red-600 px-5 py-2.5 text-sm text-foreground hover:bg-red-700 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-border bg-card px-5 py-2.5 text-sm text-foreground hover:bg-muted disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" />
                 批量彻底删除
@@ -584,19 +569,21 @@ export default function AdminMediaPage() {
         </div>
 
         {message && (
-          <div className="mt-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
+          <div role="alert" className="mt-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
             {message}
           </div>
         )}
       </div>
 
-      {loading ? (
+      {loadError && <div className="resource-notice" role="alert"><div><strong>{items.length ? '刷新失败，已保留当前图片' : '媒体库加载失败'}</strong><p>{loadError}</p></div><button className="quiet-button" disabled={loading} onClick={() => void load()}>重新加载媒体库</button></div>}
+      {loading && !filtered.length ? (
         <div className="py-6 text-muted-foreground">
           正在加载媒体库...
         </div>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && !loadError ? (
         <div className="py-6 text-muted-foreground">
-          暂无媒体文件。
+          {search ? '没有找到匹配的媒体文件。' : status === 'trashed' ? '回收站为空。' : '暂无媒体文件，请先上传图片。'}
+          {search && <button className="quiet-button" onClick={() => { setKeyword(''); setSearch(''); setPage(1); }}>清除搜索</button>}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

@@ -1,3 +1,4 @@
+import { notify } from '../lib/feedback';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -27,10 +28,10 @@ export default function AdminEditorApplicationsPage() {
         body: JSON.stringify({ status: nextStatus, review_note: note }),
       });
 
-      setMessage(res.message || '操作成功');
+      notify.success(res.message || '操作成功');
       loadApplications();
     } catch (err: any) {
-      setMessage(err.message || '操作失败');
+      setMessage(err.message || '操作失败'); notify.error(err.message || '操作失败');
     }
   };
 

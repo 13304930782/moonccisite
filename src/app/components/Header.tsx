@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useState } from 'react';
+import {usePublishing} from '../lib/usePublishing';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, Search, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -7,7 +8,10 @@ import { useSiteSettings } from '../context/SiteSettingsContext';
 import { safeImageSrc } from '../lib/safeUrl';
 import { preloadPage } from '../lib/preloadPage';
 export function Header() {
+  const header = useRef<HTMLElement>(null);
+  const closeAccount = () => header.current?.querySelectorAll('details[open]').forEach(item => item.removeAttribute('open'));
   const { user, logout, loggingOut, logoutError } = useAuth();
+  const publishing=usePublishing();
   const { data: settings } = useSiteSettings();
   const brand = settings?.brand || {};
   const [menu, setMenu] = useState(false),
@@ -18,16 +22,20 @@ export function Header() {
   useEffect(() => {
     setMenu(false);
     setSearch(false);
+    closeAccount();
   }, [location.pathname, location.search]);
   useEffect(() => {
     function close(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        closeAccount();
         setMenu(false);
         setSearch(false);
       }
     }
+    const outside = (event: PointerEvent) => { if (!(event.target instanceof Element) || !event.target.closest('.nav-disclosure')) closeAccount(); };
     window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
+    document.addEventListener('pointerdown', outside);
+    return () => { window.removeEventListener('keydown', close); document.removeEventListener('pointerdown', outside); };
   }, []);
   const admin =
     user && ['owner', 'admin', 'editor'].includes(user.role)
@@ -45,8 +53,24 @@ export function Header() {
     if (keyword.trim())
       navigate('/search?q=' + encodeURIComponent(keyword.trim()));
   }
+  const accountMenu = (user ? (
+              <details className="nav-disclosure">
+                <summary>{user.username}</summary>
+                <div className="nav-popover">
+                  <Link to={admin}>
+                    {user.role === 'user' ? '申请成为编辑' : '控制台'}
+                  </Link>
+                  <Link to="/account/settings">个人设置</Link>{publishing&&<Link to="/account/submissions">我的投稿</Link>}
+              <button onClick={() => void logout()} disabled={loggingOut}>
+                    {loggingOut ? '正在退出…' : '退出登录'}
+                  </button>
+                </div>
+              </details>
+            ) : (
+              <Link to="/login">登录 / 注册</Link>
+            ));
   return (
-    <header className="site-header">
+    <header className="site-header" ref={header}>
       <div className="site-container header-inner">
         <Link className="site-brand" to="/">
           {safeImageSrc(brand.logo_url) && (
@@ -72,22 +96,7 @@ export function Header() {
           </button>
           <ThemeToggle />
           <div className="header-account">
-            {user ? (
-              <details className="nav-disclosure">
-                <summary>{user.username}</summary>
-                <div className="nav-popover">
-                  <Link to={admin}>
-                    {user.role === 'user' ? '申请成为编辑' : '控制台'}
-                  </Link>
-                  <Link to="/account/settings">个人设置</Link>
-              <button onClick={() => void logout()} disabled={loggingOut}>
-                    {loggingOut ? '正在退出…' : '退出登录'}
-                  </button>
-                </div>
-              </details>
-            ) : (
-              <Link to="/login">登录 / 注册</Link>
-            )}
+            {accountMenu}
           </div>
           <button
             className="icon-button mobile-menu-button"
@@ -116,33 +125,21 @@ export function Header() {
         </form>
       )}
       {menu && (
+        <div className="mobile-menu-panel">
         <nav
           id="mobile-navigation"
           className="mobile-navigation"
           aria-label="手机导航"
         >
-          {[...links,['/archives','文章归档'],['/about','关于我'],['/links','友情链接'],['/rss','RSS 订阅']].map(([to, label]) => (
+          {links.map(([to, label]) => (
             <Link key={to} to={to}>
               {label}
             </Link>
           ))}
-          {user ? (
-            <>
-              <Link to={admin}>
-                {user.role === 'user' ? '申请成为编辑' : '控制台'}
-              </Link>
-              <Link to="/account/settings">个人设置</Link>
-              <button onClick={() => void logout()} disabled={loggingOut}>
-                {loggingOut ? '正在退出…' : '退出登录'}
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login">登录账户</Link>
-              <Link to="/register">注册账号</Link>
-            </>
-          )}
+
         </nav>
+        <div className="mobile-account-menu"><span>账户</span>{accountMenu}</div>
+        </div>
       )}
       {logoutError && (
         <p

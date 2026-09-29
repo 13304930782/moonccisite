@@ -1,3 +1,17 @@
+import { NavigationProtection } from './components/NavigationProtection';
+import { lazy, Suspense } from 'react';
+import { RoutePosition } from './components/RoutePosition';
+import '../styles/experience.css';
+const FeedbackHost = lazy(() => import('./components/FeedbackHost').then(m => ({ default: m.FeedbackHost })));
+const SessionsPage=lazy(()=>import('./pages/SessionsPage'));
+const OperationsPage=lazy(()=>import('./pages/OperationsPage'));
+const NotificationsPage=lazy(()=>import('./pages/NotificationsPage'));
+const ReadingHistoryPage=lazy(()=>import('./pages/ReadingHistoryPage'));
+const SeriesPage=lazy(()=>import('./pages/SeriesPage'));
+const AdminSeriesPage=lazy(()=>import('./pages/AdminSeriesPage'));
+const AccountWorkspace=lazy(()=>import('./components/AccountWorkspace').then(m=>({default:m.AccountWorkspace})));
+const SubmissionsPage = lazy(() => import('./pages/SubmissionsPage'));
+const PublishingQueuePage = lazy(() => import('./pages/PublishingQueuePage'));
 const AboutPage=lazy(()=>import('./pages/BlogInfoPages').then(m=>({default:m.AboutPage})));
 const LinksPage=lazy(()=>import('./pages/BlogInfoPages').then(m=>({default:m.LinksPage})));
 const AdminBlogPages=lazy(()=>import('./pages/AdminBlogPages'));
@@ -14,13 +28,14 @@ const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
 const AdminUpdatesPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminUpdatesPage })));
 const AdminProjectsPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminProjectsPage })));
 const AdminNewsletterPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminNewsletterPage })));
-import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { lazy, Suspense, useLayoutEffect } from 'react';
+import { createBrowserRouter, RouterProvider, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const AdminRuntimePage = lazy(() => import('./pages/AdminRuntimePage'));
 const AdminAnalyticsPage = lazy(() => import('./pages/AdminAnalyticsPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const AdminPostsPage = lazy(() => import('./pages/AdminPostsPage'));
@@ -32,6 +47,7 @@ const EditorApplyPage = lazy(() => import('./pages/EditorApplyPage'));
 const AdminEditorApplicationsPage = lazy(() => import('./pages/AdminEditorApplicationsPage'));
 const AdminSiteSettingsPage = lazy(() => import('./pages/AdminSiteSettingsPage'));
 const AdminLoginSettingsPage = lazy(() => import('./pages/AdminLoginSettingsPage'));
+const BookmarksPage = lazy(() => import('./pages/BookmarksPage'));
 const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'));
 const AdminUserSettingsPage = lazy(() => import('./pages/AdminUserSettingsPage'));
 const CompleteRegistrationPage = lazy(() => import('./pages/CompleteRegistrationPage'));
@@ -49,7 +65,7 @@ const EarlyAccessPage = lazy(() => import('./pages/EarlyAccessPage'));
 const AdminEarlyAccessPage = lazy(() => import('./pages/AdminEarlyAccessPage'));
 const AdminEarlyAccessDetailPage = lazy(() => import('./pages/AdminEarlyAccessDetailPage'));
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { AdminShell } from './components/admin/AdminShell';
+const AdminShell = lazy(() => import('./components/admin/AdminShell').then(m => ({default:m.AdminShell})));
 import { SiteMeta } from './components/SiteMeta';
 import { SitePage, ContentSkeleton } from './components/ContentUI';
 import { ThemeProvider } from './context/ThemeContext';
@@ -60,7 +76,7 @@ const ReadingTools = lazy(() => import('./components/ReadingTools'));
 const WeatherCompanion = lazy(() => import('./components/WeatherCompanion'));
 function PublicWeatherCompanion() {
   const { pathname } = useLocation();
-  if (pathname.startsWith('/admin')) return null;
+  if ((pathname.startsWith('/admin') && pathname !== '/admin-login') || pathname.startsWith('/account')) return null;
   return <Suspense fallback={null}><WeatherCompanion /></Suspense>;
 }
 
@@ -92,6 +108,7 @@ function Guard({
   writerOnly?: boolean;
 }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -101,28 +118,17 @@ function Guard({
     );
   }
 
-  if (!user) return <Navigate to="/login" />;
-  if (ownerOnly && !isOwnerRole(user.role)) return <Navigate to="/admin" />;
-  if (adminOnly && !isAdminRole(user.role)) return <Navigate to="/admin" />;
-  if (writerOnly && !isWriterRole(user.role)) return <Navigate to="/admin/editor-apply" />;
+  if (!user) return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  const denied=ownerOnly&&!isOwnerRole(user.role)?'站长':adminOnly&&!isAdminRole(user.role)?'管理员或站长':writerOnly&&!isWriterRole(user.role)?'编辑、管理员或站长':'';
+  if(denied)return <main className="site-container page-content"><section className="quiet-state" role="status"><h1>当前账号无法访问此页面</h1><p>此功能需要{denied}权限，你的登录状态仍然有效。</p><div className="inline-actions"><Link className="quiet-button" to="/account/submissions">去我的投稿</Link><Link className="text-link" to="/account/settings">返回个人中心</Link>{isWriterRole(user.role)&&<Link className="text-link" to="/admin">返回后台</Link>}<Link className="text-link" to="/">返回网站</Link></div></section></main>;
 
   return children;
 }
 
-function ScrollToPageTop() {
-  const { pathname } = useLocation();
-  useLayoutEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }, [pathname]);
-  return null;
-}
-
-export default function App() {
-  return (
-    <ThemeProvider>
-      <SiteSettingsProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <SiteMeta />
-          <ScrollToPageTop /><PageAnalytics />
+function SiteRoutes() {
+  return <><NavigationProtection/>
+          <SiteMeta /><Suspense fallback={null}><FeedbackHost/></Suspense>
+          <RoutePosition /><PageAnalytics />
           <Suspense fallback={<RouteLoader />}><Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/updates" element={<UpdatesPage/>}/>
@@ -136,7 +142,8 @@ export default function App() {
           <Route path="/admin/newsletter" element={<Guard ownerOnly><AdminShell><AdminNewsletterPage/></AdminShell></Guard>}/>
           <Route path="/about" element={<AboutPage/>}/><Route path="/links" element={<LinksPage/>}/><Route path="/admin/blog-pages" element={<Guard adminOnly><AdminShell><AdminBlogPages/></AdminShell></Guard>}/>
           <Route path="/archives" element={<ArchivesPage/>}/>
-          <Route path="/articles" element={<ArticlesPage />} />
+          <Route path="/series" element={<SeriesPage/>}/><Route path="/series/:slug" element={<SeriesPage/>}/><Route path="/admin/series" element={<Guard adminOnly><AdminShell><AdminSeriesPage/></AdminShell></Guard>}/>
+<Route path="/articles" element={<ArticlesPage />} />
           <Route path="/tag/:tag" element={<TagPage />} />
           <Route path="/tags" element={<TagsPage />} />
           <Route path="/category/:category" element={<CategoryPage />} />
@@ -157,6 +164,7 @@ export default function App() {
           <Route path="/admin/write" element={<Guard writerOnly><AdminShell><AdminWritePage /></AdminShell></Guard>} />
           <Route path="/admin/media" element={<Guard adminOnly><AdminShell><AdminMediaPage /></AdminShell></Guard>} />
           <Route path="/admin/posts/:id/edit" element={<Guard writerOnly><AdminShell><AdminWritePage /></AdminShell></Guard>} />
+          <Route path="/admin/runtime" element={<Guard adminOnly><AdminShell><AdminRuntimePage /></AdminShell></Guard>} />
           <Route path="/admin/analytics" element={<Guard adminOnly><AdminShell><AdminAnalyticsPage /></AdminShell></Guard>} />
           <Route path="/admin/users" element={<Guard adminOnly><AdminShell><AdminUsersPage /></AdminShell></Guard>} />
           <Route path="/admin/comments" element={<Guard adminOnly><AdminShell><AdminCommentsPage /></AdminShell></Guard>} />
@@ -166,7 +174,16 @@ export default function App() {
           <Route path="/admin/site-settings" element={<Guard adminOnly><AdminShell><AdminSiteSettingsPage /></AdminShell></Guard>} />
           <Route path="/complete-registration" element={<CompleteRegistrationPage />} />
           <Route path="/account/connections" element={<Navigate to="/account/settings" replace />} />
-          <Route path="/account/settings" element={<Guard><AccountSettingsPage /></Guard>} />
+          <Route path="/account/notifications" element={<Guard><AccountWorkspace><NotificationsPage/></AccountWorkspace></Guard>}/>
+<Route path="/account/sessions" element={<Guard><AccountWorkspace><SessionsPage/></AccountWorkspace></Guard>}/>
+<Route path="/admin/operations" element={<Guard adminOnly><AdminShell><OperationsPage/></AdminShell></Guard>}/>
+<Route path="/account/history" element={<Guard><AccountWorkspace><ReadingHistoryPage/></AccountWorkspace></Guard>}/>
+<Route path="/account/bookmarks" element={<Guard><AccountWorkspace><BookmarksPage /></AccountWorkspace></Guard>} />
+          <Route path="/account/settings" element={<Guard><AccountWorkspace><AccountSettingsPage /></AccountWorkspace></Guard>} />
+<Route path="/account/submissions" element={<Guard><AccountWorkspace><SubmissionsPage /></AccountWorkspace></Guard>} />
+<Route path="/account/write" element={<Guard><AccountWorkspace><AdminWritePage /></AccountWorkspace></Guard>} />
+<Route path="/admin/reviews" element={<Guard adminOnly><AdminShell><PublishingQueuePage key="reviews" /></AdminShell></Guard>} />
+<Route path="/admin/schedules" element={<Guard adminOnly><AdminShell><PublishingQueuePage key="schedules" plans /></AdminShell></Guard>} />
           <Route path="/admin/users/:id/settings" element={<Guard adminOnly><AdminShell><AdminUserSettingsPage /></AdminShell></Guard>} />
           <Route path="/admin/login-settings" element={<Guard ownerOnly><AdminShell><AdminLoginSettingsPage /></AdminShell></Guard>} />
           <Route path="/admin/mail-settings" element={<Guard adminOnly><AdminShell><AdminMailSettingsPage /></AdminShell></Guard>} />
@@ -175,12 +192,12 @@ export default function App() {
           <Route path="/admin/early-access/:id" element={<Guard ownerOnly><AdminShell><AdminEarlyAccessDetailPage /></AdminShell></Guard>} />
           <Route path="/admin/electricity" element={<Guard ownerOnly><AdminShell><Suspense fallback={<RouteLoader />}><AdminElectricityPage /></Suspense></AdminShell></Guard>} />
 
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route path="*" element={<NotFoundPage />} />
           </Routes></Suspense>
           <PublicWeatherCompanion /><Suspense fallback={null}><ReadingTools /></Suspense>
-        </BrowserRouter>
-      </AuthProvider>
-      </SiteSettingsProvider>
-    </ThemeProvider>
-  );
+  </>;
+}
+const router = createBrowserRouter([{ path: '*', element: <SiteRoutes/> }]);
+export default function App() {
+  return <ThemeProvider><SiteSettingsProvider><AuthProvider><RouterProvider router={router}/></AuthProvider></SiteSettingsProvider></ThemeProvider>;
 }

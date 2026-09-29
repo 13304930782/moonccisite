@@ -1,3 +1,5 @@
+import {MailChannelSettings,defaultMailProfiles} from '../components/MailChannelSettings';
+import { notify } from '../lib/feedback';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
@@ -16,6 +18,7 @@ const defaultMail = {
   site_url: 'https://mooncci.site',
   early_access_download_url: '',
   has_smtp_pass: false,
+  channels: defaultMailProfiles,
 };
 
 function uploadEarlyAccessRelease(file: File, onProgress: (value: number) => void) {
@@ -56,6 +59,10 @@ function uploadEarlyAccessRelease(file: File, onProgress: (value: number) => voi
 export default function AdminMailSettingsPage() {
   const { user } = useAuth();
   const [mail, setMail] = useState(defaultMail);
+  const [saved,setSaved] = useState('');
+  const [loadAttempt,setLoadAttempt] = useState(0);
+  const [loadError,setLoadError] = useState('');
+  const dirty = saved !== JSON.stringify(mail);
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -63,10 +70,11 @@ export default function AdminMailSettingsPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
+    setLoadError('');
     api('/settings/mail')
-      .then((data) => setMail({ ...defaultMail, ...data }))
-      .catch((err) => setMessage(err.message || '邮件设置加载失败'));
-  }, []);
+      .then((data) => {const value={...defaultMail,...data};setMail(value);setSaved(JSON.stringify(value));})
+      .catch((err) => setLoadError(err.message || '邮件设置加载失败'));
+  }, [loadAttempt]);
 
   const update = (key: string, value: string) => {
     setMail((prev) => ({ ...prev, [key]: value }));
@@ -82,31 +90,32 @@ export default function AdminMailSettingsPage() {
         body: JSON.stringify(mail),
       });
 
-      setMessage(res.message || '保存成功');
+      notify.success(res.message || '保存成功');
 
       if (res.mail) {
         setMail({ ...defaultMail, ...res.mail });
+        setSaved(JSON.stringify({...defaultMail,...res.mail}));
       }
     } catch (err: any) {
-      setMessage(err.message || '保存失败');
+      setMessage(err.message || '保存失败'); notify.error(err.message || '保存失败');
     } finally {
       setSaving(false);
     }
   };
 
-  const testMail = async () => {
+  const testMail = async (channel: string) => {
     setTesting(true);
     setMessage('');
 
     try {
       const res = await api('/settings/mail/test', {
         method: 'POST',
-        body: JSON.stringify({}),
+        body: JSON.stringify({channel}),
       });
 
-      setMessage(res.message || '测试邮件已发送');
+      notify.success(res.message || '测试邮件已发送');
     } catch (err: any) {
-      setMessage(err.message || '测试邮件发送失败');
+      setMessage(err.message || '测试邮件发送失败'); notify.error(err.message || '测试邮件发送失败');
     } finally {
       setTesting(false);
     }
@@ -131,6 +140,7 @@ export default function AdminMailSettingsPage() {
       const response = await uploadEarlyAccessRelease(file, setUploadProgress);
       if (response.mail) {
         setMail({ ...defaultMail, ...response.mail });
+        setSaved(JSON.stringify({...defaultMail,...response.mail}));
       } else if (response.url) {
         update('early_access_download_url', response.url);
       }
@@ -144,22 +154,24 @@ export default function AdminMailSettingsPage() {
   };
 
   return (
-    <div className="admin-page">
+    <div className="admin-page workflow-feedback">
       <div className="py-2">
         <div className="mb-8">
           <h1 className="admin-title">邮件提醒设置</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            配置评论审核、Early Access 申请提醒与统一品牌邮件。
+            共用一套邮件服务器，为账号、电量、通知、周报、PromptDock 和人工邮件分别设置发件邮箱。
           </p>
         </div>
 
         {message && (
-          <div className="mb-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
+          <div role="alert" className="mb-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
             {message}
           </div>
         )}
 
-        <div className="space-y-6">
+        {loadError&&<p role="alert">{loadError}<button className="text-link" onClick={()=>setLoadAttempt(n=>n+1)}>重新读取设置</button></p>}
+        {!saved&&!loadError&&<p role="status">正在读取邮件设置…</p>}
+        <fieldset disabled={!saved||saving||testing||uploading} className="space-y-6">
           <div className="admin-settings-section">
             <h2 className="text-xl font-medium text-foreground">基础开关</h2>
 
@@ -177,9 +189,9 @@ export default function AdminMailSettingsPage() {
           </div>
 
           <div className="admin-settings-section">
-            <h2 className="text-xl font-medium text-foreground">SMTP 配置</h2>
+            <h2 className="text-xl font-medium text-foreground">共用 SMTP 与默认账号</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Resend 通常填写 smtp.resend.com / 465 / resend / SMTP 密码。
+              填写当前邮件服务提供的 SMTP 地址、端口和账号。自建邮件使用自建服务的配置；修改后先保存，再发送测试邮件。
             </p>
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -189,7 +201,7 @@ export default function AdminMailSettingsPage() {
                   value={mail.smtp_host}
                   onChange={(e) => update('smtp_host', e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="smtp.resend.com"
+                  placeholder="宝塔邮局显示的 SMTP 服务器"
                 />
               </div>
 
@@ -204,29 +216,29 @@ export default function AdminMailSettingsPage() {
               </div>
 
               <div>
-                <label className="block mb-2 text-sm font-medium text-foreground">是否 SSL</label>
+                <label className="block mb-2 text-sm font-medium text-foreground">连接加密</label>
                 <ThemeSelect
                   value={mail.smtp_secure}
                   onValueChange={(nextValue) => update('smtp_secure', nextValue)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
                 >
-                  <option value="true">true</option>
-                  <option value="false">false</option>
+                  <option value="true">SSL/TLS（通常为 465）</option>
+                  <option value="false">STARTTLS（通常为 587，按邮局配置）</option>
                 </ThemeSelect>
               </div>
 
               <div>
-                <label className="block mb-2 text-sm font-medium text-foreground">SMTP 用户</label>
+                <label className="block mb-2 text-sm font-medium text-foreground">默认 SMTP 登录邮箱</label>
                 <input
                   value={mail.smtp_user}
                   onChange={(e) => update('smtp_user', e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="resend"
+                  placeholder="websiteaccount@mooncci.site"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="block mb-2 text-sm font-medium text-foreground">SMTP 密码 / 授权码</label>
+                <label className="block mb-2 text-sm font-medium text-foreground">默认邮箱密码</label>
                 <input
                   value={mail.smtp_pass}
                   onChange={(e) => update('smtp_pass', e.target.value)}
@@ -246,7 +258,7 @@ export default function AdminMailSettingsPage() {
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block mb-2 text-sm font-medium text-foreground">发件人</label>
+                <label className="block mb-2 text-sm font-medium text-foreground">默认发件地址</label>
                 <input
                   value={mail.smtp_from}
                   onChange={(e) => update('smtp_from', e.target.value)}
@@ -261,7 +273,7 @@ export default function AdminMailSettingsPage() {
                   value={mail.notify_to}
                   onChange={(e) => update('notify_to', e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="a15326192500@gmail.com"
+                  placeholder="接收测试与管理提醒的邮箱"
                 />
               </div>
 
@@ -295,13 +307,13 @@ export default function AdminMailSettingsPage() {
                           type="file"
                           accept=".dmg,application/x-apple-diskimage,application/octet-stream"
                           className="sr-only"
-                          disabled={uploading}
+                          disabled={uploading||dirty}
                           onChange={uploadRelease}
                         />
                         {uploading ? `正在上传 ${uploadProgress}%` : '上传 PromptDock DMG'}
                       </label>
                       <span className="text-xs font-medium text-muted-foreground">
-                        仅站长可上传，最大 512 MB。上传成功后会自动更新上方地址。
+                        仅站长可上传，最大 512 MB。请先保存设置；上传成功后自动更新下载地址。
                       </span>
                     </div>
                     {uploading && (
@@ -317,24 +329,20 @@ export default function AdminMailSettingsPage() {
             </div>
           </div>
 
+          <MailChannelSettings channels={mail.channels} defaultSender={mail.smtp_from||mail.smtp_user} canTest={!dirty&&!!saved} testing={testing} onTest={key=>void testMail(key)} onChange={(key,field,value)=>setMail(prev=>({...prev,channels:{...prev.channels,[key]:{...prev.channels[key],[field]:value,...(field==='address'?{password:'',has_password:false}:{})}}}))}/>
+          <p role="status">{dirty?'有尚未保存的修改，请先保存，再测试当前配置。':'配置已保存，可以发送测试邮件验证。'}</p>
           <div className="flex flex-wrap gap-3">
             <button
               onClick={save}
               disabled={saving}
-              className="rounded-[10px] bg-muted px-6 py-3 text-foreground hover:bg-muted disabled:opacity-60"
+              className="workflow-button workflow-primary"
             >
               {saving ? '保存中...' : '保存邮件设置'}
             </button>
 
-            <button
-              onClick={testMail}
-              disabled={testing}
-              className="rounded-[10px] bg-muted px-6 py-3 text-foreground hover:bg-muted disabled:opacity-60"
-            >
-              {testing ? '发送中...' : '发送测试邮件'}
-            </button>
+
           </div>
-        </div>
+        </fieldset>
       </div>
     </div>
   );

@@ -27,6 +27,10 @@ function maskIp(ip) {
 
 
 router.use(authRequired);
+router.get('/runtime', adminOnly, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(await require('../lib/runtimeStatus').runtimeStatus(db));
+});
 
 function isOwner(user) {
   return user?.role === 'owner';
@@ -358,7 +362,11 @@ router.put('/comments/:id', adminOnly, async (req, res) => {
 
   if (comment.status === status)
     return res.json({ message: '评论状态未变化，未重复发送通知', notification: { status: 'not_needed' } });
-  const [write] = await db.query('UPDATE comments SET status=? WHERE id=? AND status=?', [status, req.params.id, comment.status]);
+  const write = await require('../services/engagement').transaction(async c=>{
+    const [result]=await c.query('UPDATE comments SET status=? WHERE id=? AND status=?',[status,req.params.id,comment.status]);
+    if(result.affectedRows&&status==='visible')await require('../services/engagement').commentEvent(c,req.params.id);
+    return result;
+  });
   if (!write.affectedRows) return res.status(409).json({ message: '评论已被其他操作更新，请刷新后重试。' });
   const notification = ['visible', 'rejected'].includes(status)
     ? await attemptNotification(() => sendCommentReviewNotification({

@@ -31,7 +31,7 @@ async function deliverWeek(now = new Date()) {
     const [[setting]] = await db.query('SELECT enabled FROM newsletter_settings WHERE id=1');
     if (!setting?.enabled) return { skipped: true };
     const config = await getMailConfig();
-    if (!isMailEnabled(config)) return { skipped: true };
+    if (!isMailEnabled(config, 'news')) return { skipped: true };
     await db.query(
       "UPDATE newsletter_deliveries SET status='uncertain',error='发送进程中断，请核对 SMTP 日志' WHERE status='sending' AND updated_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 15 MINUTE)",
     );
@@ -79,7 +79,7 @@ async function deliverWeek(now = new Date()) {
           );
           continue;
         }
-        const result = await sendMail({
+        const result = await sendMail({ channel: 'news',
           to: job.email,
           subject: `mooncci 周报 · ${period.key}`,
           ...newsletterMessage(current, origin, url),

@@ -281,10 +281,11 @@ test(
           .status,
         200,
       );
+      // Reopening a valid confirmation link is idempotent.
       assert.equal(
         (await req("/subscriptions/confirm", "POST", { token: confirm }, false))
           .status,
-        400,
+        200,
       );
       const expired = token();
       await db.query(
@@ -328,3 +329,4 @@ test(
     }
   },
 );
+

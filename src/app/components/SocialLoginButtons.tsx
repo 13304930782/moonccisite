@@ -1,3 +1,4 @@
+import {rememberDestination} from '../lib/loginDestination';
 import { useEffect, useState } from 'react';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { api } from '../lib/api';
@@ -16,6 +17,7 @@ export function SocialLoginButtons({ context = 'signin', disabled, onError, retu
     return () => { active = false; };
   }, [attempt]);
   const start = async (provider: string) => {
+    rememberDestination(returnTo || '');
     setBusy(provider);
     try {
       const data = await api(`/auth/${provider}/start`, { method: 'POST', body: JSON.stringify({ return_to: returnTo }) });

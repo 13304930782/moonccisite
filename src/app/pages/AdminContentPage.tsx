@@ -1,3 +1,5 @@
+import { notify } from '../lib/feedback';
+import { confirmAction } from '../lib/confirmAction';
 import {useUnsavedLeave} from '../lib/useUnsavedLeave';
 import { Link } from 'react-router-dom';
 import { ThemeSelect } from '../components/ThemeSelect';
@@ -51,7 +53,7 @@ function ImageField({
       onChange(r.url);
       setError('');
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message); notify.error(e.message);
     } finally {
       setBusy(false);
     }
@@ -144,10 +146,10 @@ export function AdminUpdatesPage() {
         body: JSON.stringify(form),
       });
       rawSetForm({ id: 0, content: '', image_url: '', status: 'draft' });setDirty(false);
-      setMessage('动态已保存');
+      notify.success('动态已保存');
       resource.reload();
     } catch (e: any) {
-      setMessage(e.message);
+      setMessage(e.message); notify.error(e.message);
     } finally {
       setBusy(false);
     }
@@ -198,8 +200,8 @@ export function AdminUpdatesPage() {
           {form.id > 0 && (
             <button
               type="button"
-              onClick={() =>
-                (!dirty||confirm('放弃当前未保存修改？')) && (rawSetForm({ id: 0, content: '', image_url: '', status: 'draft' }),setDirty(false))
+              onClick={async () =>
+                (!dirty||(await confirmAction('放弃当前未保存修改？'))) && (rawSetForm({ id: 0, content: '', image_url: '', status: 'draft' }),setDirty(false))
               }
             >
               取消编辑
@@ -224,7 +226,7 @@ export function AdminUpdatesPage() {
                     </span>
                     <p>{u.content.slice(0, 160)}</p>
                   </div>
-                  <button onClick={() => {if(!dirty||confirm('放弃当前未保存修改？')){rawSetForm({ ...u });setDirty(false);}}}>编辑 / 撤回</button>
+                  <button onClick={async () => {if(!dirty||(await confirmAction('放弃当前未保存修改？'))){rawSetForm({ ...u });setDirty(false);}}}>编辑 / 撤回</button>
                 </article>
               ))}
             </div>
@@ -250,6 +252,8 @@ const emptyProject = {
   featured_rank: '',
 };
 export function AdminProjectsPage() {
+  const [clock, setClock] = useState(Date.now());
+  useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const [dirty,setDirty]=useState(false),[imageBusy,setImageBusy]=useState(false);useUnsavedLeave(dirty);
   const { user } = useAuth(),
     owner = user?.role === 'owner';
@@ -269,11 +273,11 @@ export function AdminProjectsPage() {
         method,
         body: body ? JSON.stringify(body) : undefined,
       });
-      setMessage(r.message || '操作已完成');
+      notify.success(r.message || '操作已完成');
       resource.reload();
       return true;
     } catch (e: any) {
-      setMessage(e.message);
+      setMessage(e.message); notify.error(e.message);
       return false;
     } finally {
       setBusy(false);
@@ -381,7 +385,7 @@ export function AdminProjectsPage() {
         <div className="inline-actions">
           <button disabled={busy||imageBusy||resource.loading||!!resource.error}>保存作品</button>
           {form.id > 0 && (
-            <button type="button" onClick={() => {if(!dirty||confirm('放弃当前未保存修改？')){rawSetForm({ ...emptyProject });setDirty(false);}}}>
+            <button type="button" onClick={async () => {if(!dirty||(await confirmAction('放弃当前未保存修改？'))){rawSetForm({ ...emptyProject });setDirty(false);}}}>
               取消编辑
             </button>
           )}
@@ -405,12 +409,13 @@ export function AdminProjectsPage() {
                         ? new Date(p.last_success_at).toLocaleString('zh-CN')
                         : '尚未同步'}
                     </small>
+                    {p.next_attempt_at && Date.parse(p.next_attempt_at) > clock && <small className="sync-next-at">下次可同步：{new Date(p.next_attempt_at).toLocaleString('zh-CN')}</small>}
                     {p.sync_error && <p role="alert">{p.sync_error}</p>}
                   </div>
                   <div className="inline-actions">
                     <button
-                      onClick={() =>
-                        (!dirty||confirm('放弃当前未保存修改？')) && (rawSetForm({ ...p, featured_rank: p.featured_rank ?? '' }),setDirty(false))
+                      onClick={async () =>
+                        (!dirty||(await confirmAction('放弃当前未保存修改？'))) && (rawSetForm({ ...p, featured_rank: p.featured_rank ?? '' }),setDirty(false))
                       }
                     >
                       编辑
@@ -429,12 +434,12 @@ export function AdminProjectsPage() {
                           {p.sync_enabled ? '关闭同步' : '开启同步'}
                         </button>
                         <button
-                          disabled={busy || !p.sync_enabled}
+                          disabled={busy || !p.sync_enabled || (p.next_attempt_at && Date.parse(p.next_attempt_at) > clock)}
                           onClick={() =>
                             action(`/admin/projects/${p.id}/sync`, 'POST')
                           }
                         >
-                          立即同步
+                          {p.next_attempt_at && Date.parse(p.next_attempt_at) > clock ? Math.ceil((Date.parse(p.next_attempt_at)-clock)/1000)+' 秒后可同步' : '立即同步'}
                         </button>
                       </>
                     )}
@@ -455,17 +460,22 @@ export function AdminProjectsPage() {
 function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
   const [page, setPage] = useState(1),
     r = useResource(`/admin/projects/${id}/releases?page=${page}`),
-    [error, setError] = useState('');
+    [error, setError] = useState(''),
+    [busyId, setBusyId] = useState<number | null>(null);
   async function hide(release: any) {
+    if (busyId !== null) return;
+    setBusyId(release.id);
+    setError('');
     try {
       await api(`/admin/releases/${release.id}`, {
         method: 'PUT',
         body: JSON.stringify({ hidden: !release.hidden }),
       });
       r.reload();
+      notify.success(release.hidden ? '版本已恢复展示' : '版本已隐藏');
     } catch (e: any) {
-      setError(e.message);
-    }
+      setError(e.message); notify.error(e.message);
+    } finally { setBusyId(null); }
   }
   return (
     <section className="editor-panel">
@@ -478,6 +488,7 @@ function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
         {r.data && (
           <>
             <div className="admin-records">
+              {!r.data.items.length && <div className="quiet-state"><h3>暂无版本记录</h3><p>同步仓库版本后，已导入的版本会显示在这里。</p></div>}
               {r.data.items.map((item: any) => (
                 <article key={item.id}>
                   <div>
@@ -487,8 +498,8 @@ function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
                       {item.historical ? '历史导入' : '新增版本'}
                     </small>
                   </div>
-                  <button onClick={() => hide(item)}>
-                    {item.hidden ? '恢复展示' : '隐藏'}
+                  <button disabled={busyId !== null || r.loading} onClick={() => hide(item)}>
+                    {busyId === item.id ? '正在更新…' : item.hidden ? '恢复展示' : '隐藏'}
                   </button>
                 </article>
               ))}
@@ -512,11 +523,11 @@ export function AdminNewsletterPage() {
     setBusy(true);
     try {
       await api(path, { method: 'PUT', body: JSON.stringify(body) });
-      setMessage('设置已保存');
+      notify.success('设置已保存');
       r.reload();
       sub.reload();
     } catch (e: any) {
-      setMessage(e.message);
+      setMessage(e.message); notify.error(e.message);
     } finally {
       setBusy(false);
     }
@@ -535,6 +546,7 @@ export function AdminNewsletterPage() {
                 服务端邮件投递：
                 {r.data.deliveryConfigured ? '已配置开启' : '未开启'}
               </p>
+              {!r.data.deliveryConfigured&&<div className="workspace-alert"><p>先开启服务器的周报投递，再回到这里开启订阅。站长需在服务器配置 NEWSLETTER_DELIVERY_ENABLED=true，并重启任务进程。</p><div className="inline-actions"><Link to="/admin/mail-settings">检查邮件设置</Link><Link to="/admin/runtime">查看任务进程状态</Link><button onClick={r.reload}>已完成配置，重新检查</button></div></div>}
               <button
                 disabled={
                   busy || (!r.data.deliveryConfigured && !r.data.enabled)
@@ -641,7 +653,7 @@ export function AdminNewsletterPage() {
                 <article key={s.id}>
                   <p>
                     {s.email} ·{' '}
-                    {s.status === 'active' ? '已确认' : labels[s.status]}
+                    {s.status === 'active' ? '已订阅' : s.status === 'pending' ? '等待邮箱确认' : labels[s.status]}
                   </p>
                   <button
                     disabled={busy || s.status === 'unsubscribed'}

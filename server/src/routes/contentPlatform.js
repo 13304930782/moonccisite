@@ -127,12 +127,12 @@ router.get(
       [p.id, p.repo],
     );
     const [items] = await db.query(
-      `SELECT r.id,r.title,r.content,r.url,r.published_at FROM project_releases r WHERE r.project_id=? AND r.repo=? AND ${publicRelease('r')} ORDER BY r.published_at DESC,r.id DESC LIMIT ? OFFSET ?`,
+      `SELECT r.id,r.title,r.content,r.url,r.published_at,r.prerelease FROM project_releases r WHERE r.project_id=? AND r.repo=? AND ${publicRelease('r')} ORDER BY r.published_at DESC,r.id DESC LIMIT ? OFFSET ?`,
       [p.id, p.repo, pageSize, offset],
     );
     const [focused] = req.query.release
       ? await db.query(
-          `SELECT r.id,r.title,r.content,r.url,r.published_at FROM project_releases r WHERE r.id=? AND r.project_id=? AND r.repo=? AND ${publicRelease('r')}`,
+          `SELECT r.id,r.title,r.content,r.url,r.published_at,r.prerelease FROM project_releases r WHERE r.id=? AND r.project_id=? AND r.repo=? AND ${publicRelease('r')}`,
           [req.query.release, p.id, p.repo],
         )
       : [[]];

@@ -1,0 +1,10 @@
+SET @column_exists = (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='project_releases' AND column_name='prerelease');
+SET @ddl = IF(@column_exists=0,'ALTER TABLE project_releases ADD COLUMN prerelease TINYINT(1) NOT NULL DEFAULT 0','SELECT 1');
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+SET @column_exists = (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='github_sync_state' AND column_name='release_policy_version');
+SET @ddl = IF(@column_exists=0,'ALTER TABLE github_sync_state ADD COLUMN release_policy_version TINYINT NOT NULL DEFAULT 0','SELECT 1');
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

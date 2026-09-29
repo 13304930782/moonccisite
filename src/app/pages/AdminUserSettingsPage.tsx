@@ -1,3 +1,4 @@
+import { notify } from '../lib/feedback';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -12,8 +13,8 @@ export default function AdminUserSettingsPage() {
   useEffect(()=>{void load();},[id]);
   const run=async(path:string,method:string,body?:object)=>{
     setBusy(true);setMessage('');
-    try{const r=await api(path,{method,...(body?{body:JSON.stringify(body)}:{})});setMessage(r.message);if(r.user)setUser(r.user);else await load();return true;}
-    catch(e:any){setMessage(e.message);return false;}finally{setBusy(false);}
+    try{const r=await api(path,{method,...(body?{body:JSON.stringify(body)}:{})});notify.success(r.message);if(r.user)setUser(r.user);else await load();return true;}
+    catch(e:any){setMessage(e.message); notify.error(e.message);return false;}finally{setBusy(false);}
   };
   return <div className="admin-page"><Link className="text-link" to="/admin/users">返回用户管理</Link><h1 className="admin-title">用户设置</h1>
     {error?<p role="alert">{error}<button onClick={load}>重试</button></p>:!user?<p role="status">正在加载…</p>:<>

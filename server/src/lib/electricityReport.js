@@ -38,11 +38,13 @@ function buildReport({
       : null;
   const total = finiteNumber(source.totalRemaining);
   const priorTotal = finiteNumber(prior?.totalRemaining);
-  const collected = new Date(source.recordedAt).getTime();
-  const stale =
-    !Number.isFinite(collected) ||
-    now.getTime() - collected > 24 * 3600000 ||
-    collected > now.getTime();
+  const collected = source.recordedAt ? new Date(source.recordedAt).getTime() : NaN;
+  const timeUnknown = !Number.isFinite(collected);
+  // MySQL DATETIME(0) rounds persisted milliseconds to the nearest second.
+  // Compare future timestamps at that same precision, not against raw milliseconds.
+  const future = !timeUnknown && collected > Math.round(now.getTime() / 1000) * 1000;
+  const expired = !timeUnknown && now.getTime() - collected > 24 * 3600000;
+  const stale = timeUnknown || future || expired;
   const missing = [
     'totalRemaining',
     'purchasedRemaining',
@@ -52,8 +54,12 @@ function buildReport({
   ].some((field) => finiteNumber(source[field]) === null);
   const collectionStatus = failed
     ? '采集异常，本时段没有新数据'
-    : stale
-      ? '数据已过期或采集时间未知'
+    : timeUnknown
+      ? '采集时间缺失或无效，无法判断数据时效'
+      : future
+        ? '采集时间异常，晚于报告时间'
+        : expired
+          ? '数据已过期，距采集已超过 24 小时'
       : missing
         ? '采集完成，部分数据缺失'
         : '采集成功';

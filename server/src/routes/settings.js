@@ -1,3 +1,4 @@
+const mailChannels=require('../lib/mailChannels');
 const {brandText}=require('../lib/siteIdentity');
 const express = require('express');
 const crypto = require('crypto');
@@ -200,6 +201,7 @@ function publicMailConfig(config) {
     ...config,
     smtp_pass: '',
     has_smtp_pass: Boolean(config.smtp_pass),
+    channels: mailChannels.publicProfiles(config),
   };
 }
 
@@ -395,7 +397,7 @@ router.post('/mail/early-access-upload', authRequired, ownerOnly, (req, res) => 
 router.put('/mail', authRequired, adminOnly, async (req, res) => {
   const oldConfig = await getMailConfig();
   const body = req.body || {};
-  const inputConfig = pickStringFields(body, oldConfig);
+  const inputConfig = pickStringFields(body, Object.fromEntries(Object.entries(oldConfig).filter(([key])=>key!=='channels')));
 
   const nextConfig = {
     ...defaultMail,
@@ -406,6 +408,9 @@ router.put('/mail', authRequired, adminOnly, async (req, res) => {
   if (!Object.prototype.hasOwnProperty.call(body, 'smtp_pass') || !body.smtp_pass) {
     nextConfig.smtp_pass = oldConfig.smtp_pass || '';
   }
+
+  try { nextConfig.channels = mailChannels.mergeProfiles(body.channels, oldConfig); }
+  catch(error) { if(error.status===400)return res.status(400).json({message:error.message});throw error; }
 
   if (nextConfig.early_access_download_url && !safeHttpsUrl(nextConfig.early_access_download_url)) {
     return res.status(400).json({ message: 'Early Access 下载地址必须是有效的 HTTPS URL。' });
@@ -419,7 +424,10 @@ router.put('/mail', authRequired, adminOnly, async (req, res) => {
   });
 });
 
-router.post('/mail/test', authRequired, adminOnly, async (_req, res) => {
+router.post('/mail/test', authRequired, adminOnly, async (req, res) => {
+  let channel;
+  try { channel=mailChannels.checkChannel(req.body?.channel || 'account'); }
+  catch(error) { return res.status(400).json({message:error.message}); }
   const config = await getMailConfig();
 
   if (!config.notify_to) {
@@ -427,12 +435,13 @@ router.post('/mail/test', authRequired, adminOnly, async (_req, res) => {
   }
 
   const result = await sendMail({
+    channel, config,
     to: config.notify_to,
-    subject: '[mooncci] 邮件发送测试',
+    subject: '[mooncci] '+mailChannels.definitions[channel].label+'邮件发送测试',
     text: 'This is a test email from mooncci. If you receive it, mail notifications are configured correctly.',
     html: renderBrandedEmail({
       eyebrow: 'mooncci / MAIL TEST',
-      title: '品牌邮件配置成功',
+      title: mailChannels.definitions[channel].label+'发信测试',
       intro: '如果你看到这封邮件，说明 SMTP 与接收提醒邮箱已经正确配置。',
       paragraphs: ['订阅确认、周报、账户通知、评论审核、电量提醒与 PromptDock 申请使用统一的 mooncci 邮件样式。'],
       callout: { title: '兼容性说明', body: '邮件使用 table 布局和内联样式，以兼容 Apple Mail、Gmail 与 Outlook。' },
@@ -443,7 +452,7 @@ router.post('/mail/test', authRequired, adminOnly, async (_req, res) => {
     return res.status(400).json({ message: result.reason || '测试邮件未发送。' });
   }
 
-  res.json({ message: 'Test email sent.' });
+  res.json({ message: mailChannels.definitions[channel].label+'测试邮件已发送。' });
 });
 
 router.post('/mail/send-custom', authRequired, adminOnly, async (req, res) => {
@@ -491,6 +500,7 @@ router.post('/mail/send-custom', authRequired, adminOnly, async (req, res) => {
 
     try {
       const result = await sendMail({
+        channel: 'support',
         to,
         subject,
         text: content,

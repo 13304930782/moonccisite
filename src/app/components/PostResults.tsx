@@ -6,9 +6,11 @@ import { ResourceState, useResource } from "./ContentUI";
 export function PostResults({
   path,
   empty = "还没有发布文章。",
+  emptyAction,
 }: {
   path: string;
   empty?: string;
+  emptyAction?: React.ReactNode;
 }) {
   const [params,setParams]=useSearchParams();
   const page=Math.max(1,Number(params.get('page'))||1);
@@ -18,7 +20,7 @@ export function PostResults({
 
   return (
     <ResourceState resource={resource}>
-      {!posts.length && <p className="quiet-state">{empty}</p>}
+      {!posts.length && <div className="quiet-state"><p>{empty}</p>{emptyAction}</div>}
       <div className="post-grid">
         {posts.map((post:any) => {
           let tags: string[] = [];

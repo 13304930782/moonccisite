@@ -1,16 +1,21 @@
-import { FormEvent, useState } from 'react';
+import { FormInput } from '../components/FormInput';
+import { FormEvent, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Lock } from 'lucide-react';
+import {authLink,loginDestination} from '../lib/loginDestination';
 import { api } from '../lib/api';
 
 export default function ResetPasswordPage() {
   const [params] = useSearchParams();
-  const token = params.get('token') || '';
+  const destination=loginDestination(params.get('redirect'));
+  const [token] = useState(()=>new URLSearchParams(window.location.hash.slice(1)).get('token')||params.get('token')||'');
+  useEffect(()=>{const url=new URL(window.location.href);url.searchParams.delete('token');if(url.hash.startsWith('#token='))url.hash='';window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash);},[]);
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [done,setDone] = useState(false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -45,6 +50,7 @@ export default function ResetPasswordPage() {
       });
 
       setMessage(res.message || '密码已重置，请重新登录');
+      setDone(true);
     } catch (err: any) {
       setMessage(err.message || '重置失败');
     } finally {
@@ -55,7 +61,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="neo-dot-grid flex min-h-screen items-center justify-center px-6 py-10">
       <div className="w-full max-w-md rounded-[12px] border border-border bg-card p-8 shadow-none">
-        <Link to="/login" className="text-sm font-semibold text-foreground hover:underline">
+        <Link to={authLink('/login',destination)} className="text-sm font-semibold text-foreground hover:underline">
           返回登录
         </Link>
 
@@ -69,21 +75,24 @@ export default function ResetPasswordPage() {
 
         {message && (
           <div className={`mt-5 rounded-[10px] px-4 py-3 text-sm ${
-            message.includes('已重置') ? 'bg-muted text-foreground' : 'bg-red-50 text-red-600'
+            done ? 'bg-muted text-foreground' : 'bg-red-50 text-red-600'
           }`}>
             {message}
           </div>
         )}
 
-        <form onSubmit={submit} className="mt-6 space-y-5">
+        {!token && <p className="mt-5" role="alert">重置链接不完整，请重新获取邮件中的链接。</p>}
+        {(!token || (message && !done)) && <Link className="text-link block mt-4" to={authLink('/forgot-password',destination)}>重新获取重置链接 →</Link>}
+        {done && <Link className="neo-button neo-button-dark mt-6" to={authLink('/login',destination)}>使用新密码登录 →</Link>}
+        {token && !done && <form onSubmit={submit} className="mt-6 space-y-5">
           <div>
-            <label className="block mb-2 text-sm font-medium text-foreground">
+            <label htmlFor="new-password" className="block mb-2 text-sm font-medium text-foreground">
               新密码
             </label>
             <div className="neo-input flex items-center gap-3 px-4 py-3">
               <Lock className="w-5 h-5 text-muted-foreground" />
-              <input
-                value={password}
+              <FormInput
+                id="new-password" autoComplete="new-password" value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
                 placeholder="至少 8 位，并包含字母和数字"
@@ -93,13 +102,13 @@ export default function ResetPasswordPage() {
           </div>
 
           <div>
-            <label className="block mb-2 text-sm font-medium text-foreground">
+            <label htmlFor="confirm-password" className="block mb-2 text-sm font-medium text-foreground">
               确认新密码
             </label>
             <div className="neo-input flex items-center gap-3 px-4 py-3">
               <Lock className="w-5 h-5 text-muted-foreground" />
-              <input
-                value={confirmPassword}
+              <FormInput
+                id="confirm-password" autoComplete="new-password" value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 type="password"
                 placeholder="再次输入新密码"
@@ -114,7 +123,7 @@ export default function ResetPasswordPage() {
           >
             {loading ? '重置中...' : '重置密码'}
           </button>
-        </form>
+        </form>}
       </div>
     </div>
   );

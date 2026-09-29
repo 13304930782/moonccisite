@@ -690,6 +690,29 @@ input[type='checkbox'] {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* Keep the arrow's grid space reserved to avoid shifting the text. */
+.activity-arrow {
+  opacity: 0;
+  transform: translate(-4px, 4px);
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .activity-row:hover .activity-arrow {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+.activity-row:focus-visible .activity-arrow {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .activity-arrow {
+    transition: none;
+    transform: none;
+  }
+}
 .activity-row:hover h3 {
   text-decoration: underline;
   text-underline-offset: 4px;
@@ -1573,6 +1596,11 @@ input[type='checkbox'] {
 .update-detail article { margin-bottom: 48px; }
 .resource-content { min-width: 0; }
 html { scrollbar-gutter: stable; }
+/* The root already reserves the scrollbar gutter. Radix's scroll lock must
+   not reserve that same width again through react-remove-scroll's margin. */
+@supports (scrollbar-gutter: stable) {
+  html body[data-scroll-locked] { margin-right: 0 !important; }
+}
 @media(max-width:640px) { .content-skeleton { min-height:260px; } }
 
 /* Shared administration layout: one vertical scroll surface and compact sections. */
@@ -1605,3 +1633,10 @@ html { scrollbar-gutter: stable; }
  .admin-pagination button { padding: 8px; }
  .admin-toolbar > * { min-width: 0; }
 }
+
+/* Mobile primary destinations share the desktop list; account actions stay grouped. */
+.mobile-account-menu{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 24px;padding:16px 0;border-top:1px solid var(--border);font-size:14px}
+.mobile-account-menu>span{color:var(--muted-foreground)}
+.mobile-account-menu .nav-disclosure summary{padding:8px 0;max-width:220px;overflow-wrap:anywhere}
+.mobile-account-menu .nav-popover{top:100%;z-index:2;max-width:calc(100vw - 48px)}
+@media(min-width:761px){.mobile-menu-panel{display:none}}

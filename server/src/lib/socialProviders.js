@@ -1,3 +1,4 @@
+const proxyTransport = require('./proxyTransport');
 const { callbackUrl } = require('./socialConfig');
 const crypto = require('crypto');
 const endpoints = {
@@ -46,7 +47,7 @@ function githubTransport(url, options) {
 }
 async function request(url, options = {}) {
   ({ url, options } = githubTransport(url, options));
-  const response = await fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(10000), headers: { Accept: 'application/json', 'User-Agent': 'mooncci-login', ...options.headers } });
+  const response = await proxyTransport.fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(10000), headers: { Accept: 'application/json', 'User-Agent': 'mooncci-login', ...options.headers } });
   if (!response.ok) throw Object.assign(new Error('provider_http'), { oauthStatus: response.status });
   // Bound streaming response before parsing; do not include upstream bodies/URLs in logs.
   let bytes = 0; const chunks = [];

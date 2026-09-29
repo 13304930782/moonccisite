@@ -1,3 +1,5 @@
+import { notify } from '../lib/feedback';
+import { confirmAction } from '../lib/confirmAction';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -35,22 +37,22 @@ export default function AdminBannedWordsPage() {
       });
 
       setWord('');
-      setMessage('添加成功');
+      notify.success('添加成功');
       loadWords();
     } catch (err: any) {
-      setMessage(err.message || '添加失败');
+      setMessage(err.message || '添加失败'); notify.error(err.message || '添加失败');
     }
   };
 
   const removeWord = async (id: number) => {
-    if (!window.confirm('确定删除这个违禁词吗？')) return;
+    if (!(await confirmAction('确定删除这个违禁词吗？'))) return;
 
     try {
       await api(`/admin/banned-words/${id}`, { method: 'DELETE' });
-      setMessage('删除成功');
+      notify.success('删除成功');
       loadWords();
     } catch (err: any) {
-      setMessage(err.message || '删除失败');
+      setMessage(err.message || '删除失败'); notify.error(err.message || '删除失败');
     }
   };
 

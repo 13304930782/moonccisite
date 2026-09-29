@@ -39,7 +39,7 @@ test('account profile, email proof, social replacement and retained deleted auth
   r=await req('/account/email','POST',{challenge_id:challenge,new_code:code,password:'Current-password-123'});assert.equal(r.status,200);user=freshCookie(r);assert.ok(user);assert.equal((await r.json()).user.email,'fresh@example.test');
   assert.equal((await req('/account','GET',null,stale)).status,401);
   assert.equal((await req('/account/email','POST',{challenge_id:challenge,new_code:code,password:'Current-password-123'})).status,400);
-  await req('/account/password-reset','POST');assert.match(mails.at(-1).text,/reset-password\?token=/);assert.equal(mails.at(-1).to,'fresh@example.test');
+  await req('/account/password-reset','POST');assert.match(mails.at(-1).text,/reset-password\?redirect=%2Faccount%2Fsettings#token=/);assert.equal(mails.at(-1).to,'fresh@example.test');
   // Profile image processing is bounded and stores a re-encoded local asset.
   const image=await require('sharp')({create:{width:4,height:4,channels:3,background:'#123456'}}).png().toBuffer();
   const form=new FormData();form.append('avatar',new Blob([image],{type:'image/png'}),'avatar.png');

@@ -11,6 +11,7 @@ function signToken(user, sessionStartedAt) {
       role: user.role,
       sessionStartedAt,
       jti: crypto.randomUUID(),
+      sv: 1,
     },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }

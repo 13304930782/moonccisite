@@ -21,19 +21,20 @@ test(
       published_at: '2026-09-01T00:00:00Z',
       html_url: `https://github.com/qa/repo/releases/tag/v${id}`,
     });
-    global.fetch = async (url) => {
+    global.fetch = async (url, options) => {
       if (String(url).endsWith('/repos/qa/repo')) return Response.json({ private: false });
       if (String(url).includes('/releases?')) {
         if (mode === 'page-failure') {
           if (String(url).includes('page=2')) throw Error('Simulated connection loss');
           return Response.json(Array.from({ length: 100 }, (_, i) => record(i + 1)));
         }
+        if(mode === 'upgrade'){assert.equal(options.headers['If-None-Match'],undefined);return Response.json([record(1),record(2),{...record(3),prerelease:true}]);}
         return Response.json(mode === 'initial' ? [record(1), record(2)] : [record(2)]);
       }
       if (String(url).endsWith('/releases/1')) {
         if (mode === 'deleted') return new Response('{}', { status: 404 });
         if (mode === 'request-failure') return new Response('{}', { status: 503 });
-        return Response.json({ ...record(1), prerelease: mode === 'prerelease' });
+        return Response.json({ ...record(1), prerelease: mode === 'prerelease', draft: mode === 'draft' });
       }
       throw Error('Unexpected QA request ' + url);
     };
@@ -51,6 +52,13 @@ test(
         return syncProject(pid);
       };
       await run();
+      await db.query("UPDATE github_sync_state SET release_policy_version=0,etag='old-policy' WHERE project_id=?",[pid]);
+      mode='upgrade';
+      await db.query('UPDATE github_sync_state SET next_attempt_at=NULL WHERE project_id=?',[pid]);
+      await syncProject(pid);
+      const [[backfilled]]=await db.query('SELECT prerelease,historical FROM project_releases WHERE project_id=? AND github_id=3',[pid]);
+      assert.equal(Number(backfilled.prerelease),1);assert.equal(Number(backfilled.historical),1);
+      await db.query('DELETE FROM project_releases WHERE project_id=? AND github_id=3',[pid]);
       const visible = async () =>
         Number(
           (
@@ -71,7 +79,8 @@ test(
       assert.equal(await visible(), 1, 'incomplete pagination preserves existing records');
       mode = 'prerelease';
       await run();
-      assert.equal(await visible(), 0);
+      assert.equal(await visible(), 1);
+      assert.equal(Number((await db.query('SELECT prerelease FROM project_releases WHERE project_id=? AND github_id=1',[pid]))[0][0].prerelease),1);
       await db.query(
         'UPDATE project_releases SET hidden=1 WHERE project_id=? AND github_id=1',
         [pid],
@@ -79,6 +88,7 @@ test(
       mode = 'missing-list';
       await run();
       assert.equal(await visible(), 1);
+      assert.equal(Number((await db.query('SELECT prerelease FROM project_releases WHERE project_id=? AND github_id=1',[pid]))[0][0].prerelease),0);
       assert.equal(
         (
           await db.query(
@@ -88,6 +98,9 @@ test(
         )[0][0].hidden,
         1,
       );
+      mode = 'draft';
+      await run();
+      assert.equal(await visible(),0,'draft releases are withdrawn');
       mode = 'deleted';
       await run();
       assert.equal(await visible(), 0, 'only confirmed release detail 404 withdraws it');

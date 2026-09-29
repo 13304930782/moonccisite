@@ -63,6 +63,7 @@ async function getUserFromRequest(req) {
     [payload.id, crypto.createHash('sha256').update(token).digest('hex'), payload.sessionStartedAt || Number(payload.iat || 0) * 1000]
   );
 
+  if(rows[0]&&rows[0].status!=='disabled'&&require('../services/loginSessions').enabled())await require('../services/loginSessions').register(req,payload,token);
   return rows[0] || null;
 }
 

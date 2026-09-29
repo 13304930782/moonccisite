@@ -1,3 +1,5 @@
+import { notify } from '../lib/feedback';
+import { confirmAction } from '../lib/confirmAction';
 import { useAdminList } from '../lib/useAdminList';
 import { AdminPagination } from '../components/AdminPagination';
 import { ThemeSelect } from '../components/ThemeSelect';
@@ -39,7 +41,7 @@ export default function AdminCommentsPage() {
           ? '确定驳回这条评论吗？驳回后会邮件通知用户。'
           : '确定更新这条评论状态吗？';
 
-    if (!window.confirm(confirmText)) return;
+    if (!(await confirmAction(confirmText))) return;
 
     if (busy) return;
     setBusy(true);
@@ -49,10 +51,10 @@ export default function AdminCommentsPage() {
         body: JSON.stringify({ status: nextStatus }),
       });
 
-      setMessage(res.message || '操作成功');
+      notify.success(res.message || '操作成功');
       loadComments();
     } catch (err: any) {
-      setMessage(err.message || '操作失败');
+      setMessage(err.message || '操作失败'); notify.error(err.message || '操作失败');
     } finally { setBusy(false); }
   };
 
@@ -112,7 +114,7 @@ export default function AdminCommentsPage() {
         <div className="space-y-4">
           {!list.loading && !list.error && comments.length === 0 && (
             <div className="rounded-[10px] bg-muted px-5 py-8 text-center text-muted-foreground">
-              暂无评论
+              <p>暂无符合条件的评论。</p><button className="quiet-button" onClick={()=>{setKeyword('');filter({keyword:'',target:'all',status:'all'});}}>清除筛选，查看全部评论</button>
             </div>
           )}
 

@@ -31,7 +31,7 @@ test('auth UI preserves failed logout, rejects HTML success, ignores stale me an
   };
   const module = { exports: {} };
   vm.runInNewContext(code, { module, exports: module.exports, require, window, localStorage,
-    sessionStorage: localStorage, fetch, FormData, Headers, AbortController, AbortSignal, console });
+    sessionStorage: localStorage, fetch, FormData, Headers, AbortController, AbortSignal, setTimeout, clearTimeout, console });
   const { AuthProvider, useAuth } = module.exports;
   let auth, root;
   function Probe() { auth = useAuth(); return null; }

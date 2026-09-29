@@ -1,3 +1,5 @@
+import { notify } from '../lib/feedback';
+import { confirmAction } from '../lib/confirmAction';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Mail, RotateCcw, Settings, X } from 'lucide-react';
@@ -20,6 +22,7 @@ export default function AdminEarlyAccessDetailPage() {
   const [reviewNote, setReviewNote] = useState('');
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [loadStatus,setLoadStatus]=useState(0);
   const [message, setMessage] = useState('');
 
   const load = () => {
@@ -29,14 +32,14 @@ export default function AdminEarlyAccessDetailPage() {
         setApplication(data);
         setReviewNote(data.review_note || '');
       })
-      .catch((error) => setMessage(error.message || '申请加载失败。'))
+      .catch((error) => {setApplication(null);setLoadStatus(error.status||0);setMessage(error.message || '申请加载失败。');})
       .finally(() => setLoading(false));
   };
 
   useEffect(load, [id]);
 
   const action = async (endpoint: string, body: Record<string, unknown> = {}, confirmation?: string) => {
-    if (confirmation && !window.confirm(confirmation)) return;
+    if (confirmation && !(await confirmAction(confirmation))) return;
     setWorking(true);
     setMessage('');
 
@@ -53,14 +56,14 @@ export default function AdminEarlyAccessDetailPage() {
         load();
       }
     } catch (error: any) {
-      setMessage(error.message || '操作失败。');
+      setMessage(error.message || '操作失败。'); notify.error(error.message || '操作失败。');
     } finally {
       setWorking(false);
     }
   };
 
   if (loading) return <div className="py-6 text-muted-foreground">正在加载申请…</div>;
-  if (!application) return <div className="py-6 text-muted-foreground">{message || '申请不存在。'}</div>;
+  if (!application) return <div className="py-6 text-muted-foreground" role="alert"><p>{message || '申请不存在。'}</p><div className="inline-actions"><Link className="quiet-button" to="/admin/early-access">返回申请列表</Link>{![403,404].includes(loadStatus)&&<button onClick={load}>重试</button>}</div></div>;
 
   const features = Array.isArray(application.desired_features) ? application.desired_features : [];
 

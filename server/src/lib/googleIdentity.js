@@ -1,3 +1,4 @@
+const { ipv4Options } = require('./proxyTransport');
 const https = require('https');
 const jwt = require('jsonwebtoken');
 
@@ -20,7 +21,7 @@ function cacheLifetime(headers) {
 function requestCertificates() {
   return new Promise((resolve, reject) => {
     const certificatesUrl = String(process.env.GOOGLE_CERTS_URL || DEFAULT_GOOGLE_CERTS_URL).trim();
-    const request = https.get(certificatesUrl, { timeout: 6000 }, (response) => {
+    const request = https.get(certificatesUrl, { ...ipv4Options(certificatesUrl), signal: AbortSignal.timeout(10000) }, (response) => {
       if (response.statusCode !== 200) {
         response.resume();
         reject(new Error(`Google certificate request failed with ${response.statusCode}`));
@@ -33,6 +34,8 @@ function requestCertificates() {
         body += chunk;
         if (body.length > 1024 * 1024) request.destroy(new Error('Google certificate response is too large'));
       });
+      response.on('error', reject);
+      response.on('aborted', () => reject(new Error('Google certificate response interrupted')));
       response.on('end', () => {
         try {
           const certificates = JSON.parse(body);

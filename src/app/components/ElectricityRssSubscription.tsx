@@ -1,3 +1,4 @@
+import { notify } from '../lib/feedback';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
@@ -34,13 +35,11 @@ function RoomElectricityRssSubscription({ roomId }: { roomId: string }) {
         setData(response.data);
         setConfirming(false);
         if (action)
-          setMessage(
-            action === 'reset'
+          notify.success(action === 'reset'
               ? '链接已重置，请在阅读器中更新订阅地址。'
-              : '订阅链接已创建。',
-          );
+              : '订阅链接已创建。');
       } catch (e) {
-        setError(e instanceof Error ? e.message : '暂时无法读取订阅链接。');
+        setError(e instanceof Error ? e.message : '暂时无法读取订阅链接。'); notify.error(e instanceof Error ? e.message : '暂时无法读取订阅链接。');
       } finally {
         setBusy(false);
       }
@@ -54,11 +53,11 @@ function RoomElectricityRssSubscription({ roomId }: { roomId: string }) {
     if (!data?.url) return;
     try {
       await navigator.clipboard.writeText(data.url);
-      setMessage('订阅链接已复制。');
+      notify.success('订阅链接已复制。');
     } catch {
       input.current?.focus();
       input.current?.select();
-      setMessage('请复制已选中的完整订阅链接。');
+      setMessage('请复制已选中的完整订阅链接。'); notify.error('请复制已选中的完整订阅链接。');
     }
   }
   return (

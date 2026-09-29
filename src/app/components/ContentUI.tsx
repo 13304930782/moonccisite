@@ -1,5 +1,6 @@
-import { FormEvent, ReactNode, useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { notify } from '../lib/feedback';
+import { FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { Header } from './Header';
 import { SiteFooter } from './SiteFooter';
@@ -13,15 +14,20 @@ export function useResource<T = any>(path: string) {
   const snapshot = cached && Date.now() - cached.time < 30000 ? cached.data : null;
   const [state, setState] = useState<{ path: string; data: T | null }>({ path, data: snapshot }),
     [error, setError] = useState(''),
+    [errorStatus,setErrorStatus]=useState<number|null>(null),
     [loading, setLoading] = useState(true),
     [version, setVersion] = useState(0);
+  const requestController = useRef<AbortController | null>(null);
+  const cancel = useCallback(() => requestController.current?.abort(), []);
   const reload = useCallback(() => setVersion((v) => v + 1), []);
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
+    requestController.current = controller;
     setLoading(true);
-    setError('');
+    setError('');setErrorStatus(null);
     setState(current => current.path === path ? current : { path, data: snapshot });
-    api(path)
+    api(path, { signal: controller.signal })
       .then((v) => {
         if (active) {
           setState({ path, data: v });
@@ -33,7 +39,7 @@ export function useResource<T = any>(path: string) {
       })
       .catch((e) => {
         if (active) {
-          setError(e.message);
+          setError(e.message);setErrorStatus(e.status||null);
           if ([401, 403, 404].includes(e.status)) {
             publicSnapshots.delete(path);
             setState({ path, data: null });
@@ -44,10 +50,10 @@ export function useResource<T = any>(path: string) {
         if (active) setLoading(false);
       });
     return () => {
-      active = false;
+      active = false; controller.abort();
     };
   }, [path, version]);
-  return { data: state.path === path ? state.data : snapshot, error: state.path === path ? error : '', loading: loading || state.path !== path, reload };
+  return { cancel, errorStatus:state.path===path?errorStatus:null, data: state.path === path ? state.data : snapshot, error: state.path === path ? error : '', loading: loading || state.path !== path, reload };
 }
 export function ContentSkeleton() {
   return <div className="content-skeleton" role="status" aria-label="正在加载内容" aria-busy="true">
@@ -60,21 +66,22 @@ export function ResourceState({
   resource,
   children,
 }: {
-  resource: ReturnType<typeof useResource>;
+  resource: Omit<ReturnType<typeof useResource>,'errorStatus'|'cancel'> & {errorStatus?:number|null;cancel?:()=>void};
   children: ReactNode;
 }) {
-  if (resource.loading && resource.data === null) return <ContentSkeleton />;
+  const location=useLocation();
+  const group=location.pathname.startsWith('/admin/')?'/admin':location.pathname.startsWith('/account/')?'/account/settings':location.pathname.startsWith('/projects/')?'/projects':location.pathname.startsWith('/updates/')?'/updates':location.pathname.startsWith('/series/')?'/series':'/articles';
+  if (resource.loading && resource.data === null) return <div><ContentSkeleton />{resource.cancel && <button className="quiet-button" onClick={resource.cancel}>取消加载</button>}</div>;
   if (resource.error && resource.data === null)
     return (
-      <div className="quiet-state" role="alert">
+      <div className="resource-notice" role="alert">
         <p>{resource.error}</p>
-        <button className="quiet-button" onClick={resource.reload}>
-          重试
-        </button>
+        {resource.errorStatus===401?<Link className="quiet-button" to={'/login?redirect='+encodeURIComponent(location.pathname+location.search)}>重新登录后继续</Link>:[403,404].includes(resource.errorStatus||0)?<Link className="quiet-button" to={group}>返回{group==='/admin'?'后台':group.startsWith('/account')?'个人中心':'内容列表'}</Link>:<button className="quiet-button" onClick={resource.reload}>重试</button>}
       </div>
     );
   return <div className="resource-content" aria-busy={resource.loading}>
-    {resource.error && <p className="muted" role="status">暂时无法更新，保留上次加载的内容。 <button className="text-link" onClick={resource.reload}>重试</button></p>}
+    {resource.error && <div className="resource-notice" role="status"><div><strong>暂时无法更新</strong><p>保留上次加载的内容，你可以稍后重试。</p></div><button className="quiet-button" disabled={resource.loading} onClick={resource.reload}>重新加载</button></div>}
+    {resource.loading && resource.data !== null && <p className="muted" role="status">正在刷新，当前内容仍可查看。</p>}
     {children}
   </div>;
 }
@@ -151,7 +158,7 @@ export function ActivityList({ items }: { items: any[] }) {
             <p>{item.excerpt}</p>
             {item.type === 'release' && <small className="muted">来自 GitHub Releases</small>}
           </div>
-          <span aria-hidden="true">↗</span>
+          <span className="activity-arrow" aria-hidden="true">↗</span>
         </Link>
       ))}
     </div>
@@ -159,15 +166,16 @@ export function ActivityList({ items }: { items: any[] }) {
 }
 export function Pagination({ data, onPage }: { data: PageData; onPage: (page: number) => void }) {
   const pages = Math.max(1, Math.ceil(data.total / data.pageSize));
+  if (pages <= 1) return null;
   return (
     <nav className="pagination" aria-label="分页">
-      <button disabled={data.page <= 1} onClick={() => onPage(data.page - 1)}>
+      <button className="quiet-button" disabled={data.page <= 1} onClick={() => onPage(data.page - 1)}>
         上一页
       </button>
-      <span>
+      <span aria-live="polite" aria-atomic="true">
         {data.page} / {pages}
       </span>
-      <button disabled={data.page >= pages} onClick={() => onPage(data.page + 1)}>
+      <button className="quiet-button" disabled={data.page >= pages} onClick={() => onPage(data.page + 1)}>
         下一页
       </button>
     </nav>
@@ -177,20 +185,23 @@ export function SubscribeForm() {
   const [email, setEmail] = useState(''),
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const status = useResource('/subscriptions/status');
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setMessage('');
+    setSubmitted(false);
     try {
       const result = await api('/subscriptions', {
         method: 'POST',
         body: JSON.stringify({ email }),
       });
-      setMessage(result.message);
-      setEmail('');
+      notify.success(result.message);
+      setMessage(result.message || '请查收订阅确认邮件，点击邮件中的链接完成订阅。');
+      setSubmitted(true);
     } catch (e: any) {
-      setMessage(e.message);
+      setMessage(e.message); notify.error(e.message);
     } finally {
       setBusy(false);
     }
@@ -206,7 +217,7 @@ export function SubscribeForm() {
         </Link>
       </div>
       <div>
-        {status.data?.available ? (
+        {submitted ? <div className="resource-notice" role="status"><div><strong>订阅申请已提交</strong><p>{message}</p><p>确认邮件中的链接后，订阅才会生效。</p></div><button type="button" className="quiet-button" onClick={() => { setSubmitted(false); setMessage(''); }}>修改邮箱或重新申请</button></div> : status.data?.available ? (
           <form onSubmit={submit}>
             <label htmlFor="subscribe-email">邮箱地址</label>
             <div className="subscribe-form">
@@ -216,6 +227,7 @@ export function SubscribeForm() {
                 required
                 maxLength={254}
                 autoComplete="email"
+                aria-describedby={message ? 'subscribe-message' : undefined}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
@@ -233,9 +245,8 @@ export function SubscribeForm() {
                 : '邮件订阅尚未开放，欢迎先使用 RSS。'}
           </p>
         )}
-        <p role="status" className="form-message">
-          {message}
-        </p>
+        {status.error && !submitted && <button type="button" className="quiet-button" onClick={status.reload}>重新检查订阅状态</button>}
+        {!submitted && message && <p id="subscribe-message" role="alert" className="form-message">{message}</p>}
       </div>
     </section>
   );

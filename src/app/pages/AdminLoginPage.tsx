@@ -1,3 +1,4 @@
+import { FormInput } from '../components/FormInput';
 import { AuthShell } from '../components/AuthShell';
 import { FormEvent, useEffect, useState } from 'react';
 import { Lock, Mail, ShieldCheck } from 'lucide-react';
@@ -95,7 +96,7 @@ export default function AdminLoginPage() {
           </label>
           <div className="auth-field-control">
             <Mail />
-            <input
+            <FormInput
               id="review-email"
               type="email"
               autoComplete="username"
@@ -111,7 +112,7 @@ export default function AdminLoginPage() {
           </label>
           <div className="auth-field-control">
             <Lock />
-            <input
+            <FormInput
               id="review-password"
               type="password"
               autoComplete="current-password"

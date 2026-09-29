@@ -7,6 +7,7 @@ async function main() {
   try {
     browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    page.setDefaultTimeout(15000);
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     const requests = []; page.on('request', req => requests.push(req.url()));
     const note = { id: 1, content: '浏览器测试近况正文', image_url: '', published_at: '2026-09-09' };
@@ -30,6 +31,8 @@ async function main() {
       else if (url.pathname.startsWith('/api/comments/')) body = [];
       else if (url.pathname === '/api/posts') body = [];
       else if (url.pathname === '/api/posts/1') body = { id: 1, title: '文章测试', content: '文章正文', tags: [] };
+      else if (url.pathname === '/api/posts/1/discovery') body = { related: [], previous: null, next: null };
+      else if (url.pathname === '/api/series/article/1') body = null;
       else if (url.pathname === '/api/projects') body = { items: [], total: 0, page: 1, pageSize: 10 };
       else if (url.pathname === '/api/subscriptions/status') body = { available: false };
       else if (url.pathname === '/api/electricity/rooms') body = { data: [{ id: 'r1', name: '测试宿舍' }] };
@@ -64,7 +67,7 @@ async function main() {
     await page.locator('.site-footer').getByRole('link', { name: '最近更新', exact: true }).click();
     await page.getByRole('heading', { name: '最近更新', exact: true }).waitFor();
     assert.equal(await page.evaluate(() => window.scrollY), 0);
-    await page.getByRole('link', { name: /测试近况入口/ }).click();
+    await page.getByRole('link', { name: '查看近况', exact: true }).click();
     await page.getByText('浏览器测试近况正文', { exact: true }).waitFor();
     assert.equal(await page.locator('.subscribe-section').count(), 0);
     assert.ok(requests.some(url => url.includes('/api/comments/update/1')));
@@ -90,6 +93,6 @@ async function main() {
     await page.screenshot({ path: '.cache/updates-mobile-comments.png', fullPage: true });
     assert.deepEqual(errors, []);
     console.log('PASS: split routes, real settings snapshot, scroll reset, update comments, article subscription and mobile scroll charts.');
-  } finally { await browser?.close(); await new Promise(r => server.httpServer.close(r)); }
+  } finally { await browser?.close(); server.httpServer.closeAllConnections(); await new Promise(r => server.httpServer.close(r)); }
 }
 main().catch(e => { console.error(e); process.exitCode = 1; });

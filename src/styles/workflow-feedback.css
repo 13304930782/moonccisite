@@ -1,0 +1,60 @@
+/* Scoped extensions of the existing monochrome workspace. */
+.subscription-feedback .workflow-result p{font-size:16px}
+.subscription-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+.subscription-error{display:flex;gap:8px;align-items:flex-start;color:var(--foreground)!important}
+.subscription-error svg{flex:none;margin-top:4px}
+@media(max-width:600px){.subscription-actions{flex-direction:column}.subscription-actions .workflow-button{width:100%}}
+.workflow-feedback .workflow-button,.article-workspace .workflow-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--foreground);font-size:16px;line-height:1.5;text-decoration:none;cursor:pointer;white-space:normal}
+.workflow-feedback .workflow-primary,.article-workspace .workflow-primary{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+.workflow-feedback .workflow-button:hover:not(:disabled){filter:brightness(.94)}
+.workflow-feedback .workflow-button:disabled,.article-workspace .workflow-button:disabled{opacity:.5;cursor:not-allowed}
+.workflow-feedback :focus-visible,.revision-compare :focus-visible{outline:2px solid var(--ring);outline-offset:3px}
+.workflow-result{display:flex;align-items:flex-start;gap:12px;padding:24px;margin-top:24px;border:1px solid var(--border);border-radius:16px;background:var(--card);overflow-wrap:anywhere}
+.workflow-result>svg{flex:none;margin-top:4px}
+.workflow-result-body{min-width:0;flex:1}
+.workflow-result h3,.workflow-result h2{font-size:18px;line-height:1.5;margin:0;font-weight:600}
+.workflow-result p{font-size:14px;line-height:1.7;color:var(--muted-foreground);margin:8px 0 16px}
+.workflow-warning-details{margin-top:16px;border-top:1px solid var(--border);padding-top:8px}
+.workflow-warning-details summary{display:flex;align-items:center;gap:8px;min-height:44px;font-size:14px;cursor:pointer;list-style:none}
+.workflow-warning-details summary::after{content:'＋';margin-left:auto}
+.workflow-warning-details[open] summary::after{content:'−'}
+.workflow-warning-details ul{margin:8px 0 0;padding-left:20px;max-height:260px;overflow:auto;font-size:14px;line-height:1.8}
+.workflow-warning-details li+li{margin-top:8px}
+.revision-selection-header{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:20px}
+.revision-selection-header h2{font-size:20px;margin:0 0 8px}
+.revision-selection-header p{font-size:14px;line-height:1.7;color:var(--muted-foreground);margin:8px 0}
+.revision-selection-header button{flex:none}
+.mail-compose{max-width:800px}
+.mail-compose>header{padding-bottom:24px;border-bottom:1px solid var(--border)}
+.mail-compose>header p{font-size:14px;line-height:1.7;color:var(--muted-foreground);margin-top:12px}
+.mail-compose form{display:grid;gap:24px;margin-top:32px}
+.mail-compose label{display:block;font-size:16px;margin-bottom:8px}
+.mail-compose input:not([type=checkbox]),.mail-compose textarea{width:100%;min-width:0;padding:12px 16px;border:1px solid var(--border);border-radius:10px;background:var(--card);font-size:16px;color:var(--foreground)}
+.mail-compose textarea{resize:vertical;min-height:200px}
+.mail-compose [aria-invalid=true]{border-color:var(--foreground);border-width:2px}
+.mail-compose .mail-field-error{display:flex;gap:8px;font-size:14px;line-height:1.6;margin-top:8px}
+.mail-compose .mail-field-error svg{flex:none;margin-top:3px}
+.mail-compose .mail-hint{font-size:14px;line-height:1.7;color:var(--muted-foreground);margin:8px 0 0}
+.mail-compose footer{display:flex;justify-content:space-between;align-items:center;gap:16px;border-top:1px solid var(--border);padding-top:24px}
+.mail-compose .mail-recheck{display:flex;align-items:flex-start;gap:10px;min-height:44px;font-size:14px;margin:16px 0 0}
+.mail-recheck input{margin-top:4px;flex:none;accent-color:var(--primary)}
+@media(max-width:600px){.workflow-result{padding:16px}.revision-selection-header{flex-direction:column;gap:12px}.revision-selection-header button{width:100%}.mail-compose footer{align-items:stretch;flex-direction:column}.workflow-result .workflow-primary{width:100%}}
+.article-workspace .revision-history button.workflow-primary{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary);font-size:16px}
+.mail-channel-settings>h2{font-size:20px;font-weight:600;margin:0 0 8px}
+.mail-channel-hint{font-size:14px;color:var(--muted-foreground);line-height:1.8;margin:12px 0 20px}
+.mail-channel-card{border:1px solid var(--border);border-radius:16px;margin-top:12px;background:var(--card)}
+.mail-channel-card>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 24px;min-height:64px;cursor:pointer;list-style:none}
+.mail-channel-card>summary::after{content:'＋';flex:none}
+.mail-channel-card[open]>summary::after{content:'−'}
+.mail-channel-card summary>span:first-child{flex:1;min-width:0}
+.mail-channel-card strong{display:block;font-size:16px;font-weight:600}
+.mail-channel-card small,.mail-channel-mode{display:block;font-size:14px;color:var(--muted-foreground);line-height:1.6;overflow-wrap:anywhere}
+.mail-channel-mode{white-space:nowrap}
+.mail-channel-body{border-top:1px solid var(--border);padding:0 24px 24px}
+.mail-channel-body>label{display:block;font-size:14px;margin-bottom:8px}
+.mail-channel-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:24px}
+.mail-channel-fields label{display:grid;gap:8px;font-size:14px;align-content:start;min-width:0}
+.mail-channel-fields input{width:100%;min-width:0;min-height:44px;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:16px;background:var(--background);color:var(--foreground)}
+.mail-channel-test{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:24px}
+.mail-channel-test span{font-size:14px;line-height:1.7;color:var(--muted-foreground)}
+@media(max-width:600px){.mail-channel-card>summary{padding:16px;gap:8px}.mail-channel-body{padding:0 16px 16px}.mail-channel-fields{grid-template-columns:1fr;gap:16px}.mail-channel-mode{display:none}}

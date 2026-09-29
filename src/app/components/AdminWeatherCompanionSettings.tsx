@@ -1,3 +1,4 @@
+import { notify } from '../lib/feedback';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
 import { ThemeSelect } from './ThemeSelect';
@@ -45,13 +46,11 @@ export function AdminWeatherCompanionSettings() {
           : {}),
       });
       setSettings(response.data);
-      setMessage(
-        event
+      notify.success(event
           ? '已设置；已打开的前台页面会在一分钟内更新。'
-          : '已恢复根据访客所选城市的天气决定心情。',
-      );
+          : '已恢复根据访客所选城市的天气决定心情。');
     } catch (error: any) {
-      setMessage(error.message || '保存失败，请重试');
+      setMessage(error.message || '保存失败，请重试'); notify.error(error.message || '保存失败，请重试');
     } finally {
       setBusy(false);
     }

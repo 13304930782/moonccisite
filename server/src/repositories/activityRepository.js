@@ -8,9 +8,9 @@ const configuredOffset = Number(
 );
 const postOffset =
   Number.isInteger(configuredOffset) && Math.abs(configuredOffset) <= 840 ? configuredOffset : 0;
-const union = `SELECT CONCAT('post-',id) AS activity_id, id, 'post' AS type, title, summary AS excerpt, TIMESTAMPADD(MINUTE,${-postOffset},published_at) AS published_at, CONCAT('/article/',id) AS path, 0 AS historical FROM posts WHERE status='published'
-UNION ALL SELECT CONCAT('update-',id), id, 'update', LEFT(content,100), content, published_at, CONCAT('/updates/',id), 0 FROM updates WHERE status='published'
-UNION ALL SELECT CONCAT('release-',r.id), r.id, 'release', CONCAT(p.name, ' · ',r.title), r.content,r.published_at,CONCAT('/projects/',p.slug,'?release=',r.id,'#release-',r.id),r.historical FROM project_releases r JOIN projects p ON p.id=r.project_id AND p.repo=r.repo WHERE ${publicRelease('r')}`;
+const union = `SELECT CONCAT('post-',id) AS activity_id, id, 'post' AS type, title, summary AS excerpt, TIMESTAMPADD(MINUTE,${-postOffset},published_at) AS published_at, CONCAT('/article/',id) AS path, 0 AS historical, 0 AS prerelease FROM posts WHERE status='published'
+UNION ALL SELECT CONCAT('update-',id), id, 'update', LEFT(content,100), content, published_at, CONCAT('/updates/',id), 0, 0 FROM updates WHERE status='published'
+UNION ALL SELECT CONCAT('release-',r.id), r.id, 'release', CONCAT(p.name, ' · ',r.title), r.content,r.published_at,CONCAT('/projects/',p.slug,'?release=',r.id,'#release-',r.id),r.historical,r.prerelease FROM project_releases r JOIN projects p ON p.id=r.project_id AND p.repo=r.repo WHERE ${publicRelease('r')}`;
 async function activity(query = {}, period = null) {
   const { page, pageSize, offset } = pagination(query);
   const where = ['published_at IS NOT NULL'];

@@ -7,7 +7,7 @@ test('GitHub proxy covers token/profile/email, preserves bearer and never rewrit
   t.after(() => { for (const [name, value] of [['GITHUB_OAUTH_PROXY_URL', oldUrl], ['GITHUB_OAUTH_PROXY_KEY', oldKey]]) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } });
   process.env.GITHUB_OAUTH_PROXY_URL = 'https://private.example.test'; process.env.GITHUB_OAUTH_PROXY_KEY = key;
   const calls = [];
-  t.mock.method(global, 'fetch', async (url, options) => {
+  t.mock.method(require('../src/lib/proxyTransport'), 'fetch', async (url, options) => {
     calls.push({url, options});
     return Response.json(calls.length === 1 ? {access_token:'example-token'} : calls.length === 2 ? {id:42,login:'tester'} : [{email:'test@example.test',primary:true,verified:true}]);
   });

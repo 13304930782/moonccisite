@@ -1,3 +1,4 @@
+import { notify } from '../lib/feedback';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Copy, Check } from 'lucide-react';
@@ -15,6 +16,7 @@ export default function RssPage() {
   useEffect(() => {
     window.scrollTo(0, 0);
     const controller = new AbortController();
+    const timer = setTimeout(() => { controller.abort(); setError('加载时间较长，请检查网络后重试。'); setLoading(false); }, 20000);
     setLoading(true);
     setError('');
     setFeedUrl('');
@@ -51,21 +53,22 @@ export default function RssPage() {
           setError(e.message || '订阅源暂时无法读取');
       })
       .finally(() => {
+        clearTimeout(timer);
         if (!controller.signal.aborted) setLoading(false);
       });
-    return () => controller.abort();
+    return () => { clearTimeout(timer); controller.abort(); };
   }, [version]);
   async function copyAddress() {
     try {
       await navigator.clipboard.writeText(feedUrl);
       setCopied(true);
-      setCopyMessage('订阅地址已复制，可以粘贴到 RSS 阅读器中。');
+      notify.success('订阅地址已复制，可以粘贴到 RSS 阅读器中。');
     } catch {
       address.current?.focus();
       address.current?.select();
       setCopyMessage(
         '浏览器未允许自动复制，地址已选中，请长按或使用 Ctrl/Cmd + C 复制。',
-      );
+      ); notify.error('浏览器未允许自动复制，地址已选中，请长按或使用 Ctrl/Cmd + C 复制。');
     }
   }
   return (

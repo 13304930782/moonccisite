@@ -69,14 +69,7 @@ function ImageSetting({
     try {
       const body = new FormData();
       body.append('image', file);
-      const response = await fetch('/api/upload/image', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        body,
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || '图片上传失败');
+      const result = await api('/upload/image', { method: 'POST', body });
       onChange(result.url);
     } catch (error: any) {
       onError(error.message || '图片上传失败，请重试');

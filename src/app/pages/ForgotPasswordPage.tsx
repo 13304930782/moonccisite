@@ -1,9 +1,13 @@
+import { FormInput } from '../components/FormInput';
 import { FormEvent, useState } from 'react';
-import { Link } from 'react-router-dom';
+import {authLink, loginDestination} from '../lib/loginDestination';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Mail } from 'lucide-react';
 import { api } from '../lib/api';
 
 export default function ForgotPasswordPage() {
+  const [params] = useSearchParams();
+  const destination = loginDestination(params.get('redirect'));
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,7 +26,7 @@ export default function ForgotPasswordPage() {
     try {
       const res = await api('/auth/forgot-password', {
         method: 'POST',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, return_to:destination }),
       });
 
       setMessage(res.message || '如果该邮箱存在，我们会发送密码重置邮件');
@@ -36,7 +40,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="neo-dot-grid flex min-h-screen items-center justify-center px-6 py-10">
       <div className="w-full max-w-md rounded-[12px] border border-border bg-card p-8 shadow-none">
-        <Link to="/login" className="text-sm font-semibold text-foreground hover:underline">
+        <Link to={authLink('/login', destination)} className="text-sm font-semibold text-foreground hover:underline">
           返回登录
         </Link>
 
@@ -56,13 +60,13 @@ export default function ForgotPasswordPage() {
 
         <form onSubmit={submit} className="mt-6 space-y-5">
           <div>
-            <label className="block mb-2 text-sm font-medium text-foreground">
+            <label htmlFor="recovery-email" className="block mb-2 text-sm font-medium text-foreground">
               邮箱
             </label>
             <div className="neo-input flex items-center gap-3 px-4 py-3">
               <Mail className="w-5 h-5 text-muted-foreground" />
-              <input
-                value={email}
+              <FormInput
+                id="recovery-email" autoComplete="email" value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 placeholder="your@email.com"

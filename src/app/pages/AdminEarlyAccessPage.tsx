@@ -95,7 +95,7 @@ export default function AdminEarlyAccessPage() {
 
       <div className="mt-8 space-y-4">
         {loading && <div className="py-6 text-muted-foreground">正在加载申请…</div>}
-        {!loading && items.length === 0 && <div className="py-6 text-muted-foreground">暂无符合条件的申请。</div>}
+        {!loading && items.length === 0 && <div className="py-6 text-muted-foreground"><p>暂无符合条件的申请。</p><button className="quiet-button" onClick={()=>{setKeyword('');setActiveKeyword('');setStatus('all');setPage(1);}}>清除筛选，查看全部申请</button></div>}
 
         {items.map((item) => (
           <Link

@@ -83,7 +83,9 @@
   width: 16px;
   height: 16px;
 }
-.auth-submit:hover {
+.auth-form .auth-submit:hover {
+  background: var(--primary);
+  color: var(--primary-foreground);
   opacity: 0.88;
 }
 .auth-message {
@@ -95,6 +97,20 @@
 }
 .auth-message.is-error {
   color: var(--destructive);
+}
+.auth-form-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.auth-form-error > svg {
+  flex: none;
+  margin-top: 3px;
 }
 .auth-helper {
   font-size: 12px;

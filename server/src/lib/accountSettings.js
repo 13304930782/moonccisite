@@ -32,7 +32,7 @@ async function sendReset(user) {
     await c.commit();
   } catch (error) { await c.rollback(); throw error; } finally { c.release(); }
   try {
-    const sent = await sendMail({ to: user.email, subject: '[mooncci] 重置账户密码', text: `请通过此链接设置账户密码，30 分钟内有效：\n${siteOrigin()}/reset-password?token=${token}\n如果不是你本人操作，可以忽略此邮件。` });
+    const sent = await sendMail({ to: user.email, subject: '[mooncci] 重置账户密码', text: `请通过此链接设置账户密码，30 分钟内有效：\n${require('./loginDestination').resetLink(siteOrigin(),token,'/account/settings')}\n如果不是你本人操作，可以忽略此邮件。` });
     if (!sent.sent) throw new Error();
   } catch { await db.query('DELETE FROM password_resets WHERE token_hash=?', [hash(token)]); throw fail('邮件发送失败，请稍后重试。', 503); }
 }

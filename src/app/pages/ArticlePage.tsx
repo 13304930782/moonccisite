@@ -1,3 +1,6 @@
+import {ReadingProgress} from '../components/ReadingProgress';
+import '../../styles/engagement.css';
+import {ArticleSeries} from '../components/ArticleSeries';
 import {ArticleDiscovery} from '../components/ArticleDiscovery';
 import {usePageView} from '../components/PageAnalytics';
 import {ArticlePresentation} from '../components/ArticlePresentation';
@@ -20,8 +23,8 @@ export default function ArticlePage() {
         {post && (
           <>
             <div className="article-layout">
-              <ArticlePresentation post={post} views={views}/>
-              <ArticleDiscovery key={post.id} id={post.id} title={post.title}/><CommentSection postId={post.id} />
+              <ReadingProgress key={post.id} postId={post.id}/><ArticlePresentation post={post} views={views}/>
+              <ArticleSeries id={post.id}/><ArticleDiscovery key={post.id} id={post.id} title={post.title}/><CommentSection postId={post.id} />
             </div>
             <SubscribeForm />
           </>

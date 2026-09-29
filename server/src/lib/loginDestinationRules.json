@@ -1,0 +1,11 @@
+{
+  "path": "^(?:/electricity|/updates/[1-9]\\d*|/article/[1-9]\\d*|/account/(?:settings|bookmarks|submissions|write|notifications|history|sessions)|/admin(?:/(?:posts(?:/[1-9]\\d*/edit)?|write|media|reviews|schedules|series|operations|analytics|runtime|comments|users(?:/[1-9]\\d*/settings)?|editor-apply|editor-applications|banned-words|site-settings|blog-pages|login-settings|mail-settings|send-mail|updates|projects|newsletter|early-access(?:/[1-9]\\d*)?|electricity))?)$",
+  "query": {
+    "draft": "^[A-Za-z0-9-]{1,64}$",
+    "page": "^[1-9][0-9]{0,5}$",
+    "roomId": "^[A-Za-z0-9-]{1,64}$",
+    "resume": "^1$",
+    "state": "^(submitted|approved|scheduled|failed|rejected|published)$"
+  },
+  "hash": "^#[A-Za-z][A-Za-z0-9_-]{0,100}$"
+}
