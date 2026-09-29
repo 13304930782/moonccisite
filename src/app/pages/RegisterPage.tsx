@@ -1,6 +1,8 @@
+import { FormInput } from '../components/FormInput';
+import {authLink, loginDestination} from '../lib/loginDestination';
 import { ArrowRight, Lock, Mail, User } from 'lucide-react';
 import { FormEvent, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthShell } from '../components/AuthShell';
 import { SocialLoginButtons } from '../components/SocialLoginButtons';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +10,8 @@ import { useAuth } from '../context/AuthContext';
 export default function RegisterPage() {
   const { register, googleLogin, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const destination = loginDestination(params.get('redirect'));
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +39,7 @@ export default function RegisterPage() {
     try {
       await register(username, email, password);
       setMessage('注册成功，即将跳转登录页');
-      setTimeout(() => navigate('/login'), 700);
+      navigate(authLink('/login', destination), {replace:true});
     } catch (err: any) {
       setMessage(err.message || '注册失败');
     } finally {
@@ -48,9 +52,9 @@ export default function RegisterPage() {
     setMessage('');
 
     try {
-      const user = await googleLogin(credential);
+      const user = await googleLogin(credential,destination);
       navigate(
-        ['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/',
+        destination || (['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/'),
       );
     } catch (err: any) {
       setMessage(err.message || 'Google 注册失败，请重试');
@@ -65,7 +69,7 @@ export default function RegisterPage() {
         正在确认登录状态…
       </p>
     );
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={destination || "/"} replace />;
 
   return (
     <AuthShell
@@ -78,12 +82,12 @@ export default function RegisterPage() {
           加入讨论。
         </>
       }
-      storyDescription="用一个简单账号参与文章评论；当你准备好分享自己的经验，也可以继续申请成为编辑。"
+      storyDescription="注册后可以参与评论、收藏文章；投稿开放时，可在个人中心创建草稿并提交审核。"
       formTitle="注册账号"
       formDescription="填写基础信息，创建你的 mooncci 通行证。"
       alternatePrompt="已经有账号？"
       alternateLabel="去登录"
-      alternateTo="/login"
+      alternateTo={authLink('/login', destination)}
     >
       {message && (
         <div
@@ -102,7 +106,7 @@ export default function RegisterPage() {
           </label>
           <div className="auth-field-control">
             <User aria-hidden="true" />
-            <input
+            <FormInput
               type="text"
               name="username"
               id="username"
@@ -120,7 +124,7 @@ export default function RegisterPage() {
           </label>
           <div className="auth-field-control">
             <Mail aria-hidden="true" />
-            <input
+            <FormInput
               type="email"
               name="email"
               id="register-email"
@@ -139,7 +143,7 @@ export default function RegisterPage() {
           </label>
           <div className="auth-field-control">
             <Lock aria-hidden="true" />
-            <input
+            <FormInput
               type="password"
               name="password"
               id="new-password"
@@ -157,7 +161,7 @@ export default function RegisterPage() {
           </label>
           <div className="auth-field-control">
             <Lock aria-hidden="true" />
-            <input
+            <FormInput
               type="password"
               name="confirmPassword"
               id="confirm-password"
@@ -179,7 +183,7 @@ export default function RegisterPage() {
         </button>
       </form>
 
-      <SocialLoginButtons
+      <SocialLoginButtons returnTo={destination || "/"}
         context="signup"
         disabled={loading}
         onCredential={signUpWithGoogle}

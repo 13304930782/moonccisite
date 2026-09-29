@@ -1,3 +1,5 @@
+import { notify } from '../lib/feedback';
+import { confirmAction } from '../lib/confirmAction';
 import {ArticleImport} from '../components/ArticleImport';
 import {useAuth} from '../context/AuthContext';
 import '../../styles/article-workspace.css';
@@ -37,14 +39,14 @@ export default function AdminPostsPage() {
   }, [page,filter,draftPage]);
 
   const removePost = async (id: number) => {
-    if (!window.confirm('确定要删除这篇文章吗？')) return;
+    if (!(await confirmAction('确定要删除这篇文章吗？'))) return;
 
     try {
       await api(`/posts/${id}`, { method: 'DELETE' });
-      setMessage('删除成功');
+      notify.success('删除成功');
       loadPosts();
     } catch (err: any) {
-      setMessage(err.message || '删除失败');
+      setMessage(err.message || '删除失败'); notify.error(err.message || '删除失败');
     }
   };
 
@@ -66,7 +68,7 @@ export default function AdminPostsPage() {
         {message && <div className="mb-4 rounded-[6px] bg-muted px-4 py-3 text-foreground">{message}</div>}
 
         <ThemeSelect aria-label="筛选文章状态" value={filter} onValueChange={v=>{setFilter(v);setPage(1);}}><option value="all">全部</option><option value="published">已发布</option><option value="draft">草稿</option></ThemeSelect>
-        {filter!=='published' && drafts.filter(d=>!d.post_id).map(d=><div className="admin-list-row" key={d.id}><h2>{d.payload.title||'未命名草稿'}</h2><p>草稿 · {new Date(d.updated_at).toLocaleString()}</p><Link to={`/admin/write?draft=${d.id}`}>继续编辑 / 预览</Link><button onClick={async()=>{if(confirm('删除这份未发布草稿？')){try{await api(`/article-drafts/${d.id}`,{method:'DELETE',body:JSON.stringify({version:d.version})});setDrafts(prev=>prev.filter(item=>item.id!==d.id));void loadPosts();}catch(e:any){setMessage(e.message);}}}}>删除草稿</button></div>)}
+        {filter!=='published' && drafts.filter(d=>!d.post_id).map(d=><div className="admin-list-row" key={d.id}><h2>{d.payload.title||'未命名草稿'}</h2><p>草稿 · {new Date(d.updated_at).toLocaleString()}</p><Link to={`/admin/write?draft=${d.id}`}>继续编辑 / 预览</Link><button onClick={async()=>{if((await confirmAction('删除这份未发布草稿？'))){try{await api(`/article-drafts/${d.id}`,{method:'DELETE',body:JSON.stringify({version:d.version})});setDrafts(prev=>prev.filter(item=>item.id!==d.id));void loadPosts();}catch(e:any){setMessage(e.message); notify.error(e.message);}}}}>删除草稿</button></div>)}
         {draftPage*20<draftTotal&&<button onClick={()=>setDraftPage(n=>n+1)}>加载更多草稿</button>}
         <AdminPagination label="文章管理分页" page={page} total={total} disabled={loading} onPage={setPage} />
         {loading && <p role="status">正在加载文章…</p>}

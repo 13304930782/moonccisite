@@ -1,8 +1,11 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import {authLink,loginDestination,rememberedDestination} from '../lib/loginDestination';
+import { Link,useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 
 export default function CompleteRegistrationPage() {
+  const [params]=useSearchParams();
+  const [destination,setDestination]=useState(()=>loginDestination(params.get('redirect'))||rememberedDestination());
   const [provider, setProvider] = useState('');
   const [expired, setExpired] = useState(false);
   const [email, setEmail] = useState('');
@@ -12,7 +15,7 @@ export default function CompleteRegistrationPage() {
   const [cooldown, setCooldown] = useState(0);
   useEffect(() => {
     let active = true;
-    api('/auth/registration').then(data => { if (active) setProvider(data.provider); }).catch(e => { if (active) { setExpired(true); setMessage(e.message); } });
+    api('/auth/registration').then(data => { if (active) {setProvider(data.provider);setDestination(loginDestination(data.redirect)||destination);} }).catch(e => { if (active) { setExpired(true); setMessage(e.message); } });
     return () => { active = false; };
   }, []);
   useEffect(() => {
@@ -32,8 +35,8 @@ export default function CompleteRegistrationPage() {
     event.preventDefault(); setBusy(true); setMessage('');
     try {
       const data = await api('/auth/registration/complete', { method: 'POST', body: JSON.stringify({ email, code }) });
-      window.location.assign(data.redirect);
-    } catch (e: any) { setMessage(e.message); setBusy(false); }
+      window.location.assign(loginDestination(data.redirect)||'/');
+    } catch (e: any) { setMessage(e.message);if(e.status===409)setExpired(true);setBusy(false); }
   };
   return <main className="site-container page-content"><div className="max-w-md mx-auto py-8">
     <p className="text-sm text-muted-foreground mb-5">完成注册</p><h1 className="admin-title">绑定邮箱</h1>
@@ -45,6 +48,6 @@ export default function CompleteRegistrationPage() {
       <label className="block text-sm">验证码<input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} className="mt-2 w-full border border-border rounded-[8px] bg-card px-4 py-3" placeholder="6 位数字" /></label>
       <button type="submit" disabled={busy} className="neo-button neo-button-dark w-full justify-center disabled:opacity-60">{busy ? '正在处理…' : '验证邮箱并完成注册'}</button>
     </form>}
-    <p className="mt-8 text-sm text-muted-foreground">邮箱已有账号？<Link className="text-link ml-2" to="/login">先登录，再绑定</Link></p>
+    <p className="mt-8 text-sm text-muted-foreground">{expired?'授权已失效，请重新登录。':'邮箱已有账号？'}<Link className="text-link ml-2" to={authLink('/login',destination)}>先登录，再绑定</Link></p>
   </div></main>;
 }

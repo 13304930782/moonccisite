@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { CloudSun, Minus, X, CircleHelp } from 'lucide-react';
 import GrokBall, {
   type GrokBallEngine,
@@ -22,6 +23,28 @@ import {
   type CompanionReaction,
 } from '../lib/companionInteraction';
 import '../../styles/weather-companion.css';
+// Animation IDs are upstream presets; only the small speech captions are site copy.
+const ambientMoments = [
+  { id: '00', text: '眯一小会儿，马上回来。' },
+  { id: '01', text: '醒啦，继续陪你。' },
+  { id: '02', text: '没什么事，就是待在你旁边。' },
+  { id: '05', text: '一只眼醒了，另一只还在赖床。' },
+  { id: '06', text: '困意偷偷跑来了。' },
+  { id: '12', text: '有一点点低落，缓一缓就好。' },
+  { id: '15', text: '看累了的话，一起歇歇眼睛。' },
+  { id: '17', text: '哎呀，差点忘了刚才想说什么。' },
+  { id: '18', text: '有时候，发个呆也挺好。' },
+  { id: '21', text: '哼，气鼓鼓一下。' },
+  { id: '03', text: '咦，你在看什么？' },
+  { id: '04', text: '发一会儿呆。' },
+  { id: '10', text: '今天也有值得开心的小事。' },
+  { id: '11', text: '让我想想……' },
+  { id: '13', text: '哦！发现新东西。' },
+  { id: '14', text: '被你发现了。' },
+  { id: '16', text: '陪你认真看一会儿。' },
+  { id: '19', text: '这样就很好。' },
+  { id: '20', text: '脑袋里冒出一个问号。' },
+];
 type InteractionStats = { date: string; pets: number; hits: number };
 
 type DailyMood = {
@@ -45,6 +68,16 @@ type DailyMood = {
 
 export default function WeatherCompanion() {
   const { theme } = useMoonTheme();
+  const { pathname } = useLocation();
+  const authPage = ['/login', '/admin-login', '/register', '/forgot-password', '/reset-password', '/complete-registration'].includes(pathname);
+  const [inputMood, setInputMood] = useState<'account' | 'password' | null>(null);
+  const [ambient, setAmbient] = useState<(typeof ambientMoments)[number] | null>(null);
+  const [focusSpeech, setFocusSpeech] = useState('');
+  const [ambientSpeech, setAmbientSpeech] = useState('');
+  const [displayedEmotion, setDisplayedEmotion] = useState('02');
+  const lastMoment = useRef(-1);
+  const momentBag = useRef<number[]>([]);
+  const passwordFocused = useRef(false);
   const [data, setData] = useState<DailyMood | null>(null);
   const [location, setLocation] = useState<WeatherLocation | null>(
     loadWeatherLocation,
@@ -134,7 +167,65 @@ export default function WeatherCompanion() {
   const pointer = useRef(createCompanionPointer());
   const pointerClick = useRef(-Infinity);
   const disabled = data?.status === 'disabled';
-  const emotion = reactionEmotion(reaction, data?.mood?.emotionId || '02');
+  const emotion = inputMood === 'password' ? '00' : inputMood === 'account' ? '03' : reactionEmotion(reaction, (data?.mode === 'manual' ? data.mood?.emotionId : ambient?.id) || '02');
+  useEffect(() => {
+    let messageTimer: ReturnType<typeof setTimeout> | undefined;
+    const syncFocus = () => {
+      const field = document.activeElement;
+      // Inspect field semantics only: never read or retain account/password values.
+      const input = field instanceof HTMLInputElement ? field : null;
+      const password = Boolean(authPage && input && (input.type === 'password' || /password/.test(input.autocomplete)));
+      const account = Boolean(authPage && input && (input.type === 'email' || ['username','email'].includes(input.autocomplete) || input.name === 'username'));
+      passwordFocused.current = password;
+      setInputMood(password ? 'password' : account ? 'account' : null);
+      setAmbientSpeech('');
+      clearTimeout(messageTimer);
+      setFocusSpeech(password ? '你输密码，我闭眼。' : account ? '我在，慢慢来。' : '');
+      if(password || account) messageTimer = setTimeout(() => setFocusSpeech(''), 4200);
+    };
+    document.addEventListener('focusin', syncFocus);
+    document.addEventListener('focusout', syncFocus);
+    syncFocus();
+    return () => { clearTimeout(messageTimer); passwordFocused.current = false; document.removeEventListener('focusin', syncFocus); document.removeEventListener('focusout', syncFocus); };
+  }, [authPage, pathname]);
+
+  useEffect(() => {
+    setAmbientSpeech('');
+    if (reduced || collapsed || disabled || open || reaction || inputMood || data?.mode === 'manual') return;
+    let timer: ReturnType<typeof setTimeout>;
+    let restore: ReturnType<typeof setTimeout>;
+    const schedule = () => { timer = setTimeout(play, 28000 + Math.random() * 27000); };
+    const play = () => {
+      const active = document.activeElement;
+      if (document.hidden || active?.matches('input,textarea,select,[contenteditable="true"]')) { schedule(); return; }
+      // Shuffle a complete round so every preset appears before any repeats.
+      if (!momentBag.current.length) {
+        const indices = ambientMoments.map((_, index) => index);
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        if (indices[indices.length - 1] === lastMoment.current) {
+          [indices[0], indices[indices.length - 1]] = [indices[indices.length - 1], indices[0]];
+        }
+        momentBag.current = indices;
+      }
+      const index = momentBag.current.pop()!;
+      lastMoment.current = index;
+      setAmbient(ambientMoments[index]);
+      setAmbientSpeech(ambientMoments[index].text);
+      // Both particle effects come directly from the upstream SDK.
+      const id = ambientMoments[index].id;
+      if (['02','03','10','13','14','19'].includes(id)) ball.current?.spin(1);
+      else if (['11','16','20'].includes(id)) ball.current?.bounce();
+      if (id === '10') ball.current?.burst(12);
+      restore = setTimeout(() => setAmbientSpeech(''), 5500);
+      schedule();
+    };
+    const hide = () => { if(document.hidden) { clearTimeout(timer); clearTimeout(restore); setAmbientSpeech(''); } else { clearTimeout(timer); schedule(); } };
+    schedule(); document.addEventListener('visibilitychange', hide);
+    return () => { clearTimeout(timer); clearTimeout(restore); document.removeEventListener('visibilitychange', hide); };
+  }, [reduced, collapsed, disabled, open, reaction, inputMood, data?.mode, pathname]);
   const moodName =
     data?.mood?.name ||
     (!location ? '选个城市' : loaded ? '稍作等待' : '看看天气');
@@ -235,10 +326,14 @@ export default function WeatherCompanion() {
       autostart: !reduced && !document.hidden,
     });
     ball.current = engine;
+    const syncEmotion = () => setDisplayedEmotion(engine.emotionId || '02');
+    engine.on('change', syncEmotion);
+    syncEmotion();
     const visibility = () => engine.setActive(!reduced && !document.hidden);
     const gaze = (event: PointerEvent) => {
       if (
         reduced ||
+        passwordFocused.current ||
         document.hidden ||
         event.pointerType !== 'mouse' ||
         !mount.current
@@ -247,8 +342,8 @@ export default function WeatherCompanion() {
       const rect = mount.current.getBoundingClientRect();
       const clamp = (value: number) => Math.max(-1, Math.min(1, value));
       engine.setGaze(
-        clamp((event.clientX - rect.x - rect.width / 2) / (innerWidth / 2)),
-        clamp((event.clientY - rect.y - rect.height / 2) / (innerHeight / 2)),
+        clamp((event.clientX - rect.x - rect.width / 2) / (rect.width / 2)),
+        clamp((event.clientY - rect.y - rect.height / 2) / (rect.height / 2)),
       );
     };
     const clear = () => engine.clearGaze();
@@ -261,6 +356,7 @@ export default function WeatherCompanion() {
       window.removeEventListener('pointermove', gaze);
       window.removeEventListener('blur', clear);
       document.documentElement.removeEventListener('pointerleave', clear);
+      engine.off('change', syncEmotion);
       engine.destroy();
       ball.current = null;
     };
@@ -268,6 +364,7 @@ export default function WeatherCompanion() {
 
   useEffect(() => {
     ball.current?.setEmotion(emotion);
+    if (inputMood === 'password') ball.current?.clearGaze();
   }, [emotion, theme, reduced, collapsed, disabled]);
   useEffect(
     () => () => {
@@ -410,7 +507,7 @@ export default function WeatherCompanion() {
       className="weather-companion"
       ref={root}
       aria-label="mooncci 天气小球"
-      data-emotion={emotion}
+      data-emotion={displayedEmotion}
     >
       {collapsed ? (
         <button
@@ -585,6 +682,9 @@ export default function WeatherCompanion() {
               <p>连续两次双击，会惹它短暂生气哦。</p>
             </div>
           )}
+          {!open && !reaction && (focusSpeech || ambientSpeech) && (
+            <span className="weather-companion-speech" aria-hidden="true">{focusSpeech || ambientSpeech}</span>
+          )}
           {reaction && (
             <span className="weather-companion-pet" role="status">
               {reaction === 'hit'
@@ -666,11 +766,7 @@ export default function WeatherCompanion() {
               aria-hidden="true"
             />
             <span className="weather-companion-label">
-              {reaction === 'hit'
-                ? '生气了！'
-                : reaction === 'pet'
-                  ? '开心 +1'
-                  : moodName}
+              {GrokBall.EMOTIONS.find(item => item.id === displayedEmotion)?.name || moodName}
             </span>
           </button>
         </>

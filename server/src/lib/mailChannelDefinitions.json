@@ -1,0 +1,8 @@
+{
+  "account": {"label":"账号安全","address":"websiteaccount@mooncci.site","name":"mooncci 账号安全","reply_to":"support@mooncci.site","description":"注册验证、密码重置、邮箱与第三方绑定验证、账号权限变更。"},
+  "electricity": {"label":"宿舍电量","address":"electricity@mooncci.site","name":"mooncci 电量助手","reply_to":"support@mooncci.site","description":"电量报告、低电量提醒和电量测试邮件。"},
+  "notifications": {"label":"站点通知","address":"notifications@mooncci.site","name":"mooncci 站点通知","reply_to":"support@mooncci.site","description":"评论待审、审核结果、评论与回复通知。"},
+  "news": {"label":"周报订阅","address":"news@mooncci.site","name":"mooncci 周报","reply_to":"support@mooncci.site","description":"订阅确认和周报内容推送。"},
+  "promptdock": {"label":"PromptDock","address":"promptdock@mooncci.site","name":"PromptDock","reply_to":"promptdock@mooncci.site","description":"内测申请提醒、申请通过及体验下载说明。"},
+  "support": {"label":"人工邮件","address":"support@mooncci.site","name":"mooncci 支持","reply_to":"support@mooncci.site","description":"后台“发送邮件”页面的人工邮件。"}
+}

@@ -34,6 +34,6 @@ export default function AdminUsersPage() {
       </div>
       <Link className="neo-button" to={`/admin/users/${user.id}/settings`}>{user.deleted_at?'查看':'设置'}</Link>
     </article>)}</div>
-    {!list.loading && !list.error && !list.items.length && <p>没有符合条件的用户。</p>}
+    {!list.loading && !list.error && !list.items.length && <div className="quiet-state"><p>没有符合条件的用户。</p><button className="quiet-button" onClick={()=>{setKeyword('');filter({keyword:'',role:'all',status:'all'});}}>清除筛选，查看全部用户</button></div>}
   </div>;
 }

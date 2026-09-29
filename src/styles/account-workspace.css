@@ -1,0 +1,98 @@
+
+.account-shell{min-height:100vh;background:var(--background);color:var(--foreground)}
+.account-topbar{height:72px;background:var(--card);border-bottom:1px solid var(--border)}
+.account-topbar-inner{max-width:1320px;height:100%;padding:0 40px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.account-brand{display:flex;align-items:center;gap:18px;white-space:nowrap}
+.account-brand>span:last-child{font-size:14px;color:var(--muted-foreground)}
+.account-brand-divider{height:20px;width:1px;background:var(--border)}
+.account-topbar-actions{display:flex;align-items:center;gap:18px}
+.account-return{display:flex;align-items:center;gap:7px;font-size:13px;padding:8px 12px;border:1px solid var(--border);border-radius:8px}
+.account-workspace{max-width:1320px;margin:0 auto;padding:44px 40px 80px;display:grid;grid-template-columns:212px minmax(0,1fr);gap:48px;align-items:start}
+.account-workspace .account-sidebar{border:0;padding:0;position:sticky;top:28px}
+.account-identity{display:flex;gap:12px;align-items:center;padding:0 10px 28px}
+.account-identity-avatar{width:40px;height:40px;display:grid;place-items:center;border:1px solid var(--border);background:var(--card);border-radius:12px;font-size:17px;font-weight:650}
+.account-identity strong{display:block;font-size:14px;max-width:135px;overflow:hidden;text-overflow:ellipsis}
+.account-identity small{display:block;font-size:12px;color:var(--muted-foreground);margin-top:3px}
+.account-nav-label{font-size:11px;letter-spacing:.08em;color:var(--muted-foreground);margin:0 12px 12px}
+.account-workspace .account-sidebar nav{display:grid;gap:5px}
+.account-workspace .account-sidebar nav a{display:flex;align-items:center;gap:12px;padding:12px 14px;font-size:14px;color:var(--muted-foreground);border-radius:8px;border:1px solid transparent}
+.account-workspace .account-sidebar nav a.active{color:var(--foreground);background:var(--card);border-color:var(--border);font-weight:600;box-shadow:0 1px 3px #00000005}
+.account-sidebar-footer{border-top:1px solid var(--border);margin:28px 10px 0;padding-top:20px}
+.account-sidebar-footer button{display:flex;align-items:center;gap:12px;color:var(--muted-foreground);font-size:13px;padding:8px 2px}
+.account-sidebar-footer p{font-size:12px;overflow-wrap:anywhere}
+.account-content{min-width:0}
+.account-page-heading{display:flex;justify-content:space-between;align-items:center;gap:24px;margin-bottom:28px}
+.account-eyebrow{display:block;font-size:11px;color:var(--muted-foreground);letter-spacing:.08em;margin-bottom:10px}
+.account-page-heading h1{font-size:30px;letter-spacing:-.04em;line-height:1.3;font-weight:700;margin:0}
+.account-page-heading p{font-size:14px;line-height:1.65;color:var(--muted-foreground);margin:10px 0 0}
+.account-primary-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex-shrink:0;padding:11px 16px;border-radius:8px;background:var(--primary);color:var(--primary-foreground);font-size:13px;font-weight:550}
+.account-workspace .account-page{max-width:none;padding:0;margin:0}
+.account-content .account-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:26px 28px;margin-bottom:18px;grid-template-columns:minmax(140px,.8fr) minmax(0,1.8fr);gap:28px}
+.account-content .account-section h2{font-size:16px;font-weight:650;line-height:1.4}
+.account-content .account-section p{line-height:1.7;margin-top:7px}
+.account-content .account-fields{gap:18px}
+.account-content .account-fields label{font-size:13px}
+.account-content .account-fields input,.account-content .account-fields .theme-select-trigger{font-size:14px;min-height:42px;border:1px solid var(--border);background:var(--background);border-radius:7px}
+.account-content .account-upload input{min-height:0;padding:6px;max-width:100%;font-size:11px;border:0;background:transparent}
+.account-content .account-avatar{width:48px;height:48px;border-radius:12px}
+.account-content .neo-button{font-size:13px;padding:10px 14px;min-height:40px;border-radius:7px}
+.account-content .account-provider{padding:14px 0}
+.account-content .account-provider strong{font-size:14px}
+.account-content .account-provider:last-child{border-bottom:0}
+.submission-list-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.submission-list-heading{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding:17px 24px}
+.submission-list-heading h2{font-size:13px;font-weight:600}
+.submission-list-heading>span{font-size:12px;color:var(--muted-foreground)}
+.submission-row{display:flex;gap:16px;padding:24px;border-bottom:1px solid var(--border)}
+.submission-row:last-child{border-bottom:0}
+.submission-document-icon{width:42px;height:48px;border-radius:8px;background:var(--background);border:1px solid var(--border);display:grid;place-items:center;color:var(--muted-foreground);flex-shrink:0}
+.submission-row-content{flex:1;min-width:0}
+.submission-row-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.submission-row-heading h3{font-size:17px;line-height:1.4;font-weight:600;overflow-wrap:anywhere}
+.submission-badge{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;font-size:11px;line-height:1.5;padding:4px 8px;border-radius:5px;background:var(--muted);color:var(--muted-foreground)}
+.submission-badge:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.submission-badge.state-submitted,.submission-badge.state-scheduled{color:#936013;background:#ad7b1914}
+.submission-badge.state-published,.submission-badge.state-approved{color:#287150;background:#23825412}
+.submission-badge.state-rejected,.submission-badge.state-failed{color:#a64036;background:#af342211}
+.dark .submission-badge.state-submitted,.dark .submission-badge.state-scheduled{color:#e9bf76;background:#ad7b1925}
+.dark .submission-badge.state-published,.dark .submission-badge.state-approved{color:#8dceab;background:#23825425}
+.dark .submission-badge.state-rejected,.dark .submission-badge.state-failed{color:#e9a29a;background:#af342225}
+.submission-meta{font-size:12px;color:var(--muted-foreground);margin-top:6px;line-height:1.5}
+.submission-reason{font-size:13px;margin-top:12px;padding:10px 12px;background:var(--muted);border-radius:6px;overflow-wrap:anywhere}
+.submission-row-actions{display:flex;align-items:center;flex-wrap:wrap;gap:18px;margin-top:17px;font-size:12px}
+.submission-row-actions a,.submission-row-actions button{display:inline-flex;align-items:center;gap:5px;padding:3px 0;color:var(--muted-foreground)}
+.submission-row-actions .submission-open{color:var(--foreground);font-weight:600}
+.submission-row-actions button:hover,.submission-row-actions a:hover{text-decoration:underline;text-underline-offset:4px}
+.submission-row-actions button:disabled{opacity:.5}
+.submission-pagination{display:flex;justify-content:flex-end;align-items:center;gap:18px;margin-top:20px;font-size:13px}
+.submission-pagination button{padding:8px 12px;border:1px solid var(--border);border-radius:6px}
+.submission-pagination button:disabled{opacity:.4}
+.account-empty{padding:54px 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;color:var(--muted-foreground);font-size:14px}
+.account-empty h3{color:var(--foreground);font-size:17px;font-weight:600;margin-top:8px}
+.account-feedback{padding:16px;border:1px solid var(--border);border-radius:8px;margin-bottom:20px;font-size:14px}
+.account-feedback button{margin-left:14px;text-decoration:underline}
+.account-shell :is(a,button):focus-visible{outline:2px solid var(--ring);outline-offset:4px}
+.account-content .article-workspace{padding:0 0 180px;max-width:none}
+@media(max-width:1000px){.account-workspace{grid-template-columns:180px minmax(0,1fr);gap:28px;padding:32px 24px}.account-topbar-inner{padding:0 24px}.account-content .account-section{grid-template-columns:1fr;gap:22px}}
+@media(max-width:760px){.account-topbar{height:64px}.account-topbar-inner{padding:0 18px}.account-brand{gap:10px}.account-brand>span:last-child{font-size:12px}.account-topbar-actions{gap:8px}.account-return{padding:8px;font-size:12px}.account-workspace{display:block;padding:0 18px 48px}.account-workspace .account-sidebar{position:static;margin:0 0 28px;border-bottom:1px solid var(--border);padding:14px 0}.account-identity,.account-nav-label,.account-sidebar-footer{display:none}.account-workspace .account-sidebar nav{display:flex;gap:4px}.account-workspace .account-sidebar nav a{flex:1;justify-content:center;gap:6px;padding:10px 5px;font-size:12px;white-space:nowrap}.account-workspace .account-sidebar nav a svg{width:15px}.account-page-heading{align-items:flex-start;gap:12px;margin-bottom:22px}.account-page-heading h1{font-size:25px}.account-page-heading p{font-size:13px}.account-primary-button{font-size:12px;padding:10px 12px;margin-top:22px}.account-content .account-section{padding:22px 18px}.submission-list-heading{padding:15px 18px}.submission-row{padding:20px 18px;gap:12px}.submission-document-icon{display:none}.submission-row-heading{align-items:flex-start;gap:10px}.submission-row-heading h3{font-size:16px}.submission-row-actions{gap:15px}.account-content .account-fields input{font-size:16px}}
+@media(max-width:360px){.account-brand>span:last-child,.account-brand-divider{display:none}.account-page-heading{flex-wrap:wrap}.account-primary-button{margin-top:0}.submission-badge{font-size:10px}}
+
+.account-mobile-logout{display:none}@media(max-width:760px){.account-mobile-logout{display:grid;place-items:center;width:30px;height:32px}}
+
+.account-return{white-space:nowrap;flex-shrink:0}
+@media(max-width:760px){.account-brand>span:last-child,.account-brand-divider{display:none}.account-topbar-actions{gap:12px}}
+
+.account-bookmarks .bookmark-list{gap:20px}
+.account-bookmark-empty{grid-column:1/-1;display:flex;align-items:center;flex-direction:column;text-align:center;padding:60px 24px;min-height:320px;border:1px solid var(--border);border-radius:14px;background:var(--card)}
+.account-bookmark-symbol{display:grid;place-items:center;width:56px;height:56px;border-radius:16px;background:var(--muted);color:var(--muted-foreground);margin-bottom:20px}
+.account-bookmark-empty h2{font-size:18px;font-weight:650;margin:0 0 10px}
+.account-bookmark-empty p{font-size:14px;line-height:1.8;color:var(--muted-foreground);margin:0 0 24px;max-width:320px}
+.account-bookmark-empty .account-primary-button{display:inline-flex;gap:16px;align-items:center;margin-top:0}
+.account-bookmarks .bookmark-item{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:22px;display:flex;flex-direction:column;gap:16px}
+.account-bookmarks .bookmark-item>a{flex:1;min-width:0}
+.account-bookmarks .bookmark-item .blog-card{padding:0;border:0;background:transparent}
+.account-bookmarks .bookmark-item .blog-card h3{font-size:18px;line-height:1.5;margin:10px 0}
+.account-bookmarks .bookmark-item .blog-card p{font-size:14px;line-height:1.8;color:var(--muted-foreground)}
+.account-bookmarks .bookmark-item>.text-link{align-self:flex-start;font-size:12px;margin-top:0;color:var(--muted-foreground);padding:8px 0}
+.account-bookmarks .bookmark-item .quiet-state{padding:20px 0;display:grid;gap:12px;color:var(--muted-foreground)}
+@media(max-width:640px){.account-bookmark-empty{padding:40px 20px;min-height:300px}.account-bookmarks .bookmark-item{padding:20px}}

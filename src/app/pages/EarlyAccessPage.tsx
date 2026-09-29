@@ -1,20 +1,11 @@
+import { FormInput } from '../components/FormInput';
+import { notify } from '../lib/feedback';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { FormEvent, useRef, useState } from 'react';
-import { motion } from 'motion/react';
-import {
-  ArrowDown,
-  Check,
-  CheckCircle2,
-  Code2,
-  Laptop,
-  Lightbulb,
-  MessageSquareText,
-  ShieldCheck,
-  Sparkles,
-} from 'lucide-react';
+import { Code2 } from 'lucide-react';
 import { SitePage, PageHeading } from '../components/ContentUI';
-import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
+import '../../styles/early-access.css';
 
 type FormState = {
   name: string;
@@ -87,13 +78,14 @@ export default function EarlyAccessPage() {
   };
 
   const focusForm = () => {
-    formRef.current?.scrollIntoView({
+    nameRef.current?.focus({ preventScroll: true });
+    if (!formRef.current) return;
+    window.scrollTo({
+      top: Math.max(0, window.scrollY + formRef.current.getBoundingClientRect().top - 110),
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
         ? 'auto'
         : 'smooth',
-      block: 'start',
     });
-    window.setTimeout(() => nameRef.current?.focus(), 500);
   };
 
   const submit = async (event: FormEvent) => {
@@ -116,7 +108,7 @@ export default function EarlyAccessPage() {
       setForm(initialForm);
       setSuccess(true);
     } catch (error: any) {
-      setMessage(error.message || '申请提交失败，请稍后再试。');
+      setMessage(error.message || '申请提交失败，请稍后再试。'); notify.error(error.message || '申请提交失败，请稍后再试。');
     } finally {
       setSubmitting(false);
     }
@@ -130,9 +122,9 @@ export default function EarlyAccessPage() {
           管理与工作流工具。邀请你提前体验，也欢迎分享实际使用中的问题与想法。
         </p>
       </PageHeading>
-      <div className="detail-columns">
-        <aside className="detail-aside">
-          <h2>关于这次内测</h2>
+      <div className="early-access-layout">
+        <aside className="early-access-intro" aria-labelledby="early-access-about">
+          <h2 id="early-access-about">关于这次内测</h2>
           <p>当前开放 macOS 版本。Windows、iPhone 和 iPad 仍在计划中。</p>
           <dl className="plain-facts">
             <div>
@@ -148,11 +140,11 @@ export default function EarlyAccessPage() {
               <dd>审核结果与体验说明通过邮件发送。</dd>
             </div>
           </dl>
-          <button type="button" className="text-link" onClick={focusForm}>
-            填写申请 ↓
-          </button>
+          {!success && <button type="button" className="text-link early-access-start" onClick={focusForm}>
+            填写申请 <span className="early-access-arrow-wide" aria-hidden="true">→</span><span className="early-access-arrow-narrow" aria-hidden="true">↓</span>
+          </button>}
         </aside>
-        <section id="early-access-form" className="detail-body">
+        <section id="early-access-form" className="early-access-application">
           <div className="form-section-heading">
             <h2>申请体验</h2>
             <p>这些信息仅用于内测筛选与联系。</p>
@@ -167,7 +159,7 @@ export default function EarlyAccessPage() {
               <div className="grid gap-6 md:grid-cols-2">
                 <label className="font-medium">
                   姓名
-                  <input
+                  <FormInput
                     ref={nameRef}
                     required
                     maxLength={80}
@@ -179,7 +171,7 @@ export default function EarlyAccessPage() {
                 </label>
                 <label className="font-medium">
                   邮箱
-                  <input
+                  <FormInput
                     required
                     maxLength={254}
                     type="email"
@@ -224,7 +216,7 @@ export default function EarlyAccessPage() {
                 </label>
                 <label className="font-medium md:col-span-2">
                   macOS 版本
-                  <input
+                  <FormInput
                     required
                     maxLength={100}
                     value={form.macOSVersion}
@@ -257,7 +249,7 @@ export default function EarlyAccessPage() {
                         key={value}
                         className={`flex cursor-pointer items-center gap-3 py-2 text-sm ${checked ? 'text-foreground' : 'text-muted-foreground'}`}
                       >
-                        <input
+                        <FormInput
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleFeature(value)}

@@ -1,3 +1,4 @@
+import { notify } from '../lib/feedback';
 import { ThemeSelect } from './ThemeSelect';
 import { ReactNode, useEffect, useState } from 'react';
 import { Plus, Users, Upload, X, ArrowUpRight } from 'lucide-react';
@@ -115,7 +116,7 @@ export function AdminElectricityRooms({
           }),
         });
         await load();
-        setMessage('宿舍信息已保存；移除成员后其旧订阅链接立即失效。');
+        notify.success('宿舍信息已保存；移除成员后其旧订阅链接立即失效。');
       } else {
         const inputs =
           mode === 'import'
@@ -130,9 +131,7 @@ export function AdminElectricityRooms({
           return;
         }
         await load(result.data[0]?.id);
-        setMessage(
-          `已添加 ${result.data.length} 个宿舍，等待计划采集，也可点击立即查询。`,
-        );
+        setMessage(`已添加 ${result.data.length} 个宿舍，等待计划采集，也可点击立即查询。`); notify.success('宿舍已添加');
       }
       setMode('');
       setDraft({
@@ -152,7 +151,11 @@ export function AdminElectricityRooms({
           : e instanceof Error
             ? e.message
             : '操作失败。',
-      );
+      ); notify.error(e instanceof SyntaxError
+          ? '导入内容不是有效的 JSON 数组。'
+          : e instanceof Error
+            ? e.message
+            : '操作失败。');
     } finally {
       setBusy(false);
     }

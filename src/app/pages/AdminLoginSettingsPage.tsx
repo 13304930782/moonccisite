@@ -1,3 +1,4 @@
+import { notify } from '../lib/feedback';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 
@@ -12,8 +13,8 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
     event.preventDefault(); setSaving(true); setMessage('');
     try {
       const data = await api(`/auth/providers/manage/${form.provider}`, { method: 'PUT', body: JSON.stringify({ enabled: form.enabled, client_id: form.client_id.trim(), client_secret: form.client_secret || '', clear_secret: form.clear_secret || false, version: form.version }) });
-      setForm(data.provider); onSaved(data.provider); setMessage(data.message);
-    } catch (error: any) { setMessage(error.message || '保存失败'); }
+      setForm(data.provider); onSaved(data.provider); notify.success(data.message);
+    } catch (error: any) { setMessage(error.message || '保存失败'); notify.error(error.message || '保存失败'); }
     finally { setSaving(false); }
   };
   return <form onSubmit={save} className="admin-settings-section">

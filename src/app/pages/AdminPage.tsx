@@ -44,7 +44,7 @@ function getRoleTip(role?: string) {
     return '你当前是编辑账号，可以写文章，评论无需审核。';
   }
 
-  return '你当前是普通用户，可以评论文章，但暂时不能写文章。想发布文章，请先提交编辑申请。';
+  return '普通用户可在个人中心的“我的投稿”创建稿件并提交审核；后台编辑权限另行申请。';
 }
 
 export default function AdminPage() {

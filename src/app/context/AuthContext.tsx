@@ -16,7 +16,7 @@ type AuthContextValue = {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  googleLogin: (credential: string) => Promise<User>;
+  googleLogin: (credential: string, returnTo?:string) => Promise<User>;
   register: (
     username: string,
     email: string,
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (logoutRequest.current) return null;
     const version = authVersion.current;
     try {
-      const data = await api('/auth/me', { cache: 'no-store', signal: AbortSignal.timeout(15000) });
+      const data = await api('/auth/me', { cache: 'no-store' });
       if (version !== authVersion.current) return null;
       setUser(data.user);
       return data.user;
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const request = (async () => {
       try {
         const data = await api(path, {
-          method: 'POST', body: JSON.stringify(body), signal: AbortSignal.timeout(15000),
+          method: 'POST', body: JSON.stringify(body),
         });
         if (data.registration_required) {
           if (version === authVersion.current) window.location.assign('/complete-registration');
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const googleLogin = (credential: string) => authenticate('/auth/google', { credential });
+  const googleLogin = (credential: string, returnTo?:string) => authenticate('/auth/google', { credential,return_to:returnTo });
 
   const logout = (): Promise<boolean> => {
     if (logoutRequest.current) return logoutRequest.current;
@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLogoutError('');
     const request = (async () => {
       const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 15000);
+      const timeout = window.setTimeout(() => controller.abort(), 60000);
       try {
         // Let a pending sign-in install its cookie before the server clears/revokes it.
         if (loginRequest.current) await loginRequest.current.catch(() => {});

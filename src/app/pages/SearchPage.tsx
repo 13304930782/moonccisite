@@ -33,6 +33,7 @@ export default function SearchPage() {
       {q ? (
         <PostResults
           path={`/posts?search=${encodeURIComponent(q)}`}
+          emptyAction={<button className="quiet-button" onClick={()=>{setKeyword('');setParams({});}}>清除搜索，重新查找</button>}
           empty={`没有找到与「${q}」相关的文章。`}
         />
       ) : (

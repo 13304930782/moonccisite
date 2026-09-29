@@ -1,0 +1,26 @@
+.engagement-panel{border:1px solid var(--border);background:var(--card);border-radius:14px;margin-bottom:20px;overflow:hidden}
+.engagement-panel>p{padding:24px}
+.engagement-toolbar,.engagement-actions,.engagement-pagination{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.engagement-toolbar{justify-content:space-between;margin-bottom:20px;font-size:13px;color:var(--muted-foreground)}
+.engagement-toolbar label{display:flex;align-items:center;gap:12px}
+.engagement-toolbar select,.engagement-toolbar input,.engagement-verify input{border:1px solid var(--border);background:var(--card);border-radius:8px;padding:10px;color:var(--foreground);max-width:100%}
+.engagement-button{display:inline-flex;gap:8px;align-items:center;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--card);font-size:13px}
+.engagement-empty{padding:52px 24px;text-align:center;display:flex;align-items:center;flex-direction:column;gap:16px;color:var(--muted-foreground)}
+.engagement-empty h2{font-size:18px;color:var(--foreground);font-weight:650}.engagement-empty p{font-size:14px}
+.notification-row,.history-row{display:flex;gap:18px;padding:24px;border-bottom:1px solid var(--border);overflow-wrap:anywhere}.notification-row:last-child,.history-row:last-child{border:0}
+.notification-row>div,.history-row>div:first-child{flex:1;min-width:0}.notification-row>svg{flex-shrink:0;margin-top:4px;color:var(--muted-foreground)}
+.notification-row h2,.history-row h2{font-size:16px;font-weight:600;margin-bottom:8px}.notification-row p,.history-row p{font-size:14px;line-height:1.8;margin-bottom:10px;color:var(--muted-foreground)}
+.notification-row small{font-size:12px;color:var(--muted-foreground)}.notification-row.is-unread{border-left:3px solid var(--foreground)}
+.engagement-actions{margin-top:12px;font-size:13px}.engagement-actions button{color:var(--muted-foreground)}.engagement-pagination{justify-content:flex-end;font-size:13px;margin:20px 0 32px}.engagement-pagination button{padding:8px}
+.engagement-preferences{padding:28px}.engagement-preferences>h2{display:flex;gap:10px;font-weight:650}.engagement-preferences>p{padding:12px 0 20px;font-size:14px;color:var(--muted-foreground)}
+.engagement-toggle{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px;border-top:1px solid var(--border)}.engagement-toggle strong{font-size:14px}.engagement-toggle small{display:block;margin-top:5px;font-size:12px;color:var(--muted-foreground)}.engagement-toggle input{width:18px;height:18px;flex-shrink:0;accent-color:var(--foreground)}
+.engagement-verify{padding:16px 0}.engagement-verify p{font-size:13px;margin-bottom:12px}.engagement-alert{padding:16px;border:1px solid var(--border);border-radius:8px;margin-bottom:20px}.engagement-alert button{margin-left:12px;text-decoration:underline}
+.history-row{align-items:center;justify-content:space-between}.history-row progress{height:4px;max-width:200px;width:100%;accent-color:var(--foreground)}
+.engagement-folder-tools{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}.engagement-folder-tools input{min-width:0}
+@media(max-width:760px){.account-workspace .account-sidebar nav{flex-wrap:wrap}.account-workspace .account-sidebar nav a{flex:1 1 30%}.notification-row,.history-row{padding:20px;gap:12px}.history-row{align-items:flex-start;flex-direction:column}.engagement-preferences{padding:20px}.engagement-toolbar label{flex-wrap:wrap}}
+
+.reading-resume{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:14px 20px;margin-bottom:24px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--card)}.reading-resume button{font-weight:600}
+
+.bookmark-move{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted-foreground)}.bookmark-move select{min-width:0;max-width:65%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--foreground)}
+
+.engagement-button{white-space:nowrap;flex-shrink:0}.engagement-preferences>h2{font-size:18px;align-items:center}

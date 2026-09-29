@@ -90,7 +90,7 @@ export function ProjectDetailPage() {
             <section className="project-releases" id="project-releases" data-reading-ignore>
               <h2>版本记录</h2>
               {!p.releases.items.length && (
-                <EmptyState>暂无正式版本记录。</EmptyState>
+                <EmptyState>暂无版本记录。</EmptyState>
               )}
               {(p.focusedRelease &&
               !p.releases.items.some((r: any) => r.id === p.focusedRelease.id)
@@ -106,7 +106,7 @@ export function ProjectDetailPage() {
                   <summary><time className="muted">
                     {formatDate(r.published_at)} · GitHub Releases
                   </time>
-                  <span>{r.title}</span></summary>
+                  <span>{r.title} {Number(r.prerelease) === 1 && <small className="release-prerelease">预发布</small>}</span></summary>
                   <MarkdownContent content={r.content} />
                   <a
                     className="text-link"

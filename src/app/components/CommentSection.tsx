@@ -1,6 +1,9 @@
+import { notify } from '../lib/feedback';
+import { confirmAction } from '../lib/confirmAction';
 import { EmptyState } from './DetailUI';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Heart, MessageCircle, Reply, Send, Trash2, X } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -78,12 +81,20 @@ function getCommentRule(role?: string) {
   return '评论审核通过后公开，待审核内容仅你自己可见。';
 }
 
-export function CommentSection({ postId, updateId }: { postId?: number | string; updateId?: number | string }) {
+type CommentSectionProps = { postId?: number | string; updateId?: number | string; compact?: boolean };
+export function CommentSection({ postId, updateId, compact = false }: CommentSectionProps) {
   const { user } = useAuth();
-  return <CommentThread key={`${updateId ? 'update' : 'post'}:${updateId || postId}:${user?.id || 'guest'}`} postId={postId} updateId={updateId} />;
+  return <CommentThread key={`${updateId ? 'update' : 'post'}:${updateId || postId}:${user?.id || 'guest'}`} postId={postId} updateId={updateId} compact={compact} />;
 }
-function CommentThread({ postId, updateId }: { postId?: number | string; updateId?: number | string }) {
+function CommentThread({ postId, updateId, compact = false }: CommentSectionProps) {
   const targetId = updateId || postId;
+  const location = useLocation();
+  const threadId = `comments-${updateId ? 'update' : 'post'}-${targetId}`;
+  const [expanded, setExpanded] = useState(false);
+  const [openReplies, setOpenReplies] = useState<Set<number>>(new Set());
+  const [openText, setOpenText] = useState<Set<number>>(new Set());
+  const listRef = useRef<HTMLDivElement>(null);
+  const toggleSet = (set: React.Dispatch<React.SetStateAction<Set<number>>>, id: number) => set(old => { const next = new Set(old); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const endpoint = '/comments/' + (updateId ? 'update/' : 'post/') + targetId;
   const { user } = useAuth();
 
@@ -144,11 +155,11 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
         body: JSON.stringify({ content }),
       });
 
-      setMessage(res.message || '评论已提交');
+      notify.success(res.message || '评论已提交');
       setContent('');
       loadComments();
     } catch (err: any) {
-      setMessage(err.message || '评论提交失败');
+      setMessage(err.message || '评论提交失败'); notify.error(err.message || '评论提交失败');
     } finally {
       setLoading(false);
     }
@@ -177,12 +188,12 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
         }),
       });
 
-      setMessage(res.message || '回复已提交');
+      notify.success(res.message || '回复已提交');
       setReplyContent('');
       setReplyingTo(null);
       loadComments();
     } catch (err: any) {
-      setMessage(err.message || '回复提交失败');
+      setMessage(err.message || '回复提交失败'); notify.error(err.message || '回复提交失败');
     } finally {
       setSubmittingReply(false);
     }
@@ -211,19 +222,19 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
 
       loadComments();
     } catch (err: any) {
-      setMessage(err.message || '操作失败');
+      setMessage(err.message || '操作失败'); notify.error(err.message || '操作失败');
     }
   };
 
   const deleteComment = async (comment: Comment) => {
-    if (!window.confirm('确定要删除这条评论吗？')) return;
+    if (!(await confirmAction('确定要删除这条评论吗？'))) return;
 
     try {
       const res = await api('/comments/' + comment.id, { method: 'DELETE' });
-      setMessage(res.message || '评论已删除');
+      notify.success(res.message || '评论已删除');
       loadComments();
     } catch (err: any) {
-      setMessage(err.message || '删除失败');
+      setMessage(err.message || '删除失败'); notify.error(err.message || '删除失败');
     }
   };
 
@@ -260,9 +271,10 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
             )}
           </div>
 
-          <p className="mt-3 whitespace-pre-wrap leading-7 text-foreground ">
+          <p id={`${threadId}-text-${item.id}`} className={`comment-text mt-3 whitespace-pre-wrap leading-7 text-foreground ${compact && (item.content.length > 140 || item.content.split('\n').length > 4) && !openText.has(item.id) ? 'comment-text-preview' : ''}`}>
             {item.content}
           </p>
+          {compact && (item.content.length > 140 || item.content.split('\n').length > 4) && <button type="button" className="comment-expand" aria-expanded={openText.has(item.id)} aria-controls={`${threadId}-text-${item.id}`} onClick={() => toggleSet(setOpenText, item.id)}>{openText.has(item.id) ? '收起正文' : '展开全文'}</button>}
 
           {item.status === 'pending' && (
             <p className="mt-2 text-sm text-yellow-700">
@@ -367,7 +379,8 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
 
         {item.replies && item.replies.length > 0 && (
           <div className="border-l border-border  ml-2 md:ml-4">
-            {item.replies.map((reply) => renderCommentItem(reply, true))}
+            {compact && <button type="button" className="comment-expand" aria-expanded={openReplies.has(item.id)} aria-controls={`${threadId}-replies-${item.id}`} onClick={() => toggleSet(setOpenReplies, item.id)}>{openReplies.has(item.id) ? '收起回复' : `展开 ${item.replies.length} 条回复`}</button>}
+            <div id={`${threadId}-replies-${item.id}`} hidden={compact && !openReplies.has(item.id)}>{(!compact || openReplies.has(item.id)) && item.replies.map((reply) => renderCommentItem(reply, true))}</div>
           </div>
         )}
       </div>
@@ -376,28 +389,29 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
 
   return (
     <section
-      className="comment-section"
-      aria-labelledby={`comments-heading-${postId}`}
+      className={`comment-section ${compact ? 'comment-section--compact' : ''}`}
+      id={threadId}
+      aria-labelledby={`${threadId}-heading`}
     >
       <div className="comment-header">
-        <h2 id={`comments-heading-${postId}`}>
+        <h2 id={`${threadId}-heading`}>
           <MessageCircle aria-hidden="true" />
-          评论
+          {compact ? '讨论' : '评论'}{compact && <span className="comment-total">{comments.length}</span>}
         </h2>
-        <div className="comment-sort" role="group" aria-label="评论排序">
+        {(!compact || comments.length > 0) && <div className="comment-sort" role="group" aria-label="评论排序">
           {sortOptions.map((item) => (
             <button
               type="button"
               key={item.value}
-              onClick={() => setSort(item.value)}
+              onClick={() => { setSort(item.value); setExpanded(false); setOpenReplies(new Set()); setOpenText(new Set()); }}
               aria-pressed={sort === item.value}
             >
               {item.label}
             </button>
           ))}
-        </div>
+        </div>}
       </div>
-      <div className="comment-account">
+      {(!compact || user) && <div className="comment-account">
         {user ? (
           <>
             <p>
@@ -409,7 +423,9 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
         ) : (
           <p>登录后参与讨论。</p>
         )}
-      </div>
+      </div>}
+
+      {compact && !user && <div className="comment-login-prompt"><div><strong>来聊聊你的想法</strong><p>{comments.length ? '登录后参与讨论。' : '登录后，留下你的第一条评论。'}</p></div><Link className="comment-submit" to={'/login?redirect='+encodeURIComponent((updateId ? '/updates/'+updateId : location.pathname)+'#'+threadId)}>登录参与 ↗</Link></div>}
 
       {message && (
         <div className="mt-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
@@ -417,7 +433,7 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
         </div>
       )}
 
-      <form onSubmit={submit} className="comment-compose">
+      {(!compact || user) && <form onSubmit={submit} className="comment-compose">
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -441,16 +457,17 @@ function CommentThread({ postId, updateId }: { postId?: number | string; updateI
             {loading ? '提交中...' : '发表评论'}
           </button>
         </div>
-      </form>
+      </form>}
 
-      <div className="mt-8 space-y-2" aria-busy={commentsLoading}>
+      <div ref={listRef} id={`${threadId}-list`} className={`mt-8 space-y-2 ${compact ? 'comment-preview-list' : ''}`} aria-busy={commentsLoading} tabIndex={compact && comments.length ? 0 : undefined} role={compact ? 'region' : undefined} aria-label={compact ? '近况评论列表' : undefined}>
         {commentsLoading && comments.length === 0 && <p className="quiet-state" role="status">正在读取评论…</p>}
-        {!commentsLoading && !message && comments.length === 0 && (
+        {!commentsLoading && !message && comments.length === 0 && (!compact || user) && (
           <EmptyState>暂无评论</EmptyState>
         )}
 
-        {commentTree.map((item) => renderCommentItem(item, false))}
+        {(compact && !expanded ? commentTree.slice(0, 3) : commentTree).map((item) => renderCommentItem(item, false))}
       </div>
+      {compact && commentTree.length > 3 && <button type="button" className="comment-fold-toggle" aria-expanded={expanded} aria-controls={`${threadId}-list`} onClick={() => { setExpanded(!expanded); setOpenReplies(new Set()); setOpenText(new Set()); if (listRef.current) listRef.current.scrollTop=0; }}>{expanded ? '收起评论' : `展开更多评论（另 ${commentTree.length - 3} 条）`}</button>}
     </section>
   );
 }

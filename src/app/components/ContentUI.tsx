@@ -1,5 +1,6 @@
-import { FormEvent, ReactNode, useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { notify } from '../lib/feedback';
+import { FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { Header } from './Header';
 import { SiteFooter } from './SiteFooter';
@@ -13,15 +14,20 @@ export function useResource<T = any>(path: string) {
   const snapshot = cached && Date.now() - cached.time < 30000 ? cached.data : null;
   const [state, setState] = useState<{ path: string; data: T | null }>({ path, data: snapshot }),
     [error, setError] = useState(''),
+    [errorStatus,setErrorStatus]=useState<number|null>(null),
     [loading, setLoading] = useState(true),
     [version, setVersion] = useState(0);
+  const requestController = useRef<AbortController | null>(null);
+  const cancel = useCallback(() => requestController.current?.abort(), []);
   const reload = useCallback(() => setVersion((v) => v + 1), []);
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
+    requestController.current = controller;
     setLoading(true);
-    setError('');
+    setError('');setErrorStatus(null);
     setState(current => current.path === path ? current : { path, data: snapshot });
-    api(path)
+    api(path, { signal: controller.signal })
       .then((v) => {
         if (active) {
           setState({ path, data: v });
@@ -33,7 +39,7 @@ export function useResource<T = any>(path: string) {
       })
       .catch((e) => {
         if (active) {
-          setError(e.message);
+          setError(e.message);setErrorStatus(e.status||null);
           if ([401, 403, 404].includes(e.status)) {
             publicSnapshots.delete(path);
             setState({ path, data: null });
@@ -44,10 +50,10 @@ export function useResource<T = any>(path: string) {
         if (active) setLoading(false);
       });
     return () => {
-      active = false;
+      active = false; controller.abort();
     };
   }, [path, version]);
-  return { data: state.path === path ? state.data : snapshot, error: state.path === path ? error : '', loading: loading || state.path !== path, reload };
+  return { cancel, errorStatus:state.path===path?errorStatus:null, data: state.path === path ? state.data : snapshot, error: state.path === path ? error : '', loading: loading || state.path !== path, reload };
 }
 export function ContentSkeleton() {
   return <div className="content-skeleton" role="status" aria-label="正在加载内容" aria-busy="true">
@@ -60,17 +66,17 @@ export function ResourceState({
   resource,
   children,
 }: {
-  resource: ReturnType<typeof useResource>;
+  resource: Omit<ReturnType<typeof useResource>,'errorStatus'|'cancel'> & {errorStatus?:number|null;cancel?:()=>void};
   children: ReactNode;
 }) {
-  if (resource.loading && resource.data === null) return <ContentSkeleton />;
+  const location=useLocation();
+  const group=location.pathname.startsWith('/admin/')?'/admin':location.pathname.startsWith('/account/')?'/account/settings':location.pathname.startsWith('/projects/')?'/projects':location.pathname.startsWith('/updates/')?'/updates':location.pathname.startsWith('/series/')?'/series':'/articles';
+  if (resource.loading && resource.data === null) return <div><ContentSkeleton />{resource.cancel && <button className="text-link" onClick={resource.cancel}>取消加载</button>}</div>;
   if (resource.error && resource.data === null)
     return (
       <div className="quiet-state" role="alert">
         <p>{resource.error}</p>
-        <button className="quiet-button" onClick={resource.reload}>
-          重试
-        </button>
+        {resource.errorStatus===401?<Link className="quiet-button" to={'/login?redirect='+encodeURIComponent(location.pathname+location.search)}>重新登录后继续</Link>:[403,404].includes(resource.errorStatus||0)?<Link className="quiet-button" to={group}>返回{group==='/admin'?'后台':group.startsWith('/account')?'个人中心':'内容列表'}</Link>:<button className="quiet-button" onClick={resource.reload}>重试</button>}
       </div>
     );
   return <div className="resource-content" aria-busy={resource.loading}>
@@ -151,7 +157,7 @@ export function ActivityList({ items }: { items: any[] }) {
             <p>{item.excerpt}</p>
             {item.type === 'release' && <small className="muted">来自 GitHub Releases</small>}
           </div>
-          <span aria-hidden="true">↗</span>
+          <span className="activity-arrow" aria-hidden="true">↗</span>
         </Link>
       ))}
     </div>
@@ -159,6 +165,7 @@ export function ActivityList({ items }: { items: any[] }) {
 }
 export function Pagination({ data, onPage }: { data: PageData; onPage: (page: number) => void }) {
   const pages = Math.max(1, Math.ceil(data.total / data.pageSize));
+  if (pages <= 1) return null;
   return (
     <nav className="pagination" aria-label="分页">
       <button disabled={data.page <= 1} onClick={() => onPage(data.page - 1)}>
@@ -187,10 +194,10 @@ export function SubscribeForm() {
         method: 'POST',
         body: JSON.stringify({ email }),
       });
-      setMessage(result.message);
+      notify.success(result.message);
       setEmail('');
     } catch (e: any) {
-      setMessage(e.message);
+      setMessage(e.message); notify.error(e.message);
     } finally {
       setBusy(false);
     }

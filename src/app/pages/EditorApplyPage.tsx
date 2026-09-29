@@ -1,3 +1,4 @@
+import { notify } from '../lib/feedback';
 import { FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PenLine, Send, ShieldCheck } from 'lucide-react';
@@ -20,7 +21,7 @@ function getRoleTip(role?: string) {
   if (role === 'admin')
     return '你当前是管理员账号，已经可以写文章和管理内容，不需要申请成为编辑。';
   if (role === 'editor') return '你当前已经是编辑账号，可以直接写文章。';
-  return '你当前是普通用户，如需发布文章，可以提交编辑申请。';
+  return '投稿不需要编辑权限；如需参与后台内容维护，再提交编辑申请。';
 }
 
 function getRoleName(role?: string) {
@@ -67,10 +68,10 @@ export default function EditorApplyPage() {
         body: JSON.stringify({ reason }),
       });
 
-      setMessage(res.message || '申请已提交，请等待管理员审核');
+      notify.success(res.message || '申请已提交，请等待管理员审核');
       setReason('');
     } catch (err: any) {
-      setMessage(err.message || '申请提交失败');
+      setMessage(err.message || '申请提交失败'); notify.error(err.message || '申请提交失败');
     } finally {
       setLoading(false);
     }
@@ -91,6 +92,7 @@ export default function EditorApplyPage() {
           {message}
         </p>
       )}
+      {!canWrite(user?.role) && <Link className="quiet-button mt-6" to="/account/submissions">去我的投稿，开始写作 →</Link>}
       {!canWrite(user?.role) && (
         <form onSubmit={submit} className="site-form mt-8">
           <label htmlFor="editor-reason">申请说明</label>

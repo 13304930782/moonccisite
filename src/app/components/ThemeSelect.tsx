@@ -18,6 +18,7 @@ type Props = Omit<
   onValueChange: (value: string) => void;
   children: ReactNode;
   required?: boolean;
+  allowEmpty?: boolean;
   name?: string;
 };
 
@@ -27,6 +28,7 @@ export function ThemeSelect({
   onValueChange,
   children,
   required,
+  allowEmpty = false,
   name,
   disabled,
   className = '',
@@ -52,10 +54,10 @@ export function ThemeSelect({
       }}
     >
       <Select.Root
-        value={value}
+        value={allowEmpty && value === '' ? '__mooncci_empty__' : value}
         onValueChange={(nextValue) => {
           setInvalid(false);
-          onValueChange(nextValue);
+          onValueChange(nextValue === '__mooncci_empty__' ? '' : nextValue);
         }}
         disabled={disabled}
       >
@@ -84,11 +86,11 @@ export function ThemeSelect({
             </Select.ScrollUpButton>
             <Select.Viewport className="theme-select-viewport">
               {options
-                .filter((option) => option.props.value !== '')
+                .filter((option) => allowEmpty || option.props.value !== '')
                 .map((option) => (
                   <Select.Item
                     key={option.props.value}
-                    value={option.props.value}
+                    value={option.props.value || '__mooncci_empty__'}
                     disabled={option.props.disabled}
                     className="theme-select-option"
                   >
