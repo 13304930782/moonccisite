@@ -1,8 +1,10 @@
 """Visual consistency and nonblocking feedback release; excludes unaccepted startup recovery."""
-import hashlib, io, json, os, shutil, subprocess, tarfile, tempfile
+import hashlib, io, json, os, re, shutil, subprocess, tarfile, tempfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent.parent
 BACKEND=[]
+RELEASE=os.environ.get('MOONCCI_FRONTEND_RELEASE','ux-unification-20260929')
+if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*',RELEASE):raise ValueError('Invalid release name')
 def sha(data): return hashlib.sha256(data).hexdigest()
 def norm(path): return path.read_bytes().replace(b'\r\n',b'\n')
 def git(*args): return subprocess.check_output(['git','-c','safe.directory='+str(ROOT),*args],cwd=ROOT)
@@ -43,10 +45,10 @@ def main():
  entries['BACKEND_FILES']=('\n'.join(BACKEND)+'\n').encode()
  entries['BASELINE.json']=(json.dumps(baseline,indent=2)+'\n').encode()
  entries['SOURCE_FILES.json']=(json.dumps(sources,indent=2)+'\n').encode()
- metadata={'release':'ux-unification-20260929','frontend':'current working snapshot excluding unaccepted startup recovery','source_sha256':sha(entries['SOURCE_FILES.json']),'backend_files':BACKEND,'restarts':[],'migrations':False,'dependencies_changed':False,'worker_restart':False,'production_accepted':False}
+ metadata={'release':RELEASE,'frontend':'current working snapshot excluding unaccepted startup recovery','source_sha256':sha(entries['SOURCE_FILES.json']),'backend_files':BACKEND,'restarts':[],'migrations':False,'dependencies_changed':False,'worker_restart':False,'production_accepted':False}
  entries['MANIFEST.json']=(json.dumps(metadata,indent=2)+'\n').encode()
  entries['SHA256SUMS']=''.join(sha(data)+'  '+name+'\n' for name,data in sorted(entries.items())).encode()
- output=ROOT/'outputs/mooncci-ux-unification-20260929.tar.gz'
+ output=ROOT/('outputs/mooncci-'+RELEASE+'.tar.gz')
  with tarfile.open(output,'w:gz') as archive:
   for name,data in sorted(entries.items()):
    info=tarfile.TarInfo(name);info.size=len(data);info.mode=0o755 if name.endswith('.sh') else 0o644;archive.addfile(info,io.BytesIO(data))

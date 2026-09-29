@@ -58,3 +58,7 @@
  .resource-notice .quiet-button { align-self:flex-start; }
  .engagement-actions { flex-wrap:wrap; gap:12px; }
 }
+.article-image-issues { list-style: none; padding: 0; display: grid; gap: 16px; }
+.article-image-issues li { border-top: 1px solid var(--border); padding-top: 12px; }
+.article-image-issues .inline-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.article-image-issues .article-button { min-height: 44px; text-decoration: none; }
