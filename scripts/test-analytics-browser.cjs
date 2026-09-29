@@ -14,6 +14,8 @@ const {chromium}=require('playwright');
     const days=Number(url.searchParams.get('days'));data={days,start:'2026-09-01',end:'2026-09-07',startedAt:'2026-09-01T00:00:00Z',summary:{views:420,visitors:100,totalViews:500,activeMembers:10},users:{active:20,disabled:2,deleted:1},trend:Array.from({length:days},(_,i)=>({day:'2026-09-'+String(i+1).padStart(2,'0'),views:i*10,visitors:i*2,registrations:i%2})),popular:[{path:'/article/123',views:42},{path:'/projects/'+ 'long'.repeat(30),views:20}],sources:[{label:'example.test',views:50}],devices:[{label:'mobile',views:40}],roles:[{label:'user',count:20}],identities:[{label:'microsoft',count:2}]};
    }else if(url.pathname==='/api/posts/123')data={id:123,title:'阅读量测试',content:'测试正文',author_name:'作者',published_at:'2026-09-01T00:00:00Z'};
    else if(url.pathname==='/api/analytics/article/123')data={views:1234};
+   else if(url.pathname==='/api/posts/123/discovery')data={related:[],previous:null,next:null};
+   else if(url.pathname==='/api/series/article/123')data=null;
    else if(url.pathname==='/api/analytics/view'){tracked.push(route.request().postDataJSON().path);data={views:1234};}
    else if(url.pathname.includes('/comments'))data=[];
    else if(url.pathname==='/api/auth/providers')data={providers:[{provider:'microsoft',name:'Microsoft'}]};

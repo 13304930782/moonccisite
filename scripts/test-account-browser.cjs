@@ -7,6 +7,7 @@ async function main() {
   try {
     browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
     const page = await browser.newPage();
+    page.setDefaultTimeout(15000);
     const errors = []; page.on('pageerror', e => errors.push(e.message));
     let user = { id: 2, username: '测试读者', email: 'reader@example.test', role: 'user', status: 'active', can_comment: 1, version: 0 };
     let loggedIn = true;
@@ -15,6 +16,7 @@ async function main() {
       let body = {};
       if (path === '/api/auth/me') body = { user: loggedIn ? { ...user, id: 1, role: 'owner' } : null };
       else if (path === '/api/auth/logout') { loggedIn = false; body = { message: '退出成功' }; }
+      else if (path === '/api/account/security-code') body = { challenge_id: 'local-fixture-only' };
       else if (path === '/api/admin/updates') body = {items:[],total:0,page:1,pageSize:20};
       else if (path === '/api/admin/users') body = { items: [user, { ...user, id: 3, username: 'long'.repeat(30), email: 'address'.repeat(20)+'@example.test' }], total: 2, page: 1, pageSize: 50 };
       else if (path === '/api/account' || path === '/api/admin/users/2/settings') {
@@ -26,7 +28,7 @@ async function main() {
     });
     for (const width of [320, 390, 1280]) {
       await page.setViewportSize({ width, height: 844 });
-      for (const [url, title] of [['/admin/users', '用户管理'], ['/admin/users/2/settings', '用户设置'], ['/account/settings', '个人设置']]) {
+      for (const [url, title] of [['/admin/users', '用户管理'], ['/admin/users/2/settings', '用户设置'], ['/account/settings', '账号设置']]) {
         await page.goto('http://127.0.0.1:4196' + url);
         await page.getByRole('heading', { name: title, exact: true }).waitFor();
         if (url === '/admin/users') await page.getByText('测试读者', { exact: true }).waitFor();
@@ -66,7 +68,11 @@ async function main() {
     await page.getByRole('button', { name: '保存资料', exact: true }).click();
     await page.getByText('资料已保存。', { exact: true }).waitFor();
     assert.equal(user.username, '修改后的名字');
-    await page.getByRole('button', { name: '换绑', exact: true }).isDisabled().then(x => assert.ok(x));
+    await page.getByRole('button', { name: '换绑 Google', exact: true }).click();
+    const verification = page.getByRole('dialog');
+    await verification.getByLabel('邮箱验证码').waitFor();
+    assert.ok(await verification.getByRole('button', { name: '验证并前往授权', exact: true }).isDisabled());
+    await page.keyboard.press('Escape');
     await page.getByRole('button', { name: '退出登录', exact: true }).click();
     await page.waitForURL('**/login');
     assert.equal(loggedIn, false); assert.deepEqual(errors, []);
