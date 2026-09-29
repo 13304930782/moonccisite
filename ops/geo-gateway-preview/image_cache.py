@@ -1,0 +1,26 @@
+"""Bounded browser caching for anonymous public raster responses; no proxy cache."""
+import re
+
+VARIABLE = '$mooncci_raster_browser_cache'
+BLOCK = '''# Mooncci anonymous raster browser cache: at most 60 seconds, never shared.
+map "$request_method:$uri:$status:$http_cookie:$http_authorization:$http_proxy_authorization:$http_range:$upstream_http_set_cookie:$upstream_http_content_type:$upstream_http_cache_control" $mooncci_raster_browser_cache {
+    default "private, no-store";
+    "~^(GET|HEAD):/api/uploads/[A-Za-z0-9_-]+[.](png|jpg|jpeg|gif|webp|avif):200::::::image/(png|jpeg|gif|webp|avif):public,[ ]*max-age=0$" "private, max-age=60, must-revalidate";
+}
+'''
+
+
+def patch(text):
+    if VARIABLE in text:
+        raise ValueError('Image cache patch already present')
+    if 'upstream mooncci_cn_tls_pool {' not in text:
+        raise ValueError('Expected existing gateway connection pool')
+    for directive in ['proxy_ssl_verify on;', 'proxy_next_upstream off;',
+                      'proxy_pass https://mooncci_cn_tls_pool;']:
+        if text.count(directive) != (4 if directive == 'proxy_next_upstream off;' else 2):
+            raise ValueError('Unexpected gateway configuration: ' + directive)
+    pattern = r'add_header Cache-Control "private, no-store" always;(?=\s*add_header X-Content-Type-Options nosniff always;\s*add_header X-Mooncci-Node US always;\s*add_header X-Mooncci-Route primary always;)'
+    updated, count = re.subn(pattern, 'add_header Cache-Control ' + VARIABLE + ' always;', text)
+    if count != 2:
+        raise ValueError('Expected exactly two primary response header groups')
+    return BLOCK + updated
