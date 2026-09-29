@@ -4,7 +4,7 @@ const { chromium, webkit } = require('playwright');
 (async () => {
   const vite = await (await import('vite')).createServer({ ...(process.env.UX_BASELINE ? {root:'.cache/ux-before'} : {}), server: { host:'127.0.0.1', port:4252, strictPort:true, hmr:false, watch:{ignored:['**/.cache/**','**/outputs/**']} } });
   await vite.listen();
-  const browser = await (process.env.QA_BROWSER === 'webkit' ? webkit.launch() : chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL || 'msedge'}));
+  const browser = await (process.env.QA_BROWSER === 'webkit' ? webkit.launch() : chromium.launch({...(process.env.PLAYWRIGHT_CHANNEL ? {channel:process.env.PLAYWRIGHT_CHANNEL} : process.platform === 'win32' ? {channel:'msedge'} : {})}));
   const output = 'outputs/ux-unification'; fs.mkdirSync(output, {recursive:true});
   const page = await browser.newPage({viewport:{width:1440,height:1000}});
   let mediaFail = false, notificationFail = false, subscriptionFail = false, releaseFail = true;
