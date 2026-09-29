@@ -36,15 +36,15 @@ export default function SubscriptionPage() {
           <h2 ref={result} tabIndex={-1}>{confirming ? '您已成功订阅 mooncci 周报' : '您已取消 mooncci 周报订阅'}</h2>
           <p>{message}</p>
           {confirming && <p>没有新内容时不会发送。每封周报底部都有取消订阅入口，无需登录。</p>}
-          <div className="subscription-actions"><Link className="workflow-button workflow-primary" to="/updates">查看最近更新</Link><Link className="workflow-button" to="/">返回首页</Link></div>
+          <div className="subscription-actions"><Link className="workflow-button workflow-primary" to="/updates">查看最近更新</Link><div className="subscription-actions">{confirming && <Link className="workflow-button workflow-primary" to="/#subscribe">重新申请订阅</Link>}<a className="workflow-button" href="mailto:support@mooncci.site">联系支持</a><Link className="workflow-button" to="/">返回首页</Link></div></div>
         </div>
       </section> : !valid ? <section className="workflow-result" role="alert">
-        <CircleAlert size={24} aria-hidden="true" /><div className="workflow-result-body"><h2>链接无效或不完整</h2><p>请从最近一封邮件中重新打开完整链接。需要帮助时，可联系 support@mooncci.site。</p><Link className="workflow-button" to="/">返回首页</Link></div>
+        <CircleAlert size={24} aria-hidden="true" /><div className="workflow-result-body"><h2>链接无效或不完整</h2><p>请从最近一封邮件中重新打开完整链接。需要帮助时，可联系 support@mooncci.site。</p><div className="subscription-actions">{confirming && <Link className="workflow-button workflow-primary" to="/#subscribe">重新申请订阅</Link>}<a className="workflow-button" href="mailto:support@mooncci.site">联系支持</a><Link className="workflow-button" to="/">返回首页</Link></div></div>
       </section> : <section className="workflow-result">
         <Mail size={24} aria-hidden="true" /><div className="workflow-result-body">
           <h2>{confirming ? '文章、近况与作品进展，一封收齐' : '停止接收后续周报'}</h2>
           <p>{confirming ? '每周一北京时间 09:00，有新内容时发送上周摘要。确认后即可订阅，无需注册或登录。' : '退订无需登录，也不会影响你的账号、验证码或其他业务通知。已发出的邮件可能仍会到达。'}</p>
-          {message && <p role="alert" className="subscription-error"><CircleAlert size={18} aria-hidden="true" />{message}</p>}
+          {message && <p role="alert" className="subscription-error"><CircleAlert size={18} aria-hidden="true" />{message}</p>}{message && confirming && <Link className="workflow-button" to="/#subscribe">重新申请订阅确认邮件</Link>}
           <div className="subscription-actions"><button className="workflow-button workflow-primary" disabled={busy} onClick={submit}>{busy ? '正在处理…' : confirming ? '确认订阅' : '确认取消订阅'}</button><Link className="workflow-button" to="/">{confirming ? '暂不订阅' : '保留订阅并返回首页'}</Link></div>
         </div>
       </section>}

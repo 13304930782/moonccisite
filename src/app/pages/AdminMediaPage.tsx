@@ -84,6 +84,7 @@ export default function AdminMediaPage() {
   const requestVersion = useRef(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [keyword, setKeyword] = useState('');
   const [uploading, setUploading] = useState(false);
   const [imageQuality, setImageQuality] = useState('medium');
@@ -103,6 +104,7 @@ export default function AdminMediaPage() {
     const version = ++requestVersion.current;
     const current = () => version === requestVersion.current && currentQuery.current === queryKey;
     setLoading(true);
+    setLoadError('');
     setMessage('');
     try {
       const data = await api(`/upload/media?${new URLSearchParams({ status, q: search, page: String(page), pageSize: '50' })}`);
@@ -111,7 +113,7 @@ export default function AdminMediaPage() {
       setTotal(data.total);
       if (data.page !== page) setPage(data.page);
     } catch (err: any) {
-      if (current()) { setItems([]); setMessage(err.message || '媒体库加载失败'); }
+      if (current()) { setLoadError(err.message || '媒体库加载失败'); }
     } finally { if (current()) setLoading(false); }
   };
   useEffect(() => {
@@ -447,13 +449,13 @@ export default function AdminMediaPage() {
               <option value="original">原图</option>
             </ThemeSelect>
 
-            <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-sm text-foreground hover:bg-muted">
+            <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-border bg-card focus-within:ring-2 focus-within:ring-ring px-5 py-3 text-sm text-foreground hover:bg-muted">
               <Upload className="h-4 w-4" />
               {uploading ? '上传中...' : '上传图片'}
               <input
                 type="file"
                 accept={IMAGE_ACCEPT}
-                className="hidden"
+                className="sr-only"
                 disabled={uploading}
                 onChange={(e) => handleUpload(e.target.files?.[0])}
               />
@@ -475,20 +477,23 @@ export default function AdminMediaPage() {
             <button
               type="button"
               onClick={() => { setPage(1); setStatus('active'); }}
-              className={`rounded-[10px] px-4 py-2 text-sm ${status === 'active' ? 'bg-muted text-foreground' : 'bg-muted text-foreground'}`}
+              aria-pressed={status === 'active'}
+              className={`rounded-[10px] border px-4 py-2 text-sm ${status === 'active' ? 'bg-foreground text-background border-foreground' : 'bg-card text-foreground border-border'}`}
             >
               正常文件
             </button>
             <button
               type="button"
               onClick={() => { setPage(1); setStatus('trashed'); }}
-              className={`rounded-[10px] px-4 py-2 text-sm ${status === 'trashed' ? 'bg-muted text-foreground' : 'bg-muted text-foreground'}`}
+              aria-pressed={status === 'trashed'}
+              className={`rounded-[10px] border px-4 py-2 text-sm ${status === 'trashed' ? 'bg-foreground text-background border-foreground' : 'bg-card text-foreground border-border'}`}
             >
               回收站
             </button>
           </div>
 
           <input
+            aria-label="搜索媒体文件"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring lg:max-w-md"
@@ -500,11 +505,11 @@ export default function AdminMediaPage() {
           </p>
         </div>
 
-        <nav aria-label="媒体库分页" className="mt-4 flex flex-wrap items-center gap-3">
+        {(total > 50 || page > 1) && <nav aria-label="媒体库分页" className="mt-4 flex flex-wrap items-center gap-3">
           <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="rounded border px-4 py-2 disabled:opacity-50">上一页</button>
           <span>第 {page} / {Math.max(1, Math.ceil(total / 50))} 页</span>
           <button type="button" disabled={loading || page * 50 >= total} onClick={() => setPage(page + 1)} className="rounded border px-4 py-2 disabled:opacity-50">下一页</button>
-        </nav>
+        </nav>}
         <div className="mt-5 flex flex-col gap-3 rounded-[10px] bg-muted p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -525,7 +530,7 @@ export default function AdminMediaPage() {
               清空选择
             </button>
 
-            <span className="text-sm text-muted-foreground">已选择 {selectedCount} 个</span>
+            <span className="text-sm text-muted-foreground">{selectedCount ? `已选择 ${selectedCount} 个` : '先选择图片，再执行批量操作'}</span>
           </div>
 
           {status === 'active' ? (
@@ -533,7 +538,7 @@ export default function AdminMediaPage() {
               type="button"
               disabled={selectedCount === 0 || saving}
               onClick={() => batchDelete(false)}
-              className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-red-600 px-5 py-2.5 text-sm text-foreground hover:bg-red-700 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-border bg-card px-5 py-2.5 text-sm text-foreground hover:bg-muted disabled:opacity-50"
             >
               <Trash2 className="h-4 w-4" />
               批量删除到回收站
@@ -554,7 +559,7 @@ export default function AdminMediaPage() {
                 type="button"
                 disabled={selectedCount === 0 || saving}
                 onClick={batchPermanentDelete}
-                className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-red-600 px-5 py-2.5 text-sm text-foreground hover:bg-red-700 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-border bg-card px-5 py-2.5 text-sm text-foreground hover:bg-muted disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" />
                 批量彻底删除
@@ -564,19 +569,21 @@ export default function AdminMediaPage() {
         </div>
 
         {message && (
-          <div className="mt-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
+          <div role="alert" className="mt-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
             {message}
           </div>
         )}
       </div>
 
-      {loading ? (
+      {loadError && <div className="resource-notice" role="alert"><div><strong>{items.length ? '刷新失败，已保留当前图片' : '媒体库加载失败'}</strong><p>{loadError}</p></div><button className="quiet-button" disabled={loading} onClick={() => void load()}>重新加载媒体库</button></div>}
+      {loading && !filtered.length ? (
         <div className="py-6 text-muted-foreground">
           正在加载媒体库...
         </div>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && !loadError ? (
         <div className="py-6 text-muted-foreground">
-          暂无媒体文件。
+          {search ? '没有找到匹配的媒体文件。' : status === 'trashed' ? '回收站为空。' : '暂无媒体文件，请先上传图片。'}
+          {search && <button className="quiet-button" onClick={() => { setKeyword(''); setSearch(''); setPage(1); }}>清除搜索</button>}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

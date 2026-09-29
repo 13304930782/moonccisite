@@ -460,17 +460,22 @@ export function AdminProjectsPage() {
 function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
   const [page, setPage] = useState(1),
     r = useResource(`/admin/projects/${id}/releases?page=${page}`),
-    [error, setError] = useState('');
+    [error, setError] = useState(''),
+    [busyId, setBusyId] = useState<number | null>(null);
   async function hide(release: any) {
+    if (busyId !== null) return;
+    setBusyId(release.id);
+    setError('');
     try {
       await api(`/admin/releases/${release.id}`, {
         method: 'PUT',
         body: JSON.stringify({ hidden: !release.hidden }),
       });
       r.reload();
+      notify.success(release.hidden ? '版本已恢复展示' : '版本已隐藏');
     } catch (e: any) {
       setError(e.message); notify.error(e.message);
-    }
+    } finally { setBusyId(null); }
   }
   return (
     <section className="editor-panel">
@@ -483,6 +488,7 @@ function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
         {r.data && (
           <>
             <div className="admin-records">
+              {!r.data.items.length && <div className="quiet-state"><h3>暂无版本记录</h3><p>同步仓库版本后，已导入的版本会显示在这里。</p></div>}
               {r.data.items.map((item: any) => (
                 <article key={item.id}>
                   <div>
@@ -492,8 +498,8 @@ function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
                       {item.historical ? '历史导入' : '新增版本'}
                     </small>
                   </div>
-                  <button onClick={() => hide(item)}>
-                    {item.hidden ? '恢复展示' : '隐藏'}
+                  <button disabled={busyId !== null || r.loading} onClick={() => hide(item)}>
+                    {busyId === item.id ? '正在更新…' : item.hidden ? '恢复展示' : '隐藏'}
                   </button>
                 </article>
               ))}

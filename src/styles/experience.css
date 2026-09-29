@@ -41,3 +41,20 @@
 .auth-field-control { flex-wrap:wrap; }
 .auth-field-control > svg { top:15px; }
 .auth-field-control .experience-field-error { flex-basis:100%; }
+
+/* Persistent feedback has its own region; actions retain visible boundaries. */
+.resource-notice { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-block:16px; padding:16px; border:1px solid var(--border); border-radius:var(--panel-radius); background:var(--card); color:var(--foreground); overflow-wrap:anywhere; }
+.resource-notice > div { min-width:0; }
+.resource-notice p { margin:8px 0 0; font-size:14px; line-height:1.6; }
+.resource-notice .quiet-button { flex-shrink:0; }
+.subscribe-section { scroll-margin-top:100px; }
+:is(.page-content,.account-content,.admin-content) :is(button,a,input,textarea,[role="combobox"],summary):focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+.pagination .quiet-button { min-height:44px; min-width:88px; }
+.pagination button:disabled { opacity:.5; cursor:not-allowed; }
+:is(.neo-page,.account-shell,.admin-shell) :is(.quiet-button,.engagement-button,.article-button,.workflow-button,.account-primary-button) { min-height:44px; border-radius:var(--control-radius); font-size:16px; line-height:1.5; }
+:is(.neo-page,.account-shell,.admin-shell) :is(.engagement-panel,.operations-panel,.editor-panel) { border-radius:var(--panel-radius); }
+@media(max-width:767px) {
+ .resource-notice { flex-direction:column; }
+ .resource-notice .quiet-button { align-self:flex-start; }
+ .engagement-actions { flex-wrap:wrap; gap:12px; }
+}
