@@ -1,6 +1,7 @@
+// Comparison keys only; original summaries are rendered as React text, never HTML.
 // Imported excerpts often repeat a truncated version of the opening paragraph.
 function normalize(value:string) {
- return value.replace(/!\[[^\]]*\]\([^)]*\)/g,'').replace(/\[([^\]]+)\]\([^)]*\)/g,'$1').replace(/<[^>]*>/g,'').replace(/[^\p{L}\p{N}]/gu,'').toLowerCase();
+ return value.replace(/!\[[^\]]*\]\([^)]*\)/g,'').replace(/\[([^\]]+)\]\([^)]*\)/g,'$1').replace(/<[^>]*>/g,' ').replace(/[^\p{L}\p{N}]/gu,'').toLowerCase();
 }
 export function distinctArticleSummary(summary:string,content:string):string {
  const trimmed=summary.trim(),excerpt=normalize(trimmed),body=normalize(content);

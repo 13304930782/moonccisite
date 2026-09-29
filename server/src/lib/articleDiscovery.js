@@ -2,13 +2,14 @@ const columns='id,title,published_at,updated_at,category';
 const pageNumber=value=>Math.min(100000,Math.max(1,Number.isInteger(Number(value))?Number(value):1));
 function tags(value){try{return [...new Set((Array.isArray(value)?value:JSON.parse(value||'[]')).filter(x=>typeof x==='string'))].slice(0,20);}catch{return [];}}
 function attachDiscovery(router,db){
- router.get('/archives',async(req,res)=>{
+ const limiter=require('express-rate-limit')({windowMs:60000,limit:60,standardHeaders:true,legacyHeaders:false,message:{message:'Too many requests. Please try again later.'}});
+ router.get('/archives',limiter,async(req,res)=>{
   const page=pageNumber(req.query.page),pageSize=50;
   const [months]=await db.query("SELECT DATE_FORMAT(COALESCE(published_at,created_at),'%Y-%m') AS month,COUNT(*) AS count FROM posts WHERE status='published' GROUP BY month ORDER BY month DESC");
   const [items]=await db.query(`SELECT ${columns},DATE_FORMAT(COALESCE(published_at,created_at),'%Y-%m') AS month FROM posts WHERE status='published' ORDER BY COALESCE(published_at,created_at) DESC,id DESC LIMIT ? OFFSET ?`,[pageSize,(page-1)*pageSize]);
   res.json({items,months,total:months.reduce((n,m)=>n+Number(m.count),0),page,pageSize});
  });
- router.get('/:id/discovery',async(req,res)=>{
+ router.get('/:id/discovery',limiter,async(req,res)=>{
   const [[post]]=await db.query("SELECT id,tags,category,COALESCE(published_at,created_at) AS date FROM posts WHERE id=? AND status='published'",[req.params.id]);
   if(!post)return res.status(404).json({message:'文章不存在'});
   const [[previous]]=await db.query(`SELECT ${columns} FROM posts WHERE status='published' AND (COALESCE(published_at,created_at)<? OR (COALESCE(published_at,created_at)=? AND id<?)) ORDER BY COALESCE(published_at,created_at) DESC,id DESC LIMIT 1`,[post.date,post.date,post.id]);
