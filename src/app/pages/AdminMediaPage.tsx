@@ -1,6 +1,7 @@
 import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
 import { ThemeSelect } from '../components/ThemeSelect';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Copy,
@@ -13,7 +14,6 @@ import {
   Trash2,
   Undo2,
   Upload,
-  X,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { safeImageSrc } from '../lib/safeUrl';
@@ -90,6 +90,7 @@ export default function AdminMediaPage() {
   const [imageQuality, setImageQuality] = useState('medium');
   const [status, setStatus] = useState<MediaStatus>('active');
   const [selected, setSelected] = useState<MediaItem | null>(null);
+  const detailTrigger = useRef<HTMLButtonElement | null>(null);
   const [selectedFilenames, setSelectedFilenames] = useState<string[]>([]);
   const [displayName, setDisplayName] = useState('');
   const [altText, setAltText] = useState('');
@@ -133,7 +134,8 @@ export default function AdminMediaPage() {
   const selectedCount = selectedFilenames.length;
   const allVisibleSelected = filtered.length > 0 && filtered.every((item) => selectedSet.has(item.filename));
 
-  const openDetail = (item: MediaItem) => {
+  const openDetail = (item: MediaItem, trigger: HTMLButtonElement) => {
+    detailTrigger.current = trigger;
     setSelected(item);
     setDisplayName(item.display_name || '');
     setAltText(item.alt_text || '');
@@ -597,7 +599,7 @@ export default function AdminMediaPage() {
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => openDetail(item)}
+                    onClick={(event) => openDetail(item, event.currentTarget)}
                     className="flex h-48 w-full items-center justify-center bg-muted"
                   >
                     {imageUrl ? (
@@ -634,7 +636,7 @@ export default function AdminMediaPage() {
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => openDetail(item)}
+                      onClick={(event) => openDetail(item, event.currentTarget)}
                       className="inline-flex items-center justify-center gap-1 rounded-[6px] bg-muted px-3 py-2 text-xs text-foreground hover:bg-muted"
                     >
                       <Eye className="h-3.5 w-3.5" />
@@ -665,22 +667,16 @@ export default function AdminMediaPage() {
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-muted p-4">
-          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[10px] bg-card p-6 shadow-none">
+        <Dialog open onOpenChange={(open) => { if (!open && !saving) setSelected(null); }}>
+          <DialogContent onCloseAutoFocus={(event) => { if (detailTrigger.current?.isConnected) { event.preventDefault(); detailTrigger.current.focus(); } }} className="max-h-[92dvh] w-[calc(100%-2rem)] sm:max-w-5xl overflow-y-auto rounded-[10px] bg-card p-6 shadow-none [&>button:last-child]:min-h-11 [&>button:last-child]:min-w-11 [&>button:last-child]:inline-flex [&>button:last-child]:items-center [&>button:last-child]:justify-center">
             <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-medium text-foreground">{mediaName(selected)}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{selected.filename}</p>
+              <div className="min-w-0 pr-8 break-words">
+                <DialogTitle className="text-2xl font-medium text-foreground">{mediaName(selected)}</DialogTitle>
+                <DialogDescription className="mt-1 text-sm text-muted-foreground">{selected.filename}</DialogDescription>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                className="rounded-[10px] bg-muted p-2 text-muted-foreground hover:bg-muted"
-              >
-                <X className="h-5 w-5" />
-              </button>
             </div>
 
+            {message && <p role="alert" className="rounded-[10px] bg-muted px-4 py-3 text-sm">{message}</p>}
             <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
               <div className="overflow-hidden rounded-[10px] bg-muted">
                 <img src={safeImageSrc(selected.url)} alt={mediaName(selected)} className="max-h-[62vh] w-full object-contain" />
@@ -818,8 +814,8 @@ export default function AdminMediaPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
