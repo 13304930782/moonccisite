@@ -146,6 +146,11 @@ input[type='checkbox'] {
   padding-top: 64px;
   padding-bottom: 96px;
 }
+/* Reserve the first viewport while route code and content are loading. */
+.neo-page > .page-content {
+  min-height: 100vh;
+  min-height: 100svh;
+}
 .reading-page {
   max-width: 760px;
 }
