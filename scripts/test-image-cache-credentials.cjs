@@ -14,9 +14,9 @@ const {chromium} = require('playwright');
       if (e.response.url.includes('/api/uploads/')) records.push({id:e.requestId, disk:e.response.fromDiskCache, url:e.response.url});
     });
     await page.goto(`http://127.0.0.1:${process.argv[2]}/`);
-    async function fetchImage(name, headers) {
+    async function fetchImage(name, headers, cache) {
       const before = records.length;
-      await page.evaluate(async ({name,headers}) => {const r=await fetch('/api/uploads/'+name+'.webp',{headers}); await r.arrayBuffer();}, {name,headers});
+      await page.evaluate(async ({name,headers,cache}) => {const r=await fetch('/api/uploads/'+name+'.webp',{headers,cache}); await r.arrayBuffer();}, {name,headers,cache});
       await page.waitForTimeout(100);
       assert.equal(records.length, before + 1);
       const r = records[records.length-1];
@@ -33,6 +33,9 @@ const {chromium} = require('playwright');
       assert.equal(await fetchImage(name), true);
       assert.equal(await fetchImage(name, {[header]:header==='Range'?'bytes=0-1':'Bearer fixture'}), false, header+' must reach server');
     }
-    console.log('PASS: actual browser cache hits and credential/range partition');
+    assert.equal(await fetchImage('revalidate'), false);
+    await fetchImage('revalidate', undefined, 'no-cache');
+    assert.equal(await fetchImage('revalidate'), true, '304 revalidation must keep subsequent response fresh');
+    console.log('PASS: actual browser cache hits, credential/range partition, reuse after revalidation');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

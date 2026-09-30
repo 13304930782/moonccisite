@@ -35,6 +35,8 @@ fresh 为每次启动 curl；reuse 为同一 curl 连续请求，每组观察到
 
 ## 干净仓库重建
 
+2026-09-30 后续：生产回传 240 次请求零失败，120 次条件请求均 304/0 字节，Vary 分区已生效。真实 Edge 缩短 TTL 的对照实验复现旧策略 200→304→200，修复策略 200→304 后复用缓存。新增仅匹配匿名普通栅格图片路径、无凭据/Range/Set-Cookie、源站 public,max-age=0 的 304 规则；允许 304 省略 Content-Type，拒绝显式非图片类型。真实 Nginx + Edge 验证重新校验后复用、凭据隔离、错误和非图片路径；安装器新增线上 304/0 字节及缓存头验收，失败回滚。此后续升级待部署。
+
 需要 Python 3.7+、Node.js、项目 npm 依赖和 Nginx。设置 NGINX_TEST_BINARY 为已安装 nginx/nginx.exe 的绝对路径。Windows 使用已安装 Edge；Linux 先运行 npx playwright install chromium。Nginx 测试运行独立临时实例。
 
 ```powershell

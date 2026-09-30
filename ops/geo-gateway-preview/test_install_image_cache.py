@@ -16,10 +16,12 @@ class InstallTest(unittest.TestCase):
             baseline = keepalive(render('US', '/cert', '/key', 'a'*64)).encode(); live.write_bytes(baseline)
             probes = [0]; commands = []
             def make_backup(**kwargs): backup.mkdir(); return str(backup)
-            def probe(path, cookie=False):
+            def probe(path, cookie=False, etag=None):
                 probes[0] += 1
                 if failure == 'health' and probes[0] == 2: raise RuntimeError('simulated health failure')
-                return {'status': 404 if 'missing' in path else 200, 'cache': ['private, max-age=60, must-revalidate' if probes[0] == 2 else 'private, no-store'], 'vary': [] if failure == 'vary' else ['Cookie, Authorization, Proxy-Authorization, Range'], 'sha256': 'same', 'node': ['US']}
+                if etag:
+                    return {'status':304,'bytes':0,'cache':['private, no-store' if failure == 'conditional' else 'private, max-age=60, must-revalidate']}
+                return {'status': 404 if 'missing' in path else 200, 'etag':['"fixture"'], 'cache': ['private, max-age=60, must-revalidate' if probes[0] == 2 else 'private, no-store'], 'vary': [] if failure == 'vary' else ['Cookie, Authorization, Proxy-Authorization, Range'], 'sha256': 'same', 'node': ['US']}
             def command(args):
                 commands.append(args)
                 if failure == 'syntax' and len(commands) == 2: raise RuntimeError('simulated syntax failure')
@@ -36,5 +38,6 @@ class InstallTest(unittest.TestCase):
     def test_health_rollback(self): self.scenario('health')
     def test_syntax_rollback(self): self.scenario('syntax')
     def test_missing_vary_rollback(self): self.scenario('vary')
+    def test_conditional_cache_rollback(self): self.scenario('conditional')
 
 if __name__ == '__main__': unittest.main()

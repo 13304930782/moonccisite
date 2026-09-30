@@ -10,7 +10,7 @@ import tempfile
 import threading
 import time
 import unittest
-from image_cache import BLOCK, VARY, patch
+from image_cache import BLOCK, LEGACY_BLOCK, VARY, patch
 from keepalive import patch as keepalive
 from render import render
 
@@ -25,8 +25,9 @@ class ImageCacheTest(unittest.TestCase):
         self.assertEqual(result.count('add_header Cache-Control "private, no-store" always;'), 2)
         self.assertEqual(result.count('proxy_cache off;'), original.count('proxy_cache off;'))
         self.assertEqual(result.count(VARY), 2)
-        old = result.replace('\n    ' + VARY, '')
+        old = result.replace(BLOCK, LEGACY_BLOCK).replace('\n    ' + VARY, '')
         self.assertEqual(patch(old), result, 'upgrade existing deployed cache map')
+        self.assertEqual(patch(result.replace(BLOCK, LEGACY_BLOCK)), result, 'upgrade deployed Vary version')
         for changed in (result, original.replace('proxy_ssl_verify on;', 'proxy_ssl_verify off;'), original.replace('X-Mooncci-Node US', 'X-Mooncci-Node CN')):
             with self.assertRaises(ValueError): patch(changed)
 
@@ -37,13 +38,16 @@ class ImageCacheTest(unittest.TestCase):
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *args): pass
             def do_GET(self):
-                self.send_response(state['status'])
-                self.send_header('Content-Type', state['type'])
+                conditional = self.path.endswith('/revalidate.webp') and self.headers.get('If-None-Match') == '"fixture"'
+                status = 304 if conditional else state['status']
+                self.send_response(status)
+                if status != 304 and state['type']: self.send_header('Content-Type', state['type'])
+                self.send_header('ETag', '"fixture"')
                 self.send_header('Cache-Control', state['cache'])
                 if state['cookie']: self.send_header('Set-Cookie', state['cookie'])
                 self.send_header('Content-Length', '2')
                 self.end_headers()
-                if self.command != 'HEAD': self.wfile.write(b'ok')
+                if self.command != 'HEAD' and status != 304: self.wfile.write(b'ok')
             do_HEAD = do_GET
             do_POST = do_GET
         upstream = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
@@ -80,7 +84,16 @@ class ImageCacheTest(unittest.TestCase):
                 self.assertEqual(request(method='POST'), denied)
                 for path in ('/', '/api/posts', '/api/uploads/test.svg', '/api/uploads/folder/test.webp'):
                     self.assertEqual(request(path), denied, path)
-                for key, values in {'status': [304, 404, 500], 'type': ['text/html', 'application/json'], 'cache': ['private, no-store', 'no-cache', ''], 'cookie': ['session=private']}.items():
+                state['status'] = 304
+                self.assertEqual(request(), allowed)
+                for header in ('Cookie', 'Authorization', 'Proxy-Authorization', 'Range'):
+                    self.assertEqual(request(headers={header:'test'}), denied)
+                state['cache'] = 'private, no-store'
+                self.assertEqual(request(), denied)
+                state['cache'] = 'public, max-age=0'
+                self.assertEqual(request('/api/posts'), denied)
+                state['status'] = 200
+                for key, values in {'status': [404, 500], 'type': ['text/html', 'application/json'], 'cache': ['private, no-store', 'no-cache', ''], 'cookie': ['session=private']}.items():
                     old = state[key]
                     for value in values:
                         state[key] = value

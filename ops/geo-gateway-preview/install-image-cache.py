@@ -35,17 +35,18 @@ def atomic(data, metadata):
     finally:
         if os.path.exists(name): os.unlink(name)
 
-def probe(path, cookie=False):
+def probe(path, cookie=False, etag=None):
     with tempfile.TemporaryDirectory() as directory:
         header = Path(directory)/'headers'; body = Path(directory)/'body'
         args = ['curl', '--noproxy', '*', '--silent', '--show-error', '--resolve', 'mooncci.site:443:127.0.0.1', '--connect-timeout', '5', '--max-time', '20', '--dump-header', str(header), '--output', str(body), '--write-out', '%{http_code}', 'https://mooncci.site'+path]
         if cookie: args += ['--header', 'Cookie: mooncci_cache_probe=1']
+        if etag: args += ['--header', 'If-None-Match: ' + etag]
         code = int(command(args))
         headers = {}
         for line in header.read_text(errors='replace').splitlines():
             if ':' in line:
                 key, value = line.split(':', 1); headers.setdefault(key.lower(), []).append(value.strip())
-        return {'status': code, 'cache': headers.get('cache-control', []), 'vary': headers.get('vary', []), 'sha256': digest(body.read_bytes()), 'bytes': body.stat().st_size, 'node': headers.get('x-mooncci-node', [])}
+        return {'status': code, 'cache': headers.get('cache-control', []), 'etag': headers.get('etag', []), 'vary': headers.get('vary', []), 'sha256': digest(body.read_bytes()), 'bytes': body.stat().st_size, 'node': headers.get('x-mooncci-node', [])}
 
 def verify_package():
     root = Path(__file__).resolve().parent
@@ -86,8 +87,11 @@ def deploy():
         if private['status'] != 200 or private['cache'] != ['private, no-store']: raise RuntimeError('Credential bypass verification failed')
         if page['status'] != 200 or page['cache'] != ['private, no-store']: raise RuntimeError('Page verification failed')
         if missing['status'] != 404 or missing['cache'] != ['private, no-store']: raise RuntimeError('Error response verification failed')
-        (backup/'verification.json').write_text(json.dumps({'before': before, 'after': after, 'cookie': private, 'page': page, 'missing': missing}, indent=2))
-        print('PASS: anonymous raster browser cache 60s; image bytes unchanged; credential/page/error checks passed. No PM2/database/DNS changes.', flush=True)
+        if len(after['etag']) != 1: raise RuntimeError('Expected image validator')
+        conditional = probe(IMAGE, etag=after['etag'][0])
+        if conditional['status'] != 304 or conditional['bytes'] != 0 or conditional['cache'] != ['private, max-age=60, must-revalidate']: raise RuntimeError('Revalidation cache verification failed')
+        (backup/'verification.json').write_text(json.dumps({'before': before, 'after': after, 'cookie': private, 'page': page, 'missing': missing, 'conditional': conditional}, indent=2))
+        print('PASS: anonymous image 200/304 browser cache 60s; image bytes unchanged; credential/page/error checks passed. No PM2/database/DNS changes.', flush=True)
         print('ROLLBACK: python3 '+str(Path(__file__).resolve())+' --rollback '+str(backup), flush=True)
     except BaseException:
         if VHOST.read_bytes() != updated: raise RuntimeError('Concurrent configuration change; automatic rollback stopped. Backup: '+str(backup))
