@@ -1,5 +1,7 @@
 """Real Nginx policy tests with isolated HTTP upstream, plus existing gateway regression."""
 import http.client
+import os
+import shutil
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import socket
@@ -8,12 +10,12 @@ import tempfile
 import threading
 import time
 import unittest
-from image_cache import BLOCK, patch
+from image_cache import BLOCK, VARY, patch
 from keepalive import patch as keepalive
 from render import render
 
 ROOT = Path(__file__).resolve().parents[2]
-NGINX = ROOT / '.cache/nginx-test/nginx-1.28.0/nginx.exe'
+NGINX = os.environ.get('NGINX_TEST_BINARY') or shutil.which('nginx') or str(ROOT / '.cache/nginx-test/nginx-1.28.0/nginx.exe')
 
 class ImageCacheTest(unittest.TestCase):
     def test_patch_bounds(self):
@@ -22,10 +24,15 @@ class ImageCacheTest(unittest.TestCase):
         self.assertEqual(result.count('add_header Cache-Control $mooncci_raster_browser_cache always;'), 2)
         self.assertEqual(result.count('add_header Cache-Control "private, no-store" always;'), 2)
         self.assertEqual(result.count('proxy_cache off;'), original.count('proxy_cache off;'))
+        self.assertEqual(result.count(VARY), 2)
+        old = result.replace('\n    ' + VARY, '')
+        self.assertEqual(patch(old), result, 'upgrade existing deployed cache map')
         for changed in (result, original.replace('proxy_ssl_verify on;', 'proxy_ssl_verify off;'), original.replace('X-Mooncci-Node US', 'X-Mooncci-Node CN')):
             with self.assertRaises(ValueError): patch(changed)
 
     def test_real_nginx_cache_boundaries(self):
+        self.assertTrue(Path(NGINX).is_file(), 'Set NGINX_TEST_BINARY to an installed Nginx executable')
+        (ROOT / '.cache').mkdir(exist_ok=True)
         state = {'status': 200, 'type': 'image/webp', 'cache': 'public, max-age=0', 'cookie': ''}
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *args): pass
@@ -45,7 +52,7 @@ class ImageCacheTest(unittest.TestCase):
             sock.bind(('127.0.0.1', 0)); port = sock.getsockname()[1]
         with tempfile.TemporaryDirectory(dir=ROOT / '.cache') as directory:
             base = Path(directory); (base/'logs').mkdir(); (base/'temp').mkdir()
-            config = 'worker_processes 1;\npid logs/nginx.pid;\nevents { worker_connections 64; }\nhttp {\n' + BLOCK + ('server { listen 127.0.0.1:%d; location / { proxy_pass http://127.0.0.1:%d; proxy_hide_header Cache-Control; add_header Cache-Control $mooncci_raster_browser_cache always; } } }' % (port, upstream.server_port))
+            config = 'worker_processes 1;\npid logs/nginx.pid;\nevents { worker_connections 64; }\nhttp {\n' + BLOCK + ('server { listen 127.0.0.1:%d; location / { proxy_pass http://127.0.0.1:%d; proxy_hide_header Cache-Control; add_header Cache-Control $mooncci_raster_browser_cache always; ' % (port, upstream.server_port)) + VARY + ' } } }'
             (base/'nginx.conf').write_bytes(config.encode())
             command = [str(NGINX), '-p', base.as_posix()+'/', '-c', 'nginx.conf']
             check = subprocess.run(command+['-t'], capture_output=True)
@@ -66,6 +73,8 @@ class ImageCacheTest(unittest.TestCase):
                 self.assertEqual(request(), allowed)
                 self.assertEqual(request(method='HEAD'), allowed)
                 self.assertEqual(request('/api/uploads/test-image.webp?v=2'), allowed)
+                browser = subprocess.run(['node', str(ROOT/'scripts/test-image-cache-credentials.cjs'), str(port)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=45)
+                self.assertEqual(browser.returncode, 0, browser.stdout.decode(errors='replace') + browser.stderr.decode(errors='replace'))
                 for header in ('Cookie', 'Authorization', 'Proxy-Authorization', 'Range'):
                     self.assertEqual(request(headers={header: 'test'}), denied, header)
                 self.assertEqual(request(method='POST'), denied)

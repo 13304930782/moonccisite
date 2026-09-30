@@ -20,7 +20,7 @@ IMAGE = '/api/uploads/import-c75fb0e91471-bfafc384e05b5c98e6e9.webp'
 def digest(data): return hashlib.sha256(data).hexdigest()
 
 def command(args):
-    result = subprocess.run(args, capture_output=True, timeout=40)
+    result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=40)
     if result.returncode: raise RuntimeError('Command failed: ' + Path(args[0]).name)
     return result.stdout
 
@@ -45,7 +45,7 @@ def probe(path, cookie=False):
         for line in header.read_text(errors='replace').splitlines():
             if ':' in line:
                 key, value = line.split(':', 1); headers.setdefault(key.lower(), []).append(value.strip())
-        return {'status': code, 'cache': headers.get('cache-control', []), 'sha256': digest(body.read_bytes()), 'bytes': body.stat().st_size, 'node': headers.get('x-mooncci-node', [])}
+        return {'status': code, 'cache': headers.get('cache-control', []), 'vary': headers.get('vary', []), 'sha256': digest(body.read_bytes()), 'bytes': body.stat().st_size, 'node': headers.get('x-mooncci-node', [])}
 
 def verify_package():
     root = Path(__file__).resolve().parent
@@ -65,7 +65,7 @@ def deploy():
     updated = patch(original.decode()).encode()
     command([NGINX, '-t'])
     before = probe(IMAGE)
-    if before['status'] != 200 or before['node'] != ['US'] or before['cache'] != ['private, no-store']: raise ValueError('Unexpected live baseline')
+    if before['status'] != 200 or before['node'] != ['US'] or before['cache'] not in [['private, no-store'], ['private, max-age=60, must-revalidate']]: raise ValueError('Unexpected live baseline')
     backup = Path(tempfile.mkdtemp(prefix='mooncci-image-cache-', dir='/www/backup'))
     backup.chmod(0o700)
     (backup/'mooncci.site.conf').write_bytes(original)
@@ -81,6 +81,8 @@ def deploy():
         page = probe('/')
         missing = probe('/api/uploads/mooncci-cache-check-missing.webp')
         if after['status'] != 200 or after['cache'] != ['private, max-age=60, must-revalidate'] or after['sha256'] != before['sha256']: raise RuntimeError('Image verification failed')
+        vary = {v.strip().lower() for h in after.get('vary', []) for v in h.split(',')}
+        if not {'cookie', 'authorization', 'proxy-authorization', 'range'} <= vary: raise RuntimeError('Credential cache partition verification failed')
         if private['status'] != 200 or private['cache'] != ['private, no-store']: raise RuntimeError('Credential bypass verification failed')
         if page['status'] != 200 or page['cache'] != ['private, no-store']: raise RuntimeError('Page verification failed')
         if missing['status'] != 404 or missing['cache'] != ['private, no-store']: raise RuntimeError('Error response verification failed')

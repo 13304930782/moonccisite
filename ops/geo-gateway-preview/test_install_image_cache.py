@@ -19,7 +19,7 @@ class InstallTest(unittest.TestCase):
             def probe(path, cookie=False):
                 probes[0] += 1
                 if failure == 'health' and probes[0] == 2: raise RuntimeError('simulated health failure')
-                return {'status': 404 if 'missing' in path else 200, 'cache': ['private, max-age=60, must-revalidate' if probes[0] == 2 else 'private, no-store'], 'sha256': 'same', 'node': ['US']}
+                return {'status': 404 if 'missing' in path else 200, 'cache': ['private, max-age=60, must-revalidate' if probes[0] == 2 else 'private, no-store'], 'vary': [] if failure == 'vary' else ['Cookie, Authorization, Proxy-Authorization, Range'], 'sha256': 'same', 'node': ['US']}
             def command(args):
                 commands.append(args)
                 if failure == 'syntax' and len(commands) == 2: raise RuntimeError('simulated syntax failure')
@@ -35,5 +35,6 @@ class InstallTest(unittest.TestCase):
     def test_success(self): self.scenario()
     def test_health_rollback(self): self.scenario('health')
     def test_syntax_rollback(self): self.scenario('syntax')
+    def test_missing_vary_rollback(self): self.scenario('vary')
 
 if __name__ == '__main__': unittest.main()
