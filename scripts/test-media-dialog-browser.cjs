@@ -1,9 +1,9 @@
-const assert=require('node:assert/strict'),{chromium}=require('playwright');
+const assert=require('node:assert/strict'),{chromium,webkit}=require('playwright');
 (async()=>{
  const server=await(await import('vite')).createServer({server:{host:'127.0.0.1',port:4276,strictPort:true,hmr:false,watch:{ignored:['**/.cache/**','**/outputs/**']}}});await server.listen();
  let browser;
  try{
- browser=await chromium.launch({...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:process.platform==='win32'?{channel:'msedge'}:{})});
+ browser=process.env.PLAYWRIGHT_BROWSER==='webkit'?await webkit.launch():await chromium.launch({...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:process.platform==='win32'?{channel:'msedge'}:{})});
  for(const width of [320,390,768,1440])for(const theme of ['light','dark']){
  const page=await browser.newPage({viewport:{width,height:950},reducedMotion:'reduce'});await page.addInitScript(t=>localStorage.setItem('mooncci-theme',t),theme);
  let fail=true,saves=0;const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -20,7 +20,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  const close=dialog.getByRole('button',{name:'关闭弹窗',exact:true});const box=await close.boundingBox();assert(box.width>=44&&box.height>=44);
  await page.getByLabel('Alt 文本',{exact:true}).fill('失败后需要保留的说明');await dialog.getByRole('button',{name:'保存显示信息',exact:true}).click();await dialog.getByRole('alert').waitFor();assert((await dialog.getByRole('alert').innerText()).trim().length>0);assert.equal(await page.getByLabel('Alt 文本',{exact:true}).inputValue(),'失败后需要保留的说明');
  fail=false;await dialog.getByRole('button',{name:'保存显示信息',exact:true}).click();await page.getByText('媒体信息已保存',{exact:true}).waitFor();assert.equal(saves,2);assert.equal(item.alt_text,'失败后需要保留的说明');assert.equal(await dialog.getByRole('alert').count(),0);
- await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await page.waitForFunction(()=>document.activeElement?.querySelector('img[alt="媒体验收图片"]'));assert(await trigger.evaluate(e=>e===document.activeElement));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);await page.close();
+ await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await page.waitForFunction(e=>e===document.activeElement,await trigger.elementHandle());assert(await trigger.evaluate(e=>e===document.activeElement));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);await page.close();console.log('PASS media dialog',width,theme);
  }
  console.log('PASS media dialog: keyboard containment, Escape, focus return, 44px close, failed save preserves input, retry; 8 viewport/theme combinations');
  }finally{await browser?.close();await server.close();}

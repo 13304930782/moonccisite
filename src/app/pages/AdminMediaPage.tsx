@@ -90,6 +90,7 @@ export default function AdminMediaPage() {
   const [imageQuality, setImageQuality] = useState('medium');
   const [status, setStatus] = useState<MediaStatus>('active');
   const [selected, setSelected] = useState<MediaItem | null>(null);
+  const detailTrigger = useRef<HTMLButtonElement | null>(null);
   const [selectedFilenames, setSelectedFilenames] = useState<string[]>([]);
   const [displayName, setDisplayName] = useState('');
   const [altText, setAltText] = useState('');
@@ -133,7 +134,8 @@ export default function AdminMediaPage() {
   const selectedCount = selectedFilenames.length;
   const allVisibleSelected = filtered.length > 0 && filtered.every((item) => selectedSet.has(item.filename));
 
-  const openDetail = (item: MediaItem) => {
+  const openDetail = (item: MediaItem, trigger: HTMLButtonElement) => {
+    detailTrigger.current = trigger;
     setSelected(item);
     setDisplayName(item.display_name || '');
     setAltText(item.alt_text || '');
@@ -597,7 +599,7 @@ export default function AdminMediaPage() {
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => openDetail(item)}
+                    onClick={(event) => openDetail(item, event.currentTarget)}
                     className="flex h-48 w-full items-center justify-center bg-muted"
                   >
                     {imageUrl ? (
@@ -634,7 +636,7 @@ export default function AdminMediaPage() {
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => openDetail(item)}
+                      onClick={(event) => openDetail(item, event.currentTarget)}
                       className="inline-flex items-center justify-center gap-1 rounded-[6px] bg-muted px-3 py-2 text-xs text-foreground hover:bg-muted"
                     >
                       <Eye className="h-3.5 w-3.5" />
@@ -666,7 +668,7 @@ export default function AdminMediaPage() {
 
       {selected && (
         <Dialog open onOpenChange={(open) => { if (!open && !saving) setSelected(null); }}>
-          <DialogContent className="max-h-[92dvh] w-[calc(100%-2rem)] sm:max-w-5xl overflow-y-auto rounded-[10px] bg-card p-6 shadow-none [&>button:last-child]:min-h-11 [&>button:last-child]:min-w-11 [&>button:last-child]:inline-flex [&>button:last-child]:items-center [&>button:last-child]:justify-center">
+          <DialogContent onCloseAutoFocus={(event) => { if (detailTrigger.current?.isConnected) { event.preventDefault(); detailTrigger.current.focus(); } }} className="max-h-[92dvh] w-[calc(100%-2rem)] sm:max-w-5xl overflow-y-auto rounded-[10px] bg-card p-6 shadow-none [&>button:last-child]:min-h-11 [&>button:last-child]:min-w-11 [&>button:last-child]:inline-flex [&>button:last-child]:items-center [&>button:last-child]:justify-center">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0 pr-8 break-words">
                 <DialogTitle className="text-2xl font-medium text-foreground">{mediaName(selected)}</DialogTitle>
