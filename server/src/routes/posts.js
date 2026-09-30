@@ -190,7 +190,11 @@ router.get('/:id', async (req, res) => {
     return res.status(404).json({ message: 'Not found' });
   }
 
-  res.json(rows[0]);
+  // Optional display metadata is read only after the existing visibility check.
+  let image_dimensions = {};
+  try { image_dimensions = await require('../lib/articleImages').articleImageDimensions(rows[0], db); }
+  catch (error) { console.warn('[posts/image-dimensions]', error.code || 'unavailable'); }
+  res.json({ ...rows[0], image_dimensions });
 });
 
 const revisions = require('../lib/articleRevisions');

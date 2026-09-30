@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { MarkdownContent, headingsFor } from './MarkdownContent';
 import { DetailPage, DetailMeta, EmptyState, SingleLine } from './DetailUI';
 import { safeImageSrc } from '../lib/safeUrl';
+import { dimensionsFor } from '../lib/imageDimensions';
 export function ArticlePresentation({ post, preview = false, views = null }: { post: any; preview?: boolean; views?: number | null }) {
   const content=stripLegacyAgeNotice(post?.content);
   const summary=distinctArticleSummary(stripLegacyAgeNotice(post?.summary),content);
@@ -22,8 +23,8 @@ export function ArticlePresentation({ post, preview = false, views = null }: { p
     aside={headings.length ? <nav aria-label="文章目录">{headings.map(h => <a key={h.id} href={`#${h.id}`} style={{ paddingLeft: (h.level - 1) * 8 }}>{h.title}</a>)}</nav> : <EmptyState>本文暂无目录</EmptyState>}>
     {old&&<p className="article-age-notice" role="note">提醒：本文距最后更新已满半年，部分信息可能已发生变化，请结合最新情况参考。</p>}
     {summary && <p className="article-summary">{summary}</p>}
-    {safeImageSrc(post.cover_image) && <img className="content-image" src={safeImageSrc(post.cover_image)} alt="" />}
-    <MarkdownContent content={content} headingPrefix="heading" />
+    {safeImageSrc(post.cover_image) && <img className="content-image" src={safeImageSrc(post.cover_image)} alt="" {...dimensionsFor(safeImageSrc(post.cover_image), post.image_dimensions)} />}
+    <MarkdownContent content={content} headingPrefix="heading" imageDimensions={post.image_dimensions} />
     {tags.length > 0 && <SingleLine className="detail-tags" label="文章标签">{tags.map(tag => <Link key={tag} to={`/tag/${encodeURIComponent(tag)}`}>{tag}</Link>)}</SingleLine>}
   </DetailPage>;
 }

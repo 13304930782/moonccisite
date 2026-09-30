@@ -1,0 +1,22 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+test('article dimensions use real media metadata and retain draft permissions',{skip:process.env.IMAGE_INTEGRATION!=='true'},async t=>{
+ const name='mooncci_qa_images_'+process.pid;
+ Object.assign(process.env,{DB_HOST:'127.0.0.1',DB_PORT:process.env.TEST_DB_PORT||'33079',DB_USER:'root',DB_PASSWORD:'',DB_NAME:name,JWT_SECRET:'isolated-image-dimensions-test-secret',MAIL_ENABLED:'false',NEWSLETTER_DELIVERY_ENABLED:'false'});
+ const setup=await require('mysql2/promise').createConnection({host:'127.0.0.1',port:Number(process.env.DB_PORT),user:'root',multipleStatements:true});
+ await setup.query('CREATE DATABASE '+name+' CHARACTER SET utf8mb4');await setup.query('USE '+name);
+ let db,server;
+ t.after(async()=>{if(server)await new Promise(r=>server.close(r));if(db)await db.end();await setup.query('DROP DATABASE '+name);await setup.end();});
+ await setup.query(fs.readFileSync(path.join(__dirname,'../database/schema.sql'),'utf8'));
+ await setup.query(fs.readFileSync(path.join(__dirname,'../database/migrations/202609090002_auth_revocation.sql'),'utf8'));
+ const [user]=await setup.query("INSERT INTO users(username,email,password_hash,role) VALUES ('QA','images@example.test','unused','editor')");
+ const [post]=await setup.query("INSERT INTO posts(title,slug,content,cover_image,status,author_id) VALUES ('Images','images',?,'/api/uploads/cover.webp','published',?)",['![a](/api/uploads/body.png) ![b](/api/uploads/trashed.png)',user.insertId]);
+ for(const [filename,width,height,status] of [['cover.webp',600,360,'active'],['body.png',240,480,'active'],['trashed.png',400,300,'trashed'],['private.png',999,999,'active']])await setup.query("INSERT INTO media_assets(filename,original_name,display_name,url,mime,ext,size,width,height,status) VALUES (?,?,?,?,'image/png','.png',100,?,?,?)",[filename,filename,filename,'/api/uploads/'+filename,width,height,status]);
+ db=require('../src/db');const app=require('express')();app.use('/api/posts',require('../src/routes/posts'));server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+ const url='http://127.0.0.1:'+server.address().port+'/api/posts/'+post.insertId;
+ let res=await fetch(url);assert.equal(res.status,200);let body=await res.json();assert.deepEqual(body.image_dimensions,{'/api/uploads/cover.webp':{width:600,height:360},'/api/uploads/body.png':{width:240,height:480}});
+ await setup.query("UPDATE posts SET status='draft' WHERE id=?",[post.insertId]);res=await fetch(url);assert.equal(res.status,404);assert.equal((await res.json()).image_dimensions,undefined);
+ const jwt=require('jsonwebtoken');res=await fetch(url,{headers:{Authorization:'Bearer '+jwt.sign({id:user.insertId,sessionStartedAt:Date.now()},process.env.JWT_SECRET)}});assert.equal(res.status,200);assert.equal((await res.json()).image_dimensions['/api/uploads/body.png'].height,480);
+ await setup.query("UPDATE posts SET status='published' WHERE id=?",[post.insertId]);
+ await setup.query('RENAME TABLE media_assets TO unavailable_media_assets');
+ res=await fetch(url);assert.equal(res.status,200);body=await res.json();assert.deepEqual(body.image_dimensions,{});assert.equal(body.title,'Images');
+});
