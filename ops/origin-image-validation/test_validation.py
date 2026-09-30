@@ -1,11 +1,13 @@
-import http.client,socket,subprocess,tempfile,threading,time,unittest
+import http.client,os,shutil,socket,subprocess,tempfile,threading,time,unittest
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 from patch import patch
 ROOT=Path(__file__).resolve().parents[2]
-NGINX=ROOT/'.cache/nginx-test/nginx-1.28.0/nginx.exe'
+NGINX=os.environ.get('NGINX_TEST_BINARY') or shutil.which('nginx') or str(ROOT/'.cache/nginx-test/nginx-1.28.0/nginx.exe')
 class ValidationTest(unittest.TestCase):
  def test_real_nginx(self):
+  self.assertTrue(Path(NGINX).is_file(), 'Install Nginx and set NGINX_TEST_BINARY to its absolute executable path; see README.md')
+  (ROOT/'.cache').mkdir(exist_ok=True)
   seen=[]
   class Handler(BaseHTTPRequestHandler):
    def log_message(self,*args):pass
