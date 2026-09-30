@@ -134,7 +134,8 @@ async function getImageMeta(filePath, filename, fallback = {}) {
   let height = null;
 
   try {
-    const meta = await sharp(filePath).metadata();
+    // Decode current bytes: a reused filename can hit libvips' cached old image.
+    const meta = await sharp(await fs.promises.readFile(filePath)).metadata();
     width = meta.width || null;
     height = meta.height || null;
   } catch {
@@ -293,7 +294,8 @@ async function compressImageIfNeeded(file, imageInfo, qualityKey) {
   const originalPath = file.path;
   const originalSize = fs.statSync(file.path).size;
 
-  await sharp(file.path)
+  // A byte snapshot also releases the input file before the same path is replaced.
+  await sharp(await fs.promises.readFile(file.path))
     .rotate()
     .resize({
       width: preset.maxWidth,

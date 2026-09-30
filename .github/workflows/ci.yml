@@ -113,3 +113,8 @@ jobs:
         env:
           IMAGE_INTEGRATION: "true"
           TEST_DB_PORT: "3306"
+
+      - run: node --test server/test/mediaWorkflow.integration.test.js
+        env:
+          MEDIA_INTEGRATION: "true"
+          TEST_DB_PORT: "3306"
