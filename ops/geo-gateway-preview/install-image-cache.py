@@ -46,7 +46,10 @@ def probe(path, cookie=False, etag=None):
         for line in header.read_text(errors='replace').splitlines():
             if ':' in line:
                 key, value = line.split(':', 1); headers.setdefault(key.lower(), []).append(value.strip())
-        return {'status': code, 'cache': headers.get('cache-control', []), 'etag': headers.get('etag', []), 'vary': headers.get('vary', []), 'sha256': digest(body.read_bytes()), 'bytes': body.stat().st_size, 'node': headers.get('x-mooncci-node', [])}
+        # curl may omit the output file for a bodyless 304 response.
+        # Other statuses must still produce their expected output file.
+        payload = b'' if code == 304 and not body.exists() else body.read_bytes()
+        return {'status': code, 'cache': headers.get('cache-control', []), 'etag': headers.get('etag', []), 'vary': headers.get('vary', []), 'sha256': digest(payload), 'bytes': len(payload), 'node': headers.get('x-mooncci-node', [])}
 
 def verify_package():
     root = Path(__file__).resolve().parent
