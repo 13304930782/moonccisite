@@ -19,7 +19,7 @@ class ValidationTest(unittest.TestCase):
     if not valid:self.wfile.write(b'image')
   upstream=ThreadingHTTPServer(('127.0.0.1',0),Handler);threading.Thread(target=upstream.serve_forever,daemon=True).start()
   with socket.socket() as s:s.bind(('127.0.0.1',0));port=s.getsockname()[1]
-  template='server { listen 127.0.0.1:%d;\n location ^~ /api/uploads/ {\n proxy_pass http://127.0.0.1:3001;\n }\n location /api/ { return 403; }\n}\n'%port
+  template='server { listen 127.0.0.1:%d;\n location ^~ /api/uploads/ {\n if ($request_method = OPTIONS) {\n return 204;\n }\n add_header X-Fixture "{quoted}";\n # comment with } and {\n proxy_pass http://127.0.0.1:3001;\n }\n location /api/ { return 403; }\n}\n'%port
   try:
    for changed in (False,True):
     with tempfile.TemporaryDirectory(dir=ROOT/'.cache') as directory:
@@ -34,8 +34,9 @@ class ValidationTest(unittest.TestCase):
        try:
         with socket.create_connection(('127.0.0.1',port),timeout=.2):break
        except OSError:time.sleep(.1)
-      def get(headers={},path='/api/uploads/test.webp'):
-       c=http.client.HTTPConnection('127.0.0.1',port,timeout=5);c.request('GET',path,headers=headers);r=c.getresponse();data=r.read();c.close();return r.status,len(data)
+      def get(headers={},path='/api/uploads/test.webp',method='GET'):
+       c=http.client.HTTPConnection('127.0.0.1',port,timeout=5);c.request(method,path,headers=headers);r=c.getresponse();data=r.read();c.close();return r.status,len(data)
+      self.assertEqual(get(method='OPTIONS'),(204,0))
       self.assertEqual(get(),(200,5))
       for h,v in [('If-None-Match','W/"fixture"'),('If-Modified-Since','Sat, 26 Sep 2026 17:12:14 GMT')]:
        result=get({h:v});self.assertEqual(result,(304,0) if changed else (200,5));self.assertEqual(h in seen[-1],changed)
@@ -48,5 +49,24 @@ class ValidationTest(unittest.TestCase):
   text='location ^~ /api/uploads/ {\nproxy_pass http://127.0.0.1:3001;\n}\n'
   self.assertEqual(patch(text).count('proxy_cache off;'),1)
   for bad in [patch(text),text+text,text.replace('3001','3102'),text.replace('proxy_pass','include x; proxy_pass')]:
+   with self.assertRaises(ValueError):patch(bad)
+ def test_structural_preservation(self):
+  text="""server {
+ location ^~ /api/uploads/ {
+  if ($request_method = OPTIONS) {
+   add_header X-Literal "brace } # not comment";
+   return 204;
+  }
+  # ignored } {
+  proxy_set_header Host ${host};
+  proxy_pass http://127.0.0.1:3001;
+ }
+ location /api/ { return 403; }
+}
+"""
+  added='\n     # mooncci: preserve upload validators\n     proxy_cache off;'
+  updated=patch(text)
+  self.assertEqual(updated.replace(added,'',1),text)
+  for bad in [text.replace('if ($request_method = OPTIONS)','location /nested'),text.replace('return 204;', 'proxy_cache cache_one;'),text[:text.index('\n }\n location /api/')],text.replace('proxy_pass http://127.0.0.1:3001;', 'include extra.conf;')]:
    with self.assertRaises(ValueError):patch(bad)
 if __name__=='__main__':unittest.main()
