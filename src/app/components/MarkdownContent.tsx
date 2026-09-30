@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { safeHref, safeImageSrc } from '../lib/safeUrl';
+import { dimensionsFor, type ImageDimensions } from '../lib/imageDimensions';
 
 function plainText(node: any): string {
   return (
@@ -32,9 +33,11 @@ export function headingsFor(content: string) {
 export function MarkdownContent({
   content,
   headingPrefix,
+  imageDimensions,
 }: {
   content: string;
   headingPrefix?: string;
+  imageDimensions?: ImageDimensions;
 }) {
   const heading =
     (level: number) =>
@@ -77,7 +80,7 @@ export function MarkdownContent({
           img: ({ src, alt }) => {
             const safe = safeImageSrc(src);
             return safe ? (
-              <img src={safe} alt={alt || ''} loading="lazy" />
+              <img src={safe} alt={alt || ''} loading="lazy" {...dimensionsFor(safe, imageDimensions)} />
             ) : null;
           },
           table: ({ children }) => (

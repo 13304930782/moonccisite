@@ -48,6 +48,8 @@ jobs:
       - run: node scripts/test-ux-unification.cjs
       - run: node scripts/test-image-retry-browser.cjs
       - run: node scripts/test-media-dialog-browser.cjs
+      - run: node scripts/test-article-images-browser.cjs
+      - run: bash -n scripts/deploy-article-images.sh scripts/rollback-article-images.sh
       - run: npm audit --audit-level=moderate
       - run: npm audit --prefix server --audit-level=moderate
   mysql-integration:
@@ -106,3 +108,8 @@ jobs:
           GUIDANCE_INTEGRATION: 'true'
           CONFLICT_INTEGRATION: 'true'
           SUBSCRIPTION_INTEGRATION: 'true'
+
+      - run: node --test server/test/articleImages.integration.test.js
+        env:
+          IMAGE_INTEGRATION: "true"
+          TEST_DB_PORT: "3306"
