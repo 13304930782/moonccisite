@@ -678,8 +678,8 @@ export default function AdminMediaPage() {
 
             {message && <p role="alert" className="rounded-[10px] bg-muted px-4 py-3 text-sm">{message}</p>}
             <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="overflow-hidden rounded-[10px] bg-muted">
-                <img src={safeImageSrc(selected.url)} alt={mediaName(selected)} className="max-h-[62vh] w-full object-contain" />
+              <div className="w-fit max-w-full self-start overflow-hidden rounded-[10px] bg-muted">
+                <img src={safeImageSrc(selected.url)} alt={mediaName(selected)} className="block h-auto max-h-[62vh] w-auto max-w-full object-contain" />
               </div>
 
               <div className="space-y-4">
