@@ -21,7 +21,7 @@ IMAGE = '/api/uploads/import-c75fb0e91471-bfafc384e05b5c98e6e9.webp'
 def digest(data): return hashlib.sha256(data).hexdigest()
 
 def command(args):
-    result = subprocess.run(args, capture_output=True, timeout=40)
+    result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=40)
     if result.returncode: raise RuntimeError('Command failed: ' + Path(args[0]).name)
     return result.stdout
 
@@ -114,3 +114,4 @@ if __name__ == '__main__':
     verify_package()
     if args.rollback: rollback(args.rollback)
     else: deploy()
+
