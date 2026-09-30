@@ -61,6 +61,7 @@ finish() {
 trap finish EXIT
 changed=1
 for file in "${files[@]}"; do install -o mooncci -g mooncci -m 644 "server/$file" "$live/$file"; done
+for file in "${files[@]}"; do cmp -s "server/$file" "$live/$file"; done
 pm restart "$api_id"
 healthy=0
 for attempt in $(seq 1 15); do
@@ -69,5 +70,16 @@ for attempt in $(seq 1 15); do
  sleep 2
 done
 test "$healthy" = 1
+node <<'NODE'
+(async()=>{
+ const get=async path=>{const r=await fetch('http://127.0.0.1:3001/api'+path,{signal:AbortSignal.timeout(5000)});if(!r.ok)throw Error('Article probe HTTP '+r.status);return r.json();};
+ const posts=await get('/posts?limit=1');
+ if(!Array.isArray(posts))throw Error('Unexpected article list');
+ if(posts.length){
+  const post=await get('/posts/'+encodeURIComponent(posts[0].id));
+  if(!post.image_dimensions||typeof post.image_dimensions!=='object'||Array.isArray(post.image_dimensions))throw Error('Article dimension field missing');
+  console.log('Verified article response; known image dimensions:',Object.keys(post.image_dimensions).length);
+ }else console.log('No published article to probe; API health verified.');
+})().catch(e=>{console.error(e.message);process.exitCode=1;});
+NODE
 printf 'PASS: article image dimensions applied; API restarted. No worker, frontend, dependency, Nginx or database changes.\n'
-
