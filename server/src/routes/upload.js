@@ -93,6 +93,15 @@ function filePathFor(filename) {
   return path.join(uploadDir, safeBasename(filename));
 }
 
+async function readUploadedImage(filePath) {
+  const filename = path.basename(filePath);
+  const target = path.join(uploadDir, filename);
+  if (!isPublicUploadFile(filename) || path.resolve(filePath) !== target) {
+    throw new Error('Image must be a file in the uploads directory');
+  }
+  return fs.promises.readFile(target);
+}
+
 function trashPathFor(filename) {
   return path.join(trashDir, safeBasename(filename));
 }
@@ -135,7 +144,7 @@ async function getImageMeta(filePath, filename, fallback = {}) {
 
   try {
     // Decode current bytes: a reused filename can hit libvips' cached old image.
-    const meta = await sharp(await fs.promises.readFile(filePath)).metadata();
+    const meta = await sharp(await readUploadedImage(filePath)).metadata();
     width = meta.width || null;
     height = meta.height || null;
   } catch {
@@ -295,7 +304,7 @@ async function compressImageIfNeeded(file, imageInfo, qualityKey) {
   const originalSize = fs.statSync(file.path).size;
 
   // A byte snapshot also releases the input file before the same path is replaced.
-  await sharp(await fs.promises.readFile(file.path))
+  await sharp(await readUploadedImage(file.path))
     .rotate()
     .resize({
       width: preset.maxWidth,
