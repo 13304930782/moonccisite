@@ -20,14 +20,16 @@ router.put('/:id',async(req,res)=>{
  const [r]=await db.query('UPDATE bookmark_folders SET name=? WHERE id=? AND user_id=?',[name,req.params.id,req.user.id]);res.status(r.affectedRows?200:404).json({ok:!!r.affectedRows});
 });
 router.delete('/:id',async(req,res)=>{await db.query('DELETE FROM bookmark_folders WHERE id=? AND user_id=?',[req.params.id,req.user.id]);res.json({ok:true});});
-router.put('/move/:postId',async(req,res)=>service.transaction(async c=>{
+router.put('/move/:postId',async(req,res)=>{
+ await service.transaction(async c=>{
  await c.query('SELECT id FROM users WHERE id=? FOR UPDATE',[req.user.id]);
  const folder=Number(req.body.folder_id);if(!Number.isSafeInteger(folder)||folder<0)throw Object.assign(Error('收藏夹无效。'),{status:400});
  if(folder){const [[f]]=await c.query('SELECT id FROM bookmark_folders WHERE id=? AND user_id=? FOR UPDATE',[folder,req.user.id]);if(!f)throw Object.assign(Error('收藏夹不存在。'),{status:404});}
  const [[b]]=await c.query('SELECT id FROM article_bookmarks WHERE user_id=? AND post_id=? FOR UPDATE',[req.user.id,req.params.postId]);if(!b)throw Object.assign(Error('收藏不存在。'),{status:404});
  if(folder)await c.query('INSERT INTO bookmark_folder_members(bookmark_id,folder_id) VALUES (?,?) ON DUPLICATE KEY UPDATE folder_id=VALUES(folder_id)',[b.id,folder]);
  else await c.query('DELETE FROM bookmark_folder_members WHERE bookmark_id=?',[b.id]);
+ });
  res.json({ok:true});
-}));
+});
 router.use((e,_req,res,_next)=>res.status(e.code==='ER_DUP_ENTRY'?409:e.status||500).json({message:e.code==='ER_DUP_ENTRY'?'收藏夹名称已存在。':e.status?e.message:'操作失败，请重试。'}));
 module.exports=router;
