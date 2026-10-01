@@ -1,13 +1,18 @@
 const express = require('express');
 const { randomBytes } = require('node:crypto');
+const { ipKeyGenerator } = require('express-rate-limit');
 const { validateEmail, mobileconfig } = require('../lib/mailClient');
 
 function privateResponse(req, res, next) {
   res.set({ 'Cache-Control': 'private, no-store, max-age=0', 'Pragma': 'no-cache', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' });
+  // Runs before the global JSON parser: reject unsupported methods and bodies
+  // on read-only requests without parsing or logging their contents.
+  if (!['POST', 'GET', 'HEAD', 'OPTIONS'].includes(req.method)) return res.status(405).set('Allow', 'POST, GET, HEAD, OPTIONS').end();
+  if (req.method !== 'POST' && (req.headers['transfer-encoding'] || Number(req.headers['content-length']) > 0)) return res.status(400).json({ message: '此请求不接受正文。' });
   if (req.method === 'POST' && !req.is('text/plain')) return res.status(415).json({ message: '请使用纯文本邮箱地址。' });
   next();
 }
-function createRouter({ now = Date.now, ttl = 120000, capacity = 128 } = {}) {
+function createRouter({ now = Date.now, ttl = 120000, capacity = 128, perSourceCapacity = 4 } = {}) {
   const router = express.Router(), tickets = new Map();
   const prune = () => { for (const [key, item] of tickets) if (item.expires <= now()) tickets.delete(key); };
   const timer = setInterval(prune, 30000); timer.unref();
@@ -20,9 +25,17 @@ function createRouter({ now = Date.now, ttl = 120000, capacity = 128 } = {}) {
     const email = validateEmail(req.body);
     if (!email) return res.status(400).json({ message: '请输入有效的 @mooncci.site 完整邮箱地址。' });
     prune();
+    // Derive the source from Express's existing trusted proxy policy; group IPv6
+    // addresses by subnet. A bounded ticket pool also bounds quota bookkeeping.
+    const source = ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown');
+    const owned = [...tickets.values()].filter(item => item.source === source);
+    if (owned.length >= perSourceCapacity) {
+      res.set('Retry-After', String(Math.max(1, Math.ceil((Math.min(...owned.map(item => item.expires)) - now()) / 1000))));
+      return res.status(429).json({ message: '生成次数过多，请稍后重试；已有下载链接仍可使用。' });
+    }
     if (tickets.size >= capacity) return res.status(503).json({ message: '下载服务繁忙，请稍后重试。' });
     const token = randomBytes(32).toString('hex');
-    tickets.set(token, { email, expires: now() + ttl });
+    tickets.set(token, { source, email, expires: now() + ttl });
     res.status(201).json({ download: `/api/mail-setup/profile/${token}.mobileconfig` });
   });
   router.head('/profile/:file', (_req, res) => res.sendStatus(405));

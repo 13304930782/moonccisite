@@ -61,3 +61,48 @@ test('real app preserves original CSRF and handles malformed JSON without loggin
   assert.equal((await send({ 'X-Requested-With': 'XMLHttpRequest', Origin: 'https://mooncci.site' })).status, 201);
   const r = await send({ 'Content-Type': 'application/json' }); assert.equal(r.status, 415); assert.match(r.headers.get('cache-control'), /no-store/);
 });
+
+test('all unsupported methods and read request bodies stop before JSON diagnostics', async t => {
+  const app = require('../src/index');
+  const logs = [], original = console.error;
+  console.error = (...args) => logs.push(args.join(' '));
+  const server = app.listen(0, '127.0.0.1'); await new Promise(r => server.once('listening', r));
+  t.after(() => { console.error = original; server.close(); });
+  const url = 'http://127.0.0.1:' + server.address().port + '/api/mail-setup/profile';
+  for (const method of ['PUT', 'PATCH', 'DELETE', 'POST']) {
+    const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: 'privacy-canary@mooncci.site' });
+    assert.equal(response.status, method === 'POST' ? 415 : 405);
+    assert.match(response.headers.get('cache-control'), /no-store/);
+    await response.text();
+  }
+  for (const method of ['GET', 'HEAD']) {
+    const result = await new Promise((resolve, reject) => {
+      const body = 'privacy-canary@mooncci.site';
+      const req = require('node:http').request(url, { method, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } }, res => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+      req.on('error', reject); req.end(body);
+    });
+    assert.equal(result, 400);
+  }
+  assert.deepEqual(logs, []);
+});
+
+test('one source cannot occupy the shared pool; subnet quota expires and downloads remain retryable', async t => {
+  let now = 0;
+  const router = createRouter({ now: () => now });
+  const app = require('express')(); app.set('trust proxy', 'loopback'); app.use('/api/mail-setup', router);
+  const server = app.listen(0, '127.0.0.1'); await new Promise(r => server.once('listening', r));
+  t.after(() => { router.close(); server.close(); });
+  const origin = 'http://127.0.0.1:' + server.address().port;
+  const issue = source => fetch(origin + '/api/mail-setup/profile', { method: 'POST', headers: { 'Content-Type': 'text/plain', 'X-Forwarded-For': source }, body: 'fixture@mooncci.site' });
+  let download;
+  for (let i = 0; i < 4; i++) { const r = await issue('192.0.2.1'); assert.equal(r.status, 201); download = (await r.json()).download; }
+  const limited = await issue('192.0.2.1'); assert.equal(limited.status, 429); assert.equal(limited.headers.get('retry-after'), '120');
+  assert.match(limited.headers.get('cache-control'), /no-store/);
+  assert.equal((await issue('192.0.2.2')).status, 201);
+  for (let i = 0; i < 2; i++) { const r = await fetch(origin + download); assert.equal(r.status, 200); await r.text(); }
+  for (let i = 1; i <= 4; i++) assert.equal((await issue('2001:db8::' + i)).status, 201);
+  assert.equal((await issue('2001:db8::5')).status, 429);
+  now = 120001;
+  assert.equal((await issue('192.0.2.1')).status, 201);
+  assert.equal((await fetch(origin + download)).status, 404);
+});
