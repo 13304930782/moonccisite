@@ -46,6 +46,9 @@ app.use(cors({
   credentials: true,
 }));
 
+// Mail profile responses, including middleware errors, must never be shared.
+app.use('/api/mail-setup', require('./routes/mailSetup').privateResponse);
+
 // Body 大小限制
 app.use(express.json({ limit: '1mb' }));
 app.use('/api/uploads', express.static(uploadRoutes.uploadDir, {
@@ -103,6 +106,7 @@ const globalLimiter = rateLimit({
 });
 app.use('/api', globalLimiter);
 app.use('/api', requireRequestedWith);
+app.use('/api/mail-setup', require('./routes/mailSetup').createRouter());
 
 // 认证接口限流（防暴力破解）
 const authLimiter = rateLimit({

@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "node scripts/generate-mail-autoconfig.cjs --check && vite build",
     "dev": "vite",
     "test": "node --test test/*.test.cjs",
     "typecheck": "tsc --noEmit",
@@ -87,6 +87,7 @@
     "playwright": "1.58.2",
     "react-test-renderer": "18.3.1",
     "tailwindcss": "4.1.12",
+    "terser": "5.51.2",
     "typescript": "5.8.3",
     "vite": "6.4.3"
   },

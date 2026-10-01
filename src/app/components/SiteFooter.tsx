@@ -21,6 +21,7 @@ export function SiteFooter() {
             <Link to="/about">关于我</Link><Link to="/links">友情链接</Link>
             <Link to="/archives">文章归档</Link>
             <Link to="/rss">RSS 订阅</Link>
+            <Link to="/mail-setup">邮箱设置</Link>
             <a href="https://status.mooncci.site" target="_blank" rel="noopener noreferrer">服务状态</a>
           </nav>
         </div>

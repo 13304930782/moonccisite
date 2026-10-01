@@ -1,0 +1,11 @@
+# Merge into mooncci.site's HTTP vhost. If it uses a server-level return/rewrite,
+# place its redirect in location / before adding these exact exceptions.
+# Preserve other locations/security. Strip query strings from redirect destinations.
+location = /.well-known/autoconfig/mail/config-v1.1.xml {
+    access_log off; error_log /dev/null emerg;
+    return 301 https://mooncci.site/.well-known/autoconfig/mail/config-v1.1.xml;
+}
+location = /mail/config-v1.1.xml {
+    access_log off; error_log /dev/null emerg;
+    return 301 https://mooncci.site/mail/config-v1.1.xml;
+}
