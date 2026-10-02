@@ -246,7 +246,7 @@ export function AdminShell({ children }: AdminShellProps) {
       show: user?.role === 'owner',
     },
     {
-      title: '邮箱申请审核',
+      title: '邮箱申请与权限',
       to: '/admin/mailbox-requests',
       icon: ShieldCheck,
       show: user?.role === 'owner',

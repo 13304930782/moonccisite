@@ -49,7 +49,7 @@ export default function MailboxPage() {
   return <main className="mailbox-page">
     <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>{owner ? '发邮件' : '我的邮箱'}</h1>
       <p>{owner ? '使用你的 mooncci 邮箱发信。申请审批在独立页面处理。' : '申请专属 @mooncci.site 地址，获批后可向外部邮箱发信。'}</p></div>
-      {owner && <Link className="mailbox-review-link" to="/admin/mailbox-requests">邮箱申请审核 <ArrowUpRight size={16} aria-hidden="true" /></Link>}
+      {owner && <Link className="mailbox-review-link" to="/admin/mailbox-requests">邮箱申请与权限 <ArrowUpRight size={16} aria-hidden="true" /></Link>}
     </header>
     {notice && <p role="status" aria-live="polite" className="mailbox-notice">{notice}</p>}
     {loading ? <p className="mailbox-empty">正在读取邮箱状态…</p> : <>

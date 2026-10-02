@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ROUTE = 'src/routes/mailboxes.js'
-BASELINE = '54aaafa3eb611413c93db97998242f2436c7a1b3bf3b8e9c7c97bafca092d11f'
+BASELINE = 'ef063c91305378222a706f22ef74fc310b5a2b6d8ad37ea259922322de43cd29'
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()

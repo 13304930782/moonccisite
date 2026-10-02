@@ -18,6 +18,7 @@ test('owner can connect an existing mailbox without provisioning it; review stay
   let rejected = false;
   let updatedLimit = null;
   let sent = false;
+  let pendingFirst = false;
   t.mock.method(nodemailer, 'createTransport', options => ({
     verify: async () => { assert.equal(options.auth.user, 'mooncci@mooncci.site'); assert.equal(options.auth.pass, 'ExistingPass9!'); verified++; },
     sendMail: async mail => { assert.equal(options.auth.user, 'mooncci@mooncci.site'); assert.equal(mail.from, 'mooncci@mooncci.site'); sent = true; return { accepted: [mail.to] }; },
@@ -26,8 +27,8 @@ test('owner can connect an existing mailbox without provisioning it; review stay
   t.mock.method(db, 'query', async (sql, params = []) => {
     if (sql.includes('FROM users') && sql.includes('auth_revocations')) return [[Number(params[0]) === 1 ? owner : reader]];
     if (sql.startsWith('SELECT COUNT(*) AS total FROM mailbox_access')) return [[{ total: 2 }]];
-    if (sql.startsWith('SELECT m.user_id, u.username')) return [[{ user_id: 2, username: 'reader', account_email: reader.email,
-      requested_local_part: 'reader', reason: 'Contact mail', status: 'pending', mailbox_address: null, created_at: '2026-10-02T00:00:00Z' }]];
+    if (sql.startsWith('SELECT m.user_id, u.username')) { pendingFirst ||= sql.includes("CASE WHEN m.status='pending' THEN 0"); return [[{ user_id: 2, username: 'reader', account_email: reader.email,
+      requested_local_part: 'reader', reason: 'Contact mail', status: 'pending', mailbox_address: null, created_at: '2026-10-02T00:00:00Z' }]]; }
     if (sql.startsWith('SELECT m.status, COUNT(*)')) return [[{ status: 'pending', count: 2 }]];
     if (sql.startsWith('UPDATE mailbox_access m JOIN users u')) { updatedLimit = params[0]; return [{ affectedRows: 1 }]; }
     if (sql.startsWith('UPDATE mailbox_send_logs')) return [{ affectedRows: 1 }];
@@ -72,6 +73,8 @@ test('owner can connect an existing mailbox without provisioning it; review stay
   assert.equal(list.status, 200);
   assert.equal(list.body.total, 2);
   assert.equal(list.body.limit, 20);
+  assert.equal((await request('/mailboxes/admin/requests?status=all&page=1', 1)).status, 200);
+  assert.equal(pendingFirst, true);
   assert.equal((await request('/mailboxes/admin/requests/batch-reject', 1, { ids: [2, 3] })).status, 200);
   assert.equal(rejected, true);
   assert.equal((await request('/mailboxes/admin/requests/2/limit', 2, { dailyLimit: 0 })).status, 403);

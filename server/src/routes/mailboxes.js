@@ -202,7 +202,9 @@ router.get('/admin/requests', ownerOnly, async (req, res) => {
     db.query(`SELECT m.user_id, u.username, u.email AS account_email, m.requested_local_part,
       m.reason, m.status, m.mailbox_address, m.daily_limit, m.review_note, m.created_at, m.reviewed_at
       FROM mailbox_access m JOIN users u ON u.id=m.user_id ${where}
-      ORDER BY ${status === 'pending' ? 'm.created_at ASC' : 'm.created_at DESC'} LIMIT ? OFFSET ?`,
+      ORDER BY ${status === 'all'
+    ? "CASE WHEN m.status='pending' THEN 0 ELSE 1 END, CASE WHEN m.status='pending' THEN m.created_at END ASC, m.created_at DESC, m.user_id DESC"
+    : status === 'pending' ? 'm.created_at ASC, m.user_id ASC' : 'm.created_at DESC, m.user_id DESC'} LIMIT ? OFFSET ?`,
     [...values, limit, (page - 1) * limit]),
     db.query(`SELECT m.status, COUNT(*) AS count FROM mailbox_access m JOIN users u ON u.id=m.user_id
       WHERE u.role <> 'owner' GROUP BY m.status`),

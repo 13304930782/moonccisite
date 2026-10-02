@@ -9,14 +9,14 @@ type Request = { user_id: number; username: string; account_email: string; reque
   status: Exclude<Status, 'all'>; mailbox_address: string | null; daily_limit: number; review_note: string | null; created_at: string };
 type Result = { requests: Request[]; counts: Record<string, number>; total: number; page: number; limit: number };
 const tabs: { value: Status; label: string }[] = [
-  { value: 'pending', label: '待审核' }, { value: 'provisioning', label: '开通待核对' },
+  { value: 'all', label: '全部' }, { value: 'pending', label: '待审核' }, { value: 'provisioning', label: '开通待核对' },
   { value: 'active', label: '已开通' }, { value: 'rejected', label: '未通过' },
-  { value: 'revoked', label: '已停用' }, { value: 'all', label: '全部' },
+  { value: 'revoked', label: '已停用' },
 ];
 const label = (status: Status) => tabs.find(tab => tab.value === status)?.label || status;
 
 export default function AdminMailboxRequestsPage() {
-  const [status, setStatus] = useState<Status>('pending');
+  const [status, setStatus] = useState<Status>('all');
   const [searchText, setSearchText] = useState('');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -66,8 +66,8 @@ export default function AdminMailboxRequestsPage() {
   };
   const confirmItems = confirm?.ids.map(id => result?.requests.find(item => item.user_id === id)).filter(Boolean) as Request[] | undefined;
   return <main className="mailbox-review-page">
-    <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>邮箱申请审核</h1>
-      <p>先处理待审核申请；搜索、状态筛选和分页用于管理较大的申请队列。</p></div>
+    <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>邮箱申请与权限</h1>
+      <p>审核新申请，管理已开通邮箱的发信额度与权限。</p></div>
       <Link className="mailbox-review-link" to="/admin/mailbox"><ArrowLeft size={16} aria-hidden="true" />返回发邮件</Link></header>
     {notice && <p role="status" aria-live="polite" className="mailbox-notice">{notice}</p>}
     <nav className="mailbox-review-tabs" aria-label="申请状态">{tabs.map(tab => <button key={tab.value} type="button" aria-current={status === tab.value ? 'page' : undefined}
@@ -85,7 +85,9 @@ export default function AdminMailboxRequestsPage() {
         <p className="mailbox-confirm-addresses">{confirmItems?.map(item => `${item.requested_local_part}@mooncci.site`).join('、')}</p>
         {(confirm.action === 'approve' || confirm.action === 'limit') && <div className="mailbox-limit-editor"><label htmlFor="mailbox-daily-limit">每日发信上限</label><input id="mailbox-daily-limit" type="number" min="1" max="1000" step="1" inputMode="numeric" value={limitInput} disabled={unlimited || busy} onChange={event => setLimitInput(event.target.value)} /><span>封</span><label className="mailbox-unlimited"><input type="checkbox" checked={unlimited} disabled={busy} onChange={event => setUnlimited(event.target.checked)} />不设上限</label></div>}
         <div><button className="mailbox-primary" disabled={busy} onClick={() => void act()}>{busy ? '处理中…' : '确认操作'}</button><button className="mailbox-secondary" disabled={busy} onClick={() => setConfirm(null)}>取消</button></div></div>}
-      {loading ? <p className="mailbox-empty">正在读取申请…</p> : !result?.requests.length ? <p className="mailbox-empty">当前筛选条件下暂无申请。</p> : <>
+      {loading ? <p className="mailbox-empty">正在读取申请…</p> : !result?.requests.length ? <div className="mailbox-review-empty"><strong>{query ? '没有找到匹配的邮箱' : status === 'pending' ? '目前没有待审核申请' : '暂无邮箱申请'}</strong>
+        <p>{query ? '可以调整搜索词，或切换状态查看。' : status === 'pending' ? '新的申请会出现在这里。' : '申请提交后会显示在此列表。'}</p>
+        {status === 'pending' && (result?.counts.active || 0) > 0 && <button type="button" className="mailbox-secondary" onClick={() => chooseStatus('active')}>查看已开通邮箱</button>}</div> : <>
         <div className="mailbox-review-table-head"><label className="mailbox-review-check">{pending.length > 0 && <input type="checkbox" aria-label="选择当前页待审核申请" checked={allPendingSelected}
           onChange={() => setSelected(allPendingSelected ? [] : pending.map(item => item.user_id))} />}</label><span>申请地址 / 用户</span><span>用途</span><span>状态 / 时间</span><span>操作</span></div>
         <div className="mailbox-review-rows">{result.requests.map(item => <article className="mailbox-review-row" key={item.user_id}>
@@ -95,8 +97,8 @@ export default function AdminMailboxRequestsPage() {
           <div className="mailbox-review-actions">{item.status === 'pending' && <><button type="button" onClick={() => openApproval([item.user_id])}>批准</button><button type="button" onClick={() => setConfirm({ ids: [item.user_id], action: 'reject' })}>拒绝</button></>}
             {item.status === 'active' && <><button type="button" onClick={() => openLimit(item)}>设置额度</button><button type="button" onClick={() => setConfirm({ ids: [item.user_id], action: 'revoke' })}>停用发信</button></>}</div>
         </article>)}</div></>}
-      <footer className="mailbox-review-pagination"><span>共 {result?.total || 0} 项 · 第 {result?.page || 1} 页</span><div><button className="mailbox-secondary" disabled={page <= 1} onClick={() => setPage(value => value - 1)}><ChevronLeft size={16} aria-hidden="true" />上一页</button>
-        <button className="mailbox-secondary" disabled={!result || page * result.limit >= result.total} onClick={() => setPage(value => value + 1)}>下一页<ChevronRight size={16} aria-hidden="true" /></button></div></footer>
+      {!loading && !!result && result.total > result.limit && <footer className="mailbox-review-pagination"><span>共 {result.total} 项 · 第 {result.page} 页</span><div><button className="mailbox-secondary" disabled={page <= 1} onClick={() => setPage(value => value - 1)}><ChevronLeft size={16} aria-hidden="true" />上一页</button>
+        <button className="mailbox-secondary" disabled={page * result.limit >= result.total} onClick={() => setPage(value => value + 1)}>下一页<ChevronRight size={16} aria-hidden="true" /></button></div></footer>}
     </section>
   </main>;
 }
