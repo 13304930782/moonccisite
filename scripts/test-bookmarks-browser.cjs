@@ -11,6 +11,7 @@ for(const width of [375,768,1440])for(const theme of ['light','dark']){
  else if(u.pathname==='/api/auth/providers')data={providers:[]};
  else if(u.pathname==='/api/auth/login'){logged=true;data={user};}
  else if(u.pathname==='/api/posts/1')data=post;
+  else if(u.pathname==='/api/series/article/1')data=null;
  else if(u.pathname.includes('/comments'))data=[];
  else if(u.pathname==='/api/bookmarks/1'){
   if(m==='PUT'||m==='DELETE'){writes++;if(failWrite){await r.fulfill({status:503,json:{message:'保存失败，请重试。'}});return;}saved=m==='PUT';removed=m==='DELETE';}
@@ -25,9 +26,9 @@ for(const width of [375,768,1440])for(const theme of ['light','dark']){
  const button=p.getByRole('button',{name:'收藏',exact:true});await button.waitFor();await button.focus();assert(await button.evaluate(e=>e===document.activeElement));await button.press('Enter');await p.getByRole('button',{name:'已收藏',exact:true}).waitFor();assert.equal(writes,1);
  // A second device changes the relation; focus refreshes it without a reload.
  saved=false;await p.evaluate(()=>window.dispatchEvent(new Event('focus')));await p.getByRole('button',{name:'收藏',exact:true}).waitFor();
- failWrite=true;await p.getByRole('button',{name:'收藏',exact:true}).click();await p.getByText('保存失败，请重试。',{exact:false}).waitFor();assert.equal(saved,false);failWrite=false;
+ failWrite=true;await p.getByRole('button',{name:'收藏',exact:true}).click();await p.getByText('尚未确认操作结果，请先刷新或查看记录，确认后再重试。',{exact:true}).waitFor();assert.equal(saved,false);failWrite=false;
  await p.goto('http://127.0.0.1:4216/account/bookmarks?page=2');await p.getByText('文章暂不可用',{exact:true}).waitFor();assert.equal(await p.locator('.bookmark-item a').count(),0);
  await p.getByRole('button',{name:'取消收藏：文章暂不可用'}).click();await p.waitForURL('**/account/bookmarks?page=1');await p.locator('.bookmark-item').first().waitFor();assert.equal(await p.locator('.bookmark-item').count(),12);
- assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);await p.screenshot({path:`.cache/bookmarks-${width}-${theme}.png`,animations:'disabled'});empty=true;await p.reload();await p.getByText('还没有收藏文章。',{exact:true}).waitFor();assert.equal(await p.locator('.pagination').count(),0);await p.close();
+ assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);await p.screenshot({path:`.cache/bookmarks-${width}-${theme}.png`,animations:'disabled'});empty=true;await p.reload();await p.getByText('还没有收藏文章',{exact:true}).waitFor();assert.equal(await p.locator('.pagination').count(),0);await p.close();
 }console.log('PASS bookmarks login return, explicit confirmation, focus sync, errors, pagination and 375/768/1440 light/dark');
 }finally{await browser?.close();await server.httpServer.close();}})().catch(e=>{console.error(e);process.exitCode=1});
