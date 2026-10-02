@@ -1,9 +1,11 @@
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const MailComposer = require('nodemailer/lib/mail-composer');
 const rateLimit = require('express-rate-limit');
 const db = require('../db');
 const { authRequired, ownerOnly } = require('../middleware/auth');
 const { DOMAIN, localPart, email, header, seal, open } = require('../lib/mailboxSecurity');
+const mailboxImap = require('../lib/mailboxImap');
 
 const router = require('../lib/asyncRouter')();
 const agentRouter = require('../lib/asyncRouter')();
@@ -347,6 +349,45 @@ router.get('/sent', async (req, res) => {
   res.json({ messages: rows });
 });
 
+async function activeAccount(userId) {
+  const [rows] = await db.query(`SELECT m.mailbox_address, m.smtp_secret FROM mailbox_access m
+    JOIN users u ON u.id=m.user_id WHERE m.user_id=? AND m.status='active' AND u.status='active' LIMIT 1`, [userId]);
+  return rows[0];
+}
+
+function mailboxError(error, res) {
+  console.error('[mailboxes/imap]', { code: error.code || 'IMAP_ERROR' });
+  res.status(502).json({ message: '暂时无法连接邮局，请稍后刷新。' });
+}
+
+router.get('/folders/:folder', async (req, res) => {
+  if (!['inbox', 'sent'].includes(req.params.folder)) return res.status(404).json({ message: '邮箱文件夹不存在。' });
+  const page = Number(req.query.page || 1);
+  if (!Number.isSafeInteger(page) || page < 1 || page > 1000) return res.status(400).json({ message: '页码无效。' });
+  const account = await activeAccount(req.user.id);
+  if (!account) return res.status(403).json({ message: '邮箱尚未开通。' });
+  res.set('Cache-Control', 'private, no-store');
+  try { res.json(await mailboxImap.listMessages(account, req.params.folder, page)); }
+  catch (error) { mailboxError(error, res); }
+});
+
+router.get('/folders/:folder/:uid', async (req, res) => {
+  if (!['inbox', 'sent'].includes(req.params.folder)) return res.status(404).json({ message: '邮箱文件夹不存在。' });
+  const uid = Number(req.params.uid);
+  const uidValidity = String(req.query.uidValidity || '');
+  if (!Number.isSafeInteger(uid) || uid < 1 || !/^\d{1,20}$/.test(uidValidity)) {
+    return res.status(400).json({ message: '邮件编号无效。' });
+  }
+  const account = await activeAccount(req.user.id);
+  if (!account) return res.status(403).json({ message: '邮箱尚未开通。' });
+  res.set('Cache-Control', 'private, no-store');
+  try {
+    const message = await mailboxImap.readMessage(account, req.params.folder, uid, uidValidity);
+    if (!message) return res.status(404).json({ message: '邮件已移动或不存在，请刷新列表。' });
+    res.json({ message });
+  } catch (error) { mailboxError(error, res); }
+});
+
 router.post('/send', async (req, res) => {
   const to = email(req.body.to);
   const subject = header(req.body.subject);
@@ -398,18 +439,23 @@ router.post('/send', async (req, res) => {
       socketTimeout: 30000,
       auth: { user: account.mailbox_address, pass: open(account.smtp_secret, account.mailbox_address) },
     });
-    const info = await transporter.sendMail({
+    const mail = {
       from: account.mailbox_address,
       to,
       subject,
       text: content,
       envelope: { from: account.mailbox_address, to: [to] },
-    });
+    };
+    const raw = await new MailComposer(mail).compile().build();
+    const info = await transporter.sendMail({ raw, from: mail.from, to: mail.to, envelope: mail.envelope });
     if (!info.accepted?.some(address => address.toLowerCase() === to)) {
       throw new Error('SMTP did not accept the recipient');
     }
     await db.query("UPDATE mailbox_send_logs SET status='accepted' WHERE id=?", [logId]);
-    res.json({ message: '邮件已发送。', id: logId });
+    let savedToSent = false;
+    try { await mailboxImap.appendSent(account, raw); savedToSent = true; }
+    catch (error) { console.error('[mailboxes/sent-copy]', { id: logId, code: error.code || 'IMAP_ERROR' }); }
+    res.json({ message: savedToSent ? '邮件已发送并保存到已发送。' : '邮件已发送，但未能保存到已发送。', id: logId, savedToSent });
   } catch (error) {
     console.error('[mailboxes/send]', { id: logId, code: error.code || 'SMTP_ERROR' });
     await db.query("UPDATE mailbox_send_logs SET status='uncertain' WHERE id=?", [logId]);

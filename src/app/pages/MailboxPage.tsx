@@ -1,12 +1,15 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Check, Mail, RefreshCw, Send } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Check, Inbox, Mail, RefreshCw, Send } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import '../../styles/mailbox.css';
 
 type Access = { status: 'pending' | 'provisioning' | 'active' | 'rejected' | 'revoked'; mailbox_address: string | null; daily_limit: number; review_note: string | null };
 type Sent = { id: string; recipient_email: string; subject: string; status: string };
+type Folder = 'inbox' | 'sent';
+type Message = { uid: number; from: string; to: string; subject: string; date: string | null; unread: boolean; size: number; text?: string; replyTo?: string; tooLarge?: boolean; attachments?: { filename: string; size: number }[] };
+type MailList = { messages: Message[]; total: number; page: number; pageSize: number; uidValidity: string | null; folderAvailable: boolean };
 const labels: Record<Access['status'], string> = { pending: '等待审核', provisioning: '开通结果待核对', active: '已开通', rejected: '未通过', revoked: '已停用' };
 
 export default function MailboxPage() {
@@ -23,11 +26,38 @@ export default function MailboxPage() {
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
+  const [view, setView] = useState<Folder | 'compose'>('inbox');
+  const [mailList, setMailList] = useState<MailList | null>(null);
+  const [selected, setSelected] = useState<Message | null>(null);
+  const [mailLoading, setMailLoading] = useState(false);
+  const [mailError, setMailError] = useState('');
   const refresh = useCallback(async () => {
     const [self, history] = await Promise.all([api('/mailboxes/me'), api('/mailboxes/sent')]);
     setAccess(self.access); setSent(history.messages);
   }, []);
   useEffect(() => { refresh().catch(error => setNotice(error.message || '邮箱状态暂时无法读取')).finally(() => setLoading(false)); }, [refresh]);
+  const loadFolder = useCallback(async (folder: Folder, page = 1) => {
+    setMailLoading(true); setMailError(''); setSelected(null);
+    try {
+      const result = await api(`/mailboxes/folders/${folder}?page=${page}`);
+      setMailList(result);
+    } catch (error: any) { setMailError(error.message || '暂时无法读取邮件。'); }
+    finally { setMailLoading(false); }
+  }, []);
+  useEffect(() => {
+    if (access?.status === 'active' && view !== 'compose') void loadFolder(view);
+  }, [access?.status, view, loadFolder]);
+  const openMessage = async (message: Message) => {
+    if (view === 'compose' || !mailList?.uidValidity) return;
+    setMailLoading(true); setMailError('');
+    try {
+      const result = await api(`/mailboxes/folders/${view}/${message.uid}?uidValidity=${mailList.uidValidity}`);
+      setSelected(result.message);
+      if (view === 'inbox') setMailList(previous => previous && ({ ...previous, messages: previous.messages.map(item => item.uid === message.uid ? { ...item, unread: false } : item) }));
+    } catch (error: any) { setMailError(error.message || '暂时无法读取邮件。'); }
+    finally { setMailLoading(false); }
+  };
+  const changeView = (next: Folder | 'compose') => { setSelected(null); setView(next); };
   const run = async (work: () => Promise<void>) => {
     setBusy(true); setNotice('');
     try { await work(); await refresh(); }
@@ -43,12 +73,12 @@ export default function MailboxPage() {
   }); };
   const send = (event: FormEvent) => { event.preventDefault(); void run(async () => {
     const result = await api('/mailboxes/send', { method: 'POST', body: JSON.stringify({ to, subject, content }) });
-    setTo(''); setSubject(''); setContent(''); setNotice(result.message);
+    setTo(''); setSubject(''); setContent(''); setNotice(result.message); setView('sent');
   }); };
 
   return <main className="mailbox-page">
-    <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>{owner ? '发邮件' : '我的邮箱'}</h1>
-      <p>{owner ? '使用你的 mooncci 邮箱发信。申请审批在独立页面处理。' : '申请专属 @mooncci.site 地址，获批后可向外部邮箱发信。'}</p></div>
+    <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>我的邮箱</h1>
+      <p>{access?.status === 'active' ? '在这里收信、读信和发送邮件。' : '申请专属 @mooncci.site 地址，获批后即可收发邮件。'}</p></div>
       {owner && <Link className="mailbox-review-link" to="/admin/mailbox-requests">邮箱申请与权限 <ArrowUpRight size={16} aria-hidden="true" /></Link>}
     </header>
     {notice && <p role="status" aria-live="polite" className="mailbox-notice">{notice}</p>}
@@ -74,14 +104,34 @@ export default function MailboxPage() {
           <p className="mailbox-help">3–32 位，以字母开头；可用小写字母、数字、点、横线和下划线。</p><label htmlFor="mail-reason">申请说明</label>
           <textarea id="mail-reason" rows={4} value={reason} onChange={event => setReason(event.target.value)} minLength={10} maxLength={1000} required placeholder="说明邮箱用途和预计发送对象" />
           <button className="mailbox-primary" disabled={busy}>{busy ? '提交中…' : '提交申请'}</button></form></section>}
-      {access?.status === 'active' && <>{owner && <section className="mailbox-account-line" aria-label="当前发件账号"><div><strong>{access.mailbox_address}</strong><span>已连接</span></div><span className="mailbox-badge">已开通</span></section>}
-        <section className="mailbox-panel" aria-labelledby="mail-compose-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Send size={20} aria-hidden="true" /></span><div><h2 id="mail-compose-title">写邮件</h2><p>发件人：{access.mailbox_address}</p></div></div>
+      {access?.status === 'active' && <><section className="mailbox-account-line" aria-label="当前邮箱账号"><div><strong>{access.mailbox_address}</strong><span>已连接</span></div><span className="mailbox-badge">已开通</span></section>
+        <nav className="mailbox-view-tabs" aria-label="邮箱文件夹">
+          <button type="button" aria-current={view === 'inbox' ? 'page' : undefined} onClick={() => changeView('inbox')}><Inbox size={17} aria-hidden="true" />收件箱</button>
+          <button type="button" aria-current={view === 'sent' ? 'page' : undefined} onClick={() => changeView('sent')}><Send size={17} aria-hidden="true" />已发送</button>
+          <button type="button" aria-current={view === 'compose' ? 'page' : undefined} onClick={() => changeView('compose')}><Mail size={17} aria-hidden="true" />写邮件</button>
+        </nav>
+        {view !== 'compose' && <section className="mailbox-panel mailbox-letters" aria-labelledby="mail-folder-title">
+          <div className="mailbox-folder-head"><div><h2 id="mail-folder-title">{view === 'inbox' ? '收件箱' : '已发送'}</h2><p>{mailList?.total || 0} 封邮件</p></div>
+            <button type="button" className="mailbox-secondary" onClick={() => void loadFolder(view, mailList?.page || 1)} disabled={mailLoading}><RefreshCw size={16} aria-hidden="true" />刷新</button></div>
+          {mailError && <p className="mailbox-error" role="alert">{mailError}</p>}
+          {selected ? <article className="mailbox-letter-detail"><button type="button" className="mailbox-back" onClick={() => setSelected(null)}><ArrowLeft size={16} aria-hidden="true" />返回列表</button>
+            <h3>{selected.subject}</h3><dl><div><dt>发件人</dt><dd>{selected.from || '未知'}</dd></div><div><dt>收件人</dt><dd>{selected.to || '未知'}</dd></div><div><dt>时间</dt><dd>{selected.date ? new Date(selected.date).toLocaleString('zh-CN') : '未知'}</dd></div></dl>
+            {selected.tooLarge ? <p className="mailbox-empty">这封邮件超过网页阅读上限（2 MB），请使用邮件客户端查看。</p> : <>
+              <pre className="mailbox-letter-body">{selected.text || '这封邮件没有可显示的纯文本正文。'}</pre>
+              {!!selected.attachments?.length && <p className="mailbox-attachment-note">附件：{selected.attachments.map(item => item.filename).join('、')}。当前网页暂不提供附件下载，请使用邮件客户端查看。</p>}
+            </>}
+            {view === 'inbox' && selected.replyTo && <button type="button" className="mailbox-primary" onClick={() => { setTo(selected.replyTo || ''); setSubject(/^Re:/i.test(selected.subject) ? selected.subject : `Re: ${selected.subject}`); changeView('compose'); }}>回复</button>}
+          </article> : mailLoading ? <p className="mailbox-empty">正在读取邮件…</p> : !mailList?.folderAvailable ? <p className="mailbox-empty">邮局尚未提供已发送文件夹。你仍可正常收发邮件。</p> : !mailList.messages.length ? <p className="mailbox-empty">{view === 'inbox' ? '收件箱里还没有邮件。' : '已发送里还没有邮件。'}</p> : <ul className="mailbox-letter-list">{mailList.messages.map(item => <li key={item.uid}><button type="button" onClick={() => void openMessage(item)} className={item.unread ? 'mailbox-letter-unread' : ''}>
+            <span className="mailbox-letter-correspondent">{view === 'inbox' ? item.from : item.to}</span><span className="mailbox-letter-subject">{item.subject}</span><time>{item.date ? new Date(item.date).toLocaleString('zh-CN') : ''}</time></button></li>)}</ul>}
+          {!selected && mailList && mailList.total > mailList.pageSize && <div className="mailbox-list-pages"><span>第 {mailList.page} 页</span><div><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page <= 1} onClick={() => void loadFolder(view, mailList.page - 1)}>上一页</button><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page * mailList.pageSize >= mailList.total} onClick={() => void loadFolder(view, mailList.page + 1)}>下一页</button></div></div>}
+        </section>}
+        {view === 'compose' && <section className="mailbox-panel" aria-labelledby="mail-compose-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Send size={20} aria-hidden="true" /></span><div><h2 id="mail-compose-title">写邮件</h2><p>发件人：{access.mailbox_address}</p></div></div>
           <form onSubmit={send} className="mailbox-form"><label htmlFor="mail-to">收件人</label><input id="mail-to" type="email" value={to} onChange={event => setTo(event.target.value)} required placeholder="name@example.com" />
             <label htmlFor="mail-subject">标题</label><input id="mail-subject" value={subject} onChange={event => setSubject(event.target.value)} required maxLength={120} />
             <label htmlFor="mail-body">正文</label><textarea id="mail-body" value={content} onChange={event => setContent(event.target.value)} rows={9} required maxLength={10000} />
-            <div className="mailbox-form-footer"><p>发送记录不会保存邮件正文。</p><button className="mailbox-primary" disabled={busy}>{busy ? '发送中…' : '发送邮件'}</button></div></form></section></>}
-      <section className="mailbox-panel mailbox-history" aria-labelledby="mail-history-title"><div className="mailbox-panel-head"><div><h2 id="mail-history-title">最近发送</h2><p>只记录收件人、标题和发送状态，不保存正文。</p></div></div>
-        {sent.length === 0 ? <p className="mailbox-empty">暂无发送记录。</p> : <ul>{sent.map(item => <li key={item.id}><div><strong>{item.subject}</strong><span>{item.recipient_email}</span></div><span>{item.status === 'accepted' ? '已发送' : item.status === 'uncertain' ? '结果待核对' : item.status === 'sending' ? '发送中' : '失败'}</span></li>)}</ul>}</section>
+            <div className="mailbox-form-footer"><p>发送后，邮件会保存到已发送文件夹。</p><button className="mailbox-primary" disabled={busy}>{busy ? '发送中…' : '发送邮件'}</button></div></form></section>}</>}
+      {access?.status === 'active' && view === 'sent' && <section className="mailbox-panel mailbox-history" aria-labelledby="mail-history-title"><div className="mailbox-panel-head"><div><h2 id="mail-history-title">网页发送记录</h2><p>保留此前的发送状态记录；旧记录不包含正文。</p></div></div>
+        {sent.length === 0 ? <p className="mailbox-empty">暂无发送记录。</p> : <ul>{sent.map(item => <li key={item.id}><div><strong>{item.subject}</strong><span>{item.recipient_email}</span></div><span>{item.status === 'accepted' ? '已发送' : item.status === 'uncertain' ? '结果待核对' : item.status === 'sending' ? '发送中' : '失败'}</span></li>)}</ul>}</section>}
     </>}
   </main>;
 }
