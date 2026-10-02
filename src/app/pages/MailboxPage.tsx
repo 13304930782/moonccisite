@@ -57,7 +57,7 @@ export default function MailboxPage() {
     } catch (error: any) { setMailError(error.message || '暂时无法读取邮件。'); }
     finally { setMailLoading(false); }
   };
-  const changeView = (next: Folder | 'compose') => { setSelected(null); setView(next); };
+  const changeView = (next: Folder | 'compose') => { setSelected(null); setMailList(null); setView(next); };
   const run = async (work: () => Promise<void>) => {
     setBusy(true); setNotice('');
     try { await work(); await refresh(); }
@@ -73,7 +73,7 @@ export default function MailboxPage() {
   }); };
   const send = (event: FormEvent) => { event.preventDefault(); void run(async () => {
     const result = await api('/mailboxes/send', { method: 'POST', body: JSON.stringify({ to, subject, content }) });
-    setTo(''); setSubject(''); setContent(''); setNotice(result.message); setView('sent');
+    setTo(''); setSubject(''); setContent(''); setNotice(result.message); changeView('sent');
   }); };
 
   return <main className="mailbox-page">
@@ -111,7 +111,7 @@ export default function MailboxPage() {
           <button type="button" aria-current={view === 'compose' ? 'page' : undefined} onClick={() => changeView('compose')}><Mail size={17} aria-hidden="true" />写邮件</button>
         </nav>
         {view !== 'compose' && <section className="mailbox-panel mailbox-letters" aria-labelledby="mail-folder-title">
-          <div className="mailbox-folder-head"><div><h2 id="mail-folder-title">{view === 'inbox' ? '收件箱' : '已发送'}</h2><p>{mailList?.total || 0} 封邮件</p></div>
+          <div className="mailbox-folder-head"><div><h2 id="mail-folder-title">{view === 'inbox' ? '收件箱' : '已发送'}</h2><p>{mailList ? `${mailList.total} 封邮件` : '正在读取…'}</p></div>
             <button type="button" className="mailbox-secondary" onClick={() => void loadFolder(view, mailList?.page || 1)} disabled={mailLoading}><RefreshCw size={16} aria-hidden="true" />刷新</button></div>
           {mailError && <p className="mailbox-error" role="alert">{mailError}</p>}
           {selected ? <article className="mailbox-letter-detail"><button type="button" className="mailbox-back" onClick={() => setSelected(null)}><ArrowLeft size={16} aria-hidden="true" />返回列表</button>

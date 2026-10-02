@@ -68,7 +68,7 @@ export default function AdminMailboxRequestsPage() {
   return <main className="mailbox-review-page">
     <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>邮箱申请与权限</h1>
       <p>审核新申请，管理已开通邮箱的发信额度与权限。</p></div>
-      <Link className="mailbox-review-link" to="/admin/mailbox"><ArrowLeft size={16} aria-hidden="true" />返回发邮件</Link></header>
+      <Link className="mailbox-review-link" to="/admin/mailbox"><ArrowLeft size={16} aria-hidden="true" />返回我的邮箱</Link></header>
     {notice && <p role="status" aria-live="polite" className="mailbox-notice">{notice}</p>}
     <nav className="mailbox-review-tabs" aria-label="申请状态">{tabs.map(tab => <button key={tab.value} type="button" aria-current={status === tab.value ? 'page' : undefined}
       onClick={() => chooseStatus(tab.value)}>{tab.label}<span>{tab.value === 'all' ? Object.values(result?.counts || {}).reduce((sum, count) => sum + count, 0) : result?.counts?.[tab.value] || 0}</span></button>)}</nav>

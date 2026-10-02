@@ -240,7 +240,7 @@ export function AdminShell({ children }: AdminShellProps) {
       show: manager,
     },
     {
-      title: '发邮件',
+      title: '我的邮箱',
       to: '/admin/mailbox',
       icon: Mail,
       show: user?.role === 'owner',
