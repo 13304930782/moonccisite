@@ -15,10 +15,8 @@ export function SiteFooter() {
             mooncci
           </Link>
           <nav className="footer-links" aria-label="页脚导航">
-            <Link to="/articles">文章</Link>
-            <Link to="/projects">作品</Link>
-            <Link to="/updates">最近更新</Link>
-            <Link to="/about">关于我</Link><Link to="/links">友情链接</Link>
+            <Link to="/about">关于我</Link>
+            <Link to="/links">友情链接</Link>
             <Link to="/archives">文章归档</Link>
             <Link to="/rss">RSS 订阅</Link>
             <Link to="/mail-setup">邮箱设置</Link>
