@@ -92,10 +92,15 @@ test('mailbox approval waits for signed agent confirmation before outbound SMTP'
   assert.equal(claim.body.job.address, 'reader@mooncci.site');
   assert.ok(claim.body.job.password.length >= 20);
   assert.equal((await agent('/claim', {})).body.job, null);
+  assert.equal((await agent('/complete', { requestId: claim.body.job.requestId, address: claim.body.job.address, created: true }, false)).status, 401);
+  assert.equal(access.status, 'provisioning');
   assert.equal((await agent('/complete', { requestId: claim.body.job.requestId, address: claim.body.job.address, created: true })).status, 200);
   const result = await post('/mailboxes/send', { to: 'outside@example.com', subject: 'Hello', content: 'Body' }, 2);
   assert.equal(result.status, 200);
   assert.equal(deliveries[0].from, 'reader@mooncci.site');
   assert.equal(deliveries[0].to, 'outside@example.com');
   assert.equal(logs[0].status, 'accepted');
+  access.daily_limit = 1;
+  assert.equal((await post('/mailboxes/send', { to: 'second@example.com', subject: 'Again', content: 'Body' }, 2)).status, 429);
+  assert.equal(deliveries.length, 1);
 });
