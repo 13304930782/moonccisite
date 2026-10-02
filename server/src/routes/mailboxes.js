@@ -25,6 +25,7 @@ function verifyAgent(req, res, next) {
   next();
 }
 
+agentRouter.use(rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false }));
 agentRouter.use(verifyAgent);
 agentRouter.post('/claim', async (_req, res) => {
   const connection = await db.getConnection();
