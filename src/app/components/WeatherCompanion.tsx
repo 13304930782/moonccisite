@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { CloudSun, Minus, X, CircleHelp } from 'lucide-react';
 import GrokBall, {
@@ -66,9 +66,26 @@ type DailyMood = {
   overrideEndsAt?: string | null;
 };
 
+function isPhoneViewport() {
+  const ipad = /iPad/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return !ipad && /iPhone|iPod|Android.*Mobile|Windows Phone/i.test(navigator.userAgent) &&
+    matchMedia('(max-width: 640px)').matches;
+}
+
 export default function WeatherCompanion() {
   const { theme } = useMoonTheme();
   const { pathname } = useLocation();
+  const [phoneViewport, setPhoneViewport] = useState(isPhoneViewport);
+  const edgeMode = phoneViewport && /^\/article\/[^/]+/.test(pathname);
+  const [edgeVisible, setEdgeVisible] = useState(false);
+  const edgeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const media = matchMedia('(max-width: 640px)');
+    const sync = () => setPhoneViewport(isPhoneViewport());
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
   const authPage = ['/login', '/admin-login', '/register', '/forgot-password', '/reset-password', '/complete-registration'].includes(pathname);
   const [inputMood, setInputMood] = useState<'account' | 'password' | null>(null);
   const [ambient, setAmbient] = useState<(typeof ambientMoments)[number] | null>(null);
@@ -151,6 +168,47 @@ export default function WeatherCompanion() {
       return false;
     }
   });
+  const revealEdge = useCallback(() => {
+    if (!edgeMode || collapsed) return;
+    setEdgeVisible(true);
+    if (edgeTimer.current) clearTimeout(edgeTimer.current);
+    edgeTimer.current = open ? null : setTimeout(() => {
+      edgeTimer.current = null;
+      if (!root.current?.contains(document.activeElement)) setEdgeVisible(false);
+    }, 4000);
+  }, [edgeMode, collapsed, open]);
+  useEffect(() => {
+    if (!edgeMode || collapsed) {
+      if (edgeTimer.current) clearTimeout(edgeTimer.current);
+      edgeTimer.current = null;
+      setEdgeVisible(false);
+      return;
+    }
+    if (open) {
+      if (edgeTimer.current) clearTimeout(edgeTimer.current);
+      edgeTimer.current = null;
+      setEdgeVisible(true);
+    } else if (edgeVisible && !edgeTimer.current) {
+      edgeTimer.current = setTimeout(() => {
+        edgeTimer.current = null;
+        if (!root.current?.contains(document.activeElement)) setEdgeVisible(false);
+      }, 4000);
+    }
+  }, [edgeMode, collapsed, open, edgeVisible]);
+  useEffect(() => {
+    if (!edgeMode || collapsed) return;
+    let anchor = window.scrollY;
+    const onScroll = () => {
+      if (Math.abs(window.scrollY - anchor) < 24) return;
+      anchor = window.scrollY;
+      revealEdge();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [edgeMode, collapsed, revealEdge]);
+  useEffect(() => () => {
+    if (edgeTimer.current) clearTimeout(edgeTimer.current);
+  }, []);
   const [reaction, setReaction] = useState<CompanionReaction>(null);
   const [stats, setStats] = useState<InteractionStats | null>(null);
   const [statsError, setStatsError] = useState('');
@@ -191,7 +249,7 @@ export default function WeatherCompanion() {
 
   useEffect(() => {
     setAmbientSpeech('');
-    if (reduced || collapsed || disabled || open || reaction || inputMood || data?.mode === 'manual') return;
+    if (reduced || collapsed || disabled || open || edgeMode || reaction || inputMood || data?.mode === 'manual') return;
     let timer: ReturnType<typeof setTimeout>;
     let restore: ReturnType<typeof setTimeout>;
     const schedule = () => { timer = setTimeout(play, 28000 + Math.random() * 27000); };
@@ -225,7 +283,7 @@ export default function WeatherCompanion() {
     const hide = () => { if(document.hidden) { clearTimeout(timer); clearTimeout(restore); setAmbientSpeech(''); } else { clearTimeout(timer); schedule(); } };
     schedule(); document.addEventListener('visibilitychange', hide);
     return () => { clearTimeout(timer); clearTimeout(restore); document.removeEventListener('visibilitychange', hide); };
-  }, [reduced, collapsed, disabled, open, reaction, inputMood, data?.mode, pathname]);
+  }, [reduced, collapsed, disabled, open, edgeMode, reaction, inputMood, data?.mode, pathname]);
   const moodName =
     data?.mood?.name ||
     (!location ? '选个城市' : loaded ? '稍作等待' : '看看天气');
@@ -504,15 +562,18 @@ export default function WeatherCompanion() {
   if (disabled) return null;
   return (
     <aside
-      className="weather-companion"
+      className={`weather-companion${edgeMode ? ' weather-companion--reading-phone' : ''}${edgeMode && !edgeVisible && !open ? ' weather-companion--edge-hidden' : ''}`}
       ref={root}
       aria-label="mooncci 天气小球"
       data-emotion={displayedEmotion}
+      onBlur={(event) => {
+        if (edgeMode && !event.currentTarget.contains(event.relatedTarget as Node)) revealEdge();
+      }}
     >
       {collapsed ? (
         <button
           className="weather-companion-wake"
-          onClick={() => collapse(false)}
+          onClick={() => { collapse(false); if (edgeMode) setEdgeVisible(true); }}
           aria-label="展开天气小球"
           title="展开天气小球"
         >
@@ -520,6 +581,17 @@ export default function WeatherCompanion() {
         </button>
       ) : (
         <>
+          {edgeMode && !edgeVisible && !open && (
+            <button
+              type="button"
+              className="weather-companion-edge-handle"
+              aria-label="显示天气小球"
+              onClick={(event) => {
+                revealEdge();
+                if (event.detail === 0) requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>('.weather-companion-ball')?.focus());
+              }}
+            ><CloudSun size={20} aria-hidden="true" /></button>
+          )}
           {open && (
             <section
               className="weather-companion-panel"
@@ -694,6 +766,8 @@ export default function WeatherCompanion() {
           )}
           <button
             className="weather-companion-ball"
+            tabIndex={edgeMode && !edgeVisible && !open ? -1 : 0}
+            aria-hidden={edgeMode && !edgeVisible && !open ? true : undefined}
             aria-label={`查看今日心情：${moodName}`}
             aria-expanded={open}
             aria-controls="weather-companion-details"
