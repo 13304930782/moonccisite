@@ -18,6 +18,7 @@ const AdminBlogPages=lazy(()=>import('./pages/AdminBlogPages'));
 const ArchivesPage = lazy(() => import('./pages/ArchivesPage'));
 import {PageAnalytics} from './components/PageAnalytics';
 import { SiteSettingsProvider } from './context/SiteSettingsContext';
+const MailSetupPage = lazy(() => import('./pages/MailSetupPage'));
 const RssPage = lazy(() => import('./pages/RssPage'));
 import HomePage from './pages/HomePage';
 const UpdatesPage = lazy(() => import('./pages/UpdatesPage'));
@@ -135,6 +136,7 @@ function SiteRoutes() {
           <Route path="/updates/:id" element={<UpdateDetailPage/>}/>
           <Route path="/projects" element={<ProjectsPage/>}/>
           <Route path="/projects/:slug" element={<ProjectDetailPage/>}/>
+          <Route path="/mail-setup" element={<MailSetupPage/>}/>
           <Route path="/rss" element={<RssPage/>}/>
           <Route path="/subscription/:action" element={<SubscriptionPage/>}/>
           <Route path="/admin/updates" element={<Guard adminOnly><AdminShell><AdminUpdatesPage/></AdminShell></Guard>}/>

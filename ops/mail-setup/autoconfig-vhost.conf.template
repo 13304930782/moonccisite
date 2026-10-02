@@ -1,0 +1,27 @@
+# NEW host only. Do not replace mooncci.site's vhost.
+# Provision DNS + a certificate covering autoconfig.mooncci.site first.
+server {
+    listen 80;
+    server_name autoconfig.mooncci.site;
+    access_log off; error_log /dev/null emerg;
+    location = /mail/config-v1.1.xml {
+        return 301 https://autoconfig.mooncci.site/mail/config-v1.1.xml;
+    }
+    location / { return 404; }
+}
+server {
+    listen 443 ssl;
+    server_name autoconfig.mooncci.site;
+    ssl_certificate @CERTIFICATE@;
+    ssl_certificate_key @PRIVATE_KEY@;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    access_log off; error_log /dev/null emerg;
+    # This dedicated host serves a PUBLIC file only; no API or SPA fallback.
+    add_header X-Content-Type-Options nosniff always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    location = /mail/config-v1.1.xml {
+        alias @WEB_ROOT@/mail/config-v1.1.xml;
+        types { } default_type application/xml;
+    }
+    location / { return 404; }
+}

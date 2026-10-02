@@ -518,3 +518,7 @@ accepted as upgrade baselines.
 
 This release also includes the pending frontend fix preserving the Microsoft
 four-color logo in dark mode. No GitHub push is required for offline deployment.
+
+## mooncci Mail 客户端设置（2026-10-01）
+
+`/mail-setup`、公共 Mozilla Autoconfig 和可选 Apple 描述文件下载的分包、Nginx 精确路由、日志隐私、DNS/证书与回滚步骤见 [MAIL-SETUP-DEPLOY.md](MAIL-SETUP-DEPLOY.md)。尚未上线，不改 MX 或邮件服务器，不复用网站通知 SMTP 账号；测试边界见 [MAIL-SETUP-TESTS.md](MAIL-SETUP-TESTS.md)。

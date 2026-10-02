@@ -1,0 +1,7 @@
+{
+  "domain": "mooncci.site",
+  "displayName": "mooncci Mail",
+  "imap": { "host": "mail.cuegroveapp.com", "port": 993, "socketType": "SSL" },
+  "smtp": { "host": "mail.cuegroveapp.com", "port": 587, "socketType": "STARTTLS" },
+  "localPartPattern": "^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$"
+}

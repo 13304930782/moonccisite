@@ -1,0 +1,41 @@
+# Merge into the existing overseas HTTPS vhost. @PRIMARY@ is its confirmed CN
+# upstream (for example the existing keepalive pool), NOT the mail server.
+# @CA_BUNDLE@ is the existing trusted CA bundle. Keep certificate checks enabled.
+location = /.well-known/autoconfig/mail/config-v1.1.xml {
+    access_log off; error_log /dev/null emerg;
+    proxy_pass_request_headers off;
+    proxy_set_header Host mooncci.site;
+    proxy_ssl_server_name on; proxy_ssl_name mooncci.site;
+    proxy_ssl_verify on; proxy_ssl_trusted_certificate @CA_BUNDLE@;
+    proxy_cache off; proxy_intercept_errors off;
+    proxy_pass https://@PRIMARY@/mail/config-v1.1.xml?;
+}
+location = /mail/config-v1.1.xml {
+    access_log off; error_log /dev/null emerg;
+    proxy_pass_request_headers off;
+    proxy_set_header Host mooncci.site;
+    proxy_ssl_server_name on; proxy_ssl_name mooncci.site;
+    proxy_ssl_verify on; proxy_ssl_trusted_certificate @CA_BUNDLE@;
+    proxy_cache off; proxy_intercept_errors off;
+    proxy_pass https://@PRIMARY@/mail/config-v1.1.xml?;
+}
+location ^~ /api/mail-setup/ {
+    access_log off; error_log /dev/null emerg;
+    client_max_body_size 512; client_body_buffer_size 1k;
+    proxy_request_buffering off; proxy_buffering off;
+    proxy_cache off; proxy_intercept_errors off; proxy_next_upstream off;
+    proxy_http_version 1.1; proxy_set_header Connection "";
+    proxy_set_header Host mooncci.site;
+    proxy_set_header X-Forwarded-Host mooncci.site;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header Forwarded "";
+    proxy_set_header Proxy-Authorization "";
+    proxy_set_header X-Mooncci-Reader-Key "";
+    proxy_set_header X-Mooncci-Preview "";
+    proxy_set_header X-Mooncci-Public-Host "";
+    proxy_ssl_server_name on; proxy_ssl_name mooncci.site;
+    proxy_ssl_verify on; proxy_ssl_trusted_certificate @CA_BUNDLE@;
+    proxy_pass https://@PRIMARY@;
+}
