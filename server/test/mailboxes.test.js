@@ -103,4 +103,7 @@ test('mailbox approval waits for signed agent confirmation before outbound SMTP'
   access.daily_limit = 1;
   assert.equal((await post('/mailboxes/send', { to: 'second@example.com', subject: 'Again', content: 'Body' }, 2)).status, 429);
   assert.equal(deliveries.length, 1);
+  access.daily_limit = 0;
+  assert.equal((await post('/mailboxes/send', { to: 'second@example.com', subject: 'Again', content: 'Body' }, 2)).status, 200);
+  assert.equal(deliveries.length, 2);
 });

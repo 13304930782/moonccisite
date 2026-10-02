@@ -64,7 +64,7 @@ export default function MailboxPage() {
       {!owner && <section className="mailbox-panel" aria-labelledby="mailbox-status-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Mail size={20} aria-hidden="true" /></span><div>
         <h2 id="mailbox-status-title">{access?.mailbox_address || '专属邮箱'}</h2><p>{access ? labels[access.status] : '尚未申请'}</p></div>
         <button type="button" onClick={() => refresh().catch(error => setNotice(error.message))} className="mailbox-secondary mailbox-refresh"><RefreshCw size={16} aria-hidden="true" />刷新状态</button></div>
-        {access?.status === 'active' && <p className="mailbox-footnote">每日最多尝试发信 {access.daily_limit} 次。</p>}
+        {access?.status === 'active' && <p className="mailbox-footnote">{access.daily_limit === 0 ? '未设置每日发信上限。' : `每日发信上限 ${access.daily_limit} 封。`}</p>}
         {access?.review_note && <p className="mailbox-footnote">审核说明：{access.review_note}</p>}
         {access?.status === 'provisioning' && <p className="mailbox-footnote">邮局创建结果尚未确认，站长核对前不能发信。</p>}
         {access?.status === 'revoked' && <p className="mailbox-footnote">网页发信权限已停用，请联系站长。</p>}
@@ -74,14 +74,14 @@ export default function MailboxPage() {
           <p className="mailbox-help">3–32 位，以字母开头；可用小写字母、数字、点、横线和下划线。</p><label htmlFor="mail-reason">申请说明</label>
           <textarea id="mail-reason" rows={4} value={reason} onChange={event => setReason(event.target.value)} minLength={10} maxLength={1000} required placeholder="说明邮箱用途和预计发送对象" />
           <button className="mailbox-primary" disabled={busy}>{busy ? '提交中…' : '提交申请'}</button></form></section>}
-      {access?.status === 'active' && <>{owner && <section className="mailbox-account-line" aria-label="当前发件账号"><div><strong>{access.mailbox_address}</strong><span>每日最多尝试发信 {access.daily_limit} 次</span></div><span className="mailbox-badge">已开通</span></section>}
+      {access?.status === 'active' && <>{owner && <section className="mailbox-account-line" aria-label="当前发件账号"><div><strong>{access.mailbox_address}</strong><span>已连接</span></div><span className="mailbox-badge">已开通</span></section>}
         <section className="mailbox-panel" aria-labelledby="mail-compose-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Send size={20} aria-hidden="true" /></span><div><h2 id="mail-compose-title">写邮件</h2><p>发件人：{access.mailbox_address}</p></div></div>
           <form onSubmit={send} className="mailbox-form"><label htmlFor="mail-to">收件人</label><input id="mail-to" type="email" value={to} onChange={event => setTo(event.target.value)} required placeholder="name@example.com" />
             <label htmlFor="mail-subject">标题</label><input id="mail-subject" value={subject} onChange={event => setSubject(event.target.value)} required maxLength={120} />
             <label htmlFor="mail-body">正文</label><textarea id="mail-body" value={content} onChange={event => setContent(event.target.value)} rows={9} required maxLength={10000} />
-            <div className="mailbox-form-footer"><p>提交给邮局后，实际送达仍取决于收件方。</p><button className="mailbox-primary" disabled={busy}>{busy ? '发送中…' : '发送邮件'}</button></div></form></section></>}
-      <section className="mailbox-panel mailbox-history" aria-labelledby="mail-history-title"><div className="mailbox-panel-head"><div><h2 id="mail-history-title">最近发送</h2><p>只记录收件人、标题和提交结果，不保存正文。</p></div></div>
-        {sent.length === 0 ? <p className="mailbox-empty">暂无发送记录。</p> : <ul>{sent.map(item => <li key={item.id}><div><strong>{item.subject}</strong><span>{item.recipient_email}</span></div><span>{item.status === 'accepted' ? '邮局已接收' : item.status === 'uncertain' ? '结果待核对' : item.status === 'sending' ? '发送中' : '失败'}</span></li>)}</ul>}</section>
+            <div className="mailbox-form-footer"><p>发送记录不会保存邮件正文。</p><button className="mailbox-primary" disabled={busy}>{busy ? '发送中…' : '发送邮件'}</button></div></form></section></>}
+      <section className="mailbox-panel mailbox-history" aria-labelledby="mail-history-title"><div className="mailbox-panel-head"><div><h2 id="mail-history-title">最近发送</h2><p>只记录收件人、标题和发送状态，不保存正文。</p></div></div>
+        {sent.length === 0 ? <p className="mailbox-empty">暂无发送记录。</p> : <ul>{sent.map(item => <li key={item.id}><div><strong>{item.subject}</strong><span>{item.recipient_email}</span></div><span>{item.status === 'accepted' ? '已发送' : item.status === 'uncertain' ? '结果待核对' : item.status === 'sending' ? '发送中' : '失败'}</span></li>)}</ul>}</section>
     </>}
   </main>;
 }

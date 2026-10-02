@@ -16,8 +16,11 @@ test('owner can connect an existing mailbox without provisioning it; review stay
   let access = { status: 'revoked', mailbox_address: 'codex-test-20261002@mooncci.site' };
   let verified = 0;
   let rejected = false;
+  let updatedLimit = null;
+  let sent = false;
   t.mock.method(nodemailer, 'createTransport', options => ({
     verify: async () => { assert.equal(options.auth.user, 'mooncci@mooncci.site'); assert.equal(options.auth.pass, 'ExistingPass9!'); verified++; },
+    sendMail: async mail => { assert.equal(options.auth.user, 'mooncci@mooncci.site'); assert.equal(mail.from, 'mooncci@mooncci.site'); sent = true; return { accepted: [mail.to] }; },
     close: () => {},
   }));
   t.mock.method(db, 'query', async (sql, params = []) => {
@@ -26,6 +29,8 @@ test('owner can connect an existing mailbox without provisioning it; review stay
     if (sql.startsWith('SELECT m.user_id, u.username')) return [[{ user_id: 2, username: 'reader', account_email: reader.email,
       requested_local_part: 'reader', reason: 'Contact mail', status: 'pending', mailbox_address: null, created_at: '2026-10-02T00:00:00Z' }]];
     if (sql.startsWith('SELECT m.status, COUNT(*)')) return [[{ status: 'pending', count: 2 }]];
+    if (sql.startsWith('UPDATE mailbox_access m JOIN users u')) { updatedLimit = params[0]; return [{ affectedRows: 1 }]; }
+    if (sql.startsWith('UPDATE mailbox_send_logs')) return [{ affectedRows: 1 }];
     throw Error('Unexpected query: ' + sql);
   });
   t.mock.method(db, 'getConnection', async () => ({
@@ -33,12 +38,14 @@ test('owner can connect an existing mailbox without provisioning it; review stay
     query: async (sql, params = []) => {
       if (sql.startsWith('SELECT status, mailbox_address')) return [[access]];
       if (sql.startsWith('UPDATE mailbox_access SET requested_local_part')) {
-        access = { status: 'active', mailbox_address: params[0] };
+        access = { status: 'active', mailbox_address: params[0], smtp_secret: params[1], daily_limit: 50 };
         assert.equal(open(params[1], params[0]), 'ExistingPass9!');
         return [{ affectedRows: 1 }];
       }
       if (sql.startsWith('SELECT user_id FROM mailbox_access')) return [[{ user_id: 2 }, { user_id: 3 }]];
       if (sql.startsWith("UPDATE mailbox_access SET status='rejected'")) { rejected = true; return [{ affectedRows: 2 }]; }
+      if (sql.includes('SELECT m.mailbox_address, m.smtp_secret, m.daily_limit')) return [[{ ...access }]];
+      if (sql.startsWith('INSERT INTO mailbox_send_logs')) return [{ affectedRows: 1 }];
       throw Error('Unexpected transaction query: ' + sql);
     },
   }));
@@ -58,6 +65,8 @@ test('owner can connect an existing mailbox without provisioning it; review stay
   assert.equal((await request('/mailboxes/owner/connect', 1, { password: 'ExistingPass9!' })).status, 200);
   assert.equal(verified, 1);
   assert.equal(access.mailbox_address, 'mooncci@mooncci.site');
+  assert.equal((await request('/mailboxes/send', 1, { to: 'recipient@example.com', subject: 'Hello', content: 'Body' })).status, 200);
+  assert.equal(sent, true);
   assert.equal((await request('/mailboxes/admin/requests?status=pending&page=1', 2)).status, 403);
   const list = await request('/mailboxes/admin/requests?status=pending&page=1', 1);
   assert.equal(list.status, 200);
@@ -65,4 +74,7 @@ test('owner can connect an existing mailbox without provisioning it; review stay
   assert.equal(list.body.limit, 20);
   assert.equal((await request('/mailboxes/admin/requests/batch-reject', 1, { ids: [2, 3] })).status, 200);
   assert.equal(rejected, true);
+  assert.equal((await request('/mailboxes/admin/requests/2/limit', 2, { dailyLimit: 0 })).status, 403);
+  assert.equal((await request('/mailboxes/admin/requests/2/limit', 1, { dailyLimit: 0 })).status, 200);
+  assert.equal(updatedLimit, 0);
 });

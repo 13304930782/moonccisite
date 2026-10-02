@@ -74,7 +74,8 @@ agentRouter.post('/complete', async (req, res) => {
 });
 
 router.use(authRequired);
-router.use(rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }));
+router.use(rateLimit({ windowMs: 60_000, limit: 30, skip: req => req.user?.role === 'owner',
+  standardHeaders: true, legacyHeaders: false }));
 
 const ownerConnectLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 5,
   keyGenerator: req => String(req.user.id), standardHeaders: true, legacyHeaders: false });
@@ -111,12 +112,12 @@ router.post('/owner/connect', ownerOnly, ownerConnectLimiter, async (req, res) =
     if (rows[0]) {
       await connection.query(`UPDATE mailbox_access SET requested_local_part='mooncci', reason='站长连接现有邮箱',
         status='active', mailbox_address=?, smtp_secret=?, provision_request_id=NULL,
-        provision_claimed_at=NULL, reviewer_id=?, review_note=NULL, reviewed_at=NOW(), daily_limit=50
+        provision_claimed_at=NULL, reviewer_id=?, review_note=NULL, reviewed_at=NOW(), daily_limit=0
         WHERE user_id=?`, [address, secret, req.user.id, req.user.id]);
     } else {
       await connection.query(`INSERT INTO mailbox_access
         (user_id,requested_local_part,reason,status,mailbox_address,smtp_secret,daily_limit,reviewer_id,reviewed_at)
-        VALUES (?,'mooncci','站长连接现有邮箱','active',?,?,50,?,NOW())`,
+        VALUES (?,'mooncci','站长连接现有邮箱','active',?,?,0,?,NOW())`,
       [req.user.id, address, secret, req.user.id]);
     }
     await connection.commit();
@@ -146,7 +147,9 @@ function publicAccess(row) {
 
 router.get('/me', async (req, res) => {
   const [rows] = await db.query('SELECT * FROM mailbox_access WHERE user_id=? LIMIT 1', [req.user.id]);
-  res.json({ access: publicAccess(rows[0]) });
+  const access = publicAccess(rows[0]);
+  if (access && req.user.role === 'owner') access.daily_limit = 0;
+  res.json({ access });
 });
 
 router.post('/apply', async (req, res) => {
@@ -215,8 +218,8 @@ router.post('/admin/requests/batch-approve', ownerOnly, async (req, res) => {
   const ids = Array.isArray(req.body.ids) ? [...new Set(req.body.ids.map(Number))] : [];
   const dailyLimit = Number(req.body.dailyLimit ?? 10);
   if (!ids.length || ids.length > 20 || ids.some(id => !Number.isSafeInteger(id) || id <= 0) ||
-      !Number.isInteger(dailyLimit) || dailyLimit < 1 || dailyLimit > 50) {
-    return res.status(400).json({ message: '每次最多选择 20 条待审申请，日额度需为 1–50 封。' });
+      !Number.isInteger(dailyLimit) || dailyLimit < 0 || dailyLimit > 1000) {
+    return res.status(400).json({ message: '每次最多选择 20 条待审申请；每日额度为 0（不限）或 1–1000 封。' });
   }
   const connection = await db.getConnection();
   try {
@@ -286,8 +289,8 @@ router.post('/admin/requests/:id/approve', ownerOnly, async (req, res) => {
     return res.status(503).json({ message: '邮局自动开通尚未配置；申请仍待审核。' });
   }
   const dailyLimit = Number(req.body.dailyLimit ?? 10);
-  if (!Number.isInteger(dailyLimit) || dailyLimit < 1 || dailyLimit > 50) {
-    return res.status(400).json({ message: '每日发送上限需为 1–50 封。' });
+  if (!Number.isInteger(dailyLimit) || dailyLimit < 0 || dailyLimit > 1000) {
+    return res.status(400).json({ message: '每日额度为 0（不限）或 1–1000 封。' });
   }
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ message: '申请编号无效。' });
@@ -315,6 +318,18 @@ router.post('/admin/requests/:id/approve', ownerOnly, async (req, res) => {
   } finally {
     connection.release();
   }
+});
+
+router.post('/admin/requests/:id/limit', ownerOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  const dailyLimit = req.body?.dailyLimit;
+  if (!Number.isSafeInteger(id) || id <= 0 || !Number.isInteger(dailyLimit) || dailyLimit < 0 || dailyLimit > 1000) {
+    return res.status(400).json({ message: '每日额度为 0（不限）或 1–1000 封。' });
+  }
+  const [result] = await db.query(`UPDATE mailbox_access m JOIN users u ON u.id=m.user_id
+    SET m.daily_limit=? WHERE m.user_id=? AND m.status='active' AND u.role <> 'owner'`, [dailyLimit, id]);
+  if (!result.affectedRows) return res.status(409).json({ message: '邮箱状态已改变，请刷新后重试。' });
+  res.json({ message: dailyLimit === 0 ? '已取消该用户的每日发信上限。' : `每日发信上限已设为 ${dailyLimit} 封。` });
 });
 
 router.post('/admin/requests/:id/revoke', ownerOnly, async (req, res) => {
@@ -349,11 +364,13 @@ router.post('/send', async (req, res) => {
       await connection.rollback();
       return res.status(403).json({ message: '邮箱尚未开通或发信权限已撤销。' });
     }
-    const [count] = await connection.query(`SELECT COUNT(*) AS used FROM mailbox_send_logs
-      WHERE user_id=? AND created_at>=CURRENT_DATE() AND created_at<DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY)`, [req.user.id]);
-    if (Number(count[0].used) >= account.daily_limit) {
-      await connection.rollback();
-      return res.status(429).json({ message: '今日发送额度已用完，请明天再试。' });
+    if (req.user.role !== 'owner' && Number(account.daily_limit) > 0) {
+      const [count] = await connection.query(`SELECT COUNT(*) AS used FROM mailbox_send_logs
+        WHERE user_id=? AND created_at>=CURRENT_DATE() AND created_at<DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY)`, [req.user.id]);
+      if (Number(count[0].used) >= account.daily_limit) {
+        await connection.rollback();
+        return res.status(429).json({ message: '今日发送额度已用完，请明天再试。' });
+      }
     }
     logId = crypto.randomUUID();
     await connection.query(`INSERT INTO mailbox_send_logs (id,user_id,mailbox_address,recipient_email,subject,status)
@@ -390,7 +407,7 @@ router.post('/send', async (req, res) => {
       throw new Error('SMTP did not accept the recipient');
     }
     await db.query("UPDATE mailbox_send_logs SET status='accepted' WHERE id=?", [logId]);
-    res.json({ message: '邮件已提交给邮局。对方是否收件仍取决于后续投递。', id: logId });
+    res.json({ message: '邮件已发送。', id: logId });
   } catch (error) {
     console.error('[mailboxes/send]', { id: logId, code: error.code || 'SMTP_ERROR' });
     await db.query("UPDATE mailbox_send_logs SET status='uncertain' WHERE id=?", [logId]);
