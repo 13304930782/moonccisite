@@ -183,6 +183,7 @@ function SiteRoutes() {
 <Route path="/account/history" element={<Guard><AccountWorkspace><ReadingHistoryPage/></AccountWorkspace></Guard>}/>
 <Route path="/account/bookmarks" element={<Guard><AccountWorkspace><BookmarksPage /></AccountWorkspace></Guard>} />
           <Route path="/account/settings" element={<Guard><AccountWorkspace><AccountSettingsPage /></AccountWorkspace></Guard>} />
+          <Route path="/account/mailbox" element={<Guard><AccountWorkspace><MailboxPage /></AccountWorkspace></Guard>} />
 <Route path="/account/submissions" element={<Guard><AccountWorkspace><SubmissionsPage /></AccountWorkspace></Guard>} />
 <Route path="/account/write" element={<Guard><AccountWorkspace><AdminWritePage /></AccountWorkspace></Guard>} />
 <Route path="/admin/reviews" element={<Guard adminOnly><AdminShell><PublishingQueuePage key="reviews" /></AdminShell></Guard>} />

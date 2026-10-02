@@ -96,3 +96,4 @@
 .account-bookmarks .bookmark-item>.text-link{align-self:flex-start;font-size:12px;margin-top:0;color:var(--muted-foreground);padding:8px 0}
 .account-bookmarks .bookmark-item .quiet-state{padding:20px 0;display:grid;gap:12px;color:var(--muted-foreground)}
 @media(max-width:640px){.account-bookmark-empty{padding:40px 20px;min-height:300px}.account-bookmarks .bookmark-item{padding:20px}}
+@media(max-width:760px){.account-workspace .account-sidebar nav{overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity}.account-workspace .account-sidebar nav::-webkit-scrollbar{display:none}.account-workspace .account-sidebar nav a{flex:0 0 auto;scroll-snap-align:start}}
