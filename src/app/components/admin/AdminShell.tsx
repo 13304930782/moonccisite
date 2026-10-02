@@ -240,10 +240,16 @@ export function AdminShell({ children }: AdminShellProps) {
       show: manager,
     },
     {
-      title: '我的邮箱',
+      title: '发邮件',
       to: '/admin/mailbox',
       icon: Mail,
-      show: true,
+      show: user?.role === 'owner',
+    },
+    {
+      title: '邮箱申请审核',
+      to: '/admin/mailbox-requests',
+      icon: ShieldCheck,
+      show: user?.role === 'owner',
     },
     {
       title: '编辑申请',
@@ -275,7 +281,7 @@ export function AdminShell({ children }: AdminShellProps) {
           {label:'工作台',paths:['/admin/operations','/admin','/admin/analytics']},
           {label:'内容与发布',paths:['/admin/posts','/admin/write','/admin/reviews','/admin/schedules','/admin/series','/admin/media','/admin/updates','/admin/projects']},
           {label:'用户与互动',paths:['/admin/comments','/admin/users','/admin/editor-applications','/admin/editor-apply','/admin/early-access','/admin/banned-words']},
-          {label:'邮件与订阅',paths:['/admin/mailbox','/admin/newsletter','/admin/mail-settings','/admin/send-mail']},
+          {label:'邮件与订阅',paths:['/admin/mailbox','/admin/mailbox-requests','/admin/newsletter','/admin/mail-settings','/admin/send-mail']},
           {label:'站点与系统',paths:['/admin/blog-pages','/admin/site-settings','/admin/login-settings','/admin/electricity','/admin/runtime']},
         ].map(group=>{const items=group.paths.map(path=>menus.find(item=>item.to===path)).filter((item):item is MenuItem=>!!item);if(!items.length)return null;return <details className="admin-menu-group" key={group.label+location.pathname} open={group.label==='工作台'||items.some(item=>item.to==='/admin'?location.pathname==='/admin':location.pathname.startsWith(item.to))}><summary>{group.label}</summary>{items.map(item=><NavLink key={item.to} to={item.to} end={item.to==='/admin'} onClick={closeMobile}><item.icon/><span>{item.title}</span></NavLink>)}</details>;})}
         <div className="admin-menu-footer">
