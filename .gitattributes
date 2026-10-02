@@ -1,1 +1,2 @@
 server/mail-agent/* text eol=lf
+public/mail/config-v1.1.xml text eol=lf
