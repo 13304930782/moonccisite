@@ -1,0 +1,12 @@
+{
+  "src/lib/mailChannelDefinitions.json": null,
+  "src/lib/mailChannels.js": null,
+  "src/lib/mailer.js": "b5dd09c1b22f9402f8cf4d119e00397d3ed023e9f3e8e7b329cd0f06f79ecf05",
+  "src/lib/electricityMailer.js": "cb5a2fc067700c7a9d55b262470bac1dd52ec8c4c632f0c4754473663007fb6e",
+  "src/routes/settings.js": "a11f39c680709ae35124326d972a225fa2861a35171343826254409b50c9d2bc",
+  "src/routes/early-access.js": "b11d25f8fa186bf3802292a3e0466adcce2f486de49c57e586dc12db4afefddb",
+  "src/routes/subscriptions.js": "0d3d1e367fdb38198d1507093ee3c75e8205b40964aec5e6452643948f4f5e0d",
+  "src/routes/operations.js": "7218b7b12f6fa26a0bfcc65906e21a5a14a4d2911db56db6de7b9add83d028b2",
+  "src/services/newsletter.js": "3f97fab3862eb68905b6416dc3e5f2d49a34b023438d5a3464a23e1e888b5db5",
+  "src/services/engagement.js": "c11de70dcaca783742e41acb754c46dfbaa9e3d59ac86e0d2bf4d38cd776a204"
+}

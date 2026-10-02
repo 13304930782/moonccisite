@@ -72,3 +72,58 @@ test('CLI starts through current directory symlink and serves protected health',
  const r=await fetch(`http://127.0.0.1:${port}/_reader/health`,{headers:{'X-Mooncci-Reader-Key':key}});
  assert.equal(r.status,200);assert.equal(await r.text(),'ok');
 });
+
+
+test('preview diagnostics distinguish eligibility and fallback without leaking secrets or caching',async()=>{
+ const {handle}=await import('../cloudflare/read-router/worker.mjs');
+ const preview={...env,MODE:'preview',PREVIEW_KEY:'preview-secret-test'};
+ for(const [override,token,country,status,expected] of [
+  [{},'wrong','US',200,'preview-key-mismatch'],
+  [{ROUTING_ENABLED:'false'},preview.PREVIEW_KEY,'US',200,'disabled'],
+  [{},preview.PREVIEW_KEY,'CN',200,'domestic-region'],
+  [{READER_ORIGIN:'invalid'},preview.PREVIEW_KEY,'US',200,'reader-origin-invalid'],
+  [{},preview.PREVIEW_KEY,'US',403,'reader-http-403'],
+  [{},preview.PREVIEW_KEY,'US',200,'reader-response'],
+ ]) {
+  let calls=[];
+  const r=await handle(request('/api/posts',country,{headers:{'X-Mooncci-Preview':token}}),{...preview,...override},async req=>{
+   calls.push(req);return new Response('ok',{status:new URL(req.url).hostname==='reader.example.test'?status:200});
+  });
+  assert.equal(r.headers.get('X-Mooncci-Reason'),expected);
+  assert.equal(r.headers.get('X-Mooncci-Route'),expected==='reader-response'?'reader':'primary');
+  assert.equal(r.headers.get('Cache-Control'),'private, no-store');
+  assert.equal(JSON.stringify([...r.headers]).includes(preview.PREVIEW_KEY),false);
+  for(const req of calls)assert.equal(req.headers.has('X-Mooncci-Preview'),false);
+ }
+ const failed=await handle(request('/api/posts','US',{headers:{'X-Mooncci-Preview':preview.PREVIEW_KEY}}),preview,async req=>{
+  if(new URL(req.url).hostname==='reader.example.test')throw Error('private details');
+  return new Response('primary');
+ });
+ assert.equal(failed.headers.get('X-Mooncci-Reason'),'reader-fetch-error');
+ for(const config of [env,preview]) {
+  const r=await handle(request(),config,async()=>new Response('ok'));
+  assert.equal(r.headers.has('X-Mooncci-Reason'),false);
+ }
+});
+
+
+test('network outage falls back once; all write methods remain single primary requests',async()=>{
+ const {handle}=await import('../cloudflare/read-router/worker.mjs');
+ for(const method of ['GET','HEAD']) {
+  const calls=[];
+  const response=await handle(request('/api/posts','US',{method}),env,async req=>{
+   calls.push(new URL(req.url).hostname);
+   if(calls.length===1)throw new DOMException('simulated deadline','TimeoutError');
+   return new Response(method==='HEAD'?null:'primary');
+  });
+  assert.deepEqual(calls,['reader.example.test','mooncci.site']);assert.equal(response.status,200);
+ }
+ for(const method of ['POST','PUT','PATCH','DELETE']) {
+  let count=0;
+  await assert.rejects(handle(request('/api/posts','US',{method,body:'single-write'}),env,async req=>{
+   count++;assert.equal(new URL(req.url).hostname,'mooncci.site');
+   assert.equal(await req.text(),'single-write');throw Error('origin unavailable');
+  }),/origin unavailable/);
+  assert.equal(count,1);
+ }
+});

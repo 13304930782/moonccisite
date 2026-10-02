@@ -1,0 +1,3 @@
+zone,host,type,line,value,ttl
+route-test.mooncci.site,@,A,default,182.92.179.81,600
+route-test.mooncci.site,@,A,oversea,107.174.123.42,600

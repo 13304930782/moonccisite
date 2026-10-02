@@ -46,6 +46,7 @@ jobs:
       - run: node scripts/test-bookmarks-browser.cjs
       - run: node scripts/test-reading-browser.cjs
       - run: node scripts/test-detail-browser.cjs
+      - run: node scripts/test-update-journal-browser.cjs
       - run: node scripts/test-analytics-browser.cjs
       - run: node scripts/test-ux-unification.cjs
       - run: node scripts/test-image-retry-browser.cjs
