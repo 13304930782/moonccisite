@@ -42,6 +42,8 @@ jobs:
       - run: node scripts/test-admin-capacity-browser.cjs
       - run: node scripts/test-account-browser.cjs
       - run: node scripts/test-article-drafts-browser.cjs
+      - run: node scripts/test-article-revisions-browser.cjs
+      - run: node scripts/test-bookmarks-browser.cjs
       - run: node scripts/test-reading-browser.cjs
       - run: node scripts/test-detail-browser.cjs
       - run: node scripts/test-analytics-browser.cjs
@@ -120,4 +122,19 @@ jobs:
       - run: node --test server/test/mediaWorkflow.integration.test.js
         env:
           MEDIA_INTEGRATION: "true"
+          TEST_DB_PORT: "3306"
+
+      - run: node --test server/test/articleRevisions.integration.test.js
+        env:
+          REVISION_INTEGRATION: "true"
+          TEST_DB_PORT: "3306"
+
+      - run: node --test server/test/articleBookmarks.integration.test.js
+        env:
+          BOOKMARK_INTEGRATION: "true"
+          TEST_DB_PORT: "3306"
+
+      - run: node --test server/test/readerMigrations.integration.test.js
+        env:
+          READER_MIGRATION_INTEGRATION: "true"
           TEST_DB_PORT: "3306"

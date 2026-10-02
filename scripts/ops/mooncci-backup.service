@@ -1,0 +1,10 @@
+[Unit]
+Description=mooncci encrypted backup
+After=network-online.target
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/mooncci-ops/backup.py --config /etc/mooncci-backup/config.json
+TimeoutStartSec=3h
+Nice=10
+IOSchedulingClass=idle

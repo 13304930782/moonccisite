@@ -528,3 +528,212 @@ four-color logo in dark mode. No GitHub push is required for offline deployment.
 
 本功能需要一个独立的后端离线包（`scripts/build-mailbox-imap-release.py`），包含 IMAP 依赖并隔离放在 `src/lib/mailbox-vendor`，避免更改站点其他依赖；安装时只重启 API。随后通过常规 `scripts/build-offline-release.py` 部署前端包，前端部署不重启 PM2。邮局域名默认沿用 `MAILBOX_SMTP_HOST`，也可在后端 `.env` 单独设置 `MAILBOX_IMAP_HOST` 和 `MAILBOX_IMAP_PORT=993`；不需要迁移数据库或改动邮局服务器。
 
+
+
+## Article revisions / private bookmarks staged releases
+
+Stage 1: `python -X utf8 scripts/build-reader-release.py revisions` then
+`powershell -ExecutionPolicy Bypass -File scripts/Upload-ReaderRelease.ps1 -Stage revisions`.
+Before production migration, create a BaoTa database backup. The upload script
+prints verified child-shell/nohup commands, log path and frontend verification.
+The revisions package applies ONLY `202609190001_article_revisions.sql`, replaces
+five explicit backend files, restarts mooncci-api and mooncci-worker, and publishes
+frontend assets after health verification. Existing backend file hashes must match
+the accepted baseline. No historical SQL, .env, uploads or dependencies are replaced.
+Fresh installs use updated schema.sql/init-db.js; never import that snapshot into
+an existing database. The dedicated migrator uses the installed dependencies and
+normal schema migration lock/checksum ledger. On failure the deployer restores
+backed-up code and index.html, restarts the affected processes, and retains the
+additive table and all saved revision data. For manual rollback, restore
+server-before.tar into the backend root and index.html from the printed backup
+folder, then restart the same processes; do not DROP the revision table.
+
+Revisions are private to article authors and administrators. Autosaves consolidate
+into five-minute server-time buckets with at most 200 automatic snapshots and a
+30-day lifetime; manual/published/pre-restore snapshots remain until deletion.
+Restoring only updates the working draft, never original publication time or
+public article contents. An old article receives a baseline when first opened or
+modified after installation, with the actual baseline capture time. Media URL
+replacement also versions affected articles; history preserves the old URL, not
+a copy of the underlying image file. Permanently removed media cannot be restored
+by restoring article text. Daily worker cleanup and save-time caps use the same
+retention rules. SQL rollback tests intentionally log an ER_SIGNAL_EXCEPTION.
+
+Validation: `REVISION_INTEGRATION=true TEST_DB_PORT=33079 node --test server/test/articleRevisions.integration.test.js`
+against a local, empty-password QA MySQL only; it creates/drops its own mooncci_qa database.
+Browser validation: `node scripts/test-article-revisions-browser.cjs` (set
+PLAYWRIGHT_CHANNEL=msedge on Windows). These commands never target production data.
+
+### Stage 2: private bookmarks (deploy after stage 1)
+
+Build: `python -X utf8 scripts/build-reader-release.py bookmarks`.
+Upload: `powershell -ExecutionPolicy Bypass -File scripts/Upload-ReaderRelease.ps1 -Stage bookmarks`.
+The package contains a complete frontend plus exactly four backend files:
+`src/index.js`, `src/routes/account.js`, `src/routes/socialLogin.js`,
+`src/routes/bookmarks.js`. Its only SQL is `202609190002_article_bookmarks.sql`.
+It verifies the revisions table already exists, applies the additive migration,
+and restarts only mooncci-api. It does not execute the historical migration set,
+install dependencies, restart the worker, or replace .env/uploads. If stage 1
+was rolled back, redeploy stage 1 before stage 2; the table existing alone does
+not confirm that revision-history routes are active.
+
+Before either stage, use BaoTa Database > the blog database > Backup and confirm
+a downloadable backup completed. The deploy script additionally backs up each
+replaced backend file and index.html under its printed `/www/backup/mooncci-reader.*`
+folder. Keep that backup and the deployment log. Deploy stage 1, validate history
+list/diff/restore with an editor account, then deploy stage 2 and validate bookmarks
+with a reader account. Packages are local; neither new feature is pushed to GitHub
+or installed in production automatically.
+
+Private endpoints: GET `/api/bookmarks?page=1` (12 items), GET/PUT/DELETE
+`/api/bookmarks/:postId`. Only the authenticated user's rows are accessible;
+responses are no-store. Unpublished rows expose only relation ID, article ID,
+collection time and available=false. No titles, covers, summaries or body leak.
+Hard deletion cascades, and the existing administrator account-deletion transaction
+clears private bookmarks during soft deletion. Focus/visibility refreshes local UI;
+failed writes retain their error message. Login returns to an allowlisted article
+or bookmarks URL and never automatically adds a bookmark.
+
+Validation: `BOOKMARK_INTEGRATION=true TEST_DB_PORT=33079 node --test server/test/articleBookmarks.integration.test.js`;
+`READER_MIGRATION_INTEGRATION=true TEST_DB_PORT=33079 node --test server/test/readerMigrations.integration.test.js`;
+`node scripts/test-bookmarks-browser.cjs`. Use a disposable local test MySQL, not the
+production database. The migration test executes the actual package migrator twice
+per stage and verifies existing bookmarks survive.
+
+Manual rollback (replace BACKUP with the path printed by the failed stage; roll
+back stage 2 before stage 1). Run in a child shell, never source into SSH:
+
+```bash
+nohup bash -c '
+set -euo pipefail
+backup="$1"
+stage="$2"
+case "$backup" in /www/backup/mooncci-reader.*) ;; *) exit 1;; esac
+case "$stage" in revisions|bookmarks) ;; *) exit 1;; esac
+exec 9>/www/backup/mooncci-deploy.lock
+flock -w 120 9
+test -f "$backup/server-before.tar"
+test -f "$backup/index.html"
+tar -xpf "$backup/server-before.tar" -C /www/wwwroot/mooncci-source/server
+cp -p "$backup/index.html" /www/wwwroot/mooncci.site/index.html
+su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; pm2 restart mooncci-api"
+if [ "$stage" = revisions ]; then
+ su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; pm2 restart mooncci-worker"
+fi
+' bash /www/backup/mooncci-reader.BACKUP bookmarks > /www/backup/mooncci-reader-rollback.log 2>&1 < /dev/null &
+tail -n 40 /www/backup/mooncci-reader-rollback.log
+```
+
+Rollback keeps both new tables and their data, all uploads and configuration;
+new unreferenced backend modules/assets may remain harmlessly on disk. Do not
+restore a whole historical SQL dump or drop these tables for a code rollback.
+After restart, check `/api/health` and the signed-in page for the deployed stage.
+
+## Dependency diagnostics hotfix (backend only)
+
+Build `python -X utf8 scripts/build-dependency-diagnostics-release.py`, then upload
+with `powershell -ExecutionPolicy Bypass -File scripts/Upload-DependencyDiagnostics.ps1`.
+The verified offline archive replaces ONLY `server/src/lib/dependencyHealth.js`;
+it does not contain frontend assets, unrelated pending features, SQL, dependencies,
+.env or uploads. It accepts the previous deployed dependency checker hash or this
+patch's hash, backs up the file, restarts mooncci-api and checks local health.
+Failure restores the previous file and restarts the API. No worker restart.
+The upload script prints child-shell/nohup deployment and log commands.
+
+Logs use the prefix `[dependency-health]` and one JSON object per actual failed
+probe, plus one `recovered` event when the next probe succeeds. Cache hits and
+healthy steady-state checks do not log. Public 200/503 responses, their fields,
+60-second caching and 10-second timeout stay unchanged. Correlate `checkedAt`
+with Better Stack's response body; timestamps are UTC. Logs cannot reconstruct
+failures that occurred before deploying this patch.
+
+`responseStatus` is the status received from the proxy/upstream, NOT the public
+health endpoint's 503. `proxyDiagnostic` contains only known Worker diagnostic
+labels (`request_rejected`, `upstream_http_429`, `upstream_fetch_timeout`, etc.).
+Missing/unknown diagnostic headers are labelled `missing`/`unrecognized`.
+`proxyVersion` accepts only known versions 1, 2, 3. `reason` differentiates config,
+network, timeout, malformed responses and unexpected proxy responses; `networkCode`
+is limited to fixed DNS/TLS/connection error codes. No raw error message, URL,
+request headers, response body, key, cookie or user token is logged.
+
+Manual rollback: replace BACKUP with the printed backup folder, in a child shell:
+
+```bash
+nohup bash -c '
+set -eu
+exec 9>/www/backup/mooncci-deploy.lock
+flock -w 120 9
+tar -xpf /www/backup/mooncci-dependency-diagnostics.BACKUP/server-before.tar -C /www/wwwroot/mooncci-source/server
+su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; pm2 restart mooncci-api"
+' > /www/backup/dependency-diagnostics-rollback.log 2>&1 < /dev/null &
+tail -n 40 /www/backup/dependency-diagnostics-rollback.log
+```
+
+## Proxy-only IPv4 mitigation
+
+Build `python -X utf8 scripts/build-proxy-ipv4-release.py`; upload with
+`powershell -ExecutionPolicy Bypass -File scripts/Upload-ProxyIPv4.ps1`.
+This package requires the dependency diagnostics patch baseline and contains only
+`src/lib/proxyTransport.js`, `src/lib/dependencyHealth.js`,
+`src/lib/socialProviders.js`, `src/lib/googleIdentity.js`. It replaces no frontend,
+configuration, dependencies, uploads or SQL; unrelated reader features are excluded.
+The API is restarted after backing up existing files. Failure restores those files.
+The new unreferenced helper may remain after rollback. The uploader prints the
+verified child-shell/nohup commands and PM2 diagnostic log command.
+
+Only the configured Google certificate URL and configured GitHub proxy routes
+/token, /user, /emails use HTTPS family=4 and autoSelectFamily=false. TLS hostname
+and certificate verification remain enabled; DNS still resolves current IPv4
+addresses (no pinned Cloudflare IPs). Other providers keep their existing fetch
+transport. OAuth request bodies/headers and response validation are preserved.
+There are no redirects or retries, especially no replay of token exchange.
+All affected calls retain a 10-second total AbortSignal deadline; Google's old
+6-second socket inactivity timeout is replaced with a 10-second total deadline.
+Health-probe result fields/cache and sanitized diagnostics remain unchanged.
+
+This mitigates unavailable IPv6 and premature dual-stack address attempts on the
+current host, but does not establish the prior incident's unique root cause or
+eliminate IPv4 packet loss. After deployment, confirm both dependency endpoints
+return 200/ok=true, and perform Google/GitHub login using a real account. Observe
+subsequent Better Stack events and correlate checkedAt with diagnostic logs.
+Read-only diagnosis remains available in scripts/diagnose-dependency-network.cjs.
+
+Manual rollback (replace BACKUP with the printed backup directory):
+```bash
+nohup bash -c '
+set -eu
+exec 9>/www/backup/mooncci-deploy.lock
+flock -w 120 9
+tar -xpf /www/backup/mooncci-proxy-ipv4.BACKUP/server-before.tar -C /www/wwwroot/mooncci-source/server
+su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; pm2 restart mooncci-api"
+' > /www/backup/proxy-ipv4-rollback.log 2>&1 < /dev/null &
+tail -n 40 /www/backup/proxy-ipv4-rollback.log
+```
+
+
+## 2026-09 维护基础专用包
+
+新增 `/admin/runtime`，接口 `/api/admin/runtime` 仅 owner/admin 可读，响应 no-store。API 启动时间、worker 存活记录、真实迁移清单及应用磁盘状态分开显示。worker 90 秒无更新标为未知，不将进程存活当作任务成功。`server/runtime` 不进 Git，不包含账号或密钥；可用 `MOONCCI_RUNTIME_DIR` 改目录（部署记录仍使用默认目录，改目录时需同步部署工具）。
+
+构建：提交本地变更后运行 `python scripts/build-maintenance-release.py`，上传：`powershell -ExecutionPolicy Bypass -File scripts/Upload-Maintenance.ps1`。上传器验证 SHA256 并输出 nohup 子进程部署命令。服务器需 Python 3.6+。本包包含前端及 MANIFEST.json 中列出的后端文件，无依赖安装和迁移；旧哈希资源不删除。后台功能要求先完成修订历史、收藏两批迁移，缺失则部署停止，不自动执行历史 SQL。
+
+部署前逐项比对生产文件 SHA256，只接受已知基线或本次目标文件，发现未知改动停止。备份位于 `/www/backup/mooncci-manifest-*`。发生执行失败按清单恢复原文件并重启 API/worker；数据库、.env、uploads 和历史 SQL 始终不在替换范围。成功后记录发布包版本，不能把这个版本理解成所有后端文件均来自该提交。
+
+运维脚本在包内 ops/，**不会随网站部署自动安装、启用计时器或修改备份配置**。配置与验证步骤见 `scripts/ops/README.md`。每日备份、异地复制、月度完整恢复演练和 RPO/RTO 验收尚需目标环境配置及实际运行；仓库校验不等同于可恢复性验收。
+
+回滚成功部署时先停止下一次发布，用 MANIFEST.json 与备份逐项比对，确认在线文件仍为该包哈希；恢复备份中同名文件，对原来不存在的新文件仅删除清单记录的新增文件。保留旧哈希前端资源及全部新增数据表。不得整目录覆盖源站。自动失败回滚已包含上述文件级恢复；人工成功发布回滚在完成演练前不要用于生产。
+
+
+成功部署后如需回滚，使用该包内 `ops/rollback.py`，与同目录 `deploy.py` 一起放置后，在子进程运行：`nohup python3 /www/backup/包目录/ops/rollback.py /www/backup/mooncci-manifest-对应备份目录 > /www/backup/mooncci-rollback.log 2>&1 < /dev/null &`。工具先校验所有在线文件和备份，再恢复；发现后续修改即拒绝。用 `tail -n 60 /www/backup/mooncci-rollback.log` 检查结果。恢复中断时保留现场和备份，不重复覆盖未知文件。
+
+
+## 双服务器内部验证版（未切换流量）
+
+美国主机 107.174.123.42 / Ubuntu / 宝塔，已有 cuegroveapp.com。使用独立用户、目录、3102 本机端口及独立源站域名，禁止覆盖原网站或默认 Nginx 配置。当前 SSH 无可用密钥，用户已提供只读环境信息：Ubuntu 24.04.4、宝塔 Node 22.23.1、3102 空闲；专用首次安装器据此准备。
+
+`python scripts/build-reader-node-package.py` 生成美国阅读节点专用离线包，复用 `.cache/maintenance-release.json` 对应生产版本的静态资源，不在美国服务器构建前端或拉取 GitHub。Worker 单文件为包内 WORKER.mjs；默认关闭、仅准备 preview 模式。独立服务使用已验证的宝塔 Node 22.23.1 路径，不升级或替换已有网站的运行时。无需 MySQL、生产 .env 或账号密钥。
+
+动态 HTML/API 继续 no-store，草稿附件不进入节点；当前仅静态资源及公开匿名转发，不宣称已完成动态缓存与失效。账号额度监控、公开媒体同步及跨境性能实测仍在上线门槛内。完整操作边界见 cloudflare/read-router/README.md。
+
+
+美国首次安装入口为 `scripts/Upload-ReaderNode.ps1`。服务器安装器只使用已有 `/www/server/nodejs/v22.23.1/bin/node`，精确版本不符则停止；通过节点本机测试后，启用独立 systemd 服务，不改宝塔 Nginx/DNS，不重启 PM2。检查日志出现 `Reader local installation complete. Public routing remains OFF.` 后，再进行源站域名、证书和 Worker 内部验证。BOM 问题已在只读检查工具中改用无 BOM UTF-8 的 Base64 传输修复。

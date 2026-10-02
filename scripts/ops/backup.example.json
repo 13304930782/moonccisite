@@ -1,0 +1,18 @@
+{
+  "work_dir": "/var/lib/mooncci-backup/staging",
+  "uploads": "/www/wwwroot/mooncci-source/server/uploads",
+  "app_env": "/www/wwwroot/mooncci-source/server/.env",
+  "mysql_defaults": "/etc/mooncci-backup/mysql.cnf",
+  "password_file": "/etc/mooncci-backup/restic-password",
+  "repository": "/var/lib/mooncci-backup/repository",
+  "database": "REPLACE_WITH_DATABASE_NAME",
+  "host_tag": "mooncci-primary",
+  "min_free_bytes": 1073741824,
+  "success_heartbeat": "",
+  "disk_paths": [
+    "/www/wwwroot/mooncci-source/server",
+    "/var/lib/mooncci-backup"
+  ],
+  "disk_free_fraction": 0.15,
+  "disk_heartbeat": ""
+}
