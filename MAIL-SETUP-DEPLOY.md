@@ -193,3 +193,9 @@ Apple：Safari 点击生成后再点击原生下载链接，检查 MIME、未签
 没有这些实机证据不能宣布全面可用；Gmail、Outlook 保留手动设置。
 
 本地测试记录与未完成项目见 `MAIL-SETUP-TESTS.md`。国内源站、海外网关、公网两个入口、真实客户端是四类不同证据，不能互相替代。
+
+## 2026-10-02 运行状态与后续补丁
+
+PR #62 尚未合并。功能版本 81a3dd83 已由用户在国内源站、海外网关与 autoconfig 子域安装，公网两个 XML 入口已验证。审阅补丁 5077ccbb 仅更新 `server/src/routes/mailSetup.js`，用户日志显示部署 PASS、EXIT_CODE=0；备份 `/www/backup/mooncci-mail-hardening.Nq68c8`。补丁包 SHA、上传、部署和回滚命令见本地交付 `outputs/version-unification/DEPLOY-mail-hardening-20261002.txt`。
+
+源站与网关的实际配置、生产日志隐私的完整复核仍需服务器访问。证书私钥未轮换，系用户选择暂缓；不能记为已修复。客户端结果及限制见 `MAIL-SETUP-TESTS.md`。

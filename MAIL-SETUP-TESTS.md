@@ -75,6 +75,15 @@ PR #62 原始提交 81a3dd83b378 的线上部署由交接记录提供，不重�
 
 本次本机专项 7/7；后端 186 通过、33 个既有集成测试跳过、0 失败。使用现有本机 server/node_modules；干净 Linux 依赖安装与完整构建以新提交 CI 为准。本次未重新运行浏览器或 Nginx 拓扑测试。未发送真实邮件、未访问生产邮箱。
 
-用户交接记录：iPhone 安装和收件成功，发件为用户报告成功；不代表 Apple STARTTLS 失败拒绝认证已验证。Thunderbird 自动发现、生产完整日志及隐藏路径回归仍待验收。此前的“未上线”段落仅描述最初开发时状态。
+用户交接记录：iPhone 安装和收件成功，真实发件为用户报告成功。本轮另见下方隔离测试。此前的“未上线”段落仅描述最初开发时状态。
 
-证书：2026-10-02 用户确认未更换私钥并选择暂时保留，不能记为轮换完成。Apple 失败场景用户同意配合隔离测试，结果尚待记录。
+证书：2026-10-02 用户确认未更换私钥并选择暂时保留，不能记为轮换完成。Apple 失败场景已按下方记录完成隔离实机观察。
+
+## 2026-10-02 生产部署与客户端验收补记
+
+- 代码修复提交 `5077ccbb2875dd41304a9f8e171db5e25b235e76`，PR #62 仍为草稿，未合并。CodeQL、Analyze、build-and-unit、mysql-integration 四项检查通过。
+- 单文件后端补丁包 `mooncci-mail-hardening-20261002.tar.gz`，SHA256 `9d4a29be49da51f9e601d5100f3bccd604511948e2656e05ee4ef492fb7b438e`。用户部署日志显示校验 OK、PASS、EXIT_CODE=0；API ID 0 重启，worker 未重启。备份 `/www/backup/mooncci-mail-hardening.Nq68c8`。公网健康接口 200，非法 PUT 返回 405 + private/no-store，XML 返回 200 application/xml。
+- Apple Mail：隔离测试使用局域网虚构账号 `fixture@example.invalid`。iPhone 安装测试证书和账户后，用户确认可进入空收件箱；本机记录 IMAP 登录成功。正常 SMTP 控制组先请求 STARTTLS，TLS 建立后才认证，测试邮件在本机丢弃，未对外投递。无 STARTTLS 广告时，用户观察邮件停在发件箱；本机看到 EHLO，无 AUTH/DATA。广告 STARTTLS 但回复 454 时，用户截图显示连接超时；本机记录 STARTTLS 请求，无 AUTH/DATA。观察仅对该 iPhone 和本地测试端口 1587/1993 有效，不能概括生产端口 587/993 或所有客户端版本。用户确认测试配置已从手机移除；本机服务已停止、临时私钥已删除。事件文件保存在本地交付目录 `outputs/version-unification/iphone-starttls-events-20261002.json`。
+- Thunderbird：用户截图显示“Account settings found automatically”且配置来自邮箱服务提供方；IMAP 993 SSL/TLS、SMTP 587 STARTTLS、普通密码、完整邮箱用户名，与 XML 参数一致。截图证明自动发现，不证明登录或收发；Thunderbird 版本尚未记录。
+- 公网只读回归：`/.env`、`/.git/config`、`/server/.env` 均返回 404；XML 返回 200；无效的 profile 下载地址返回 404 且 private/no-store。生产完整日志隐私核对仍需服务器权限；不能用 HTTP 状态推断日志内容。
+- 证书：用户确认未更换此前可能在截图中暴露的私钥，并选择暂缓。公网 TLS 校验通过不等于私钥已轮换。
