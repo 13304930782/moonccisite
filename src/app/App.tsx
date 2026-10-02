@@ -54,6 +54,7 @@ const AdminUserSettingsPage = lazy(() => import('./pages/AdminUserSettingsPage')
 const CompleteRegistrationPage = lazy(() => import('./pages/CompleteRegistrationPage'));
 const AdminMailSettingsPage = lazy(() => import('./pages/AdminMailSettingsPage'));
 const AdminSendMailPage = lazy(() => import('./pages/AdminSendMailPage'));
+const MailboxPage = lazy(() => import('./pages/MailboxPage'));
 const AdminMediaPage = lazy(() => import('./pages/AdminMediaPage'));
 const ArticlePage = lazy(() => import('./pages/ArticlePage'));
 const ArticlesPage = lazy(() => import('./pages/ArticlesPage'));
@@ -190,6 +191,7 @@ function SiteRoutes() {
           <Route path="/admin/login-settings" element={<Guard ownerOnly><AdminShell><AdminLoginSettingsPage /></AdminShell></Guard>} />
           <Route path="/admin/mail-settings" element={<Guard adminOnly><AdminShell><AdminMailSettingsPage /></AdminShell></Guard>} />
           <Route path="/admin/send-mail" element={<Guard adminOnly><AdminShell><AdminSendMailPage /></AdminShell></Guard>} />
+          <Route path="/admin/mailbox" element={<Guard><AdminShell><MailboxPage /></AdminShell></Guard>} />
           <Route path="/admin/early-access" element={<Guard ownerOnly><AdminShell><AdminEarlyAccessPage /></AdminShell></Guard>} />
           <Route path="/admin/early-access/:id" element={<Guard ownerOnly><AdminShell><AdminEarlyAccessDetailPage /></AdminShell></Guard>} />
           <Route path="/admin/electricity" element={<Guard ownerOnly><AdminShell><Suspense fallback={<RouteLoader />}><AdminElectricityPage /></Suspense></AdminShell></Guard>} />

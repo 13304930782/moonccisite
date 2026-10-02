@@ -234,10 +234,16 @@ export function AdminShell({ children }: AdminShellProps) {
       show: manager,
     },
     {
-      title: '发送邮件',
+      title: '站点通知',
       to: '/admin/send-mail',
       icon: Send,
       show: manager,
+    },
+    {
+      title: '我的邮箱',
+      to: '/admin/mailbox',
+      icon: Mail,
+      show: true,
     },
     {
       title: '编辑申请',
