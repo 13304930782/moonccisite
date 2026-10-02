@@ -75,10 +75,10 @@ export default function AdminMailboxRequestsPage() {
         <p className="mailbox-confirm-addresses">{confirmItems?.map(item => `${item.requested_local_part}@mooncci.site`).join('、')}</p>
         <div><button className="mailbox-primary" disabled={busy} onClick={() => void act()}>{busy ? '处理中…' : '确认操作'}</button><button className="mailbox-secondary" disabled={busy} onClick={() => setConfirm(null)}>取消</button></div></div>}
       {loading ? <p className="mailbox-empty">正在读取申请…</p> : !result?.requests.length ? <p className="mailbox-empty">当前筛选条件下暂无申请。</p> : <>
-        <div className="mailbox-review-table-head"><div>{pending.length > 0 && <input type="checkbox" aria-label="选择当前页待审核申请" checked={allPendingSelected}
-          onChange={() => setSelected(allPendingSelected ? [] : pending.map(item => item.user_id))} />}</div><span>申请地址 / 用户</span><span>用途</span><span>状态 / 时间</span><span>操作</span></div>
+        <div className="mailbox-review-table-head"><label className="mailbox-review-check">{pending.length > 0 && <input type="checkbox" aria-label="选择当前页待审核申请" checked={allPendingSelected}
+          onChange={() => setSelected(allPendingSelected ? [] : pending.map(item => item.user_id))} />}</label><span>申请地址 / 用户</span><span>用途</span><span>状态 / 时间</span><span>操作</span></div>
         <div className="mailbox-review-rows">{result.requests.map(item => <article className="mailbox-review-row" key={item.user_id}>
-          <div className="mailbox-review-check">{item.status === 'pending' && <input type="checkbox" aria-label={`选择 ${item.requested_local_part}@mooncci.site`} checked={selected.includes(item.user_id)} onChange={() => toggle(item.user_id)} />}</div>
+          <label className="mailbox-review-check">{item.status === 'pending' && <input type="checkbox" aria-label={`选择 ${item.requested_local_part}@mooncci.site`} checked={selected.includes(item.user_id)} onChange={() => toggle(item.user_id)} />}</label>
           <div className="mailbox-review-identity"><strong>{item.requested_local_part}@mooncci.site</strong><span>{item.username} · {item.account_email}</span></div>
           <p title={item.reason}>{item.reason}</p><div className="mailbox-review-meta"><span className="mailbox-review-status">{label(item.status)}</span><time dateTime={item.created_at}>{new Date(item.created_at).toLocaleDateString('zh-CN')}</time></div>
           <div className="mailbox-review-actions">{item.status === 'pending' && <><button type="button" onClick={() => setConfirm({ ids: [item.user_id], action: 'approve' })}>批准</button><button type="button" onClick={() => setConfirm({ ids: [item.user_id], action: 'reject' })}>拒绝</button></>}
