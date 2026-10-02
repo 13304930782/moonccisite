@@ -46,7 +46,8 @@ for file in "${files[@]}"; do install -o mooncci -g mooncci -m 644 "server/$file
 pm restart "$api_id"
 healthy=0
 for attempt in $(seq 1 15); do
- if curl -fsS --connect-timeout 2 --max-time 3 http://127.0.0.1:3001/api/health | node -e 'let s="";process.stdin.on("data",x=>s+=x);process.stdin.on("end",()=>{if(JSON.parse(s).ok!==true)process.exit(1)})'; then healthy=1; break; fi
+ if curl -fsS --connect-timeout 2 --max-time 3 http://127.0.0.1:3001/api/health > "$backup/health.json" 2> "$backup/health-error.log" && node -e 'try{if(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).ok!==true)process.exit(1)}catch{process.exit(1)}' "$backup/health.json"; then healthy=1; break; fi
+ printf 'Waiting for API readiness (%s/15)...\n' "$attempt"
  sleep 2
 done
 test "$healthy" = 1

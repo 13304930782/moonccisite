@@ -2,3 +2,20 @@ server/mail-agent/* text eol=lf
 public/mail/config-v1.1.xml text eol=lf
 scripts/build-personal-mail-release.py text eol=lf
 PERSONAL-MAIL-DEPLOY.md text eol=lf
+
+*.sh text eol=lf
+*.sql text eol=lf
+*.sha256 text eol=lf
+scripts/*-baseline.json text eol=lf
+
+scripts/ops/* text eol=lf
+scripts/build-maintenance-release.py text eol=lf
+scripts/Upload-Maintenance.ps1 text eol=lf
+
+edge/** text eol=lf
+cloudflare/read-router/* text eol=lf
+scripts/build-reader-node-package.py text eol=lf
+scripts/Probe-ReaderHost.ps1 text eol=lf
+
+scripts/Upload-ReaderNode.ps1 text eol=lf
+test/read-router.test.cjs text eol=lf

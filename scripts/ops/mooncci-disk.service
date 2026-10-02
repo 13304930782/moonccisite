@@ -1,0 +1,6 @@
+[Unit]
+Description=mooncci disk space heartbeat
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/mooncci-ops/disk-heartbeat.py --config /etc/mooncci-backup/config.json

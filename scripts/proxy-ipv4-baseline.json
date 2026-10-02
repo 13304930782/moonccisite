@@ -1,0 +1,11 @@
+{
+  "src/lib/dependencyHealth.js": [
+    "a1f3374fb06683abce387ba285284b3fb2f07b4e91c88d2f1098f4958de119bc"
+  ],
+  "src/lib/socialProviders.js": [
+    "17b3f4f84608cff3223bae531f55201b1f2d3e44ad197b769868a69dd38cff4c"
+  ],
+  "src/lib/googleIdentity.js": [
+    "e07c38c7773a5e6d6e0f7c277d1d9b868cc8d1829621ace6e8935eee44690310"
+  ]
+}

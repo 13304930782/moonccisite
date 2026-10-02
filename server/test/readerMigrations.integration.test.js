@@ -7,7 +7,7 @@ test('scoped additive migrations are repeatable and retain data',{skip:process.e
  t.after(async()=>{await c.query(`DROP DATABASE IF EXISTS ${dbName}`);await c.end();fs.rmSync(live,{recursive:true,force:true});});
  await c.query(`CREATE DATABASE ${dbName} CHARACTER SET utf8mb4; USE ${dbName}`);
  await c.query(fs.readFileSync(path.join(__dirname,'../database/schema.sql'),'utf8'));
- await c.query('DROP TABLE article_bookmarks; DROP TABLE article_revisions; CREATE TABLE schema_migrations(filename VARCHAR(255) PRIMARY KEY,checksum CHAR(64) NOT NULL)');
+ await c.query('DROP TABLE bookmark_folder_members; DROP TABLE article_bookmarks; DROP TABLE article_revisions; CREATE TABLE schema_migrations(filename VARCHAR(255) PRIMARY KEY,checksum CHAR(64) NOT NULL)');
  const env={...process.env,DB_HOST:'127.0.0.1',DB_PORT:String(process.env.TEST_DB_PORT||33079),DB_USER:'root',DB_PASSWORD:'',DB_NAME:dbName};
  const run=stage=>{const r=spawnSync(process.execPath,[path.join(__dirname,'../scripts/migrate-reader-features.js'),live,stage],{env,encoding:'utf8'});assert.equal(r.status,0,r.stderr);};
  run('revisions');run('revisions');run('bookmarks');
