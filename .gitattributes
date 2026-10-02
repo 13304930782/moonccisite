@@ -1,0 +1,4 @@
+server/mail-agent/* text eol=lf
+public/mail/config-v1.1.xml text eol=lf
+scripts/build-personal-mail-release.py text eol=lf
+PERSONAL-MAIL-DEPLOY.md text eol=lf

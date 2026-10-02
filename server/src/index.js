@@ -155,6 +155,8 @@ app.use('/api/weather-mood', require('./routes/weatherMood').router);
 app.use('/api/admin/weather-companion', require('./routes/weatherMood').admin);
 app.use('/api/upload', uploadRoutes.router);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/mailboxes/agent', require('./routes/mailboxes').agentRouter);
+app.use('/api/mailboxes', require('./routes/mailboxes').router);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/admin/early-access', earlyAccessRoutes.adminRouter);
 app.use('/api/admin/electricity/rooms', require('./routes/adminElectricityRooms'));

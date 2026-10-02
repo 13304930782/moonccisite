@@ -173,11 +173,18 @@ export default function AdminPage() {
       show: manager,
     },
     {
-      title: '发送邮件',
-      desc: '使用后台 SMTP 配置，手动给指定邮箱发送邮件',
+      title: '站点通知',
+      desc: '使用站点 SMTP 配置，给已注册用户发送通知',
       to: '/admin/send-mail',
       icon: Send,
       show: manager,
+    },
+    {
+      title: '我的邮箱',
+      desc: '申请专属邮箱、发送邮件和查看审批状态',
+      to: '/admin/mailbox',
+      icon: Mail,
+      show: true,
     },
     {
       title: '申请成为编辑',

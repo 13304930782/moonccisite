@@ -522,3 +522,9 @@ four-color logo in dark mode. No GitHub push is required for offline deployment.
 ## mooncci Mail 客户端设置（2026-10-01）
 
 `/mail-setup`、公共 Mozilla Autoconfig 和可选 Apple 描述文件下载的分包、Nginx 精确路由、日志隐私、DNS/证书与回滚步骤见 [MAIL-SETUP-DEPLOY.md](MAIL-SETUP-DEPLOY.md)。尚未上线，不改 MX 或邮件服务器，不复用网站通知 SMTP 账号；测试边界见 [MAIL-SETUP-TESTS.md](MAIL-SETUP-TESTS.md)。
+### 个人邮箱收件箱与已发送（2026-10-03）
+
+已开通的个人邮箱在 `/account/mailbox` 或站长的 `/admin/mailbox` 使用同一个收发界面。收件箱和已发送通过邮局 IMAP 993 读取，网页仅呈现纯文本正文；超过 2 MB 的邮件和附件请用邮件客户端查看。读信会将收件箱邮件标记为已读。新网页邮件经 SMTP 接收后会尝试保存一份到 IMAP 已发送；保存失败时明确提示，不能据此重发，因为 SMTP 已接受邮件。既有网页发送日志仍单独保留，不迁移也不删除邮局邮件。
+
+本功能需要一个独立的后端离线包（`scripts/build-mailbox-imap-release.py`），包含 IMAP 依赖并隔离放在 `src/lib/mailbox-vendor`，避免更改站点其他依赖；安装时只重启 API。随后通过常规 `scripts/build-offline-release.py` 部署前端包，前端部署不重启 PM2。邮局域名默认沿用 `MAILBOX_SMTP_HOST`，也可在后端 `.env` 单独设置 `MAILBOX_IMAP_HOST` 和 `MAILBOX_IMAP_PORT=993`；不需要迁移数据库或改动邮局服务器。
+
