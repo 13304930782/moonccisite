@@ -30,9 +30,7 @@ function HeroLink({ to, label }: { to: string; label: string }) {
     </Link>
   );
 }
-function LatestNote() {
-  // Query independently: the newest six activities may all be articles.
-  const latest = useResource('/activity?type=update&pageSize=1');
+function LatestNote({ latest }: { latest: ReturnType<typeof useResource> }) {
   const note = latest.data?.items?.[0];
   return <ResourceState resource={latest}>
     {note ? <>
@@ -46,9 +44,12 @@ export default function HomePage() {
   const settings = useSiteSettings(),
     now = useResource('/now'),
     activity = useResource('/activity?pageSize=6'),
+    latest = useResource('/activity?type=update&pageSize=1'),
     posts = useResource('/posts?pageSize=4'),
     projects = useResource('/projects?featured=true');
   const hero = settings.data?.hero || {};
+  const fallbackNoteId = now.data && !now.data.content?.trim() ? latest.data?.items?.[0]?.activity_id : null;
+  const visibleActivity = (activity.data?.items || []).filter((item: any) => item.activity_id !== fallbackNoteId);
   return (
     <div className="neo-page">
       <Header />
@@ -91,7 +92,7 @@ export default function HomePage() {
                   </time>
                 </>
               ) : (
-                <LatestNote />
+                <LatestNote latest={latest} />
               )}
             </ResourceState>
           </aside>
@@ -104,7 +105,7 @@ export default function HomePage() {
             </Link>
           </div>
           <ResourceState resource={activity}>
-            <ActivityList items={activity.data?.items || []} />
+            <ActivityList items={visibleActivity} />
           </ResourceState>
         </section>
         <section className="home-section" id="latest">
@@ -145,9 +146,9 @@ export default function HomePage() {
           </div>
           <ResourceState resource={projects}>
             {projects.data?.items.length ? (
-              <div className="project-grid">
+              <div className={`project-grid${projects.data.items.length === 1 ? ' project-grid--single' : ''}`}>
                 {projects.data.items.map((p: any) => (
-                  <ProjectCard key={p.id} project={p} />
+                  <ProjectCard key={p.id} project={p} featured={projects.data.items.length === 1} />
                 ))}
               </div>
             ) : (

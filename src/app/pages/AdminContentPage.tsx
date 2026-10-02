@@ -21,10 +21,14 @@ function ImageField({
   value,
   onChange,
   onBusy,
+  label = '配图地址',
+  description,
 }: {
   value: string;
   onChange: (v: string) => void;
   onBusy?: (v:boolean)=>void;
+  label?: string;
+  description?: string;
 }) {
   const [open, setOpen] = useState(false),
     [images, setImages] = useState<any[]>([]),
@@ -61,13 +65,14 @@ function ImageField({
   return (
     <div className="image-field">
       <label>
-        配图地址
+        {label}
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="HTTPS 或 /api/uploads/…"
         />
       </label>
+      {description && <p className="muted">{description}</p>}
       <div className="inline-actions">
         <button type="button" disabled={busy} onClick={library}>
           从媒体库选择
@@ -314,7 +319,7 @@ export function AdminProjectsPage() {
             ['name', '作品名称', 160],
             ['slug', '地址标识（小写英文与连字符）', 160],
             ['tech_stack', '技术栈', 1000],
-            ['demo_url', '演示 HTTPS 地址', 500],
+            ['demo_url', '作品入口 HTTPS 地址（演示或申请体验）', 500],
             ['repo', '公开仓库（owner/repository）', 200],
             ['featured_rank', '首页推荐顺序（留空不推荐）', 4],
           ].map(([key, label, max]) => (
@@ -352,6 +357,8 @@ export function AdminProjectsPage() {
         <ImageField onBusy={setImageBusy}
           value={form.cover_image}
           onChange={(cover_image) => setForm({ ...form, cover_image })}
+          label="作品界面截图"
+          description="可上传真实界面截图，或从媒体库选择。保存后将显示在作品列表与详情页；留空时仅展示文字。"
         />
         <div className="form-grid">
           <label>

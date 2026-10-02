@@ -25,9 +25,9 @@ export default function ProjectsPage() {
       <ResourceState resource={resource}>
         {resource.data && (
           <>
-            <div className="project-grid">
+            <div className={`project-grid${resource.data.total === 1 ? ' project-grid--single' : ''}`}>
               {resource.data.items.map((p: any) => (
-                <ProjectCard key={p.id} project={p} />
+                <ProjectCard key={p.id} project={p} featured={resource.data.total === 1} />
               ))}
             </div>
             {!resource.data.items.length && (
@@ -71,7 +71,8 @@ export function ProjectDetailPage() {
             meta={<DetailMeta author={p.author_name} avatar={p.author_avatar} date={p.published_at || p.created_at} />}
             asideTitle="作品信息" aside={<>
               <SingleLine className="project-actions" label="作品链接">
-                {p.demo_url && <a className="quiet-button project-primary" href={safeHref(p.demo_url)} target="_blank" rel="noreferrer">打开作品 ↗</a>}
+                {p.demo_url && <a className="quiet-button project-primary" href={safeHref(p.demo_url)} target="_blank" rel="noreferrer">{p.slug === 'promptdock' ? '申请体验' : '打开作品'} ↗</a>}
+                {p.slug === 'promptdock' && !p.demo_url && <Link className="quiet-button project-primary" to="/early-access">申请体验 ↗</Link>}
                 {p.repo && <a className="quiet-button" href={`https://github.com/${p.repo}`} target="_blank" rel="noreferrer">GitHub ↗</a>}
               </SingleLine>
               {p.tech_stack && <div className="project-tech"><h2>技术栈</h2><p>{p.tech_stack}</p></div>}
@@ -83,7 +84,8 @@ export function ProjectDetailPage() {
               <img
                 className="content-image"
                 src={safeImageSrc(p.cover_image)}
-                alt={p.name}
+                alt={`${p.name} 界面截图`}
+                loading="lazy"
               />
             )}
             <MarkdownContent content={p.content} headingPrefix="project-heading" />

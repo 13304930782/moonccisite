@@ -19,6 +19,7 @@
 .neo-page .detail-page .detail-body .markdown-body li { margin-block:.35em; }
 .neo-page .detail-page .detail-body .article-summary { margin:0 0 24px; font-size:var(--reading-size,18px); line-height:1.8; color:var(--muted-foreground); }
 .detail-body .content-image { display:block; max-width:100%; height:auto; margin:0 0 24px; }
+.project-reading-body > .content-image { width:100%; border:1px solid var(--border); border-radius:6px; background:var(--card); }
 .project-reading-body { min-width:0; }
 /* Use this contract for atomic horizontal metadata, tags and action groups. */
 .neo-page :is(.single-line,.inline-actions) { display:flex; flex-wrap:nowrap; align-items:center; gap:12px; min-width:0; max-width:100%; overflow-x:auto; white-space:nowrap; overscroll-behavior-inline:contain; }
