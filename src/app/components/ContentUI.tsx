@@ -9,7 +9,7 @@ export type PageData<T = any> = { items: T[]; total: number; page: number; pageS
 // Only published, user-independent endpoints may share an in-memory snapshot.
 const publicSnapshots = new Map<string, { data: any; time: number }>();
 const cacheable = (path: string) => /^\/(now|activity|projects|updates)(?:[/?]|$)/.test(path);
-export function useResource<T = any>(path: string) {
+export function useResource<T = any>(path: string, enabled = true) {
   const cached = cacheable(path) ? publicSnapshots.get(path) : undefined;
   const snapshot = cached && Date.now() - cached.time < 30000 ? cached.data : null;
   const [state, setState] = useState<{ path: string; data: T | null }>({ path, data: snapshot }),
@@ -21,6 +21,13 @@ export function useResource<T = any>(path: string) {
   const cancel = useCallback(() => requestController.current?.abort(), []);
   const reload = useCallback(() => setVersion((v) => v + 1), []);
   useEffect(() => {
+    if (!enabled) {
+      requestController.current?.abort();
+      setState({ path, data: null });
+      setError('');setErrorStatus(null);
+      setLoading(true);
+      return;
+    }
     let active = true;
     const controller = new AbortController();
     requestController.current = controller;
@@ -52,8 +59,8 @@ export function useResource<T = any>(path: string) {
     return () => {
       active = false; controller.abort();
     };
-  }, [path, version]);
-  return { cancel, errorStatus:state.path===path?errorStatus:null, data: state.path === path ? state.data : snapshot, error: state.path === path ? error : '', loading: loading || state.path !== path, reload };
+  }, [path, version, enabled]);
+  return { cancel, errorStatus:enabled&&state.path===path?errorStatus:null, data: enabled ? (state.path === path ? state.data : snapshot) : null, error: enabled&&state.path===path ? error : '', loading: loading || state.path !== path, reload };
 }
 export function ContentSkeleton() {
   return <div className="content-skeleton" role="status" aria-label="正在加载内容" aria-busy="true">
