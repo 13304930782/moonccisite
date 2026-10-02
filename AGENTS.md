@@ -24,5 +24,5 @@ Turn the current personal blog source into a full-stack blog system with authent
 ## Release workflow (user preference)
 - Before each merge or release, check the repository's open Dependabot and Code scanning alerts. Review new findings and report what remains open; a passing CodeQL workflow does not mean existing alerts are resolved.
 - After GitHub push/merge, build and verify a local deployment archive, then upload and deploy it directly using the configured SSH access. Verify the live site and report the outcome. Do not make the production server download GitHub or build frontend dependencies by default. Give manual deployment commands only when direct access is unavailable.
-- Write all shell scripts, checksum sidecars and manifests as LF bytes, including on Windows. Verify archived files and checksum contents before handing off.
+- Write all shell scripts, checksum sidecars and manifests as LF bytes, including on Windows. Verify archived files and checksum contents before deployment.
 - Run deployment in a child shell with nohup; never put set -e or exit in the interactive SSH shell. Preserve historical SQL, .env and uploads. Frontend-only releases must not restart PM2 or execute migrations. Backend/dependency/migration releases require a separately reviewed scoped package; never claim the frontend packer deploys them.
