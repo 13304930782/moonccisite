@@ -15,7 +15,7 @@ for(const width of [375,768,1440])for(const theme of ['light','dark']){
  await p.getByRole('button',{name:'修订历史',exact:true}).click();await p.getByRole('button',{name:/发布版本 ·/}).click();await p.locator('.revision-compare').waitFor();assert.equal(await p.locator('.revision-added').count(),1);assert.equal(await p.locator('.revision-removed').count(),1);
  await p.locator('.revision-compare').scrollIntoViewIfNeeded();await p.screenshot({path:`.cache/revisions-compare-${width}-${theme}.png`,animations:'disabled'});
  const restore=p.getByRole('button',{name:'恢复为草稿',exact:true});await restore.focus();assert(await restore.evaluate(e=>e===document.activeElement));
- p.once('dialog',d=>d.accept());await restore.click();await p.waitForFunction(()=>document.body.textContent.includes('已恢复为草稿，尚未发布'));assert.equal(await title.inputValue(),'历史标题');assert.equal(restoreCount,1);assert(saves.includes('manual'));
+ await restore.click();await p.getByRole('alertdialog').getByRole('button',{name:'确认继续',exact:true}).click();await p.waitForFunction(()=>document.body.textContent.includes('已恢复为草稿，尚未发布'));assert.equal(await title.inputValue(),'历史标题');assert.equal(restoreCount,1);assert(saves.includes('manual'));
  assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);await p.screenshot({path:`.cache/revisions-${width}-${theme}.png`,animations:'disabled'});await p.close();
 }console.log('PASS revision history, comparison, manual preservation and restore in 375/768/1440 light/dark');
 }finally{await browser?.close();await server.httpServer.close();}})().catch(e=>{console.error(e);process.exitCode=1});
