@@ -2,7 +2,7 @@
 # Run only in a child shell; do not source in interactive SSH.
 set -Eeuo pipefail
 umask 077
-package=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+package=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 live=/www/wwwroot/mooncci-source/server
 export PATH="/opt/mooncci-node-v24.20.0/bin:$PATH"
 pm() { su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; pm2 $*"; }
