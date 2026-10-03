@@ -1,4 +1,4 @@
-"""Build a scoped offline Nginx release for four old WordPress articles."""
+"""Build a scoped offline Nginx release for the old homepage and four articles."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ def main() -> None:
     payload["SHA256SUMS"] = "".join(
         f"{sha256(data)}  {name}\n" for name, data in sorted(payload.items())
     ).encode("ascii")
-    archive = OUTPUT / "moooncci-old-article-redirects.tar.gz"
+    archive = OUTPUT / "moooncci-old-home-and-article-redirects.tar.gz"
     with archive.open("wb") as raw:
         with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as zipped:
             with tarfile.open(fileobj=zipped, mode="w") as tar:
