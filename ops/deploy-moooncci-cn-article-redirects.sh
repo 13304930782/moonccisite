@@ -38,6 +38,6 @@ if ! "$nginx_bin" -s reload; then
   exit 1
 fi
 
-echo 'PASS: old homepage, four articles and two listing redirects installed; Nginx reloaded.'
+echo 'PASS: old homepage, four articles, two listings and three categories redirected; Nginx reloaded.'
 echo "BACKUP_FILE=$backup_file"
 echo "INSTALLED_FILE=$target_file"
