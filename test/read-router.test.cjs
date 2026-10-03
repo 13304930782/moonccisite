@@ -40,6 +40,10 @@ test('reader HTTP service refuses authentication, writes and draft uploads; uses
  assert.equal(calls.length,0);
  let r=await fetch(url+'/api/posts',{headers:auth});assert.equal(await r.text(),'public');assert.equal(r.headers.get('cache-control'),'no-store');assert.equal(calls[0].url.origin,'https://primary.example.test');assert.equal(calls[0].options.headers.has('X-Mooncci-Reader-Key'),false);
  r=await fetch(url+'/assets/index-abcd.js',{headers:auth});assert.equal(await r.text(),'console.log(1)');assert.match(r.headers.get('cache-control'),/immutable/);
+ for(const target of ['//evil.test/api/posts','/%2f%2fevil.test/api/posts','/api/posts%5c%5cevil.test','/api/posts?next=https://evil.test']){
+  const previous=calls.length;const response=await fetch(url+target,{headers:auth});assert.notEqual(response.status,200,target);assert.equal(calls.length,previous,target);
+ }
+ assert.ok(calls.every(call=>call.url.origin==='https://primary.example.test'));
 });
 
 test('reader bounds concurrent upstream work and rejects routed origin configuration',async t=>{

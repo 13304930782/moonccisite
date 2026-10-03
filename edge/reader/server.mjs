@@ -38,7 +38,12 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
         return res.end(req.method==='HEAD'?undefined:body);
       }
       // Current origin responses are no-store. Never override that with a shared cache.
-      const upstream=new URL(url.pathname+url.search,origin);
+      // Resolve only an already approved path against the configured origin. Never
+      // hand a client-supplied absolute URL (or network-path reference) to fetch.
+      const upstream=new URL(origin);
+      upstream.pathname=url.pathname;
+      upstream.search=url.search;
+      if(upstream.origin!==origin || !publicRead(new Request(upstream,{method:req.method})))return stop(403,'Not a public read');
       const headers=new Headers();
       for(const name of ['accept','accept-language','if-none-match','if-modified-since']) if(req.headers[name])headers.set(name,req.headers[name]);
       const response=await fetcher(upstream,{method:req.method,headers,redirect:'manual',signal:AbortSignal.timeout(10000)});

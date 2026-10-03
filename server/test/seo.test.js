@@ -10,3 +10,17 @@ test('HTTP without JavaScript returns metadata, private/missing posts 404 and pu
  assert.match(await(await fetch(base+'/robots.txt')).text(),/Sitemap: https?:/);
 });
 test('missing built HTML fails closed',async t=>{const app=express();app.use(createSeoRouter({db:{query:async()=>[[]]},readTemplate:async()=>{throw Error('missing')}}));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));const r=await fetch(`http://127.0.0.1:${server.address().port}/articles`);assert.equal(r.status,503);assert.match(r.headers.get('x-robots-tag'),/noindex/);});
+
+test('public project and update have unique initial HTML; unpublished details are not indexed',async t=>{
+ const db={query:async(sql,args)=>{
+  if(sql.includes('site_settings'))return [[{setting_value:'{"site_title":"mooncci"}'}]];
+  if(sql.includes('FROM projects'))return [args[0]==='promptdock'?[{slug:'promptdock',name:'PromptDock',summary:'管理提示词与版本',cover_image:'/api/uploads/promptdock.webp'}]:[]];
+  if(sql.includes('FROM updates'))return [args[0]==='2'?[{id:2,content:'今天发布了新版本',image_url:''}]:[]];
+  throw Error('Unexpected query');
+ }};
+ const app=express();app.use(createSeoRouter({db,readTemplate:async()=>template}));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));const base=`http://127.0.0.1:${server.address().port}`;
+ for(const [path,title] of [['/projects/promptdock','PromptDock'],['/updates/2','今天发布了新版本'],['/projects','作品']]){
+  const r=await fetch(base+path);assert.equal(r.status,200);const html=await r.text();assert.match(html,new RegExp(`<title>${title}`));assert.match(html,new RegExp(`rel="canonical" href="https://mooncci.site${path}"`));assert.equal((html.match(/<title>/g)||[]).length,1);
+ }
+ for(const path of ['/projects/draft','/updates/3']){const r=await fetch(base+path);assert.equal(r.status,404);assert.match(r.headers.get('x-robots-tag'),/noindex/);assert.doesNotMatch(await r.text(),/管理提示词与版本|今天发布了新版本/);}
+});

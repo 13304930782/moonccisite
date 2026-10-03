@@ -6,6 +6,8 @@ function createSeoRouter({db,readTemplate=()=>fs.readFile(process.env.SEO_HTML_T
  async function metadata(pathname){
   const [[row]]=await db.query("SELECT setting_value FROM site_settings WHERE setting_key='brand' LIMIT 1");let brand={};try{brand=JSON.parse(row?.setting_value||'{}');}catch{}
   if(/^\/article\/\d+$/.test(pathname)){const [[post]]=await db.query("SELECT p.*,u.username AS author_name FROM posts p JOIN users u ON u.id=p.author_id WHERE p.id=? AND p.status='published'",[pathname.split('/').pop()]);if(post)return {status:200,meta:seo.articleMeta(post,brand)};return {status:404,meta:{...seo.baseMeta(pathname,brand),title:'文章不存在',description:'这篇文章不存在或未公开。',robots:'noindex, nofollow'}};}
+  if(/^\/updates\/[1-9]\d*$/.test(pathname)){const [[update]]=await db.query("SELECT id,content,image_url FROM updates WHERE id=? AND status='published'",[pathname.split('/').pop()]);if(update)return {status:200,meta:seo.updateMeta(update,brand)};return {status:404,meta:{...seo.baseMeta(pathname,brand),title:'近况不存在',robots:'noindex, nofollow'}};}
+  if(/^\/projects\/[a-zA-Z0-9_-]+$/.test(pathname)){const [[project]]=await db.query("SELECT slug,name,summary,content,cover_image FROM projects WHERE slug=? AND status='published'",[pathname.split('/').pop()]);if(project)return {status:200,meta:seo.projectMeta(project,brand)};return {status:404,meta:{...seo.baseMeta(pathname,brand),title:'作品不存在',robots:'noindex, nofollow'}};}
   return {status:200,meta:seo.baseMeta(pathname,brand)};
  }
  router.get('/api/seo',limiter,async(req,res)=>{const pathname=String(req.query.path||'/');if(!/^\/[a-zA-Z0-9/_%.-]*$/.test(pathname)||pathname.length>512)return res.status(400).json({message:'无效页面地址'});const result=await metadata(pathname);res.set('Cache-Control','no-store');res.status(result.status).json(result.meta);});
@@ -17,8 +19,9 @@ function createSeoRouter({db,readTemplate=()=>fs.readFile(process.env.SEO_HTML_T
   const rows=[...Object.keys(seo.titles).map(path=>({path})),...posts.map(p=>({path:`/article/${p.id}`,updated_at:p.updated_at})),...updates.map(p=>({path:`/updates/${p.id}`,updated_at:p.updated_at})),...projects.map(p=>({path:`/projects/${encodeURIComponent(p.slug)}`,updated_at:p.updated_at}))];
   res.set('Cache-Control','no-store').type('application/xml').send(seo.sitemap(rows));
  });
- router.get(['/article/:id','/','/articles','/archives','/about','/links','/projects','/updates','/tags','/categories','/rss'],limiter,async(req,res)=>{
-  let result;if(req.params.id&&!/^\d+$/.test(req.params.id))result={status:404,meta:{...seo.baseMeta('/article/invalid'),title:'文章不存在',robots:'noindex, nofollow'}};else result=await metadata(req.path.replace(/\/$/,'')||'/');
+ router.get(['/article/:id','/updates/:id','/projects/:slug','/','/articles','/archives','/about','/links','/projects','/updates','/tags','/categories','/rss'],limiter,async(req,res)=>{
+  const pathname=req.path.replace(/\/$/,'')||'/';
+  let result;if((req.params.id&&!/^[1-9]\d*$/.test(req.params.id))||(req.params.slug&&!/^[a-zA-Z0-9_-]+$/.test(req.params.slug)))result={status:404,meta:{...seo.baseMeta(pathname),title:'页面不存在',robots:'noindex, nofollow'}};else result=await metadata(pathname);
   let html;try{html=await readTemplate();if(!html.includes('</head>')||!html.includes('id="root"'))throw Error('Invalid HTML template');}catch(e){console.error('[seo/template]',e.message);return res.status(503).set('X-Robots-Tag','noindex').type('text/plain').send('页面暂时不可用，请稍后重试。');}
   res.set('Cache-Control','no-store');if(result.status!==200)res.set('X-Robots-Tag','noindex, nofollow');res.status(result.status).type('html').send(seo.renderHtml(html,result.meta));
  });return router;

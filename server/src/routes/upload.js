@@ -93,6 +93,25 @@ function filePathFor(filename) {
   return path.join(uploadDir, safeBasename(filename));
 }
 
+function safeUploadPath(file) {
+  const filename = file?.filename;
+  if (typeof filename !== 'string' || !filename || filename !== path.basename(filename) ||
+      filename === '.' || filename === '..' || !isPublicUploadFile(filename)) {
+    throw new Error('Invalid upload filename');
+  }
+  const target = path.join(uploadDir, filename);
+  if (path.resolve(file.path || '') !== target) {
+    throw new Error('Image must be a regular file in the uploads directory');
+  }
+  return target;
+}
+
+function checkedUploadPath(file) {
+  const target = safeUploadPath(file);
+  if (!fs.lstatSync(target).isFile()) throw new Error('Image must be a regular file');
+  return target;
+}
+
 async function readUploadedImage(filePath) {
   const filename = path.basename(filePath);
   const target = path.join(uploadDir, filename);
@@ -269,12 +288,13 @@ async function countReferences(url) {
 async function compressImageIfNeeded(file, imageInfo, qualityKey) {
   const preset = qualityPresets[qualityKey];
   const currentExt = path.extname(file.filename || '').toLowerCase();
+  const originalPath = checkedUploadPath(file);
 
   if (!preset) {
     if (imageInfo.safeExt && currentExt !== imageInfo.safeExt) {
       const nextFilename = `${path.basename(file.filename, currentExt)}${imageInfo.safeExt}`;
       const nextPath = path.join(uploadDir, nextFilename);
-      fs.renameSync(file.path, nextPath);
+      fs.renameSync(originalPath, nextPath);
       file.filename = nextFilename;
       file.path = nextPath;
     }
@@ -283,7 +303,7 @@ async function compressImageIfNeeded(file, imageInfo, qualityKey) {
       compressed: false,
       quality: 'original',
       original_size: file.size,
-      output_size: fs.statSync(file.path).size,
+      output_size: fs.statSync(checkedUploadPath(file)).size,
     };
   }
 
@@ -292,7 +312,7 @@ async function compressImageIfNeeded(file, imageInfo, qualityKey) {
       compressed: false,
       quality: qualityKey,
       original_size: file.size,
-      output_size: fs.statSync(file.path).size,
+      output_size: fs.statSync(originalPath).size,
     };
   }
 
@@ -300,11 +320,10 @@ async function compressImageIfNeeded(file, imageInfo, qualityKey) {
   const nextFilename = `${baseName}.webp`;
   const nextPath = path.join(uploadDir, nextFilename);
   const tmpPath = `${nextPath}.tmp`;
-  const originalPath = file.path;
-  const originalSize = fs.statSync(file.path).size;
+  const originalSize = fs.statSync(originalPath).size;
 
   // A byte snapshot also releases the input file before the same path is replaced.
-  await sharp(await readUploadedImage(file.path))
+  await sharp(await readUploadedImage(originalPath))
     .rotate()
     .resize({
       width: preset.maxWidth,
@@ -801,13 +820,13 @@ router.post('/image', authRequired, contributor, require('express-rate-limit')({
     let imageInfo = { ok: false, detected: null };
 
     try {
-      imageInfo = await getDetectedImageInfo(req.file.path);
+      imageInfo = await getDetectedImageInfo(checkedUploadPath(req.file));
     } catch (magicErr) {
       console.error('[upload] image content validation failed:', magicErr.message);
     }
 
     if (!imageInfo.ok) {
-      removeUploadedFile(req.file.path);
+      removeUploadedFile(safeUploadPath(req.file));
       return res.status(400).json({ message: '图片内容校验失败' });
     }
 
@@ -818,14 +837,14 @@ router.post('/image', authRequired, contributor, require('express-rate-limit')({
       result = await compressImageIfNeeded(req.file, imageInfo, quality);
     } catch (compressErr) {
       console.error('[upload] image compression failed:', compressErr.message);
-      removeUploadedFile(req.file.path);
+      removeUploadedFile(safeUploadPath(req.file));
 
       return res.status(400).json({
         message: '图片压缩失败，请换一张图片，或选择原图上传',
       });
     }
 
-    const meta = await getImageMeta(req.file.path, req.file.filename, {
+    const meta = await getImageMeta(checkedUploadPath(req.file), req.file.filename, {
       original_name: req.file.originalname,
       display_name: path.basename(req.file.originalname, path.extname(req.file.originalname || '')),
       quality: result.quality,

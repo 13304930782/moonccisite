@@ -1,4 +1,4 @@
-"""Build a scoped offline Nginx release for the old homepage and four articles."""
+"""Build a scoped offline Nginx release for mapped old-site URLs."""
 
 from __future__ import annotations
 
