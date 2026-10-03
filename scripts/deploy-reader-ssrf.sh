@@ -32,7 +32,13 @@ changed=1
 install -o root -g root -m 644 server.mjs "$live.new"
 mv -f "$live.new" "$live"
 systemctl restart mooncci-reader
-systemctl is-active --quiet mooncci-reader
-code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:3102/_reader/health)
-test "$code" = 403
+ready=0
+for attempt in $(seq 1 20); do
+  if systemctl is-active --quiet mooncci-reader; then
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://127.0.0.1:3102/_reader/health || true)
+    if [ "$code" = 403 ]; then ready=1; break; fi
+  fi
+  sleep 1
+done
+test "$ready" = 1
 echo 'PASS: isolated reader updated; unauthenticated health remains forbidden.'
