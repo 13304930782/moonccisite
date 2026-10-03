@@ -19,3 +19,6 @@ scripts/Probe-ReaderHost.ps1 text eol=lf
 
 scripts/Upload-ReaderNode.ps1 text eol=lf
 test/read-router.test.cjs text eol=lf
+
+ops/moooncci-cn-article-redirects.conf text eol=lf
+scripts/build-old-article-redirect-release.py text eol=lf
