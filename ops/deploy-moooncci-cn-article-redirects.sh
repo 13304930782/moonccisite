@@ -6,7 +6,7 @@ release_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_file="$release_dir/moooncci-cn-article-redirects.conf"
 target_file=/www/server/panel/vhost/nginx/extension/moooncci.cn/old-article-redirects.conf
 nginx_bin=/www/server/nginx/sbin/nginx
-expected_previous=0bd9283f4d7ba99ca8ed4bd6d91348801035d5248f8190c3f5b1296a7b3b33a4
+expected_previous=933b4136607c5d03c99214634ff1d0561a81adc6a4dfe775964add711818c57b
 
 exec 9>/www/backup/mooncci-deploy.lock
 flock -w 120 9
@@ -38,6 +38,6 @@ if ! "$nginx_bin" -s reload; then
   exit 1
 fi
 
-echo 'PASS: old homepage and four article redirects installed; Nginx reloaded.'
+echo 'PASS: old homepage, four articles, two listings and three categories redirected; Nginx reloaded.'
 echo "BACKUP_FILE=$backup_file"
 echo "INSTALLED_FILE=$target_file"

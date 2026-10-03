@@ -22,3 +22,5 @@ test/read-router.test.cjs text eol=lf
 
 ops/moooncci-cn-article-redirects.conf text eol=lf
 scripts/build-old-article-redirect-release.py text eol=lf
+scripts/build-reader-ssrf-release.py text eol=lf
+scripts/build-security-seo-release.py text eol=lf
