@@ -14,6 +14,12 @@ const labels: Record<Access['status'], string> = { pending: '等待审核', prov
 
 export default function MailboxPage() {
   const { user } = useAuth();
+  // A changed signed-in identity must never inherit another account's in-flight state.
+  return <MailboxContent key={user?.id || 'signed-out'} />;
+}
+
+function MailboxContent() {
+  const { user } = useAuth();
   const owner = user?.role === 'owner';
   const [access, setAccess] = useState<Access | null>(null);
   const [sent, setSent] = useState<Sent[]>([]);
@@ -42,11 +48,37 @@ export default function MailboxPage() {
   const [selected, setSelected] = useState<Message | null>(null);
   const [mailLoading, setMailLoading] = useState(false);
   const [mailError, setMailError] = useState('');
-  const refresh = useCallback(async () => {
-    const [self, history] = await Promise.all([api('/mailboxes/me'), api('/mailboxes/sent')]);
-    setAccess(self.access); setSent(history.messages);
+  const [folderRevision, setFolderRevision] = useState(0);
+  const [historyError, setHistoryError] = useState('');
+  const mounted = useRef(true);
+  const lifetime = useRef(new AbortController());
+  const folderRequest = useRef<AbortController | null>(null);
+  const folderVersion = useRef(0);
+  const accountVersion = useRef(0);
+  const historyVersion = useRef(0);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; lifetime.current.abort(); folderRequest.current?.abort(); };
   }, []);
-  useEffect(() => { refresh().catch(error => setNotice(error.message || '邮箱状态暂时无法读取')).finally(() => setLoading(false)); }, [refresh]);
+  const refresh = useCallback(async () => {
+    const version = ++accountVersion.current;
+    const self = await api('/mailboxes/me', { signal: lifetime.current.signal });
+    if (mounted.current && version === accountVersion.current) setAccess(self.access);
+  }, []);
+  const refreshHistory = useCallback(async () => {
+    const version = ++historyVersion.current;
+    try {
+      const history = await api('/mailboxes/sent', { signal: lifetime.current.signal });
+      if (mounted.current && version === historyVersion.current) { setSent(history.messages); setHistoryError(''); }
+    } catch {
+      if (mounted.current && version === historyVersion.current) setHistoryError('发送记录暂未刷新，请稍后刷新查看。');
+    }
+  }, []);
+  useEffect(() => {
+    void refresh().catch(error => { if (mounted.current) setNotice(error.message || '邮箱状态暂时无法读取'); })
+      .finally(() => { if (mounted.current) setLoading(false); });
+    void refreshHistory();
+  }, [refresh, refreshHistory]);
   useEffect(() => {
     if (!['pending', 'claimed'].includes(access?.password_change_status || '')) return;
     const timer = window.setInterval(() => { void refresh().catch(() => {}); }, 5000);
@@ -60,39 +92,48 @@ export default function MailboxPage() {
     return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', clear); };
   }, [credentialPassword]);
   const loadFolder = useCallback(async (folder: Folder, page = 1) => {
+    folderRequest.current?.abort();
+    const controller = new AbortController(); folderRequest.current = controller;
+    const version = ++folderVersion.current;
+    const current = () => mounted.current && version === folderVersion.current && !controller.signal.aborted;
     setMailLoading(true); setMailError(''); setSelected(null);
     try {
-      const result = await api(`/mailboxes/folders/${folder}?page=${page}`);
-      setMailList(result);
-    } catch (error: any) { setMailError(error.message || '暂时无法读取邮件。'); }
-    finally { setMailLoading(false); }
+      const result = await api(`/mailboxes/folders/${folder}?page=${page}`, { signal: controller.signal });
+      if (current()) setMailList(result);
+    } catch (error: any) { if (current()) setMailError(error.message || '暂时无法读取邮件。'); }
+    finally { if (current()) setMailLoading(false); }
   }, []);
   useEffect(() => {
     if (access?.status === 'active' && !['pending', 'claimed', 'review'].includes(access.password_change_status || '') && view !== 'compose') void loadFolder(view);
-  }, [access?.status, access?.password_change_status, view, loadFolder]);
+  }, [access?.status, access?.password_change_status, view, loadFolder, folderRevision]);
   const openMessage = async (message: Message) => {
     if (view === 'compose' || !mailList?.uidValidity) return;
+    folderRequest.current?.abort();
+    const controller = new AbortController(); folderRequest.current = controller;
+    const version = ++folderVersion.current;
+    const current = () => mounted.current && version === folderVersion.current && !controller.signal.aborted;
     setMailLoading(true); setMailError('');
     try {
-      const result = await api(`/mailboxes/folders/${view}/${message.uid}?uidValidity=${mailList.uidValidity}`);
+      const result = await api(`/mailboxes/folders/${view}/${message.uid}?uidValidity=${mailList.uidValidity}`, { signal: controller.signal });
+      if (!current()) return;
       setSelected(result.message);
       if (view === 'inbox') setMailList(previous => previous && ({ ...previous, messages: previous.messages.map(item => item.uid === message.uid ? { ...item, unread: false } : item) }));
-    } catch (error: any) { setMailError(error.message || '暂时无法读取邮件。'); }
-    finally { setMailLoading(false); }
+    } catch (error: any) { if (current()) setMailError(error.message || '暂时无法读取邮件。'); }
+    finally { if (current()) setMailLoading(false); }
   };
-  const changeView = (next: Folder | 'compose') => { setSelected(null); setMailList(null); setView(next); };
-  const run = async (work: () => Promise<void>, preserveSuccess = false) => {
+  const changeView = (next: Folder | 'compose') => {
+    if (next === view) { setSelected(null); return; }
+    folderRequest.current?.abort(); folderVersion.current++;
+    setMailLoading(false); setSelected(null); setMailList(null); setView(next);
+  };
+  const run = async (work: () => Promise<void>) => {
     setBusy(true); setNotice('');
     try {
       await work();
-      try { await refresh(); }
-      catch (error) {
-        if (!preserveSuccess) throw error;
-        setMailError('发送记录暂未刷新，请稍后刷新查看。');
-      }
+      if (mounted.current) await refresh();
     }
     catch (error: any) { setNotice(error.message || '操作失败，请稍后重试。'); }
-    finally { setBusy(false); }
+    finally { if (mounted.current) setBusy(false); }
   };
   const apply = (event: FormEvent) => { event.preventDefault(); void run(async () => {
     const result = await api('/mailboxes/apply', { method: 'POST', body: JSON.stringify({ localPart, reason }) }); setNotice(result.message);
@@ -101,10 +142,21 @@ export default function MailboxPage() {
     const result = await api('/mailboxes/owner/connect', { method: 'POST', body: JSON.stringify({ password }) });
     setPassword(''); setNotice(result.message);
   }); };
-  const send = (event: FormEvent) => { event.preventDefault(); void run(async () => {
-    const result = await api('/mailboxes/send', { method: 'POST', body: JSON.stringify({ to, subject, content }) });
-    setTo(''); setSubject(''); setContent(''); setNotice(result.message); changeView('sent');
-  }, true); };
+  const sendInFlight = useRef(false);
+  const send = async (event: FormEvent) => {
+    event.preventDefault(); if (sendInFlight.current) return;
+    sendInFlight.current = true; setBusy(true); setNotice('');
+    try {
+      const result = await api('/mailboxes/send', { method: 'POST', body: JSON.stringify({ to, subject, content }) });
+      if (!mounted.current) return;
+      // Only a successful server response confirms acceptance. No guessed Sent UID/body.
+      historyVersion.current++;
+      setSent(previous => [{ id: result.id, recipient_email: to, subject, status: 'accepted' }, ...previous.filter(row => row.id !== result.id)].slice(0, 50));
+      setHistoryError(''); setTo(''); setSubject(''); setContent(''); setNotice(result.message); changeView('sent');
+      setFolderRevision(value => value + 1);
+    } catch (error: any) { if (mounted.current) setNotice(error.message || '操作失败，请稍后重试。'); }
+    finally { sendInFlight.current = false; if (mounted.current) setBusy(false); }
+  };
   const closeCredentials = () => { setCredentialMode(null); setCredentialChallenge(''); setCredentialCode(''); setCredentialPassword(''); setNewPassword(''); setConfirmPassword(''); setCredentialVisible(false); setCredentialMessage(''); setCredentialError(''); };
   const startCredentials = async (mode: 'reveal' | 'change') => {
     closeCredentials(); setCredentialMode(mode); setCredentialBusy(true);
@@ -198,6 +250,7 @@ export default function MailboxPage() {
             <label htmlFor="mail-body">正文</label><textarea id="mail-body" value={content} onChange={event => setContent(event.target.value)} rows={9} required maxLength={10000} />
             <div className="mailbox-form-footer"><p>发送后，邮件会保存到已发送文件夹。</p><button className="mailbox-primary" disabled={busy}>{busy ? '发送中…' : '发送邮件'}</button></div></form></section>}</>}
       {access?.status === 'active' && view === 'sent' && <section className="mailbox-panel mailbox-history" aria-labelledby="mail-history-title"><div className="mailbox-panel-head"><div><h2 id="mail-history-title">网页发送记录</h2><p>保留此前的发送状态记录；旧记录不包含正文。</p></div></div>
+        {historyError && <p className="mailbox-error" role="alert">{historyError}<button type="button" className="mailbox-text-button" onClick={() => void refreshHistory()}>刷新记录</button></p>}
         {sent.length === 0 ? <p className="mailbox-empty">暂无发送记录。</p> : <ul>{sent.map(item => <li key={item.id}><div><strong>{item.subject}</strong><span>{item.recipient_email}</span></div><span>{item.status === 'accepted' ? '已发送' : item.status === 'uncertain' ? '结果待核对' : item.status === 'sending' ? '发送中' : '失败'}</span></li>)}</ul>}</section>}
     </>}
   </main>;
