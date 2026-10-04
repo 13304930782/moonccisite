@@ -81,9 +81,16 @@ export default function MailboxPage() {
     finally { setMailLoading(false); }
   };
   const changeView = (next: Folder | 'compose') => { setSelected(null); setMailList(null); setView(next); };
-  const run = async (work: () => Promise<void>) => {
+  const run = async (work: () => Promise<void>, preserveSuccess = false) => {
     setBusy(true); setNotice('');
-    try { await work(); await refresh(); }
+    try {
+      await work();
+      try { await refresh(); }
+      catch (error) {
+        if (!preserveSuccess) throw error;
+        setMailError('发送记录暂未刷新，请稍后刷新查看。');
+      }
+    }
     catch (error: any) { setNotice(error.message || '操作失败，请稍后重试。'); }
     finally { setBusy(false); }
   };
@@ -97,7 +104,7 @@ export default function MailboxPage() {
   const send = (event: FormEvent) => { event.preventDefault(); void run(async () => {
     const result = await api('/mailboxes/send', { method: 'POST', body: JSON.stringify({ to, subject, content }) });
     setTo(''); setSubject(''); setContent(''); setNotice(result.message); changeView('sent');
-  }); };
+  }, true); };
   const closeCredentials = () => { setCredentialMode(null); setCredentialChallenge(''); setCredentialCode(''); setCredentialPassword(''); setNewPassword(''); setConfirmPassword(''); setCredentialVisible(false); setCredentialMessage(''); setCredentialError(''); };
   const startCredentials = async (mode: 'reveal' | 'change') => {
     closeCredentials(); setCredentialMode(mode); setCredentialBusy(true);

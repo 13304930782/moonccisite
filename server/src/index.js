@@ -196,9 +196,10 @@ if (require.main === module) {
   if (secret.length < 32 || /replace_with|your_secret|change.?me/i.test(secret)) {
     fatal(new Error('JWT_SECRET must be a non-placeholder secret of at least 32 characters'));
   }
-  app.listen(port, process.env.HOST || '127.0.0.1', () => {
+  const httpServer = app.listen(port, process.env.HOST || '127.0.0.1', () => {
     console.log(`server running on ${port}`);
   });
+  require('./lib/mailboxShutdown').installMailboxShutdown(httpServer, () => require('./lib/mailboxImap').shutdown());
 }
 
 module.exports = app;

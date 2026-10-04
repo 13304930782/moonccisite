@@ -741,3 +741,82 @@ tail -n 40 /www/backup/proxy-ipv4-rollback.log
 
 
 美国首次安装入口为 `scripts/Upload-ReaderNode.ps1`。服务器安装器只使用已有 `/www/server/nodejs/v22.23.1/bin/node`，精确版本不符则停止；通过节点本机测试后，启用独立 systemd 服务，不改宝塔 Nginx/DNS，不重启 PM2。检查日志出现 `Reader local installation complete. Public routing remains OFF.` 后，再进行源站域名、证书和 Worker 内部验证。BOM 问题已在只读检查工具中改用无 BOM UTF-8 的 Base64 传输修复。
+# Mailbox performance pilot (2026-10-04)
+
+This release does not change SMTP submission, accepted/uncertain states, synchronous Sent APPEND,
+mailbox permissions, password verification, message retention, Postfix or Dovecot configuration.
+The candidate is tested with the deployed ImapFlow 2.2.1 and existing isolated mailbox dependencies.
+
+`MAILBOX_TIMING_ENABLED=true` enables one numeric JSON summary (`mailbox_timing`) per sampled
+send/list/read request. `X-Mail-Request-ID` correlates the response and log. Default sampling is 10%,
+with slow (>=3s) and unsuccessful requests eligible regardless of sampling; the shared per-process
+cap defaults to 60 records/minute. The deployment pilot uses 100% sampling subject to this cap.
+No addresses, subjects, bodies, passwords, encrypted secrets, AUTH data, headers or arbitrary error
+objects are passed to the timing logger. `flags_ms=0` includes reads that do not need to mark Seen.
+`imap_connect_ms` includes authentication/initialization, not just TCP/TLS. Warm health checks are
+reported separately as `imap_health_ms`. `total_ms` begins before route authentication and ends at
+HTTP finish (or client abort; an abort record is partial). Existing process log retention applies.
+
+Pooling is OFF by default. Enabling `MAILBOX_IMAP_POOL_ENABLED=true` also requires
+`MAILBOX_IMAP_POOL_API_PROCESSES=1`, PM2 instance 0, current owner role, and exactly
+`mooncci@mooncci.site`. Ordinary users retain the original cold path. The pilot has one retained
+connection in the API process, a 30s idle TTL and 45s socket inactivity timeout, max 8 admitted tasks
+per account, 15s queue wait limit and 60s active-operation deadline. Busy exhaustion fails closed;
+it never opens an extra connection. A reused connection is checked using NOOP with a 4s deadline,
+so a half-open socket does not wait for the longer idle-compatible socket timeout. Reconnection is
+allowed only before the mailbox operation begins; FETCH/STORE/APPEND are never automatically replayed.
+Each admitted operation rechecks active user/mailbox, owner role, rotation status and encrypted
+credential version after queueing. Website password change/rotation, reconnect/disconnect, mailbox
+revocation and admin account invalidation immediately close local retained connections and invalidate
+queued snapshots. Out-of-band mail-server password edits cannot send an immediate application event;
+the short idle TTL still bounds retained sessions.
+
+The release and owner-enable scripts refuse multiple API processes or cluster mode. **Disable this
+pilot before PM2 scaling.** This is not a distributed connection pool; the process-count declaration
+must not be used to bypass that deployment check. Dovecot's 10 connections/user/IP limit remains
+unchanged. This pilot adds at most one retained owner connection, while other clients retain their
+existing behavior. SIGINT (PM2) and SIGTERM close the pool and stop accepting new HTTP connections.
+The HTTP shutdown grace is bounded at 60s; the supervisor's kill timeout may terminate earlier.
+
+Validation commands:
+
+```powershell
+node --test server/test/mailbox*.test.js
+npm run typecheck
+npm run build
+node scripts/test-mailbox-send-feedback.cjs
+node scripts/test-mailbox-credentials-browser.cjs
+python scripts/build-mailbox-performance-release.py
+python scripts/build-offline-release.py
+```
+
+The backend packer requires a clean committed tree, verifies all LF/checksum bytes and uses baseline
+`b594edf475fa972b1c7ec54b57d2e3602457904b`. It installs only seven reviewed JS files, verifies the
+current file hashes first, saves rollback copies and only five performance env keys. No migration,
+dependency installation or worker restart is involved. Run `deploy.sh` with nohup in a child shell.
+It initially enables instrumentation only. The frontend remains a separate frontend-only archive.
+
+Given the `BACKUP` path printed by deployment, run these **on Beijing as root**:
+
+```bash
+# Enable the owner pilot after baseline observation and the read-only benchmark:
+bash /www/backup/mooncci-mail-perf.XXXXXX/mode.sh owner
+# Immediate feature rollback: keep timing, return everyone to cold connections:
+bash /www/backup/mooncci-mail-perf.XXXXXX/mode.sh instrumentation
+# Disable both features:
+bash /www/backup/mooncci-mail-perf.XXXXXX/mode.sh off
+# Full scoped code/config rollback:
+bash /www/backup/mooncci-mail-perf.XXXXXX/rollback.sh /www/backup/mooncci-mail-perf.XXXXXX
+```
+
+Replace `XXXXXX` with the actual recorded backup suffix. Each mode command restarts only the API.
+Full rollback refuses unreviewed intervening changes, restores only these files/flags and preserves
+all other env settings, SQL, uploads and mail data. Frontend rollback restores its separately saved
+index.html; hashed assets are retained.
+
+The owner benchmark `scripts/benchmark-mailbox-imap.cjs` runs 10 cold + 30 warm lists and 10 cold +
+30 warm reads. It selects an already-read small message, forces EXAMINE, blocks STORE/APPEND and
+all non-allowlisted protocol commands, never invokes SMTP, and emits only numeric phases. It can
+load staged candidate libraries with `--library-root`, leaving deployed source untouched. Results
+use nearest-rank p50/p95; the read benchmark excludes Seen writes by design. Do not run it in
+parallel with another benchmark or a live mailbox load test.
