@@ -175,6 +175,8 @@ router.delete('/admin/users/:id/account', writeLimit, authRequired, adminOnly, h
     await c.query('DELETE FROM oauth_states WHERE user_id=?', [user.id]);
     await invalidate(c, user.id);
   });
+  require('../lib/mailboxImap').invalidate(targetId(req));
+  require('../lib/mailboxSmtp').invalidate(targetId(req));
   res.json({ message: '账号已删除，文章、评论、用户名和头像已保留，并显示已删除标记。' });
 }));
 router.use((error, req, res, next) => {

@@ -25,6 +25,7 @@ test('owner can connect an existing mailbox without provisioning it; review stay
     close: () => {},
   }));
   t.mock.method(db, 'query', async (sql, params = []) => {
+    if (sql.startsWith('SELECT m.mailbox_address,m.smtp_secret')) return [[{ ...access }]];
     if (sql.includes('FROM users') && sql.includes('auth_revocations')) return [[Number(params[0]) === 1 ? owner : reader]];
     if (sql.startsWith('SELECT COUNT(*) AS total FROM mailbox_access')) return [[{ total: 2 }]];
     if (sql.startsWith('SELECT m.user_id, u.username')) { pendingFirst ||= sql.includes("CASE WHEN m.status='pending' THEN 0"); return [[{ user_id: 2, username: 'reader', account_email: reader.email,

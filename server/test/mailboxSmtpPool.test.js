@@ -20,12 +20,12 @@ test.before(() => {
 test.after(() => { if (directory) fs.rmSync(directory, { recursive: true, force: true }); });
 
 async function setup(t, options = {}) {
-  const state = { connections: 0, accepted: 0, auth: 0, mode: 'ok', sockets: new Set(), pendingReplies: [] };
+  const state = { connections: 0, accepted: 0, auth: 0, mode: 'ok', sockets: new Set(), pendingReplies: [], crossed: 0, users: [] };
   const server = tls.createServer({ key, cert }, socket => {
     state.connections++; state.sockets.add(socket);
     socket.on('error', () => {}); socket.on('close', () => state.sockets.delete(socket));
     socket.write('220 fixture ESMTP\r\n');
-    let buffer = '', data = false;
+    let buffer = '', data = false, authenticated;
     socket.on('data', chunk => {
       buffer += chunk.toString();
       while (buffer.includes('\r\n')) {
@@ -37,7 +37,8 @@ async function setup(t, options = {}) {
           else if (state.mode === 'hold') state.pendingReplies.push(() => socket.write('250 queued\r\n'));
           else socket.write('250 queued\r\n');
         } else if (line.startsWith('EHLO')) socket.write('250-fixture\r\n250 AUTH PLAIN\r\n');
-        else if (line.startsWith('AUTH')) { state.auth++; socket.write('235 authenticated\r\n'); }
+        else if (line.startsWith('AUTH')) { state.auth++; authenticated = Buffer.from(line.split(' ')[2], 'base64').toString().split('\0')[1]; state.users.push(authenticated); socket.write('235 authenticated\r\n'); }
+        else if (line.startsWith('MAIL') && !line.toLowerCase().includes(`<${authenticated?.toLowerCase()}>`)) { state.crossed++; socket.write('550 wrong account\r\n'); }
         else if (line.startsWith('MAIL') || line.startsWith('RCPT') || line === 'RSET') socket.write('250 OK\r\n');
         else if (line === 'DATA') { data = true; socket.write('354 continue\r\n'); }
         else if (line === 'QUIT') socket.end('221 bye\r\n');
@@ -46,14 +47,15 @@ async function setup(t, options = {}) {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const configurations = [];
-  const pool = new MailboxSmtpPool({ createTransport: config => { configurations.push(config); return nodemailer.createTransport(config); },
+  const createLane = () => new MailboxSmtpPool({ createTransport: config => { configurations.push(config); return nodemailer.createTransport(config); },
     password: () => 'FixtureOnly42!', validate: async () => true,
     connect: opts => tls.connect({ ...opts, host: '127.0.0.1', ca: cert }),
     ...options });
+  const pool = createLane();
   const account = { user_id: 1, mailbox_address: 'owner@example.invalid', smtp_secret: 'sealed-fixture', smtp_host: 'localhost', smtp_port: server.address().port };
   const mail = { envelope: { from: account.mailbox_address, to: ['local@example.invalid'] }, raw: 'Subject: fixture\r\n\r\nlocal test\r\n' };
   t.after(async () => { pool.shutdown(); for (const socket of state.sockets) socket.destroy(); await new Promise(r => server.close(r)); });
-  return { pool, state, account, mail, configurations };
+  return { pool, state, account, mail, configurations, createLane };
 }
 
 test('real TLS AUTH and SMTP DATA reuse a single isolated connection with no requeues', async t => {
@@ -165,7 +167,7 @@ test('owner pilot gate excludes other users, mailboxes, workers and disabled fla
   const saved = { ...process.env };
   try {
     Object.assign(process.env, { MAILBOX_SMTP_POOL_ENABLED: 'true', MAILBOX_SMTP_POOL_API_PROCESSES: '1', NODE_APP_INSTANCE: '0' });
-    const account = { role: 'owner', mailbox_address: 'mooncci@mooncci.site' };
+    const account = { user_id: 1, smtp_secret: 'fixture', role: 'owner', mailbox_address: 'mooncci@mooncci.site' };
     assert.equal(adapter.poolingEnabled(account), true);
     assert.equal(adapter.poolingEnabled({ ...account, role: 'user' }), false);
     assert.equal(adapter.poolingEnabled({ ...account, mailbox_address: 'other@mooncci.site' }), false);
@@ -178,4 +180,50 @@ test('owner pilot gate excludes other users, mailboxes, workers and disabled fla
     }
     adapter.shutdown();
   }
+});
+const { MailboxPoolManager } = require('../src/lib/mailboxPoolManager');
+test('multi-user real TLS SMTP isolates A/B/C, allows independent work and evicts idle only', async t => {
+  const { createLane, state, account, mail } = await setup(t);
+  const manager = new MailboxPoolManager({ protocol: 'smtp', limit: 2, create: () => createLane() });
+  t.after(() => manager.shutdown());
+  const a = account, b = { ...account, user_id: 2, mailbox_address: 'b@example.invalid', smtp_secret: 'sealed-b' };
+  const c = { ...account, user_id: 3, mailbox_address: 'c@example.invalid', smtp_secret: 'sealed-c' };
+  const send = (user, timing) => manager.run(user, lane => lane.send(user, { ...mail, envelope: { ...mail.envelope, from: user.mailbox_address } }, timing), { timing });
+  await send(a); await send(b); const wa = createTiming('send'), wb = createTiming('send');
+  await send(a, wa); await send(b, wb); assert(wa.snapshot().smtp_connection_reused); assert(wb.snapshot().smtp_connection_reused);
+  state.mode = 'hold'; const pa = send(a), pb = send(b);
+  while (state.pendingReplies.length < 2) await delay(2);
+  assert.equal(manager.snapshot().active, 2);
+  let cDone = false; const pc = send(c).then(() => { cDone = true; });
+  await delay(5); assert(!cDone); assert.equal(manager.snapshot().waiting, 1);
+  state.mode = 'ok'; state.pendingReplies.splice(0).forEach(release => release()); await Promise.all([pa, pb, pc]);
+  assert.equal(state.crossed, 0); assert.equal(state.accepted, 7); assert(manager.snapshot().evictions >= 1);
+  await send(b); manager.invalidate(a.user_id); const before = state.connections; await send(b); assert.equal(state.connections, before);
+  manager.shutdown(); await delay(30); assert.equal(state.sockets.size, 0); assert.equal(manager.entries.size, 0);
+});
+test('trusted CA with wrong hostname still fails TLS without DATA', async t => {
+  const { pool, state, account, mail } = await setup(t);
+  await assert.rejects(pool.send({ ...account, smtp_host: 'wrong-host.invalid' }, mail));
+  assert.equal(state.accepted, 0);
+});
+test('local 10/20/50-user pressure stays bounded, delivers each submitted operation once and releases sockets', async t => {
+  const { createLane, state, account, mail } = await setup(t);
+  const manager = new MailboxPoolManager({ protocol: 'smtp', limit: 4, create: () => createLane() });
+  t.after(() => manager.shutdown());
+  for (const count of [10, 20, 50]) {
+    const times = [], waits = []; let peak = 0;
+    const sample = setInterval(() => { peak = Math.max(peak, manager.entries.size); }, 1);
+    const before = state.accepted;
+    await Promise.all(Array.from({ length: count }, async (_, i) => {
+      const a = { ...account, user_id: i + 10, mailbox_address: `test-${i}@example.invalid`, smtp_secret: `sealed-${i}` };
+      const timing = createTiming('send'), began = performance.now();
+      await manager.run(a, lane => lane.send(a, { ...mail, envelope: { ...mail.envelope, from: a.mailbox_address } }, timing), { timing });
+      times.push(performance.now() - began); waits.push(timing.snapshot().smtp_pool_wait_ms);
+    }));
+    clearInterval(sample); assert(peak <= 4); assert.equal(state.accepted - before, count); assert.equal(state.crossed, 0);
+    times.sort((a,b)=>a-b); waits.sort((a,b)=>a-b);
+    const q = (xs,p) => Math.round(xs[Math.ceil(xs.length*p)-1]*10)/10;
+    console.log(JSON.stringify({ fixture: 'localhost-TLS-SMTP', users: count, peak, p50: q(times,.5), p95: q(times,.95), p99: q(times,.99), wait_p50:q(waits,.5), wait_p95:q(waits,.95), ...manager.snapshot() }));
+  }
+  manager.shutdown(); await delay(50); assert.equal(state.sockets.size, 0);
 });

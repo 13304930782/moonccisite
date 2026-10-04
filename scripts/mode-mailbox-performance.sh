@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 mode=${1:?Use instrumentation, owner, owner-short, owner-smtp or off}
-case "$mode" in instrumentation|owner|owner-short|owner-smtp|off) ;; *) exit 1 ;; esac
+case "$mode" in instrumentation|owner|owner-short|owner-smtp|off|test|rollout25|rollout50|all|smtp-off|imap-off) ;; *) exit 1 ;; esac
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 export PATH="/opt/mooncci-node-v24.20.0/bin:$PATH"
 exec 9>/www/backup/mooncci-deploy.lock
@@ -12,7 +12,7 @@ pm() { su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$
 changed=0
 recover() {
   rc=$?; trap - EXIT
-  if [ "$rc" -ne 0 ] && [ "$changed" = 1 ] && [[ "$mode" = owner* ]]; then
+  if [ "$rc" -ne 0 ] && [ "$changed" = 1 ] ; then
     python3 "$root/files.py" mode /www/wwwroot/mooncci-source/server instrumentation
     pm restart "$api_id" || true
     echo 'Owner enable failed; reverted to instrumentation-only' >&2
@@ -20,10 +20,10 @@ recover() {
   exit "$rc"
 }
 trap recover EXIT
-if [[ "$mode" = owner* ]]; then
+if [[ "$mode" != off && "$mode" != instrumentation ]]; then
   pm jlist | node -e 'let s="";process.stdin.on("data",x=>s+=x);process.stdin.on("end",()=>{const a=JSON.parse(s).filter(p=>p.pm2_env.pm_exec_path==="/www/wwwroot/mooncci-source/server/src/index.js");if(a.length!==1||a[0].pm2_env.status!=="online"||a[0].pm2_env.exec_mode!=="fork_mode"||String(a[0].pm2_env.NODE_APP_INSTANCE||0)!=="0")process.exit(1)})'
 fi
-python3 "$root/files.py" mode /www/wwwroot/mooncci-source/server "$mode"
+python3 "$root/files.py" mode /www/wwwroot/mooncci-source/server "$mode" "${2:-}"
 changed=1
 pm restart "$api_id"
 for attempt in $(seq 1 15); do

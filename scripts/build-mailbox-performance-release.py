@@ -11,7 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = 'b594edf475fa972b1c7ec54b57d2e3602457904b'
 FILES = ('src/index.js', 'src/routes/admin.js', 'src/routes/mailboxes.js', 'src/lib/mailboxImap.js',
          'src/lib/mailboxImapPool.js', 'src/lib/mailboxTiming.js', 'src/lib/mailboxShutdown.js',
-         'src/lib/mailboxSmtp.js', 'src/lib/mailboxSmtpPool.js')
+         'src/lib/mailboxSmtp.js', 'src/lib/mailboxSmtpPool.js', 'src/lib/mailboxPoolManager.js',
+         'src/lib/mailboxPoolPolicy.js', 'src/routes/account.js')
 
 
 def git(*args):
