@@ -6,7 +6,7 @@ const failure = code => Object.assign(new Error(code), { code });
 // One serialized lane per account. No operation is replayed after work(client) starts.
 class MailboxImapPool {
   constructor({ createClient, validate = async () => true, maxConnections = 1, idleMs = 30000,
-    maxQueued = 8, waitMs = 15000, operationMs = 60000, healthMs = 4000 }) {
+    maxQueued = 8, waitMs = 15000, operationMs = 60000, healthMs = 4000, observe = () => {} }) {
     this.createClient = createClient;
     this.validate = validate;
     this.maxConnections = maxConnections;
@@ -18,6 +18,17 @@ class MailboxImapPool {
     this.entries = new Map();
     this.salt = randomBytes(32);
     this.stopping = false;
+    this.observe = observe;
+    this.counts = { cold_connection_count: 0, connection_expired: 0, connection_broken: 0, noop_failure_count: 0 };
+  }
+
+  record(reason, entry) {
+    if (reason === 'connected') this.counts.cold_connection_count++;
+    if (reason === 'expired') this.counts.connection_expired++;
+    if (reason === 'broken') this.counts.connection_broken++;
+    if (reason === 'noop_failed') this.counts.noop_failure_count++;
+    const active = [...this.entries.values()].filter(item => item.client).length;
+    try { this.observe({ reason, request_id: entry?.requestId, ...this.counts, active_pooled_connections: active }); } catch (_) {}
   }
 
   identity(account) {
@@ -29,19 +40,20 @@ class MailboxImapPool {
     return { key, version };
   }
 
-  drop(entry) {
+  drop(entry, reason) {
     clearTimeout(entry.timer);
     entry.timer = null;
     const client = entry.client;
     entry.client = null;
     if (client) { try { client.close(); } catch (_) {} }
+    if (client && reason) this.record(reason, entry);
   }
 
   invalidate(userId) {
     for (const [key, entry] of this.entries) {
       if (String(userId) !== entry.userId) continue;
       entry.generation += 1;
-      this.drop(entry);
+      this.drop(entry, 'invalidated');
       if (!entry.pending) this.entries.delete(key);
     }
   }
@@ -70,13 +82,13 @@ class MailboxImapPool {
       if (this.entries.size >= this.maxConnections) {
         const idle = [...this.entries].find(([, item]) => item.pending === 0);
         if (!idle) throw failure('IMAP_POOL_LIMIT');
-        this.drop(idle[1]); this.entries.delete(idle[0]);
+        this.drop(idle[1], 'evicted'); this.entries.delete(idle[0]);
       }
       entry = { userId: String(account.user_id), version, generation: 0, client: null,
         pending: 0, tail: Promise.resolve(), timer: null, connectedBefore: false };
       this.entries.set(key, entry);
     }
-    if (entry.version !== version) { entry.generation += 1; this.drop(entry); entry.version = version; }
+    if (entry.version !== version) { entry.generation += 1; this.drop(entry, 'invalidated'); entry.version = version; }
     if (entry.pending >= this.maxQueued) throw failure('IMAP_POOL_BUSY');
     clearTimeout(entry.timer);
     const generation = entry.generation;
@@ -100,7 +112,7 @@ class MailboxImapPool {
       if (!entry.pending) {
         if (this.stopping || !entry.client) { this.drop(entry); this.entries.delete(key); }
         else {
-          entry.timer = setTimeout(() => { this.drop(entry); this.entries.delete(key); }, this.idleMs);
+          entry.timer = setTimeout(() => { this.drop(entry, 'expired'); this.entries.delete(key); }, this.idleMs);
           entry.timer.unref?.();
         }
       }
@@ -119,9 +131,10 @@ class MailboxImapPool {
     }
     try {
       valid();
+      entry.requestId = timing?.requestId;
       if (!await this.validate(account, timing)) { this.invalidate(account.user_id); throw failure('IMAP_ACCOUNT_CHANGED'); }
       valid();
-      deadline = setTimeout(() => { expired = true; this.drop(entry); }, this.operationMs);
+      deadline = setTimeout(() => { expired = true; this.drop(entry, 'operation_timeout'); }, this.operationMs);
       let reused = false;
       let reconnectCounted = false;
       if (entry.client) {
@@ -131,7 +144,8 @@ class MailboxImapPool {
           valid();
           reused = true;
         } catch (error) {
-          this.drop(entry);
+          this.record('noop_failed', entry);
+          this.drop(entry, 'broken');
           valid();
           timing?.reconnect();
           reconnectCounted = true;
@@ -141,26 +155,27 @@ class MailboxImapPool {
         if (entry.connectedBefore && !reconnectCounted) timing?.reconnect();
         const client = this.createClient(account);
         entry.client = client;
-        client.on('error', () => { if (entry.client === client) this.drop(entry); });
-        client.on('close', () => { if (entry.client === client) entry.client = null; });
+        client.on('error', () => { if (entry.client === client) this.drop(entry, 'broken'); });
+        client.on('close', () => { if (entry.client === client) { entry.client = null; this.record('broken', entry); } });
         await (timing ? timing.measure('imap_connect_ms', () => client.connect()) : client.connect());
         valid();
         if (entry.client !== client || !client.usable) throw failure('IMAP_STALE');
         entry.connectedBefore = true;
+        this.record('connected', entry);
       }
       timing?.reused(reused);
       const result = await work(entry.client);
       valid();
       return result;
     } catch (error) {
-      this.drop(entry);
+      this.drop(entry, 'broken');
       throw error;
     } finally { finish(); }
   }
 
   shutdown() {
     this.stopping = true;
-    for (const entry of this.entries.values()) { entry.generation += 1; this.drop(entry); }
+    for (const entry of this.entries.values()) { entry.generation += 1; this.drop(entry, 'shutdown'); }
     for (const [key, entry] of this.entries) if (!entry.pending) this.entries.delete(key);
   }
 }

@@ -68,6 +68,49 @@ test('idle expiry closes the retained socket and next operation is cold', async 
   await pool.run(account(), async () => {}); assert.equal(clients.length, 2);
 });
 
+test('five-minute idle lease survives human pauses and expires regardless of incoming activity', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const events = [];
+  const { pool, clients } = setup(t, { idleMs: 300000, observe: row => events.push(row) });
+  await pool.run(account(), async () => {}, createTiming('list'));
+  t.mock.timers.tick(61000);
+  await pool.run(account(), async () => {}, createTiming('read'));
+  t.mock.timers.tick(59000);
+  await pool.run(account(), async () => {}, createTiming('send'));
+  assert.equal(clients.length, 1);
+  t.mock.timers.tick(299999); assert.equal(clients[0].closed, 0);
+  t.mock.timers.tick(1); assert.equal(clients[0].closed, 1);
+  assert.equal(events.at(-1).reason, 'expired');
+  assert.equal(events.at(-1).connection_expired, 1);
+  assert.equal(events.at(-1).active_pooled_connections, 0);
+  assert.match(events.at(-1).request_id, /^[a-f0-9-]{36}$/);
+  assert.ok(!JSON.stringify(events).includes('encrypted-one'));
+});
+
+test('pool observations distinguish broken health and lifecycle invalidation, logging cannot fail work', async t => {
+  const events = [];
+  const { pool, clients } = setup(t, { observe: row => events.push(row) });
+  await pool.run(account(), async () => {}); clients[0].broken = true;
+  await pool.run(account(), async () => {});
+  assert.equal(events.at(-1).cold_connection_count, 2);
+  assert.equal(events.at(-1).noop_failure_count, 1);
+  assert.equal(events.at(-1).connection_broken, 1);
+  pool.invalidate(1); assert.equal(events.at(-1).reason, 'invalidated');
+  pool.observe = () => { throw Error('log unavailable'); };
+  await pool.run(account(), async () => {});
+});
+
+test('request metadata is restricted to safe paths and ingress values', () => {
+  const lines = [];
+  const opts = { env: { MAILBOX_TIMING_ENABLED: 'true', MAILBOX_TIMING_SAMPLE_RATE: '1' }, emit: s => lines.push(JSON.parse(s)) };
+  createTiming('account', { ...opts, path: '/api/mailboxes/me', ingress: 'CN_DIRECT' }).finish();
+  createTiming('history', { ...opts, path: '/PASSWORD?token=AUTH', ingress: 'SECRET' }).finish();
+  assert.equal(lines[0].request_path, '/api/mailboxes/me');
+  assert.equal(lines[0].ingress, 'CN_DIRECT');
+  assert.equal(lines[1].request_path, null); assert.equal(lines[1].ingress, 'UNKNOWN');
+  assert.ok(!JSON.stringify(lines).match(/PASSWORD|AUTH|SECRET/));
+});
+
 test('half-open NOOP is bounded and reconnects before any work', async t => {
   const { pool, clients } = setup(t, { healthMs: 10 });
   await pool.run(account(), async () => {});

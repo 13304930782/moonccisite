@@ -8,7 +8,7 @@ import sys
 
 LIVE = Path('/www/wwwroot/mooncci-source/server')
 KEYS = ('MAILBOX_TIMING_ENABLED', 'MAILBOX_TIMING_SAMPLE_RATE', 'MAILBOX_TIMING_MAX_PER_MINUTE',
-        'MAILBOX_IMAP_POOL_ENABLED', 'MAILBOX_IMAP_POOL_API_PROCESSES')
+        'MAILBOX_IMAP_POOL_ENABLED', 'MAILBOX_IMAP_POOL_API_PROCESSES', 'MAILBOX_IMAP_POOL_IDLE_MS')
 
 
 def digest(data):
@@ -42,10 +42,11 @@ def main():
         if str(root) != str(LIVE):
             raise ValueError('Unexpected live root')
         mode = sys.argv[3]
-        if mode not in ('off', 'instrumentation', 'owner'):
+        if mode not in ('off', 'instrumentation', 'owner', 'owner-short'):
             raise ValueError('Invalid mode')
         config(dict(zip(KEYS, ('false' if mode == 'off' else 'true', '1', '60',
-                               'true' if mode == 'owner' else 'false', '1'))))
+                               'true' if mode in ('owner', 'owner-short') else 'false', '1',
+                               '300000' if mode == 'owner' else '30000'))))
         print('MODE=' + mode)
         return
     manifest = json.loads((root / 'FILES.json').read_text())

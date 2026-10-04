@@ -7,9 +7,12 @@ const { ImapFlow } = mailRequire('imapflow');
 const { simpleParser } = mailRequire('mailparser');
 const { open } = require('./mailboxSecurity');
 const { MailboxImapPool } = require('./mailboxImapPool');
+const { poolEvent } = require('./mailboxTiming');
 
 const PAGE_SIZE = 25;
 const MAX_MESSAGE_BYTES = 2 * 1024 * 1024;
+// Bounded rollout choices: never accept Infinity/zero or an unbounded environment value.
+const POOL_IDLE_MS = process.env.MAILBOX_IMAP_POOL_IDLE_MS === '300000' ? 300000 : 30000;
 
 function makeClient(account, pooled = false) {
   const host = process.env.MAILBOX_IMAP_HOST || process.env.MAILBOX_SMTP_HOST;
@@ -17,7 +20,7 @@ function makeClient(account, pooled = false) {
   const client = new ImapFlow({
     host, port: Number(process.env.MAILBOX_IMAP_PORT || 993), secure: true,
     auth: { user: account.mailbox_address, pass: open(account.smtp_secret, account.mailbox_address) },
-    logger: false, connectionTimeout: 12000, greetingTimeout: 12000, socketTimeout: pooled ? 45000 : 20000,
+    logger: false, connectionTimeout: 12000, greetingTimeout: 12000, socketTimeout: pooled ? POOL_IDLE_MS + 15000 : 20000,
     disableAutoIdle: true,
   });
   // ImapFlow emits errors independently of awaited operations. Never log credentials or message content.
@@ -27,7 +30,7 @@ function makeClient(account, pooled = false) {
 
 const pool = new MailboxImapPool({
   createClient: account => makeClient(account, true),
-  maxConnections: 1, idleMs: 30000,
+  maxConnections: 1, idleMs: POOL_IDLE_MS, observe: poolEvent,
   validate: async (account, timing) => {
     const check = async () => {
       const [rows] = await require('../db').query(`SELECT m.mailbox_address, m.smtp_secret
