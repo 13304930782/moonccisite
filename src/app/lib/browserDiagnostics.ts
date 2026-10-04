@@ -9,6 +9,31 @@ const listeners = new Set<() => void>();
 let observer: PerformanceObserver | undefined;
 let expiry: ReturnType<typeof setTimeout> | undefined;
 const round = (v: number) => Number.isFinite(v) ? Math.max(0, Math.round(v * 10) / 10) : 0;
+// Safari can expose responseEnd without responseStart for cached/opaque entries.
+// An absent endpoint is unknown, not a phase beginning at navigation time zero.
+const interval = (start: number, end: number) => start > 0 && end >= start ? round(end - start) : null;
+export function resourceTimingFields(item: PerformanceResourceTiming) {
+  return {
+    duration_ms: round(item.duration),
+    dns_ms: interval(item.domainLookupStart, item.domainLookupEnd),
+    connect_ms: interval(item.connectStart, item.connectEnd),
+    tls_ms: interval(item.secureConnectionStart, item.connectEnd),
+    ttfb_ms: item.responseStart > 0 && item.responseStart >= item.startTime ? round(item.responseStart - item.startTime) : null,
+    request_wait_ms: interval(item.requestStart, item.responseStart),
+    download_ms: interval(item.responseStart, item.responseEnd),
+    transfer_bytes: round(item.transferSize),
+    protocol: /^(h2|h3|http\/1\.1)$/.test(item.nextHopProtocol) ? item.nextHopProtocol : 'unknown',
+  };
+}
+function navigationIntent(event: MouseEvent) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || !(event.target instanceof Element)) return;
+  const link = event.target.closest('a[href]');
+  if (!link || link.hasAttribute('download') || (link.getAttribute('target') && link.getAttribute('target') !== '_self')) return;
+  let url: URL; try { url = new URL(link.getAttribute('href') || '', location.href); } catch { return; }
+  if (url.origin !== location.origin || url.pathname === location.pathname) return;
+  const path = diagnosticPath(url.pathname);
+  if (path && !path.startsWith('/api/') && !path.startsWith('/assets/')) add({type: 'navigation-intent', path, at: Date.now()});
+}
 
 export function diagnosticPath(value: string): string | null {
   const pathname = value.split(/[?#]/, 1)[0];
@@ -41,6 +66,10 @@ function install() {
   clearTimeout(expiry);
   expiry = setTimeout(stopDiagnostics, Math.max(0, (session?.expires || 0) - Date.now()));
   observer?.disconnect();
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('click', navigationIntent, true);
+    document.addEventListener('click', navigationIntent, true);
+  }
   if (typeof PerformanceObserver === 'undefined') return;
   try {
     observer = new PerformanceObserver(list => {
@@ -49,17 +78,13 @@ function install() {
         let url: URL; try { url = new URL(item.name); } catch { continue; }
         if (url.origin !== location.origin || performance.timeOrigin + item.startTime < (session?.started || 0)) continue;
         const path = diagnosticPath(url.pathname); if (!path) continue;
-        add({ type: item.entryType, path, at: Math.round(performance.timeOrigin + item.startTime), duration_ms: round(item.duration),
-          dns_ms: round(item.domainLookupEnd - item.domainLookupStart), connect_ms: round(item.connectEnd - item.connectStart),
-          tls_ms: item.secureConnectionStart > 0 ? round(item.connectEnd - item.secureConnectionStart) : 0,
-          ttfb_ms: round(item.responseStart - item.startTime), download_ms: round(item.responseEnd - item.responseStart),
-          transfer_bytes: round(item.transferSize), protocol: /^(h2|h3|http\/1\.1)$/.test(item.nextHopProtocol) ? item.nextHopProtocol : 'unknown' });
+        add({ type: item.entryType, path, at: Math.round(performance.timeOrigin + item.startTime), ...resourceTimingFields(item) });
       }
     });
     observer.observe({ entryTypes: ['resource', 'navigation'] });
     for (const entry of performance.getEntriesByType('navigation')) {
       const n = entry as PerformanceNavigationTiming, path = diagnosticPath(location.pathname);
-      if (path && performance.timeOrigin >= (session?.started || 0)) add({ type: 'navigation', path, at: Math.round(performance.timeOrigin), ttfb_ms: round(n.responseStart), duration_ms: round(n.duration) });
+      if (path && n.loadEventEnd > 0 && performance.timeOrigin >= (session?.started || 0)) add({ type: 'navigation', path, at: Math.round(performance.timeOrigin), ...resourceTimingFields(n) });
     }
   } catch { /* Measurements must never interrupt application requests. */ }
 }
@@ -67,7 +92,7 @@ export function startDiagnostics(mode: Session['mode']) {
   session = { version: 1, started: Date.now(), expires: Date.now() + TTL, active: true, mode, rows: [] };
   persist(); install();
 }
-export function stopDiagnostics() { if (session) session.active = false; observer?.disconnect(); clearTimeout(expiry); persist(); }
+export function stopDiagnostics() { if (session) session.active = false; observer?.disconnect(); clearTimeout(expiry); if (typeof document !== 'undefined') document.removeEventListener('click', navigationIntent, true); persist(); }
 export function clearDiagnostics() { stopDiagnostics(); session = null; persist(); }
 export function visibleDiagnostic(path: string, stage: 'route' | 'content-ready' | 'mail-ready') {
   const safe = diagnosticPath(path); if (safe) add({ type: stage, path: safe, at: Date.now() });
@@ -95,17 +120,20 @@ export function beginApiDiagnostic(path: string) {
 }
 export function exportDiagnostics() {
   return JSON.stringify({ ...session, build: import.meta.env.VITE_BUILD_REVISION || 'unknown',
-    note: 'Device timings; relay mode is user-selected. Missing timing is not zero server latency. No payloads or complete URLs are collected.' }, null, 2);
+    note: 'Device timings; relay mode is user-selected. Null phases are unavailable. connect_ms includes TLS; ttfb_ms includes queue/connect time. navigation-intent is a link click, route is component commit, content-ready is per component. No payloads or complete URLs are collected.' }, null, 2);
 }
 try {
   const saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
   if (saved?.version === 1 && saved.expires > Date.now() && saved.expires <= Date.now() + TTL && Array.isArray(saved.rows)
     && ['relay-on','relay-off','unknown'].includes(saved.mode) && Number.isFinite(saved.started)) {
-    const fields = new Set(['at','duration_ms','dns_ms','connect_ms','tls_ms','ttfb_ms','download_ms','transfer_bytes','status','api_ms']);
+    const fields = new Set(['at','duration_ms','dns_ms','connect_ms','tls_ms','ttfb_ms','request_wait_ms','download_ms','transfer_bytes','status','api_ms']);
     const rows: Row[] = saved.rows.slice(-MAX_ROWS).filter((r: Row) => r && typeof r.path === 'string' && diagnosticPath(r.path)
-      && ['api','resource','navigation','route','content-ready','mail-ready'].includes(String(r.type))).map((r: Row) => {
+      && ['api','resource','navigation','navigation-intent','route','content-ready','mail-ready'].includes(String(r.type))).map((r: Row) => {
       const row: Row = {type:r.type,path:diagnosticPath(String(r.path))};
-      for (const k of fields) if (typeof r[k] === 'number' && Number.isFinite(r[k])) row[k] = round(r[k] as number);
+      for (const k of fields) {
+        if (typeof r[k] === 'number' && Number.isFinite(r[k])) row[k] = round(r[k] as number);
+        else if (r[k] === null) row[k] = null;
+      }
       if (/^[a-f0-9-]{36}$/i.test(String(r.request_id))) row.request_id = r.request_id;
       if (['CN_DIRECT','US_PROXY','UNKNOWN'].includes(String(r.ingress))) row.ingress = r.ingress;
       if (['h2','h3','http/1.1','unknown'].includes(String(r.protocol))) row.protocol = r.protocol;

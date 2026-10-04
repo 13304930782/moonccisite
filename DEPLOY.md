@@ -956,3 +956,23 @@ frontend archive; do not restart PM2. The US reader has **no index.html**: sync 
 `dist/assets/` with `rsync -ac --ignore-existing`, then verify the asset checksums.
 Do not run the main site's frontend entry-point installer on the reader directory.
 Retain old hashed assets; rollback the Beijing `index.html` from the printed backup.
+
+## 真实设备诊断修正与美国 HTTP/2（2026-10-05）
+
+前端沿用离线包部署；诊断阶段缺失值现在为 `null`，新增同源页面链接点击事件与 `request_wait_ms`，不默认采集、不自动上传。不得把组件级 `content-ready` 当作完整页面完成。
+
+美国网关协议修正单独部署，不由前端包执行。将 `ops/mail-performance/us-http2.py` 以 LF 字节上传到美国服务器 `/root/mooncci-us-http2.py`，先运行：
+
+```sh
+python3 /root/mooncci-us-http2.py preview
+# 将上一步 before 字段的 SHA256 作为参数；仅在核对目标为美国网关后执行。
+nohup python3 /root/mooncci-us-http2.py apply REVIEWED_SHA256 > /root/mooncci-us-http2.log 2>&1 < /dev/null &
+```
+
+脚本仅对 `/www/server/panel/vhost/nginx/mooncci.site.conf` 添加一条 `http2 on;`，备份、语法校验、平滑 reload，再验证 h2/h1 兼容与正常证书校验。失败自动回滚；不重启 PM2、不更改 upstream/数据库/邮件服务。回滚使用部署日志返回的备份路径：
+
+```sh
+python3 /root/mooncci-us-http2.py rollback /www/backup/mooncci-us-http2.RETURNED_SUFFIX
+```
+
+手动回滚也有 SHA 漂移检查；如配置已被另一个发布修改，拒绝覆盖，须审查差异。实际用户体验需重新导出设备记录确认，HTTP/2 握手通过本身不是性能达标证据。调查记录见 `docs/real-device-diagnostics-20261005.md`。
