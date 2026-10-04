@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const ts = require('typescript'), fs = require('fs');
 const code = ts.transpileModule(fs.readFileSync('src/app/lib/api.ts','utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const moduleApi = {exports:{}}; new Function('exports','module',code)(moduleApi.exports,moduleApi);
+const moduleApi = {exports:{}}; new Function('exports','module','require',code)(moduleApi.exports,moduleApi, () => ({beginApiDiagnostic:()=>null}));
 const {api} = moduleApi.exports;
 test('request timeout, cancellation, response classification, credentials and no write retry', async () => {
  const original = global.fetch;

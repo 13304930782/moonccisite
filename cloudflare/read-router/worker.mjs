@@ -39,6 +39,7 @@ export async function handle(request, env, fetcher = fetch) {
   const url = new URL(request.url); url.host = new URL(origin).host;
   // Do not transmit arbitrary client headers to the reader.
   const headers = new Headers({ 'X-Mooncci-Reader-Key': env.READER_KEY });
+  if (request.headers.get('X-Mooncci-Diagnostic') === '1') headers.set('X-Mooncci-Diagnostic', '1');
   for (const name of ['accept', 'accept-language', 'if-none-match', 'if-modified-since']) {
     if (request.headers.has(name)) headers.set(name, request.headers.get(name));
   }

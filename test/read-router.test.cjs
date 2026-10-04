@@ -1,6 +1,20 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const key='a'.repeat(40);
 const env={ROUTING_ENABLED:'true',MODE:'live',READER_ORIGIN:'https://reader.example.test',READER_KEY:key};
+test('reader forwards only opt-in timing and validated response metadata',async t=>{
+ const {createReader}=await import('../edge/reader/server.mjs');
+ const id='c060b54d-dd73-4304-9bc0-029a63dd017b';let forwarded;
+ const server=createReader({origin:'https://primary.example.test',key,dist:'.',fetcher:async(url,opts)=>{
+  forwarded=opts.headers;return new Response('ok',{headers:{'X-Diagnostic-Request-ID':id,'Server-Timing':'app;dur=12.3','X-Secret':'do-not-copy'}});
+ }});
+ server.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));
+ const url=`http://127.0.0.1:${server.address().port}/api/posts`;
+ const ordinary=await fetch(url,{headers:{'X-Mooncci-Reader-Key':key}});
+ assert.equal(forwarded.has('X-Mooncci-Diagnostic'),false);assert.equal(ordinary.headers.has('X-Diagnostic-Request-ID'),false);
+ const opted=await fetch(url,{headers:{'X-Mooncci-Reader-Key':key,'X-Mooncci-Diagnostic':'1','X-Diagnostic-Request-ID':'spoof','X-Mooncci-Mail-Ingress':'CN_DIRECT'}});
+ assert.equal(forwarded.get('X-Mooncci-Diagnostic'),'1');assert.equal(forwarded.has('X-Diagnostic-Request-ID'),false);assert.equal(forwarded.has('X-Mooncci-Mail-Ingress'),false);
+ assert.equal(opted.headers.get('X-Diagnostic-Request-ID'),id);assert.equal(opted.headers.get('Server-Timing'),'app;dur=12.3');assert.equal(opted.headers.get('X-Diagnostic-Ingress'),'US_PROXY');assert.equal(opted.headers.has('X-Secret'),false);
+});
 function request(path='/',country='US',init={}){const r=new Request('https://mooncci.site'+path,init);Object.defineProperty(r,'cf',{value:{country}});return r;}
 test('routing allowlist isolates private requests, unknown regions and write operations',async()=>{
  const {overseas}=await import('../cloudflare/read-router/worker.mjs');
