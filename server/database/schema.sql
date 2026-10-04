@@ -777,3 +777,53 @@ CREATE TABLE IF NOT EXISTS login_sessions (
  KEY sessions_expiry(expires_at),
  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS mailbox_access (
+ user_id INT NOT NULL PRIMARY KEY,
+ requested_local_part VARCHAR(64) NOT NULL,
+ reason VARCHAR(1000) NOT NULL,
+ status ENUM('pending','provisioning','active','rejected','revoked') NOT NULL DEFAULT 'pending',
+ mailbox_address VARCHAR(120) DEFAULT NULL,
+ smtp_secret TEXT NULL,
+ provision_request_id CHAR(36) DEFAULT NULL,
+ provision_claimed_at DATETIME DEFAULT NULL,
+ daily_limit SMALLINT UNSIGNED NOT NULL DEFAULT 10,
+ reviewer_id INT DEFAULT NULL,
+ review_note VARCHAR(1000) DEFAULT NULL,
+ reviewed_at DATETIME DEFAULT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE KEY uq_mailbox_access_local_part(requested_local_part),
+ UNIQUE KEY uq_mailbox_access_address(mailbox_address),
+ UNIQUE KEY uq_mailbox_access_request(provision_request_id),
+ KEY idx_mailbox_access_status(status,created_at),
+ FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+ FOREIGN KEY(reviewer_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS mailbox_send_logs (
+ id CHAR(36) NOT NULL PRIMARY KEY,
+ user_id INT NOT NULL,
+ mailbox_address VARCHAR(120) NOT NULL,
+ recipient_email VARCHAR(254) NOT NULL,
+ subject VARCHAR(120) NOT NULL,
+ status ENUM('sending','accepted','failed','uncertain') NOT NULL DEFAULT 'sending',
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ KEY idx_mailbox_send_user_day(user_id,created_at),
+ FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS mailbox_password_changes (
+ user_id INT NOT NULL PRIMARY KEY,
+ request_id CHAR(36) CHARACTER SET ascii NOT NULL,
+ mailbox_address VARCHAR(120) NOT NULL,
+ new_secret TEXT NULL,
+ status ENUM('pending','claimed','review','complete') NOT NULL DEFAULT 'pending',
+ claimed_at DATETIME NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE KEY uq_mailbox_password_request(request_id),
+ KEY idx_mailbox_password_queue(status,created_at),
+ FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

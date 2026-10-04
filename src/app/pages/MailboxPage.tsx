@@ -1,11 +1,11 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, Check, Inbox, Mail, RefreshCw, Send } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Check, Copy, Eye, EyeOff, Inbox, KeyRound, Mail, RefreshCw, Send } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import '../../styles/mailbox.css';
 
-type Access = { status: 'pending' | 'provisioning' | 'active' | 'rejected' | 'revoked'; mailbox_address: string | null; daily_limit: number; review_note: string | null };
+type Access = { status: 'pending' | 'provisioning' | 'active' | 'rejected' | 'revoked'; mailbox_address: string | null; daily_limit: number; review_note: string | null; password_change_status?: 'idle' | 'pending' | 'claimed' | 'review' | 'complete' };
 type Sent = { id: string; recipient_email: string; subject: string; status: string };
 type Folder = 'inbox' | 'sent';
 type Message = { uid: number; from: string; to: string; subject: string; date: string | null; unread: boolean; size: number; text?: string; replyTo?: string; tooLarge?: boolean; attachments?: { filename: string; size: number }[] };
@@ -23,6 +23,17 @@ export default function MailboxPage() {
   const [localPart, setLocalPart] = useState('');
   const [reason, setReason] = useState('');
   const [password, setPassword] = useState('');
+  const [credentialMode, setCredentialMode] = useState<'reveal' | 'change' | null>(null);
+  const [credentialChallenge, setCredentialChallenge] = useState('');
+  const [credentialCode, setCredentialCode] = useState('');
+  const [credentialPassword, setCredentialPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [credentialBusy, setCredentialBusy] = useState(false);
+  const [credentialMessage, setCredentialMessage] = useState('');
+  const [credentialError, setCredentialError] = useState('');
+  const [credentialVisible, setCredentialVisible] = useState(false);
+  const credentialInput = useRef<HTMLInputElement>(null);
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
@@ -36,6 +47,18 @@ export default function MailboxPage() {
     setAccess(self.access); setSent(history.messages);
   }, []);
   useEffect(() => { refresh().catch(error => setNotice(error.message || '邮箱状态暂时无法读取')).finally(() => setLoading(false)); }, [refresh]);
+  useEffect(() => {
+    if (!['pending', 'claimed'].includes(access?.password_change_status || '')) return;
+    const timer = window.setInterval(() => { void refresh().catch(() => {}); }, 5000);
+    return () => window.clearInterval(timer);
+  }, [access?.password_change_status, refresh]);
+  useEffect(() => {
+    if (!credentialPassword) return;
+    const clear = () => { setCredentialPassword(''); setCredentialVisible(false); };
+    const timer = window.setTimeout(clear, 60000);
+    document.addEventListener('visibilitychange', clear);
+    return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', clear); };
+  }, [credentialPassword]);
   const loadFolder = useCallback(async (folder: Folder, page = 1) => {
     setMailLoading(true); setMailError(''); setSelected(null);
     try {
@@ -45,8 +68,8 @@ export default function MailboxPage() {
     finally { setMailLoading(false); }
   }, []);
   useEffect(() => {
-    if (access?.status === 'active' && view !== 'compose') void loadFolder(view);
-  }, [access?.status, view, loadFolder]);
+    if (access?.status === 'active' && !['pending', 'claimed', 'review'].includes(access.password_change_status || '') && view !== 'compose') void loadFolder(view);
+  }, [access?.status, access?.password_change_status, view, loadFolder]);
   const openMessage = async (message: Message) => {
     if (view === 'compose' || !mailList?.uidValidity) return;
     setMailLoading(true); setMailError('');
@@ -75,6 +98,29 @@ export default function MailboxPage() {
     const result = await api('/mailboxes/send', { method: 'POST', body: JSON.stringify({ to, subject, content }) });
     setTo(''); setSubject(''); setContent(''); setNotice(result.message); changeView('sent');
   }); };
+  const closeCredentials = () => { setCredentialMode(null); setCredentialChallenge(''); setCredentialCode(''); setCredentialPassword(''); setNewPassword(''); setConfirmPassword(''); setCredentialVisible(false); setCredentialMessage(''); setCredentialError(''); };
+  const startCredentials = async (mode: 'reveal' | 'change') => {
+    closeCredentials(); setCredentialMode(mode); setCredentialBusy(true);
+    try { const result = await api('/mailboxes/credentials/code', { method: 'POST' }); setCredentialChallenge(result.challenge_id); setCredentialMessage(result.message); }
+    catch (error: any) { setCredentialError(error.message || '验证码发送失败。'); }
+    finally { setCredentialBusy(false); }
+  };
+  const revealCredentials = async (event: FormEvent) => { event.preventDefault(); setCredentialBusy(true); setCredentialError('');
+    try { const result = await api('/mailboxes/credentials/reveal', { method: 'POST', body: JSON.stringify({ challenge_id: credentialChallenge, code: credentialCode }) }); setCredentialPassword(result.password); setCredentialChallenge(''); setCredentialCode(''); setCredentialMessage('密码仅在当前页面短暂显示，切换页面或 60 秒后自动隐藏。'); }
+    catch (error: any) { setCredentialError(error.message || '验证失败。'); }
+    finally { setCredentialBusy(false); }
+  };
+  const changeCredentials = async (event: FormEvent) => { event.preventDefault(); setCredentialError('');
+    if (newPassword !== confirmPassword) { setCredentialError('两次输入的密码不一致。'); return; }
+    setCredentialBusy(true);
+    try { const result = await api('/mailboxes/credentials/change', { method: 'POST', body: JSON.stringify({ challenge_id: credentialChallenge, code: credentialCode, password: newPassword }) }); closeCredentials(); setCredentialMessage(result.message); await refresh(); }
+    catch (error: any) { setCredentialError(error.message || '密码更新未完成，请刷新状态后重试。'); }
+    finally { setCredentialBusy(false); }
+  };
+  const copyCredentials = async () => { if (!credentialPassword) return;
+    try { await navigator.clipboard.writeText(credentialPassword); setCredentialMessage('密码已复制，请直接粘贴到邮件客户端。'); }
+    catch { setCredentialVisible(true); credentialInput.current?.focus(); credentialInput.current?.select(); setCredentialMessage('浏览器未允许自动复制，密码已选中；请使用复制命令。'); }
+  };
 
   return <main className="mailbox-page">
     <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>我的邮箱</h1>
@@ -104,13 +150,27 @@ export default function MailboxPage() {
           <p className="mailbox-help">3–32 位，以字母开头；可用小写字母、数字、点、横线和下划线。</p><label htmlFor="mail-reason">申请说明</label>
           <textarea id="mail-reason" rows={4} value={reason} onChange={event => setReason(event.target.value)} minLength={10} maxLength={1000} required placeholder="说明邮箱用途和预计发送对象" />
           <button className="mailbox-primary" disabled={busy}>{busy ? '提交中…' : '提交申请'}</button></form></section>}
-      {access?.status === 'active' && <><section className="mailbox-account-line" aria-label="当前邮箱账号"><div><strong>{access.mailbox_address}</strong><span>已连接</span></div><span className="mailbox-badge">已开通</span></section>
-        <nav className="mailbox-view-tabs" aria-label="邮箱文件夹">
+      {access?.status === 'active' && <>{owner && <section className="mailbox-account-line" aria-label="当前邮箱账号"><div><strong>{access.mailbox_address}</strong><span>已连接</span></div><span className="mailbox-badge">已开通</span></section>}
+        <section className="mailbox-panel mailbox-credentials" aria-labelledby="mailbox-credentials-title">
+          <div className="mailbox-panel-head"><span className="mailbox-icon"><KeyRound size={20} aria-hidden="true" /></span><div><h2 id="mailbox-credentials-title">在邮件客户端使用</h2><p>登录用户名是完整邮箱地址；收件与发件使用同一个密码。</p></div></div>
+          <div className="mailbox-credential-actions"><Link className="mailbox-secondary" to={`/mail-setup?email=${encodeURIComponent(access.mailbox_address || '')}`}>查看客户端设置 <ArrowUpRight size={16} aria-hidden="true" /></Link>
+            <button type="button" className="mailbox-secondary" onClick={() => void startCredentials('reveal')} disabled={credentialBusy || ['pending','claimed','review'].includes(access.password_change_status || '')}>查看并复制密码</button>
+            <button type="button" className="mailbox-secondary" onClick={() => void startCredentials('change')} disabled={credentialBusy || ['pending','claimed','review'].includes(access.password_change_status || '')}>修改密码</button></div>
+          {['pending','claimed'].includes(access.password_change_status || '') && <p className="mailbox-credential-status" role="status">密码更新已提交，正在等待邮局确认。确认后此处会自动刷新；请暂时不要在客户端使用新密码。</p>}
+          {access.password_change_status === 'review' && <p className="mailbox-credential-status" role="alert">邮局未确认改密结果，收发信暂时停用。请联系站长核对，不要重复提交。</p>}
+          {credentialMode && <div className="mailbox-credential-workflow"><div className="mailbox-credential-workflow-head"><strong>{credentialMode === 'reveal' ? '查看邮箱密码' : '修改邮箱密码'}</strong><button type="button" className="mailbox-text-button" onClick={closeCredentials} disabled={credentialBusy}>关闭</button></div>
+            <p>{credentialPassword ? '验证已完成。请及时复制密码，并在使用后清空剪贴板。' : credentialChallenge ? '验证码已发送至你的登录邮箱。每个验证码仅可使用一次，10 分钟内有效。' : '请先完成邮箱验证码验证。'}</p>
+            {credentialMode === 'reveal' && credentialPassword ? <div className="mailbox-credential-result"><label htmlFor="mailbox-current-password">邮箱密码</label><div className="mailbox-credential-secret"><input ref={credentialInput} id="mailbox-current-password" type={credentialVisible ? 'text' : 'password'} value={credentialPassword} readOnly autoComplete="off" spellCheck={false} /><button type="button" className="mailbox-secondary" aria-label={credentialVisible ? '隐藏密码' : '显示密码'} onClick={() => setCredentialVisible(value => !value)}>{credentialVisible ? <EyeOff size={17} /> : <Eye size={17} />}</button><button type="button" className="mailbox-primary" onClick={() => void copyCredentials()}><Copy size={16} aria-hidden="true" />复制密码</button></div></div> : credentialMode === 'reveal' ? <form className="mailbox-form" onSubmit={revealCredentials}><label htmlFor="mailbox-verify-code">邮件验证码</label><input id="mailbox-verify-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={credentialCode} onChange={event => setCredentialCode(event.target.value.replace(/\D/g, ''))} required /><button className="mailbox-primary" disabled={credentialBusy || !credentialChallenge || credentialCode.length !== 6}>验证并查看</button></form>
+              : <form className="mailbox-form" onSubmit={changeCredentials}><label htmlFor="mailbox-change-code">邮件验证码</label><input id="mailbox-change-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={credentialCode} onChange={event => setCredentialCode(event.target.value.replace(/\D/g, ''))} required /><label htmlFor="mailbox-new-password">新邮箱密码</label><input id="mailbox-new-password" type="password" autoComplete="new-password" minLength={12} maxLength={128} value={newPassword} onChange={event => setNewPassword(event.target.value)} required /><p className="mailbox-help">至少 12 位，包含大小写字母和数字，不含空格。改密后，其他邮件客户端也要更新密码。</p><label htmlFor="mailbox-confirm-password">确认新密码</label><input id="mailbox-confirm-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} required /><button className="mailbox-primary" disabled={credentialBusy || !credentialChallenge || credentialCode.length !== 6 || !newPassword || newPassword !== confirmPassword}>验证并提交改密</button></form>}
+          </div>}
+          {credentialMessage && <p className="mailbox-credential-status" role="status">{credentialMessage}</p>}{credentialError && <p className="mailbox-error" role="alert">{credentialError}</p>}
+        </section>
+        {!['pending','claimed','review'].includes(access.password_change_status || '') && <nav className="mailbox-view-tabs" aria-label="邮箱文件夹">
           <button type="button" aria-current={view === 'inbox' ? 'page' : undefined} onClick={() => changeView('inbox')}><Inbox size={17} aria-hidden="true" />收件箱</button>
           <button type="button" aria-current={view === 'sent' ? 'page' : undefined} onClick={() => changeView('sent')}><Send size={17} aria-hidden="true" />已发送</button>
           <button type="button" aria-current={view === 'compose' ? 'page' : undefined} onClick={() => changeView('compose')}><Mail size={17} aria-hidden="true" />写邮件</button>
-        </nav>
-        {view !== 'compose' && <section className="mailbox-panel mailbox-letters" aria-labelledby="mail-folder-title">
+        </nav>}
+        {!['pending','claimed','review'].includes(access.password_change_status || '') && view !== 'compose' && <section className="mailbox-panel mailbox-letters" aria-labelledby="mail-folder-title">
           <div className="mailbox-folder-head"><div><h2 id="mail-folder-title">{view === 'inbox' ? '收件箱' : '已发送'}</h2><p>{mailList ? `${mailList.total} 封邮件` : '正在读取…'}</p></div>
             <button type="button" className="mailbox-secondary" onClick={() => void loadFolder(view, mailList?.page || 1)} disabled={mailLoading}><RefreshCw size={16} aria-hidden="true" />刷新</button></div>
           {mailError && <p className="mailbox-error" role="alert">{mailError}</p>}
@@ -125,7 +185,7 @@ export default function MailboxPage() {
             <span className="mailbox-letter-correspondent">{view === 'inbox' ? item.from : item.to}</span><span className="mailbox-letter-subject">{item.subject}</span><time>{item.date ? new Date(item.date).toLocaleString('zh-CN') : ''}</time></button></li>)}</ul>}
           {!selected && mailList && mailList.total > mailList.pageSize && <div className="mailbox-list-pages"><span>第 {mailList.page} 页</span><div><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page <= 1} onClick={() => void loadFolder(view, mailList.page - 1)}>上一页</button><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page * mailList.pageSize >= mailList.total} onClick={() => void loadFolder(view, mailList.page + 1)}>下一页</button></div></div>}
         </section>}
-        {view === 'compose' && <section className="mailbox-panel" aria-labelledby="mail-compose-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Send size={20} aria-hidden="true" /></span><div><h2 id="mail-compose-title">写邮件</h2><p>发件人：{access.mailbox_address}</p></div></div>
+        {!['pending','claimed','review'].includes(access.password_change_status || '') && view === 'compose' && <section className="mailbox-panel" aria-labelledby="mail-compose-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Send size={20} aria-hidden="true" /></span><div><h2 id="mail-compose-title">写邮件</h2><p>发件人：{access.mailbox_address}</p></div></div>
           <form onSubmit={send} className="mailbox-form"><label htmlFor="mail-to">收件人</label><input id="mail-to" type="email" value={to} onChange={event => setTo(event.target.value)} required placeholder="name@example.com" />
             <label htmlFor="mail-subject">标题</label><input id="mail-subject" value={subject} onChange={event => setSubject(event.target.value)} required maxLength={120} />
             <label htmlFor="mail-body">正文</label><textarea id="mail-body" value={content} onChange={event => setContent(event.target.value)} rows={9} required maxLength={10000} />

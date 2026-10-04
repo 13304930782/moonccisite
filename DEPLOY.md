@@ -528,6 +528,10 @@ four-color logo in dark mode. No GitHub push is required for offline deployment.
 
 本功能需要一个独立的后端离线包（`scripts/build-mailbox-imap-release.py`），包含 IMAP 依赖并隔离放在 `src/lib/mailbox-vendor`，避免更改站点其他依赖；安装时只重启 API。随后通过常规 `scripts/build-offline-release.py` 部署前端包，前端部署不重启 PM2。邮局域名默认沿用 `MAILBOX_SMTP_HOST`，也可在后端 `.env` 单独设置 `MAILBOX_IMAP_HOST` 和 `MAILBOX_IMAP_PORT=993`；不需要迁移数据库或改动邮局服务器。
 
+### 个人邮箱密码与客户端设置（2026-10-04）
+
+在 `/account/mailbox` 和站长的 `/admin/mailbox`，已开通用户可以进入客户端设置，并通过发送到登录邮箱的一次性验证码查看、复制或修改自己的邮局密码。客户端设置页从邮箱入口预填地址；配置文件仍不包含密码。改密先迁移 `202610040001_mailbox_password_changes.sql`，再更新网站 API，最后更新邮局代理；网站与邮局确认一致前，网页收发信会暂停。详细顺序、模糊结果的人工核对和密钥保护见 `server/mail-agent/README.md`。前端单独走离线静态包，不能用前端脚本替代后端或邮局部署。
+
 
 
 ## Article revisions / private bookmarks staged releases

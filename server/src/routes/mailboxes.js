@@ -6,6 +6,8 @@ const db = require('../db');
 const { authRequired, ownerOnly } = require('../middleware/auth');
 const { DOMAIN, localPart, email, header, seal, open } = require('../lib/mailboxSecurity');
 const mailboxImap = require('../lib/mailboxImap');
+const { emailValid, hash, sessionHash } = require('../lib/accountSettings');
+const { sendMail } = require('../lib/mailer');
 
 const router = require('../lib/asyncRouter')();
 const agentRouter = require('../lib/asyncRouter')();
@@ -75,11 +77,73 @@ agentRouter.post('/complete', async (req, res) => {
   res.json({ acknowledged: true });
 });
 
+agentRouter.post('/rotation-claim', async (_req, res) => {
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.query(`SELECT p.user_id, p.request_id, p.mailbox_address, p.new_secret
+      FROM mailbox_password_changes p JOIN mailbox_access m ON m.user_id=p.user_id
+      JOIN users u ON u.id=p.user_id
+      WHERE (p.status='pending' OR (p.status='claimed' AND p.claimed_at<DATE_SUB(NOW(), INTERVAL 5 MINUTE)))
+      AND m.status='active' AND m.mailbox_address=p.mailbox_address AND u.status='active'
+      ORDER BY p.created_at LIMIT 1 FOR UPDATE`);
+    const job = rows[0];
+    if (!job) {
+      await connection.commit();
+      return res.json({ job: null });
+    }
+    const password = open(job.new_secret, job.mailbox_address);
+    await connection.query("UPDATE mailbox_password_changes SET status='claimed', claimed_at=NOW() WHERE user_id=?", [job.user_id]);
+    await connection.commit();
+    res.json({ job: { address: job.mailbox_address, password, requestId: job.request_id } });
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally { connection.release(); }
+});
+
+agentRouter.post('/rotation-complete', async (req, res) => {
+  const requestId = String(req.body?.requestId || '');
+  const address = String(req.body?.address || '');
+  if (!/^[0-9a-f-]{36}$/i.test(requestId) || !email(address) || typeof req.body?.changed !== 'boolean') {
+    return res.status(400).json({ message: 'Invalid job result.' });
+  }
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.query('SELECT * FROM mailbox_password_changes WHERE request_id=? AND mailbox_address=? FOR UPDATE', [requestId, address]);
+    const job = rows[0];
+    if (!job) { await connection.rollback(); return res.status(409).json({ message: 'Job state needs manual review.' }); }
+    if (job.status === 'complete') { await connection.commit(); return res.json({ acknowledged: true }); }
+    if (job.status !== 'claimed') { await connection.rollback(); return res.status(409).json({ message: 'Job state needs manual review.' }); }
+    if (req.body.changed) {
+      const [result] = await connection.query(`UPDATE mailbox_access SET smtp_secret=?
+        WHERE user_id=? AND mailbox_address=? AND status='active'`, [job.new_secret, job.user_id, address]);
+      if (result.affectedRows) {
+        await connection.query("UPDATE mailbox_password_changes SET status='complete', new_secret=NULL WHERE user_id=?", [job.user_id]);
+      } else {
+        await connection.query("UPDATE mailbox_password_changes SET status='review' WHERE user_id=?", [job.user_id]);
+      }
+    } else {
+      await connection.query("UPDATE mailbox_password_changes SET status='review' WHERE user_id=?", [job.user_id]);
+    }
+    await connection.commit();
+    res.json({ acknowledged: true });
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally { connection.release(); }
+});
+
 router.use(authRequired);
 router.use(rateLimit({ windowMs: 60_000, limit: 30, skip: req => req.user?.role === 'owner',
   standardHeaders: true, legacyHeaders: false }));
 
 const ownerConnectLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 5,
+  keyGenerator: req => String(req.user.id), standardHeaders: true, legacyHeaders: false });
+const credentialCodeLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 5,
+  keyGenerator: req => String(req.user.id), standardHeaders: true, legacyHeaders: false });
+const credentialActionLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 10,
   keyGenerator: req => String(req.user.id), standardHeaders: true, legacyHeaders: false });
 
 router.post('/owner/connect', ownerOnly, ownerConnectLimiter, async (req, res) => {
@@ -150,8 +214,126 @@ function publicAccess(row) {
 router.get('/me', async (req, res) => {
   const [rows] = await db.query('SELECT * FROM mailbox_access WHERE user_id=? LIMIT 1', [req.user.id]);
   const access = publicAccess(rows[0]);
+  if (access?.status === 'active') {
+    const [changes] = await db.query('SELECT status FROM mailbox_password_changes WHERE user_id=? LIMIT 1', [req.user.id]);
+    access.password_change_status = changes[0]?.status || 'idle';
+  }
   if (access && req.user.role === 'owner') access.daily_limit = 0;
+  res.set('Cache-Control', 'private, no-store');
   res.json({ access });
+});
+
+function validNewPassword(value) {
+  return typeof value === 'string' && value.length >= 12 && value.length <= 128 &&
+    /^[!-~]+$/.test(value) && /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value);
+}
+
+async function verifyCredentialCode(connection, req) {
+  const id = req.body?.challenge_id;
+  const code = req.body?.code;
+  if (typeof id !== 'string' || !/^[a-f0-9]{64}$/.test(id) || typeof code !== 'string' || !/^\d{6}$/.test(code)) return false;
+  const [rows] = await connection.query(`SELECT id,old_email,old_code_hash,attempts,expires_at FROM account_challenges
+    WHERE id=? AND user_id=? AND session_hash=? AND purpose='mailbox_password' FOR UPDATE`,
+  [id, req.user.id, sessionHash(req)]);
+  const item = rows[0];
+  if (!item || item.old_email !== req.user.email || item.expires_at <= Date.now() || item.attempts >= 5) return false;
+  const actual = Buffer.from(hash(`${id}:${code}`), 'hex');
+  const expected = Buffer.from(item.old_code_hash, 'hex');
+  if (!crypto.timingSafeEqual(actual, expected)) {
+    await connection.query('UPDATE account_challenges SET attempts=attempts+1 WHERE id=?', [id]);
+    return false;
+  }
+  await connection.query('DELETE FROM account_challenges WHERE id=?', [id]);
+  return true;
+}
+
+router.post('/credentials/code', credentialCodeLimiter, async (req, res) => {
+  if (!emailValid(req.user.email)) return res.status(409).json({ message: '请先设置可接收验证码的登录邮箱。' });
+  const [access] = await db.query("SELECT user_id FROM mailbox_access WHERE user_id=? AND status='active' LIMIT 1", [req.user.id]);
+  if (!access.length) return res.status(403).json({ message: '邮箱尚未开通。' });
+  const id = crypto.randomBytes(32).toString('hex');
+  const code = crypto.randomInt(100000, 1000000).toString();
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [recent] = await connection.query(`SELECT id FROM account_challenges
+      WHERE user_id=? AND purpose='mailbox_password' AND created_at>? FOR UPDATE`, [req.user.id, Date.now() - 60_000]);
+    if (recent.length) { await connection.rollback(); return res.status(429).json({ message: '请间隔 60 秒再发送验证码。' }); }
+    await connection.query("DELETE FROM account_challenges WHERE user_id=? AND purpose='mailbox_password'", [req.user.id]);
+    await connection.query(`INSERT INTO account_challenges
+      (id,user_id,session_hash,purpose,old_email,old_code_hash,created_at,expires_at)
+      VALUES (?,?,?,'mailbox_password',?,?,?,?)`,
+    [id, req.user.id, sessionHash(req), req.user.email, hash(`${id}:${code}`), Date.now(), Date.now() + 600_000]);
+    await connection.commit();
+  } catch (error) { await connection.rollback(); throw error; }
+  finally { connection.release(); }
+  try {
+    const result = await sendMail({ to: req.user.email, subject: '[mooncci] 验证邮箱密码操作',
+      text: `验证码：${code}，10 分钟内有效。用于查看或修改 ${DOMAIN} 邮箱密码；如果不是你本人操作，请忽略。` });
+    if (!result.sent) throw new Error('Mail not sent');
+  } catch {
+    await db.query('UPDATE account_challenges SET expires_at=0 WHERE id=?', [id]);
+    return res.status(503).json({ message: '验证码发送失败，请稍后重试。' });
+  }
+  res.set('Cache-Control', 'private, no-store');
+  res.json({ challenge_id: id, message: '验证码已发送到登录邮箱，10 分钟内有效。' });
+});
+
+router.post('/credentials/reveal', credentialActionLimiter, async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.query(`SELECT m.mailbox_address,m.smtp_secret,p.status AS change_status
+      FROM mailbox_access m LEFT JOIN mailbox_password_changes p ON p.user_id=m.user_id
+      WHERE m.user_id=? AND m.status='active' FOR UPDATE`, [req.user.id]);
+    const account = rows[0];
+    if (!account) { await connection.rollback(); return res.status(403).json({ message: '邮箱尚未开通。' }); }
+    if (account.change_status && account.change_status !== 'complete') {
+      await connection.rollback(); return res.status(409).json({ message: '密码更新尚未确认，暂时不能查看。' });
+    }
+    if (!await verifyCredentialCode(connection, req)) {
+      await connection.commit(); return res.status(400).json({ message: '验证码无效或已过期。' });
+    }
+    const password = open(account.smtp_secret, account.mailbox_address);
+    await connection.commit();
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ password });
+  } catch (error) { await connection.rollback(); throw error; }
+  finally { connection.release(); }
+});
+
+router.post('/credentials/change', credentialActionLimiter, async (req, res) => {
+  const password = req.body?.password;
+  if (!validNewPassword(password)) return res.status(400).json({ message: '新密码需为 12–128 位，包含大小写字母和数字，不含空格。' });
+  if (!process.env.MAILBOX_PROVISION_KEY || !process.env.MAILBOX_SECRET_KEY) {
+    return res.status(503).json({ message: '邮局密码更新服务尚未配置。' });
+  }
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.query(`SELECT m.mailbox_address,m.smtp_secret,p.status AS change_status
+      FROM mailbox_access m LEFT JOIN mailbox_password_changes p ON p.user_id=m.user_id
+      WHERE m.user_id=? AND m.status='active' FOR UPDATE`, [req.user.id]);
+    const account = rows[0];
+    if (!account) { await connection.rollback(); return res.status(403).json({ message: '邮箱尚未开通。' }); }
+    if (account.change_status && account.change_status !== 'complete') {
+      await connection.rollback(); return res.status(409).json({ message: '已有密码更新待邮局确认，请先等待或联系站长。' });
+    }
+    if (open(account.smtp_secret, account.mailbox_address) === password) {
+      await connection.rollback(); return res.status(400).json({ message: '新密码不能与当前密码相同。' });
+    }
+    if (!await verifyCredentialCode(connection, req)) {
+      await connection.commit(); return res.status(400).json({ message: '验证码无效或已过期。' });
+    }
+    const requestId = crypto.randomUUID();
+    await connection.query(`INSERT INTO mailbox_password_changes (user_id,request_id,mailbox_address,new_secret,status,claimed_at)
+      VALUES (?,?,?,?,'pending',NULL) ON DUPLICATE KEY UPDATE request_id=VALUES(request_id),
+      mailbox_address=VALUES(mailbox_address),new_secret=VALUES(new_secret),status='pending',claimed_at=NULL`,
+    [req.user.id, requestId, account.mailbox_address, seal(password, account.mailbox_address)]);
+    await connection.commit();
+    res.status(202).json({ message: '已提交密码更新，邮局确认后生效。生效后请更新邮件客户端中的密码。' });
+  } catch (error) { await connection.rollback(); throw error; }
+  finally { connection.release(); }
 });
 
 router.post('/apply', async (req, res) => {
@@ -350,8 +532,9 @@ router.get('/sent', async (req, res) => {
 });
 
 async function activeAccount(userId) {
-  const [rows] = await db.query(`SELECT m.mailbox_address, m.smtp_secret FROM mailbox_access m
-    JOIN users u ON u.id=m.user_id WHERE m.user_id=? AND m.status='active' AND u.status='active' LIMIT 1`, [userId]);
+  const [rows] = await db.query(`SELECT m.mailbox_address, m.smtp_secret, p.status AS change_status FROM mailbox_access m
+    JOIN users u ON u.id=m.user_id LEFT JOIN mailbox_password_changes p ON p.user_id=m.user_id
+    WHERE m.user_id=? AND m.status='active' AND u.status='active' LIMIT 1`, [userId]);
   return rows[0];
 }
 
@@ -366,6 +549,7 @@ router.get('/folders/:folder', async (req, res) => {
   if (!Number.isSafeInteger(page) || page < 1 || page > 1000) return res.status(400).json({ message: '页码无效。' });
   const account = await activeAccount(req.user.id);
   if (!account) return res.status(403).json({ message: '邮箱尚未开通。' });
+  if (account.change_status && account.change_status !== 'complete') return res.status(409).json({ message: '邮箱密码更新待确认，请稍后刷新。' });
   res.set('Cache-Control', 'private, no-store');
   try { res.json(await mailboxImap.listMessages(account, req.params.folder, page)); }
   catch (error) { mailboxError(error, res); }
@@ -380,6 +564,7 @@ router.get('/folders/:folder/:uid', async (req, res) => {
   }
   const account = await activeAccount(req.user.id);
   if (!account) return res.status(403).json({ message: '邮箱尚未开通。' });
+  if (account.change_status && account.change_status !== 'complete') return res.status(409).json({ message: '邮箱密码更新待确认，请稍后刷新。' });
   res.set('Cache-Control', 'private, no-store');
   try {
     const message = await mailboxImap.readMessage(account, req.params.folder, uid, uidValidity);
@@ -400,12 +585,17 @@ router.post('/send', async (req, res) => {
   let logId;
   try {
     await connection.beginTransaction();
-    const [rows] = await connection.query(`SELECT m.mailbox_address, m.smtp_secret, m.daily_limit
-      FROM mailbox_access m JOIN users u ON u.id=m.user_id WHERE m.user_id=? AND m.status='active' AND u.status='active' FOR UPDATE`, [req.user.id]);
+    const [rows] = await connection.query(`SELECT m.mailbox_address, m.smtp_secret, m.daily_limit, p.status AS change_status
+      FROM mailbox_access m JOIN users u ON u.id=m.user_id LEFT JOIN mailbox_password_changes p ON p.user_id=m.user_id
+      WHERE m.user_id=? AND m.status='active' AND u.status='active' FOR UPDATE`, [req.user.id]);
     account = rows[0];
     if (!account) {
       await connection.rollback();
       return res.status(403).json({ message: '邮箱尚未开通或发信权限已撤销。' });
+    }
+    if (account.change_status && account.change_status !== 'complete') {
+      await connection.rollback();
+      return res.status(409).json({ message: '邮箱密码更新待确认，暂时不能发信。' });
     }
     if (req.user.role !== 'owner' && Number(account.daily_limit) > 0) {
       const [count] = await connection.query(`SELECT COUNT(*) AS used FROM mailbox_send_logs
