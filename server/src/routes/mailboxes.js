@@ -6,6 +6,7 @@ const db = require('../db');
 const { authRequired, ownerOnly } = require('../middleware/auth');
 const { DOMAIN, localPart, email, header, seal, open } = require('../lib/mailboxSecurity');
 const mailboxImap = require('../lib/mailboxImap');
+const mailTiming = require('../lib/mailboxTiming');
 const { emailValid, hash, sessionHash } = require('../lib/accountSettings');
 const { sendMail } = require('../lib/mailer');
 
@@ -95,6 +96,7 @@ agentRouter.post('/rotation-claim', async (_req, res) => {
     const password = open(job.new_secret, job.mailbox_address);
     await connection.query("UPDATE mailbox_password_changes SET status='claimed', claimed_at=NOW() WHERE user_id=?", [job.user_id]);
     await connection.commit();
+    mailboxImap.invalidate(job.user_id);
     res.json({ job: { address: job.mailbox_address, password, requestId: job.request_id } });
   } catch (error) {
     await connection.rollback();
@@ -128,6 +130,7 @@ agentRouter.post('/rotation-complete', async (req, res) => {
       await connection.query("UPDATE mailbox_password_changes SET status='review' WHERE user_id=?", [job.user_id]);
     }
     await connection.commit();
+    mailboxImap.invalidate(job.user_id);
     res.json({ acknowledged: true });
   } catch (error) {
     await connection.rollback();
@@ -135,6 +138,12 @@ agentRouter.post('/rotation-complete', async (req, res) => {
   } finally { connection.release(); }
 });
 
+router.use((req, res, next) => {
+  const operation = req.method === 'POST' && /^\/send\/?$/.test(req.path) ? 'send'
+    : req.method === 'GET' && /^\/folders\/[^/]+\/[^/]+\/?$/.test(req.path) ? 'read'
+    : req.method === 'GET' && /^\/folders\/[^/]+\/?$/.test(req.path) ? 'list' : null;
+  return operation ? mailTiming.middleware(operation)(req, res, next) : next();
+});
 router.use(authRequired);
 router.use(rateLimit({ windowMs: 60_000, limit: 30, skip: req => req.user?.role === 'owner',
   standardHeaders: true, legacyHeaders: false }));
@@ -194,6 +203,7 @@ router.post('/owner/connect', ownerOnly, ownerConnectLimiter, async (req, res) =
   } finally {
     connection.release();
   }
+  mailboxImap.invalidate(req.user.id);
   res.json({ message: '现有 mooncci 邮箱已连接，可以从网页发信。' });
 });
 
@@ -202,6 +212,7 @@ router.post('/owner/disconnect', ownerOnly, async (req, res) => {
     reviewer_id=?, reviewed_at=NOW() WHERE user_id=? AND mailbox_address=? AND status='active'`,
   [req.user.id, req.user.id, `mooncci@${DOMAIN}`]);
   if (!result.affectedRows) return res.status(409).json({ message: '邮箱连接状态已改变，请刷新。' });
+  mailboxImap.invalidate(req.user.id);
   res.json({ message: '网页发信连接已断开。原宝塔邮箱账号保持不变。' });
 });
 
@@ -331,6 +342,7 @@ router.post('/credentials/change', credentialActionLimiter, async (req, res) => 
       mailbox_address=VALUES(mailbox_address),new_secret=VALUES(new_secret),status='pending',claimed_at=NULL`,
     [req.user.id, requestId, account.mailbox_address, seal(password, account.mailbox_address)]);
     await connection.commit();
+    mailboxImap.invalidate(req.user.id);
     res.status(202).json({ message: '已提交密码更新，邮局确认后生效。生效后请更新邮件客户端中的密码。' });
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }
@@ -522,6 +534,7 @@ router.post('/admin/requests/:id/revoke', ownerOnly, async (req, res) => {
   const [result] = await db.query(`UPDATE mailbox_access SET status='revoked', smtp_secret=NULL, reviewer_id=?, reviewed_at=NOW()
     WHERE user_id=? AND status='active'`, [req.user.id, req.params.id]);
   if (!result.affectedRows) return res.status(409).json({ message: '邮箱权限已改变，请刷新。' });
+  mailboxImap.invalidate(req.params.id);
   res.json({ message: '网页发信权限已撤销。邮局账号仍需单独停用。' });
 });
 
@@ -547,11 +560,11 @@ router.get('/folders/:folder', async (req, res) => {
   if (!['inbox', 'sent'].includes(req.params.folder)) return res.status(404).json({ message: '邮箱文件夹不存在。' });
   const page = Number(req.query.page || 1);
   if (!Number.isSafeInteger(page) || page < 1 || page > 1000) return res.status(400).json({ message: '页码无效。' });
-  const account = await activeAccount(req.user.id);
+  const account = await req.mailTiming.measure('account_lookup_ms', () => activeAccount(req.user.id));
   if (!account) return res.status(403).json({ message: '邮箱尚未开通。' });
   if (account.change_status && account.change_status !== 'complete') return res.status(409).json({ message: '邮箱密码更新待确认，请稍后刷新。' });
   res.set('Cache-Control', 'private, no-store');
-  try { res.json(await mailboxImap.listMessages(account, req.params.folder, page)); }
+  try { res.json(await mailboxImap.listMessages({ ...account, user_id: req.user.id, role: req.user.role }, req.params.folder, page, req.mailTiming)); }
   catch (error) { mailboxError(error, res); }
 });
 
@@ -562,12 +575,12 @@ router.get('/folders/:folder/:uid', async (req, res) => {
   if (!Number.isSafeInteger(uid) || uid < 1 || !/^\d{1,20}$/.test(uidValidity)) {
     return res.status(400).json({ message: '邮件编号无效。' });
   }
-  const account = await activeAccount(req.user.id);
+  const account = await req.mailTiming.measure('account_lookup_ms', () => activeAccount(req.user.id));
   if (!account) return res.status(403).json({ message: '邮箱尚未开通。' });
   if (account.change_status && account.change_status !== 'complete') return res.status(409).json({ message: '邮箱密码更新待确认，请稍后刷新。' });
   res.set('Cache-Control', 'private, no-store');
   try {
-    const message = await mailboxImap.readMessage(account, req.params.folder, uid, uidValidity);
+    const message = await mailboxImap.readMessage({ ...account, user_id: req.user.id, role: req.user.role }, req.params.folder, uid, uidValidity, req.mailTiming);
     if (!message) return res.status(404).json({ message: '邮件已移动或不存在，请刷新列表。' });
     res.json({ message });
   } catch (error) { mailboxError(error, res); }
@@ -580,7 +593,8 @@ router.post('/send', async (req, res) => {
   if (!to || !subject || !content || content.length > 10000) {
     return res.status(400).json({ message: '请填写有效收件人、120 字以内标题和 10000 字以内正文。' });
   }
-  const connection = await db.getConnection();
+  const connection = await req.mailTiming.measure('db_pool_wait_ms', () => db.getConnection());
+  const finishPrepare = req.mailTiming.start('db_prepare_ms');
   let account;
   let logId;
   try {
@@ -614,6 +628,7 @@ router.post('/send', async (req, res) => {
     throw error;
   } finally {
     connection.release();
+    finishPrepare();
   }
 
   try {
@@ -636,14 +651,14 @@ router.post('/send', async (req, res) => {
       text: content,
       envelope: { from: account.mailbox_address, to: [to] },
     };
-    const raw = await new MailComposer(mail).compile().build();
-    const info = await transporter.sendMail({ raw, from: mail.from, to: mail.to, envelope: mail.envelope });
+    const raw = await req.mailTiming.measure('mime_build_ms', () => new MailComposer(mail).compile().build());
+    const info = await req.mailTiming.measure('smtp_submit_ms', () => transporter.sendMail({ raw, from: mail.from, to: mail.to, envelope: mail.envelope }));
     if (!info.accepted?.some(address => address.toLowerCase() === to)) {
       throw new Error('SMTP did not accept the recipient');
     }
-    await db.query("UPDATE mailbox_send_logs SET status='accepted' WHERE id=?", [logId]);
+    await req.mailTiming.measure('db_accept_ms', () => db.query("UPDATE mailbox_send_logs SET status='accepted' WHERE id=?", [logId]));
     let savedToSent = false;
-    try { await mailboxImap.appendSent(account, raw); savedToSent = true; }
+    try { await mailboxImap.appendSent({ ...account, user_id: req.user.id, role: req.user.role }, raw, req.mailTiming); savedToSent = true; }
     catch (error) { console.error('[mailboxes/sent-copy]', { id: logId, code: error.code || 'IMAP_ERROR' }); }
     res.json({ message: savedToSent ? '邮件已发送并保存到已发送。' : '邮件已发送，但未能保存到已发送。', id: logId, savedToSent });
   } catch (error) {
