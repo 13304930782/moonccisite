@@ -32,6 +32,8 @@ function createTiming(operation, { now = () => performance.now(), emit = line =>
   let reused = false;
   let reconnects = 0;
   let smtpReused = false, smtpReconnects = 0;
+  const smtp = { smtp_queue_id: null, smtp_envelope_ms: null, smtp_message_ms: null,
+    smtp_message_bytes: null, smtp_started_at: null, smtp_completed_at: null };
   let finished = false;
   const requestId = randomUUID();
   const add = (name, value) => {
@@ -41,7 +43,28 @@ function createTiming(operation, { now = () => performance.now(), emit = line =>
     requestId,
     add,
     start(name) { const began = now(); let done = false; return () => { if (!done) { done = true; add(name, now() - began); } }; },
-    async measure(name, work) { const began = now(); try { return await work(); } finally { add(name, now() - began); } },
+    async measure(name, work) {
+      const began = now();
+      if (name === 'smtp_submit_ms') smtp.smtp_started_at = new Date().toISOString();
+      try { return await work(); } finally {
+        add(name, now() - began);
+        if (name === 'smtp_submit_ms') smtp.smtp_completed_at = new Date().toISOString();
+      }
+    },
+    smtpResult(info) {
+      // Public sendMail result only; never retain response text, message ID, headers or envelope.
+      // Observability must not turn an accepted message into an uncertain send.
+      try {
+        for (const [key, source] of [['smtp_envelope_ms', 'envelopeTime'], ['smtp_message_ms', 'messageTime'], ['smtp_message_bytes', 'messageSize']]) {
+          const value = info?.[source];
+          if (Number.isSafeInteger(value) && value >= 0) smtp[key] = value;
+        }
+        const response = info?.response;
+        const match = typeof response === 'string' && response.length <= 256
+          ? /^250[ -]2\.0\.0 Ok: queued as ([A-Za-z0-9]{5,32})\s*$/.exec(response) : null;
+        smtp.smtp_queue_id = match ? match[1] : null;
+      } catch (_) { /* Preserve the existing delivery outcome. */ }
+    },
     reused(value) { reused = value === true; },
     reconnect() { reconnects += 1; },
     smtpReused(value) { smtpReused = value === true; },
@@ -65,7 +88,7 @@ function createTiming(operation, { now = () => performance.now(), emit = line =>
         completed_at: new Date(wall).toISOString(), request_path: routes.has(path) ? path : null,
         ingress: ['CN_DIRECT', 'US_PROXY'].includes(ingress) ? ingress : 'UNKNOWN',
         status: Number.isInteger(status) ? status : 500, aborted: aborted === true,
-        ...numeric, connection_reused: reused, reconnect_count: reconnects,
+        ...numeric, ...(operation === 'send' ? smtp : {}), connection_reused: reused, reconnect_count: reconnects,
         smtp_connection_reused: smtpReused, smtp_reconnect_count: smtpReconnects, total_ms: Math.round(total * 10) / 10 })); }
       catch (_) { /* Observability must not change mail outcomes. */ }
     },

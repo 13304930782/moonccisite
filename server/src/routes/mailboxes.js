@@ -652,6 +652,7 @@ router.post('/send', async (req, res) => {
     const info = await req.mailTiming.measure('smtp_submit_ms', () => mailboxSmtp.send(
       { ...account, user_id: req.user.id, role: req.user.role },
       { raw, from: mail.from, to: mail.to, envelope: mail.envelope }, req.mailTiming));
+    req.mailTiming.smtpResult(info);
     if (!info.accepted?.some(address => address.toLowerCase() === to)) {
       throw new Error('SMTP did not accept the recipient');
     }
