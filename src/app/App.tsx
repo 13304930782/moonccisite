@@ -1,4 +1,5 @@
 import { NavigationProtection } from './components/NavigationProtection';
+import { DiagnosticNavigation } from './components/DiagnosticNavigation';
 import { lazy, Suspense } from 'react';
 import { RoutePosition } from './components/RoutePosition';
 import '../styles/experience.css';
@@ -19,6 +20,7 @@ const ArchivesPage = lazy(() => import('./pages/ArchivesPage'));
 import {PageAnalytics} from './components/PageAnalytics';
 import { SiteSettingsProvider } from './context/SiteSettingsContext';
 const MailSetupPage = lazy(() => import('./pages/MailSetupPage'));
+const DiagnosticsPage = lazy(() => import('./pages/DiagnosticsPage'));
 const RssPage = lazy(() => import('./pages/RssPage'));
 import HomePage from './pages/HomePage';
 const UpdatesPage = lazy(() => import('./pages/UpdatesPage'));
@@ -131,7 +133,7 @@ function Guard({
 function SiteRoutes() {
   return <><NavigationProtection/>
           <SiteMeta /><Suspense fallback={null}><FeedbackHost/></Suspense>
-          <RoutePosition /><PageAnalytics />
+          <RoutePosition /><PageAnalytics /><DiagnosticNavigation />
           <Suspense fallback={<RouteLoader />}><Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/updates" element={<UpdatesPage/>}/>
@@ -139,6 +141,7 @@ function SiteRoutes() {
           <Route path="/projects" element={<ProjectsPage/>}/>
           <Route path="/projects/:slug" element={<ProjectDetailPage/>}/>
           <Route path="/mail-setup" element={<MailSetupPage/>}/>
+          <Route path="/diagnostics" element={<DiagnosticsPage/>}/>
           <Route path="/rss" element={<RssPage/>}/>
           <Route path="/subscription/:action" element={<SubscriptionPage/>}/>
           <Route path="/admin/updates" element={<Guard adminOnly><AdminShell><AdminUpdatesPage/></AdminShell></Guard>}/>

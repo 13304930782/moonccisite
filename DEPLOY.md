@@ -903,3 +903,40 @@ The public Nodemailer `getSocket` hook supplies a certificate-verified native TL
 The backend offline packer includes the two SMTP adapter files with preflight baseline hashes. Install first in instrumentation-only mode, verify health, then explicitly run its backup-local `mode.sh owner-smtp` for the dual owner pilot. `mode.sh owner` immediately returns SMTP to cold transports while retaining the five-minute owner IMAP pilot; `mode.sh instrumentation` disables both reuse paths but retains timing; `rollback.sh BACKUP` restores the exact files and prior flags. All switches restart API 0 only. Keep worker 1 unchanged. Do not enable on a multi-worker API deployment.
 
 New numeric telemetry: `smtp_connect_ms` (DNS/TCP/TLS via getSocket), `smtp_pool_wait_ms`, `smtp_connection_reused`, `smtp_reconnect_count`. `smtp_submit_ms` still measures the entire adapter call, including validation/queue time. A cold fallback has no split connection instrumentation (zero is unmeasured there, not proof that connect was free). Never add protocol debug logs.
+# Opt-in real-browser diagnostics (2026-10)
+
+`/diagnostics` starts a tab-local 20-minute recording only after an explicit click.
+Export contains normalized paths (no query strings or message IDs), request IDs,
+status, resource timing, API duration and UI-ready markers. It never uploads the
+browser report automatically. The user's relay mode selection is a label, not a
+network location measurement. A UI-ready marker describes that component's state,
+not a guarantee that every page resource has rendered. Browser timing restrictions
+and missing fields must not be interpreted as zero latency.
+
+API timing is also opt-in (`X-Mooncci-Diagnostic: 1`) with an endpoint allowlist and
+60 safe log rows/minute/process. `SITE_DIAGNOSTICS_ENABLED=false` disables server
+observations. No Cookie, Authorization, request/response body or full headers are
+logged. `X-Mail-Request-ID` takes precedence when correlating mailbox operations.
+The reader forwards only the boolean opt-in and validated response timing/UUID.
+`UNKNOWN` ingress is preserved when no trusted ingress signal exists.
+
+Run `npm run check`, `node --test server/test/siteDiagnostics.test.js`, and
+`node scripts/test-browser-diagnostics.cjs` before release. Tests use local fixtures;
+they do **not** reproduce iCloud Private Relay. Capture real iPhone/iPad reports
+with relay on/off before claiming that cross-region latency is resolved.
+
+Build backend and reader archives with `python scripts/build-site-diagnostics-release.py`
+from a clean reviewed commit. Each archive includes a baseline hash manifest and
+checksum sidecar; run `nohup bash deploy-site-diagnostics.sh > deploy.log 2>&1 &`
+in its own extracted directory after checksum verification. Backend deployment
+only restarts the verified API process; reader deployment only restarts its service.
+Neither edits `.env`, mail pool flags, worker, dependencies, SQL, Nginx or mail data.
+Rollback: `bash /www/backup/mooncci-site-diagnostics.<id>/rollback-site-diagnostics.sh /www/backup/mooncci-site-diagnostics.<id>`
+using the backup printed by that host's deploy log. Frontend uses the existing
+offline frontend workflow and its independent index backup. Build with
+`VITE_BUILD_REVISION` set to the reviewed commit for exported report attribution.
+
+Bundle review: diagnostics adds an optional page and small shared timing collector;
+the total raw JS allowance increases from 2,210,000 to 2,225,000 bytes. Initial JS,
+initial CSS, maximum chunk and gzip budgets are unchanged (measured initial JS
+approximately 296 kB raw / 96 kB gzip).

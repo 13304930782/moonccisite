@@ -18,6 +18,7 @@ const contentPlatform = require('./routes/contentPlatform');
 const subscriptions = require('./routes/subscriptions');
 const app = express();
 app.set('trust proxy', process.env.TRUST_PROXY || 'loopback');
+app.use(require('./lib/siteDiagnostics').createDiagnostics());
 
 // 安全响应头
 app.use(helmet({

@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { Header } from './Header';
 import { SiteFooter } from './SiteFooter';
+import { visibleDiagnostic } from '../lib/browserDiagnostics';
 
 export type PageData<T = any> = { items: T[]; total: number; page: number; pageSize: number };
 // Only published, user-independent endpoints may share an in-memory snapshot.
@@ -77,6 +78,12 @@ export function ResourceState({
   children: ReactNode;
 }) {
   const location=useLocation();
+  useEffect(() => {
+    if (!resource.loading && resource.data !== null) {
+      const frame = requestAnimationFrame(() => visibleDiagnostic(location.pathname, 'content-ready'));
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [resource.loading, resource.data, location.pathname]);
   const group=location.pathname.startsWith('/admin/')?'/admin':location.pathname.startsWith('/account/')?'/account/settings':location.pathname.startsWith('/projects/')?'/projects':location.pathname.startsWith('/updates/')?'/updates':location.pathname.startsWith('/series/')?'/series':'/articles';
   if (resource.loading && resource.data === null) return <div><ContentSkeleton />{resource.cancel && <button className="quiet-button" onClick={resource.cancel}>取消加载</button>}</div>;
   if (resource.error && resource.data === null)

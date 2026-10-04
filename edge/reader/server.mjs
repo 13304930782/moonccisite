@@ -46,6 +46,8 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
       if(upstream.origin!==origin || !publicRead(new Request(upstream,{method:req.method})))return stop(403,'Not a public read');
       const headers=new Headers();
       for(const name of ['accept','accept-language','if-none-match','if-modified-since']) if(req.headers[name])headers.set(name,req.headers[name]);
+      const diagnostic=req.headers['x-mooncci-diagnostic']==='1';
+      if(diagnostic)headers.set('X-Mooncci-Diagnostic','1');
       const response=await fetcher(upstream,{method:req.method,headers,redirect:'manual',signal:AbortSignal.timeout(10000)});
       if(response.headers.has('set-cookie')){await response.body?.cancel();return stop(502,'Unexpected private response');}
       if(response.status>=300 && response.status<400 && response.status!==304){await response.body?.cancel();return stop(502,'Unexpected redirect');}
@@ -61,6 +63,13 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
       const body=Buffer.concat(chunks);
       const outgoing={'Cache-Control':'no-store'};
       for(const name of ['content-type','etag','last-modified','x-robots-tag']) if(response.headers.has(name))outgoing[name]=response.headers.get(name);
+      if(diagnostic) {
+        const id=response.headers.get('x-diagnostic-request-id');
+        const timing=response.headers.get('server-timing');
+        if(/^[a-f0-9-]{36}$/i.test(id||''))outgoing['X-Diagnostic-Request-ID']=id;
+        if(/^app;dur=\d+(?:\.\d+)?$/.test(timing||''))outgoing['Server-Timing']=timing;
+        outgoing['X-Diagnostic-Ingress']='US_PROXY';
+      }
       res.writeHead(response.status,outgoing);res.end(req.method==='HEAD'?undefined:body);
     } catch { if(!res.headersSent)stop(502,'Reader upstream unavailable');else res.destroy(); }
     finally { if(counted)active--; }

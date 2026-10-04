@@ -52,6 +52,8 @@ jobs:
       - run: node scripts/test-image-retry-browser.cjs
       - run: node scripts/test-mail-setup-browser.cjs
       - run: node scripts/test-mailbox-send-feedback.cjs
+      - run: node scripts/test-browser-diagnostics.cjs
+      - run: bash -n scripts/deploy-site-diagnostics.sh scripts/rollback-site-diagnostics.sh
       - run: sudo apt-get update && sudo apt-get install -y nginx
       - run: python3 ops/mail-setup/test_nginx.py
       - run: node scripts/test-media-dialog-browser.cjs

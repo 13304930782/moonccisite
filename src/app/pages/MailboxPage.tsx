@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowUpRight, Check, Copy, Eye, EyeOff, Inbox, KeyRound, Mail, RefreshCw, Send } from 'lucide-react';
 import { api } from '../lib/api';
+import { visibleDiagnostic } from '../lib/browserDiagnostics';
 import { useAuth } from '../context/AuthContext';
 import '../../styles/mailbox.css';
 
@@ -56,6 +57,11 @@ function MailboxContent() {
   const folderVersion = useRef(0);
   const accountVersion = useRef(0);
   const historyVersion = useRef(0);
+  useEffect(() => {
+    if (loading || mailLoading || busy || (view !== 'compose' && !mailList && !mailError)) return;
+    const frame = requestAnimationFrame(() => visibleDiagnostic(location.pathname, 'mail-ready'));
+    return () => cancelAnimationFrame(frame);
+  }, [loading, mailLoading, busy, view, mailList, selected, mailError]);
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; lifetime.current.abort(); folderRequest.current?.abort(); };
