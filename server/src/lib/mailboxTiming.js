@@ -4,7 +4,7 @@ const { randomUUID } = require('node:crypto');
 const stages = new Set(['db_pool_wait_ms', 'db_prepare_ms', 'mime_build_ms', 'smtp_submit_ms',
   'db_accept_ms', 'account_lookup_ms', 'imap_connect_ms', 'folder_lookup_ms', 'mailbox_select_ms',
   'fetch_ms', 'metadata_fetch_ms', 'source_fetch_ms', 'parse_ms', 'flags_ms',
-  'imap_sent_lookup_ms', 'imap_append_ms', 'pool_wait_ms', 'imap_health_ms']);
+  'imap_sent_lookup_ms', 'imap_append_ms', 'pool_wait_ms', 'imap_health_ms', 'smtp_connect_ms', 'smtp_pool_wait_ms']);
 let windowStart = 0;
 let emitted = 0;
 let poolWindow = 0, poolEmitted = 0;
@@ -31,6 +31,7 @@ function createTiming(operation, { now = () => performance.now(), emit = line =>
   const values = Object.fromEntries([...stages].map(name => [name, 0]));
   let reused = false;
   let reconnects = 0;
+  let smtpReused = false, smtpReconnects = 0;
   let finished = false;
   const requestId = randomUUID();
   const add = (name, value) => {
@@ -43,7 +44,10 @@ function createTiming(operation, { now = () => performance.now(), emit = line =>
     async measure(name, work) { const began = now(); try { return await work(); } finally { add(name, now() - began); } },
     reused(value) { reused = value === true; },
     reconnect() { reconnects += 1; },
-    snapshot() { return { ...values, connection_reused: reused, reconnect_count: reconnects, total_ms: now() - start }; },
+    smtpReused(value) { smtpReused = value === true; },
+    smtpReconnect() { smtpReconnects++; },
+    snapshot() { return { ...values, connection_reused: reused, reconnect_count: reconnects,
+      smtp_connection_reused: smtpReused, smtp_reconnect_count: smtpReconnects, total_ms: now() - start }; },
     finish(status = 200, aborted = false) {
       if (finished) return;
       finished = true;
@@ -61,7 +65,8 @@ function createTiming(operation, { now = () => performance.now(), emit = line =>
         completed_at: new Date(wall).toISOString(), request_path: routes.has(path) ? path : null,
         ingress: ['CN_DIRECT', 'US_PROXY'].includes(ingress) ? ingress : 'UNKNOWN',
         status: Number.isInteger(status) ? status : 500, aborted: aborted === true,
-        ...numeric, connection_reused: reused, reconnect_count: reconnects, total_ms: Math.round(total * 10) / 10 })); }
+        ...numeric, connection_reused: reused, reconnect_count: reconnects,
+        smtp_connection_reused: smtpReused, smtp_reconnect_count: smtpReconnects, total_ms: Math.round(total * 10) / 10 })); }
       catch (_) { /* Observability must not change mail outcomes. */ }
     },
   };

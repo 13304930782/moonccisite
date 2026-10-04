@@ -199,7 +199,10 @@ if (require.main === module) {
   const httpServer = app.listen(port, process.env.HOST || '127.0.0.1', () => {
     console.log(`server running on ${port}`);
   });
-  require('./lib/mailboxShutdown').installMailboxShutdown(httpServer, () => require('./lib/mailboxImap').shutdown());
+  require('./lib/mailboxShutdown').installMailboxShutdown(httpServer, () => {
+    require('./lib/mailboxImap').shutdown();
+    require('./lib/mailboxSmtp').shutdown();
+  });
 }
 
 module.exports = app;

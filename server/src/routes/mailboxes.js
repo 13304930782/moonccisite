@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const MailComposer = require('nodemailer/lib/mail-composer');
+const mailboxSmtp = require('../lib/mailboxSmtp');
 const rateLimit = require('express-rate-limit');
 const db = require('../db');
 const { authRequired, ownerOnly } = require('../middleware/auth');
@@ -97,6 +98,7 @@ agentRouter.post('/rotation-claim', async (_req, res) => {
     await connection.query("UPDATE mailbox_password_changes SET status='claimed', claimed_at=NOW() WHERE user_id=?", [job.user_id]);
     await connection.commit();
     mailboxImap.invalidate(job.user_id);
+    mailboxSmtp.invalidate(job.user_id);
     res.json({ job: { address: job.mailbox_address, password, requestId: job.request_id } });
   } catch (error) {
     await connection.rollback();
@@ -131,6 +133,7 @@ agentRouter.post('/rotation-complete', async (req, res) => {
     }
     await connection.commit();
     mailboxImap.invalidate(job.user_id);
+    mailboxSmtp.invalidate(job.user_id);
     res.json({ acknowledged: true });
   } catch (error) {
     await connection.rollback();
@@ -206,6 +209,7 @@ router.post('/owner/connect', ownerOnly, ownerConnectLimiter, async (req, res) =
     connection.release();
   }
   mailboxImap.invalidate(req.user.id);
+  mailboxSmtp.invalidate(req.user.id);
   res.json({ message: '现有 mooncci 邮箱已连接，可以从网页发信。' });
 });
 
@@ -215,6 +219,7 @@ router.post('/owner/disconnect', ownerOnly, async (req, res) => {
   [req.user.id, req.user.id, `mooncci@${DOMAIN}`]);
   if (!result.affectedRows) return res.status(409).json({ message: '邮箱连接状态已改变，请刷新。' });
   mailboxImap.invalidate(req.user.id);
+  mailboxSmtp.invalidate(req.user.id);
   res.json({ message: '网页发信连接已断开。原宝塔邮箱账号保持不变。' });
 });
 
@@ -345,6 +350,7 @@ router.post('/credentials/change', credentialActionLimiter, async (req, res) => 
     [req.user.id, requestId, account.mailbox_address, seal(password, account.mailbox_address)]);
     await connection.commit();
     mailboxImap.invalidate(req.user.id);
+    mailboxSmtp.invalidate(req.user.id);
     res.status(202).json({ message: '已提交密码更新，邮局确认后生效。生效后请更新邮件客户端中的密码。' });
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }
@@ -537,6 +543,7 @@ router.post('/admin/requests/:id/revoke', ownerOnly, async (req, res) => {
     WHERE user_id=? AND status='active'`, [req.user.id, req.params.id]);
   if (!result.affectedRows) return res.status(409).json({ message: '邮箱权限已改变，请刷新。' });
   mailboxImap.invalidate(req.params.id);
+  mailboxSmtp.invalidate(req.params.id);
   res.json({ message: '网页发信权限已撤销。邮局账号仍需单独停用。' });
 });
 
@@ -634,18 +641,6 @@ router.post('/send', async (req, res) => {
   }
 
   try {
-    const host = process.env.MAILBOX_SMTP_HOST;
-    if (!host) throw new Error('MAILBOX_SMTP_HOST is not configured');
-    const transporter = nodemailer.createTransport({
-      host,
-      port: Number(process.env.MAILBOX_SMTP_PORT || 465),
-      secure: true,
-      requireTLS: true,
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 30000,
-      auth: { user: account.mailbox_address, pass: open(account.smtp_secret, account.mailbox_address) },
-    });
     const mail = {
       from: account.mailbox_address,
       to,
@@ -654,7 +649,9 @@ router.post('/send', async (req, res) => {
       envelope: { from: account.mailbox_address, to: [to] },
     };
     const raw = await req.mailTiming.measure('mime_build_ms', () => new MailComposer(mail).compile().build());
-    const info = await req.mailTiming.measure('smtp_submit_ms', () => transporter.sendMail({ raw, from: mail.from, to: mail.to, envelope: mail.envelope }));
+    const info = await req.mailTiming.measure('smtp_submit_ms', () => mailboxSmtp.send(
+      { ...account, user_id: req.user.id, role: req.user.role },
+      { raw, from: mail.from, to: mail.to, envelope: mail.envelope }, req.mailTiming));
     if (!info.accepted?.some(address => address.toLowerCase() === to)) {
       throw new Error('SMTP did not accept the recipient');
     }
