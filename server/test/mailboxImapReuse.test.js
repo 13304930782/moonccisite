@@ -6,7 +6,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createTiming } = require('../src/lib/mailboxTiming');
 
-function fixture(t, pooled = true) {
+function fixture(t, pooled = true, idleMs) {
   const clients = [];
   const account = { user_id: 1, role: 'owner', mailbox_address: 'mooncci@mooncci.site', smtp_secret: 'cipher' };
   class Client extends EventEmitter {
@@ -22,12 +22,14 @@ function fixture(t, pooled = true) {
     async append() { this.appends++; if (this.failAppend) throw Error('ack lost'); return { uid: 1 }; }
   }
   const env = { MAILBOX_SMTP_HOST: 'mail.example.invalid', MAILBOX_IMAP_POOL_ENABLED: String(pooled), MAILBOX_IMAP_POOL_API_PROCESSES: '1' };
+  if (idleMs !== undefined) env.MAILBOX_IMAP_POOL_IDLE_MS = idleMs;
   const module = { exports: {} };
   const dependencies = {
     path,
     module: { createRequire: () => name => name === 'imapflow' ? { ImapFlow: Client } : { simpleParser: async () => ({ text: 'parsed', attachments: [] }) } },
     './mailboxSecurity': { open: () => 'private-password' },
     './mailboxImapPool': require('../src/lib/mailboxImapPool'),
+    './mailboxTiming': { poolEvent() {} },
     '../db': { query: async () => [[account]] },
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/lib/mailboxImap.js'), 'utf8'), {
@@ -47,6 +49,15 @@ test('actual list/read adapter releases mailbox locks on success and rejection',
   clients[0].failFetch = true;
   await assert.rejects(imap.listMessages(account, 'inbox', 1));
   assert.equal(clients[0].releases, 3); assert.equal(clients[0].usable, false);
+});
+
+test('five-minute owner pilot keeps socket watchdog above idle TTL; invalid values retain short lifecycle', async t => {
+  for (const [setting, expected] of [['300000', 315000], ['Infinity', 45000], ['0', 45000], ['999999999', 45000]]) {
+    const { imap, clients, account } = fixture(t, true, setting);
+    await imap.listMessages(account, 'inbox', 1);
+    assert.equal(clients[0].options.socketTimeout, expected);
+    assert.equal(clients[0].options.disableAutoIdle, true);
+  }
 });
 
 test('Sent read does not mark Seen; APPEND remains awaited and is never retried', async t => {

@@ -141,7 +141,9 @@ agentRouter.post('/rotation-complete', async (req, res) => {
 router.use((req, res, next) => {
   const operation = req.method === 'POST' && /^\/send\/?$/.test(req.path) ? 'send'
     : req.method === 'GET' && /^\/folders\/[^/]+\/[^/]+\/?$/.test(req.path) ? 'read'
-    : req.method === 'GET' && /^\/folders\/[^/]+\/?$/.test(req.path) ? 'list' : null;
+    : req.method === 'GET' && /^\/folders\/[^/]+\/?$/.test(req.path) ? 'list'
+    : req.method === 'GET' && /^\/me\/?$/.test(req.path) ? 'account'
+    : req.method === 'GET' && /^\/sent\/?$/.test(req.path) ? 'history' : null;
   return operation ? mailTiming.middleware(operation)(req, res, next) : next();
 });
 router.use(authRequired);

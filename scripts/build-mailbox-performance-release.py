@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 import tarfile
+import argparse
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = 'b594edf475fa972b1c7ec54b57d2e3602457904b'
@@ -21,6 +22,9 @@ def digest(data):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--base', default=BASE)
+    args = parser.parse_args()
     if git('status', '--porcelain'):
         raise SystemExit('Commit source before packaging')
     revision = git('rev-parse', 'HEAD')
@@ -28,7 +32,7 @@ def main():
     for relative in FILES:
         name = 'server/' + relative
         data = (ROOT / name).read_bytes().replace(b'\r\n', b'\n')
-        before = subprocess.run(['git', 'show', f'{BASE}:{name}'], cwd=ROOT, capture_output=True)
+        before = subprocess.run(['git', 'show', f'{args.base}:{name}'], cwd=ROOT, capture_output=True)
         manifest[relative] = {'before': digest(before.stdout.replace(b'\r\n', b'\n')) if before.returncode == 0 else None,
                               'after': digest(data)}
         entries[name] = data

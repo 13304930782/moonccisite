@@ -7,11 +7,26 @@ const stages = new Set(['db_pool_wait_ms', 'db_prepare_ms', 'mime_build_ms', 'sm
   'imap_sent_lookup_ms', 'imap_append_ms', 'pool_wait_ms', 'imap_health_ms']);
 let windowStart = 0;
 let emitted = 0;
+let poolWindow = 0, poolEmitted = 0;
+const poolFields = ['cold_connection_count', 'connection_expired', 'connection_broken', 'noop_failure_count', 'active_pooled_connections'];
+const routes = new Set(['/api/mailboxes/me', '/api/mailboxes/sent', '/api/mailboxes/send',
+  '/api/mailboxes/folders/inbox', '/api/mailboxes/folders/sent',
+  '/api/mailboxes/folders/inbox/:uid', '/api/mailboxes/folders/sent/:uid']);
+function poolEvent(event) {
+  if (process.env.MAILBOX_TIMING_ENABLED !== 'true') return;
+  if (!['connected', 'expired', 'broken', 'noop_failed', 'invalidated', 'shutdown', 'evicted', 'operation_timeout'].includes(event.reason)) return;
+  const wall = Date.now();
+  if (wall - poolWindow >= 60000) { poolWindow = wall; poolEmitted = 0; }
+  if (poolEmitted++ >= 60) return;
+  const data = Object.fromEntries(poolFields.map(k => [k, Number.isSafeInteger(event[k]) && event[k] >= 0 ? event[k] : 0]));
+  const id = /^[a-f0-9-]{36}$/.test(event.request_id || '') ? event.request_id : null;
+  try { console.info(JSON.stringify({ event: 'mailbox_pool', at: new Date(wall).toISOString(), reason: event.reason, request_id: id, ...data })); } catch (_) {}
+}
 
 // Deliberately accepts only numeric stages and fixed metadata, never arbitrary objects/errors.
 function createTiming(operation, { now = () => performance.now(), emit = line => console.info(line),
-  env = process.env, random = Math.random } = {}) {
-  if (!['send', 'list', 'read'].includes(operation)) throw new Error('Invalid mailbox operation');
+  env = process.env, random = Math.random, path = null, ingress = 'UNKNOWN' } = {}) {
+  if (!['send', 'list', 'read', 'account', 'history'].includes(operation)) throw new Error('Invalid mailbox operation');
   const start = now();
   const values = Object.fromEntries([...stages].map(name => [name, 0]));
   let reused = false;
@@ -43,6 +58,8 @@ function createTiming(operation, { now = () => performance.now(), emit = line =>
       emitted += 1;
       const numeric = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, Math.round(v * 10) / 10]));
       try { emit(JSON.stringify({ event: 'mailbox_timing', request_id: requestId, operation,
+        completed_at: new Date(wall).toISOString(), request_path: routes.has(path) ? path : null,
+        ingress: ['CN_DIRECT', 'US_PROXY'].includes(ingress) ? ingress : 'UNKNOWN',
         status: Number.isInteger(status) ? status : 500, aborted: aborted === true,
         ...numeric, connection_reused: reused, reconnect_count: reconnects, total_ms: Math.round(total * 10) / 10 })); }
       catch (_) { /* Observability must not change mail outcomes. */ }
@@ -52,7 +69,10 @@ function createTiming(operation, { now = () => performance.now(), emit = line =>
 
 function middleware(operation) {
   return (req, res, next) => {
-    req.mailTiming = createTiming(operation);
+    const route = '/api/mailboxes' + req.path.replace(/\/\d+\/?$/, '/:uid').replace(/\/$/, '');
+    const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket?.remoteAddress);
+    req.mailTiming = createTiming(operation, { path: route,
+      ingress: local ? req.get('X-Mooncci-Mail-Ingress') : 'UNKNOWN' });
     res.setHeader('X-Mail-Request-ID', req.mailTiming.requestId);
     res.once('finish', () => req.mailTiming.finish(res.statusCode));
     res.once('close', () => { if (!res.writableFinished) req.mailTiming.finish(res.statusCode, true); });
@@ -60,4 +80,4 @@ function middleware(operation) {
   };
 }
 
-module.exports = { createTiming, middleware };
+module.exports = { createTiming, middleware, poolEvent };
