@@ -68,7 +68,10 @@ async function persistAccountChange(sql, params, invalidateUserId, ownerActorId)
       );
     }
     await connection.commit();
-    if (invalidateUserId !== undefined) require('../lib/mailboxImap').invalidate(invalidateUserId);
+    if (invalidateUserId !== undefined) {
+      require('../lib/mailboxImap').invalidate(invalidateUserId);
+      require('../lib/mailboxSmtp').invalidate(invalidateUserId);
+    }
     return true;
   } catch (error) {
     await connection.rollback();

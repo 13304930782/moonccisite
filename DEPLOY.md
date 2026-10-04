@@ -848,3 +848,12 @@ logging, backs up exact configuration bytes, tests Nginx before graceful reload,
 restores on failure. Revert with `python3 BACKUP/nginx-observation.py rollback BACKUP` using its
 printed `OBSERVATION_BACKUP`. Remove the temporary log setup after the observation window; normal
 Nginx log rotation applies. No Postfix/Dovecot settings are involved.
+# Owner SMTP pooling pilot (2026-10-04)
+
+`MAILBOX_SMTP_POOL_ENABLED=true` and `MAILBOX_SMTP_POOL_API_PROCESSES=1` only apply to the active owner mailbox `mooncci@mooncci.site` in API instance 0. Other mailboxes retain a new transport per request. One serialized process lane uses `maxConnections=1`, `maxMessages=50`, `maxRequeues=0`; queue capacity is 8 behind the active send, queue wait 15 seconds, connection timeout 15 seconds, active socket inactivity 30 seconds and overall SMTP operation limit 60 seconds. There is no retry after submission begins.
+
+The public Nodemailer `getSocket` hook supplies a certificate-verified native TLS socket. SMTP/AUTH/DATA remain implemented by Nodemailer. Tracked public sockets allow immediate credential/revoke/shutdown cleanup and retain the original active timeout. Only after a successful submission does the socket enter a 300-second idle lease (315-second idle watchdog). Before the next send it returns to the 30-second active timeout. The independent idle timer closes the transport even if server traffic continues. This does not change SMTP accepted/uncertain handling, DB records, synchronous Sent APPEND or MIME storage.
+
+The backend offline packer includes the two SMTP adapter files with preflight baseline hashes. Install first in instrumentation-only mode, verify health, then explicitly run its backup-local `mode.sh owner-smtp` for the dual owner pilot. `mode.sh owner` immediately returns SMTP to cold transports while retaining the five-minute owner IMAP pilot; `mode.sh instrumentation` disables both reuse paths but retains timing; `rollback.sh BACKUP` restores the exact files and prior flags. All switches restart API 0 only. Keep worker 1 unchanged. Do not enable on a multi-worker API deployment.
+
+New numeric telemetry: `smtp_connect_ms` (DNS/TCP/TLS via getSocket), `smtp_pool_wait_ms`, `smtp_connection_reused`, `smtp_reconnect_count`. `smtp_submit_ms` still measures the entire adapter call, including validation/queue time. A cold fallback has no split connection instrumentation (zero is unmeasured there, not proof that connect was free). Never add protocol debug logs.

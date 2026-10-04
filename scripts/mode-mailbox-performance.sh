@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-mode=${1:?Use instrumentation, owner, owner-short or off}
-case "$mode" in instrumentation|owner|owner-short|off) ;; *) exit 1 ;; esac
+mode=${1:?Use instrumentation, owner, owner-short, owner-smtp or off}
+case "$mode" in instrumentation|owner|owner-short|owner-smtp|off) ;; *) exit 1 ;; esac
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 export PATH="/opt/mooncci-node-v24.20.0/bin:$PATH"
 exec 9>/www/backup/mooncci-deploy.lock

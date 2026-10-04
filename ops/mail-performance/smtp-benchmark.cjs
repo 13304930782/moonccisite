@@ -12,6 +12,7 @@ const { open } = local('./src/lib/mailboxSecurity');
 const nodemailer = local('nodemailer');
 const MailComposer = local('nodemailer/lib/mail-composer');
 const recipient = process.argv[2];
+const candidate = process.argv[3] === '--candidate';
 const rows = [];
 const transports = new Set();
 let current = null;
@@ -31,12 +32,24 @@ const logger = Object.fromEntries(['trace', 'debug', 'info', 'warn', 'error', 'f
 async function main() {
   if (!/^codex-perf-[0-9a-f]{10}@mooncci\.site$/.test(recipient || '')) throw new Error('Invalid local recipient');
   if (Number(process.env.MAILBOX_SMTP_PORT || 465) !== 465) throw new Error('Expected production implicit TLS');
-  const [accounts] = await db.query(`SELECT m.mailbox_address,m.smtp_secret FROM mailbox_access m
+  const [accounts] = await db.query(`SELECT m.user_id,m.mailbox_address,m.smtp_secret FROM mailbox_access m
     JOIN users u ON u.id=m.user_id WHERE u.role='owner' AND u.status='active'
     AND m.status='active' AND m.mailbox_address='mooncci@mooncci.site'`);
   if (accounts.length !== 1) throw new Error('Owner account unavailable');
   const account = accounts[0];
   const make = pooled => {
+    if (pooled && candidate) {
+      const { MailboxSmtpPool } = require(process.env.MOONCCI_SMTP_POOL_MODULE || path.join(root, 'src/lib/mailboxSmtpPool'));
+      const pool = new MailboxSmtpPool({ createTransport: options => nodemailer.createTransport(options),
+        password: a => open(a.smtp_secret, a.mailbox_address), validate: async () => true });
+      const transport = { close: () => pool.shutdown(), sendMail: mail => pool.send({ ...account,
+        smtp_host: process.env.MAILBOX_SMTP_HOST, smtp_port: 465 }, mail, {
+        add: (name, value) => { current[name] = (current[name] || 0) + value; },
+        smtpReused: value => { current.managed_reused = value; },
+        smtpReconnect: () => { current.managed_reconnects = (current.managed_reconnects || 0) + 1; },
+      }) };
+      transports.add(transport); return transport;
+    }
     const transport = nodemailer.createTransport({ host: process.env.MAILBOX_SMTP_HOST, port: 465, secure: true,
       requireTLS: true, connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000,
       auth: { user: account.mailbox_address, pass: open(account.smtp_secret, account.mailbox_address) },
@@ -56,8 +69,9 @@ async function main() {
       if (info.accepted?.length !== 1 || info.accepted[0].toLowerCase() !== recipient) throw new Error('Recipient not accepted');
       const row = { group, index, smtp_submit_ms: round(performance.now() - current.start),
         smtp_connect_ms: current.smtp_connect_ms, smtp_setup_ms: current.smtp_setup_ms,
-        smtp_connection_reused: connections === before, smtp_reconnect_count: group === 'warm' ? connections - before : 0,
-        smtp_pool_wait_ms: null, accepted: true };
+        smtp_connection_reused: current.managed_reused ?? (connections === before),
+        smtp_reconnect_count: current.managed_reconnects ?? (group === 'warm' ? connections - before : 0),
+        smtp_pool_wait_ms: current.smtp_pool_wait_ms === undefined ? null : round(current.smtp_pool_wait_ms), accepted: true };
       rows.push(row);
       console.log(JSON.stringify({ event: 'smtp_benchmark', ...row }));
     } finally { current = null; }
@@ -66,6 +80,11 @@ async function main() {
   const pooled = make(true);
   await run(pooled, 'pool_setup', 0);
   for (let i = 0; i < 30; i++) await run(pooled, 'warm', i + 1);
+  if (candidate) {
+    console.log(JSON.stringify({ event: 'smtp_paced_wait', idle_ms: 65000 }));
+    await new Promise(r => setTimeout(r, 65000));
+    await run(pooled, 'paced_65s', 1);
+  }
   const stats = group => {
     const values = rows.filter(r => r.group === group).map(r => r.smtp_submit_ms).sort((a,b) => a-b);
     return { n: values.length, p50: values[Math.ceil(values.length * .5) - 1], p95: values[Math.ceil(values.length * .95) - 1] };

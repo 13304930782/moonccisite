@@ -13,7 +13,7 @@ test('send retains synchronous APPEND, accepted/uncertain semantics and sanitize
   const db = require('../src/db'), imap = require('../src/lib/mailboxImap');
   const { seal } = require('../src/lib/mailboxSecurity');
   const rows = [], timings = [], invalidations = [];
-  let deliveries = 0, smtpFails = false, releaseCopy, copyStarted;
+  let deliveries = 0, smtpFails = false, acceptDbFails = false, releaseCopy, copyStarted;
   const copyReached = new Promise(r => { copyStarted = r; });
   const copyGate = new Promise(r => { releaseCopy = r; });
   const account = { mailbox_address: 'mooncci@mooncci.site', smtp_secret: seal('SecretPassword42!', 'mooncci@mooncci.site'), daily_limit: 0 };
@@ -21,7 +21,9 @@ test('send retains synchronous APPEND, accepted/uncertain semantics and sanitize
     if (sql.includes('FROM users') && sql.includes('auth_revocations')) return [[{ id: 1, role: 'owner', status: 'active' }]];
     if (sql.includes('SELECT m.mailbox_address')) return [[account]];
     if (sql.startsWith('INSERT INTO mailbox_send_logs')) { rows.push({ id: args[0], status: 'sending' }); return [{}]; }
-    if (sql.startsWith('UPDATE mailbox_send_logs')) { rows.find(r => r.id === args[0]).status = sql.includes("status='accepted'") ? 'accepted' : 'uncertain'; return [{}]; }
+    if (sql.startsWith('UPDATE mailbox_send_logs')) {
+      if (acceptDbFails && sql.includes("status='accepted'")) throw Error('DB unavailable');
+      rows.find(r => r.id === args[0]).status = sql.includes("status='accepted'") ? 'accepted' : 'uncertain'; return [{}]; }
     if (sql.startsWith('UPDATE mailbox_access SET status=')) return [{ affectedRows: 1 }];
     throw Error('Unexpected query');
   };
@@ -56,6 +58,20 @@ test('send retains synchronous APPEND, accepted/uncertain semantics and sanitize
   assert.ok(!/SecretPassword|Sensitive|smtp_secret|target@example/.test(JSON.stringify(timings)));
   smtpFails = true; assert.equal((await post('/send', payload)).status, 502);
   assert.equal(rows[1].status, 'uncertain'); assert.equal(deliveries, 2);
+  smtpFails = false; acceptDbFails = true;
+  assert.equal((await post('/send', payload)).status, 502);
+  assert.equal(rows[2].status, 'uncertain'); assert.equal(deliveries, 3);
+  acceptDbFails = false;
+  // HTTP response loss after SMTP acceptance must never trigger another send.
+  let reachedCopy, completeCopy;
+  const atCopy = new Promise(r => { reachedCopy = r; });
+  t.mock.method(imap, 'appendSent', async () => { reachedCopy(); await new Promise(r => { completeCopy = r; }); });
+  const http = require('node:http');
+  const request = http.request(`http://127.0.0.1:${server.address().port}/mailboxes/send`, { method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: `mooncci_token=${jwt.sign({ id: 1 }, process.env.JWT_SECRET)}` } });
+  request.on('error', () => {}); request.end(JSON.stringify(payload));
+  await atCopy; request.destroy(); completeCopy(); await delay(50);
+  assert.equal(rows[3].status, 'accepted'); assert.equal(deliveries, 4);
   assert.equal((await post('/owner/disconnect')).status, 200);
   assert.equal((await post('/admin/requests/2/revoke')).status, 200);
   assert.deepEqual(invalidations, ['1', '2']);
