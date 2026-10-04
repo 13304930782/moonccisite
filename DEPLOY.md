@@ -940,3 +940,19 @@ Bundle review: diagnostics adds an optional page and small shared timing collect
 the total raw JS allowance increases from 2,210,000 to 2,225,000 bytes. Initial JS,
 initial CSS, maximum chunk and gzip budgets are unchanged (measured initial JS
 approximately 296 kB raw / 96 kB gzip).
+
+Mailbox navigation release is frontend-only: snapshots retain only the latest
+header page and scroll position per folder in the mounted, account-keyed component.
+They are cleared on account/permission/password-change status changes and never
+written to browser storage. Folder switches still revalidate with the API; failed
+401/403/409 responses erase snapshots. Reading never prefetches message bodies.
+Sending history loads only when its disclosure is opened; confirmed send status
+survives a later folder refresh failure. Published resource requests coalesce only
+while in flight, with independent cancellation and a 40-entry bound.
+
+Run `node scripts/test-mailbox-navigation.cjs` and
+`node scripts/test-mailbox-send-feedback.cjs` after building. Deploy only the
+frontend archive; do not restart PM2. The US reader has **no index.html**: sync only
+`dist/assets/` with `rsync -ac --ignore-existing`, then verify the asset checksums.
+Do not run the main site's frontend entry-point installer on the reader directory.
+Retain old hashed assets; rollback the Beijing `index.html` from the printed backup.

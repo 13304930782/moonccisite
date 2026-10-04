@@ -79,3 +79,5 @@
 .mailbox-credential-status{margin:16px 0 0;color:var(--muted-foreground);font-size:13px;line-height:1.6}.mailbox-credentials .mailbox-error{margin:14px 0 0}
 .mailbox-credentials :is(button,a,input):focus-visible{outline:3px solid var(--ring);outline-offset:2px}
 @media(max-width:700px){.mailbox-credentials{padding:20px}.mailbox-credential-actions{display:grid;grid-template-columns:1fr}.mailbox-credential-actions>*{width:100%}.mailbox-credential-workflow{padding:16px}.mailbox-credential-secret{display:grid;grid-template-columns:44px 1fr}.mailbox-credential-secret input{grid-column:1/3}.mailbox-credential-secret .mailbox-primary{width:100%}}
+
+.mailbox-refresh-status{margin:0;padding:12px 20px;color:var(--muted-foreground);font-size:13px}.mailbox-history summary{display:list-item;min-height:44px;line-height:44px;cursor:pointer;font-weight:600}.mailbox-history summary:focus-visible{outline:2px solid var(--ring);outline-offset:4px}
