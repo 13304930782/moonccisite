@@ -8,6 +8,8 @@ const { simpleParser } = mailRequire('mailparser');
 const { open } = require('./mailboxSecurity');
 const { MailboxImapPool } = require('./mailboxImapPool');
 const { poolEvent } = require('./mailboxTiming');
+const { MailboxPoolManager } = require('./mailboxPoolManager');
+const policy = require('./mailboxPoolPolicy');
 
 const PAGE_SIZE = 25;
 const MAX_MESSAGE_BYTES = 2 * 1024 * 1024;
@@ -28,43 +30,19 @@ function makeClient(account, pooled = false) {
   return client;
 }
 
-const pool = new MailboxImapPool({
-  createClient: account => makeClient(account, true),
-  maxConnections: 1, idleMs: POOL_IDLE_MS, observe: poolEvent,
-  validate: async (account, timing) => {
-    const check = async () => {
-      const [rows] = await require('../db').query(`SELECT m.mailbox_address, m.smtp_secret
-        FROM mailbox_access m JOIN users u ON u.id=m.user_id
-        LEFT JOIN mailbox_password_changes p ON p.user_id=m.user_id
-        WHERE m.user_id=? AND m.status='active' AND u.status='active' AND u.role='owner'
-        AND (p.status IS NULL OR p.status='complete')`, [account.user_id]);
-      return rows[0]?.mailbox_address === account.mailbox_address && rows[0]?.smtp_secret === account.smtp_secret;
-    };
-    return timing ? timing.measure('account_lookup_ms', check) : check();
-  },
+const pool = new MailboxPoolManager({ protocol: 'imap', limit: policy.budget('IMAP'), idleMs: POOL_IDLE_MS,
+  observe: poolEvent,
+  create: (_account, retain, observe) => new MailboxImapPool({
+    createClient: account => makeClient(account, retain), maxConnections: 1,
+    idleMs: POOL_IDLE_MS + 1000, validate: policy.validateAccount, observe,
+  }),
 });
 
-function poolingEnabled(account) {
-  // This release deliberately cannot enable pooling for ordinary users or multiple API workers.
-  return process.env.MAILBOX_IMAP_POOL_ENABLED === 'true' && process.env.MAILBOX_IMAP_POOL_API_PROCESSES === '1'
-    && (!process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0')
-    && account.role === 'owner' && account.mailbox_address === 'mooncci@mooncci.site';
-}
-
+function poolingEnabled(account) { return policy.poolingEnabled(account, 'IMAP'); }
 async function withClient(account, work, timing) {
-  if (poolingEnabled(account)) return pool.run({ ...account,
-    imap_host: process.env.MAILBOX_IMAP_HOST || process.env.MAILBOX_SMTP_HOST,
-    imap_port: Number(process.env.MAILBOX_IMAP_PORT || 993),
-  }, work, timing);
-  // Feature-flag fallback keeps the original cold-connection behavior.
-  pool.invalidate(account.user_id);
-  const client = makeClient(account);
-  try {
-    await measure(timing, 'imap_connect_ms', () => client.connect());
-    return await work(client);
-  } finally {
-    client.close();
-  }
+  const configured = { ...account, imap_host: process.env.MAILBOX_IMAP_HOST || process.env.MAILBOX_SMTP_HOST,
+    imap_port: Number(process.env.MAILBOX_IMAP_PORT || 993) };
+  return pool.run(configured, resource => resource.run(configured, work, timing), { retain: poolingEnabled(account), timing });
 }
 
 function measure(timing, stage, work) { return timing ? timing.measure(stage, work) : work(); }
@@ -141,4 +119,4 @@ async function appendSent(account, raw, timing) {
 }
 
 module.exports = { PAGE_SIZE, listMessages, readMessage, appendSent, poolingEnabled,
-  invalidate: userId => pool.invalidate(userId), shutdown: () => pool.shutdown() };
+  stats: () => pool.snapshot(), invalidate: userId => pool.invalidate(userId), shutdown: () => pool.shutdown() };

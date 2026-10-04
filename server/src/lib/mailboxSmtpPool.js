@@ -8,8 +8,8 @@ const failure = code => Object.assign(new Error(code), { code });
 // getSocket is Nodemailer's public hook; SMTP commands remain entirely in Nodemailer.
 class MailboxSmtpPool {
   constructor({ createTransport, password, validate, connect = options => tls.connect(options),
-    idleMs = 300000, activeMs = 30000, operationMs = 60000, connectMs = 15000, waitMs = 15000, maxQueued = 8 }) {
-    Object.assign(this, { createTransport, password, validate, connect, idleMs, activeMs, operationMs, connectMs, waitMs, maxQueued });
+    pooled = true, idleMs = 300000, activeMs = 30000, operationMs = 60000, connectMs = 15000, waitMs = 15000, maxQueued = 8, observe = () => {} }) {
+    Object.assign(this, { pooled, observe, createTransport, password, validate, connect, idleMs, activeMs, operationMs, connectMs, waitMs, maxQueued });
     this.salt = randomBytes(32);
     this.tail = Promise.resolve();
     this.entry = null;
@@ -58,12 +58,16 @@ class MailboxSmtpPool {
       const timer = setTimeout(() => finish(failure('SMTP_CONNECT_TIMEOUT')), this.connectMs);
       timer.unref?.();
       socket.once('secureConnect', () => finish());
-      socket.on('error', error => finish(error)); // absorb teardown errors, never log their payload
-      socket.once('close', () => { entry.sockets.delete(socket); finish(failure('SMTP_CONNECTION_CLOSED')); });
+      socket.on('error', error => { if (!entry.closed) { try { this.observe({ reason: 'broken' }); } catch (_) {} } finish(error); }); // absorb teardown errors, never log their payload
+      socket.once('close', () => {
+        entry.sockets.delete(socket);
+
+        finish(failure('SMTP_CONNECTION_CLOSED'));
+      });
     };
     entry.transport = this.createTransport({ host: account.smtp_host, port: account.smtp_port, secure: true, requireTLS: true,
       auth: { user: account.mailbox_address, pass: this.password(account) },
-      pool: true, maxConnections: 1, maxMessages: 50, maxRequeues: 0,
+      pool: this.pooled, maxConnections: 1, maxMessages: 50, maxRequeues: 0,
       connectionTimeout: this.connectMs, greetingTimeout: 15000, socketTimeout: this.activeMs,
       logger: false, debug: false, getSocket });
     return entry;

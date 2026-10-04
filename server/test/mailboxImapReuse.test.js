@@ -29,6 +29,11 @@ function fixture(t, pooled = true, idleMs) {
     module: { createRequire: () => name => name === 'imapflow' ? { ImapFlow: Client } : { simpleParser: async () => ({ text: 'parsed', attachments: [] }) } },
     './mailboxSecurity': { open: () => 'private-password' },
     './mailboxImapPool': require('../src/lib/mailboxImapPool'),
+    './mailboxPoolManager': require('../src/lib/mailboxPoolManager'),
+    './mailboxPoolPolicy': { ...require('../src/lib/mailboxPoolPolicy'),
+      poolingEnabled: (a, protocol) => require('../src/lib/mailboxPoolPolicy').poolingEnabled(a, protocol, env),
+      validateAccount: async a => a.smtp_secret === account.smtp_secret },
+
     './mailboxTiming': { poolEvent() {} },
     '../db': { query: async () => [[account]] },
   };

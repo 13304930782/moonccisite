@@ -9,7 +9,9 @@ import sys
 LIVE = Path('/www/wwwroot/mooncci-source/server')
 KEYS = ('MAILBOX_TIMING_ENABLED', 'MAILBOX_TIMING_SAMPLE_RATE', 'MAILBOX_TIMING_MAX_PER_MINUTE',
         'MAILBOX_IMAP_POOL_ENABLED', 'MAILBOX_IMAP_POOL_API_PROCESSES', 'MAILBOX_IMAP_POOL_IDLE_MS',
-        'MAILBOX_SMTP_POOL_ENABLED', 'MAILBOX_SMTP_POOL_API_PROCESSES')
+        'MAILBOX_SMTP_POOL_ENABLED', 'MAILBOX_SMTP_POOL_API_PROCESSES', 'MAILBOX_POOLS_ENABLED',
+        'MAILBOX_POOL_ROLLOUT_PERCENT', 'MAILBOX_POOL_TEST_USER_IDS', 'MAILBOX_IMAP_POOL_GLOBAL_MAX',
+        'MAILBOX_SMTP_POOL_GLOBAL_MAX')
 
 
 def digest(data):
@@ -31,7 +33,7 @@ def config(values):
     target = LIVE / '.env'
     stat = target.stat()
     lines = target.read_text().splitlines()
-    retained = [line for line in lines if line.split('=', 1)[0].strip() not in KEYS]
+    retained = [line for line in lines if line.split('=', 1)[0].strip() not in values]
     retained.extend(f'{key}={value}' for key, value in values.items() if value is not None)
     atomic(target, ('\n'.join(retained) + '\n').encode(), stat.st_uid, stat.st_gid, stat.st_mode & 0o777)
 
@@ -43,12 +45,28 @@ def main():
         if str(root) != str(LIVE):
             raise ValueError('Unexpected live root')
         mode = sys.argv[3]
-        if mode not in ('off', 'instrumentation', 'owner', 'owner-short', 'owner-smtp'):
+        modes = ('off', 'instrumentation', 'owner', 'owner-short', 'owner-smtp', 'test', 'rollout25', 'rollout50', 'all', 'smtp-off', 'imap-off')
+        if mode not in modes:
             raise ValueError('Invalid mode')
-        config(dict(zip(KEYS, ('false' if mode == 'off' else 'true', '1', '60',
-                               'true' if mode in ('owner', 'owner-short', 'owner-smtp') else 'false', '1',
-                               '300000' if mode in ('owner', 'owner-smtp') else '30000',
-                               'true' if mode == 'owner-smtp' else 'false', '1'))))
+        if mode in ('smtp-off', 'imap-off'):
+            config({'MAILBOX_SMTP_POOL_ENABLED' if mode == 'smtp-off' else 'MAILBOX_IMAP_POOL_ENABLED': 'false'})
+        else:
+            expanded = mode in ('test', 'rollout25', 'rollout50', 'all')
+            values = dict(zip(KEYS[:8], ('false' if mode == 'off' else 'true', '1', '60',
+                'true' if mode in ('owner', 'owner-short', 'owner-smtp') or expanded else 'false', '1',
+                '30000' if mode == 'owner-short' else '300000',
+                'true' if mode == 'owner-smtp' or expanded else 'false', '1')))
+            values.update(MAILBOX_POOLS_ENABLED='false' if mode in ('off', 'instrumentation') else 'true',
+                MAILBOX_POOL_ROLLOUT_PERCENT={'rollout25':'25','rollout50':'50','all':'100'}.get(mode,'0'),
+                MAILBOX_IMAP_POOL_GLOBAL_MAX='6', MAILBOX_SMTP_POOL_GLOBAL_MAX='4')
+            if mode == 'test':
+                ids = sys.argv[4] if len(sys.argv) > 4 else ''
+                if not ids or len(ids.split(',')) > 10 or not all(x.isdigit() and int(x)>0 for x in ids.split(',')):
+                    raise ValueError('Provide explicit test user IDs')
+                values['MAILBOX_POOL_TEST_USER_IDS'] = ids
+            else:
+                values['MAILBOX_POOL_TEST_USER_IDS'] = ''
+            config(values)
         print('MODE=' + mode)
         return
     manifest = json.loads((root / 'FILES.json').read_text())

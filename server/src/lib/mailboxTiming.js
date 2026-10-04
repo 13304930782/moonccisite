@@ -8,19 +8,21 @@ const stages = new Set(['db_pool_wait_ms', 'db_prepare_ms', 'mime_build_ms', 'sm
 let windowStart = 0;
 let emitted = 0;
 let poolWindow = 0, poolEmitted = 0;
-const poolFields = ['cold_connection_count', 'connection_expired', 'connection_broken', 'noop_failure_count', 'active_pooled_connections'];
 const routes = new Set(['/api/mailboxes/me', '/api/mailboxes/sent', '/api/mailboxes/send',
   '/api/mailboxes/folders/inbox', '/api/mailboxes/folders/sent',
   '/api/mailboxes/folders/inbox/:uid', '/api/mailboxes/folders/sent/:uid']);
 function poolEvent(event) {
   if (process.env.MAILBOX_TIMING_ENABLED !== 'true') return;
-  if (!['connected', 'expired', 'broken', 'noop_failed', 'invalidated', 'shutdown', 'evicted', 'operation_timeout'].includes(event.reason)) return;
+  const reasons = ['acquired', 'released', 'evictions', 'idle_expired', 'broken', 'noop_failed', 'invalidated', 'shutdown', 'wait_rejected'];
+  if (!['imap', 'smtp'].includes(event.protocol) || !reasons.includes(event.reason)) return;
   const wall = Date.now();
   if (wall - poolWindow >= 60000) { poolWindow = wall; poolEmitted = 0; }
-  if (poolEmitted++ >= 60) return;
-  const data = Object.fromEntries(poolFields.map(k => [k, Number.isSafeInteger(event[k]) && event[k] >= 0 ? event[k] : 0]));
+  if (poolEmitted++ >= 120) return;
+  const fields = ['active', 'idle', 'waiting', 'global_limit', 'evictions', 'idle_expired', 'broken', 'reconnects', 'fallback'];
+  const data = Object.fromEntries(fields.map(k => [`${event.protocol}_pool_${k}`, Number.isSafeInteger(event[k]) && event[k] >= 0 ? event[k] : 0]));
   const id = /^[a-f0-9-]{36}$/.test(event.request_id || '') ? event.request_id : null;
-  try { console.info(JSON.stringify({ event: 'mailbox_pool', at: new Date(wall).toISOString(), reason: event.reason, request_id: id, ...data })); } catch (_) {}
+  try { console.info(JSON.stringify({ event: 'mailbox_pool', at: new Date(wall).toISOString(), protocol: event.protocol,
+    reason: event.reason, request_id: id, ...data })); } catch (_) {}
 }
 
 // Deliberately accepts only numeric stages and fixed metadata, never arbitrary objects/errors.

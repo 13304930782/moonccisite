@@ -848,6 +848,52 @@ logging, backs up exact configuration bytes, tests Nginx before graceful reload,
 restores on failure. Revert with `python3 BACKUP/nginx-observation.py rollback BACKUP` using its
 printed `OBSERVATION_BACKUP`. Remove the temporary log setup after the observation window; normal
 Nginx log rotation applies. No Postfix/Dovecot settings are involved.
+# Bounded multi-user Web Mail rollout (2026-10-04)
+
+The currently supported single API fork shares at most 6 IMAP and 4 SMTP account slots,
+including cold fallback. Each account has one serialized lane per protocol, at most 8
+queued operations and a 15-second admission deadline. At most 64 operations per protocol
+may wait. Idle LRU slots are evicted under pressure; otherwise idle lifetime is at most
+five minutes. Busy slots are never evicted. Invalidated busy slots retain their reservation
+until the operation actually settles, preventing reconnect overlap.
+
+Dovecot 2.3.21 limits each user/source-IP pair to 10 connections, not all users from Beijing
+to 10 total connections. Its IMAP process limit is 1024. Postfix has a client connection
+limit of 50 and default process limit of 100. These are ceilings; Web Mail deliberately
+uses much less, leaving headroom for Roundcube and external clients. Re-budget before
+adding PM2 workers; deployment refuses rollout unless exactly one API fork instance 0 runs.
+
+`MAILBOX_POOL_ROLLOUT_PERCENT` deterministically hashes internal user IDs. The existing
+owner remains included at 0%; `MAILBOX_POOL_TEST_USER_IDS` adds explicit test accounts.
+Live DB validation before each operation requires active user/mailbox, unchanged encrypted
+credential/address, and no pending password change. Account deletion also invalidates
+that user's connections immediately after commit.
+
+Build with `python scripts/build-mailbox-performance-release.py --base b9fa03f79104ffd2d7f36ac0c9c2a78031b200bb`.
+The scoped backend archive adds no frontend dependencies, migration or mail-server settings.
+Deployment creates a fresh `/www/backup/mooncci-mail-perf.XXXXXX` backup and starts with
+instrumentation only. Run its `mode.sh` in a nohup child shell, in order:
+`owner-smtp`, `test <A_ID,B_ID,C_ID>`, `rollout25`, `rollout50`, `all`.
+Stop expansion on any isolation, TLS, resource or uncertain-delivery failure.
+
+Independent rollback modes: `bash <backup>/mode.sh smtp-off`, `imap-off`, or `instrumentation`.
+Full rollback: `bash <backup>/rollback.sh <backup>`. Run in a nohup child shell and check
+its log. These restart only the API and never replay mail or modify mailbox/queue contents.
+`MAILBOX_POOLS_ENABLED=false` disables both reuse paths while retaining bounded cold admission.
+
+Pool logs have protocol-level counters/gauges and request IDs, with no identity labels.
+Active/idle count conservative account-slot reservations: a dead socket may retain an idle
+slot until next use, LRU or expiry. This can overestimate live sockets but never admits extra
+connections outside the budget. Transport fault events and failed operations may both
+contribute to the broken event counter; it is not a count of distinct connections.
+Per-request reuse/reconnect flags are the basis for rates. Pool logs are capped at 120/minute;
+request timing sampling keeps its separate configured cap. Saturation returns the existing
+bounded error response; no SMTP operation is automatically retried.
+
+The separate SMTP observation commit records start/end, public Nodemailer durations/size
+and strictly parsed Postfix queue IDs, without full responses, headers, addresses, AUTH or
+MIME content. Local TLS fixtures exercise 10/20/50 users without external mail delivery.
+
 # Owner SMTP pooling pilot (2026-10-04)
 
 `MAILBOX_SMTP_POOL_ENABLED=true` and `MAILBOX_SMTP_POOL_API_PROCESSES=1` only apply to the active owner mailbox `mooncci@mooncci.site` in API instance 0. Other mailboxes retain a new transport per request. One serialized process lane uses `maxConnections=1`, `maxMessages=50`, `maxRequeues=0`; queue capacity is 8 behind the active send, queue wait 15 seconds, connection timeout 15 seconds, active socket inactivity 30 seconds and overall SMTP operation limit 60 seconds. There is no retry after submission begins.

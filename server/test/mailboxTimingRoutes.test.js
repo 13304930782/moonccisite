@@ -53,7 +53,7 @@ test('send retains synchronous APPEND, accepted/uncertain semantics and sanitize
   await copyReached; await delay(10); assert.equal(settled, false); assert.equal(rows[0].status, 'accepted');
   releaseCopy(); const response = await pending, body = await response.json();
   assert.equal(response.status, 200); assert.equal(body.savedToSent, false); assert.equal(deliveries, 1); assert.equal(rows[0].status, 'accepted');
-  const timing = timings[0]; assert.equal(timing.request_id, response.headers.get('x-mail-request-id'));
+  const timing = timings.find(line => line.event === 'mailbox_timing'); assert.equal(timing.request_id, response.headers.get('x-mail-request-id'));
   for (const key of ['db_pool_wait_ms', 'db_prepare_ms', 'mime_build_ms', 'smtp_submit_ms', 'db_accept_ms', 'imap_connect_ms', 'imap_sent_lookup_ms', 'imap_append_ms', 'total_ms']) assert.equal(typeof timing[key], 'number');
   assert.ok(!/SecretPassword|Sensitive|smtp_secret|target@example/.test(JSON.stringify(timings)));
   smtpFails = true; assert.equal((await post('/send', payload)).status, 502);

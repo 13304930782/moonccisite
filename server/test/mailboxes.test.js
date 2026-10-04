@@ -25,6 +25,7 @@ test('mailbox approval waits for signed agent confirmation before outbound SMTP'
     return { messageId: 'fixture', accepted: [mail.to] };
   } }));
   async function query(sql, params = []) {
+    if (sql.startsWith('SELECT m.mailbox_address,m.smtp_secret')) return [[{ ...access }]];
     if (sql.includes('FROM users') && sql.includes('auth_revocations')) return [[users[Number(params[0])]].filter(Boolean)];
     if (sql.includes('FROM mailbox_access WHERE user_id=? LIMIT 1')) return [[{ ...access }]];
     if (sql.includes('FROM mailbox_send_logs') && sql.includes('ORDER BY')) return [[...logs]];
