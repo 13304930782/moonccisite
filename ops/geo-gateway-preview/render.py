@@ -84,6 +84,15 @@ def render(region, cert, private_key, reader_key=None, ca_bundle='/etc/ssl/certs
         asset_reader=reader.replace('location @mooncci_reader', 'location @mooncci_asset_reader').replace('error_page 401', 'error_page 404 401')
         reader+=asset_reader
         select=select.replace('error_page 418 = @mooncci_reader;', 'error_page 418 = @mooncci_reader;\n        error_page 419 = @mooncci_asset_reader;\n        set $mooncci_geo_asset $mooncci_geo_public;\n        if ($uri !~ ^/assets/) { set $mooncci_geo_asset 0; }\n        if ($mooncci_geo_asset = 1) { return 419; }')
+        # Build assets are public even when a browser has a login cookie. The
+        # reader location strips all incoming headers; private URLs stay primary.
+        select=select.replace('        if ($mooncci_geo_asset = 1) { return 419; }', r'''        # Published hashed JS/CSS are identical for every visitor. Reader strips cookies.
+        if ($request_uri ~ "^/assets/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8,16}\.(?:js|css)$") { set $mooncci_geo_asset 1; }
+        if ($request_method !~ ^(GET|HEAD)$) { set $mooncci_geo_asset 0; }
+        if ($http_authorization != "") { set $mooncci_geo_asset 0; }
+        if ($http_proxy_authorization != "") { set $mooncci_geo_asset 0; }
+        if ($http_range != "") { set $mooncci_geo_asset 0; }
+        if ($mooncci_geo_asset = 1) { return 419; }''')
     return ('# US gateway; DNS remains unchanged until acceptance.\n'
         'server { listen 80; server_name '+HOST+'; return 301 https://'+HOST+'$request_uri; }\n'
         'server {\n    listen 443 ssl;\n    server_name '+HOST+';\n'
