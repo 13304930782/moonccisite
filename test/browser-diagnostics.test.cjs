@@ -7,3 +7,15 @@ test('expiry stops collection and clear erases stored report',()=>{const{api,tic
 test('reload restores only sanitized metadata and rejects expired reports',()=>{const saved={version:1,started:99000,expires:200000,active:false,mode:'unknown',rows:[{type:'api',path:'/api/posts/20?secret=x',password:'secret',request_id:'secret',duration_ms:5},{type:'api',path:'/api/mailboxes/credentials/reveal',body:'secret'}]};const{api}=load(saved);const report=JSON.parse(api.exportDiagnostics());assert.equal(report.rows.length,1);assert.equal(report.rows[0].path,'/api/posts/:id');assert(!JSON.stringify(report).includes('secret'));assert.equal(load({...saved,expires:10}).api.diagnosticState(),null);});
 test('request started before a new diagnostic session cannot enter the new report',()=>{const{api}=load();api.startDiagnostics('relay-on');const task=api.beginApiDiagnostic('/posts');api.startDiagnostics('relay-off');task.finish();assert.equal(api.diagnosticState().rows.length,0);});
 test('a failed observer cannot interrupt application work',()=>{const{api}=load();api.subscribeDiagnostics(()=>{throw Error('broken UI');});assert.doesNotThrow(()=>api.startDiagnostics('unknown'));assert.doesNotThrow(()=>api.beginApiDiagnostic('/site-settings').finish());});
+test('Safari missing responseStart never becomes a fictitious multi-second download',()=>{
+ const {api}=load();const fields=api.resourceTimingFields({duration:0,startTime:6551,responseStart:0,responseEnd:6551,domainLookupStart:0,domainLookupEnd:0,connectStart:0,connectEnd:0,secureConnectionStart:0,requestStart:0,transferSize:0,nextHopProtocol:''});
+ assert.equal(fields.download_ms,null);assert.equal(fields.ttfb_ms,null);assert.equal(fields.tls_ms,null);assert.equal(fields.request_wait_ms,null);assert.equal(fields.protocol,'unknown');
+});
+test('known phase endpoints retain real zero durations and distinguish queue from request wait',()=>{
+ const {api}=load();const fields=api.resourceTimingFields({duration:900,startTime:100,responseStart:990,responseEnd:1000,domainLookupStart:100,domainLookupEnd:100,connectStart:100,connectEnd:400,secureConnectionStart:120,requestStart:500,transferSize:4000,nextHopProtocol:'h2'});
+ assert.equal(fields.dns_ms,0);assert.equal(fields.connect_ms,300);assert.equal(fields.tls_ms,280);assert.equal(fields.ttfb_ms,890);assert.equal(fields.request_wait_ms,490);assert.equal(fields.download_ms,10);
+});
+test('reload preserves unavailable phase values and navigation intent without private fields',()=>{
+ const {api}=load({version:1,started:99000,expires:200000,active:false,mode:'unknown',rows:[{type:'resource',path:'/assets/main.js',download_ms:null},{type:'navigation-intent',path:'/article/12?secret=x',at:100000}]});
+ const report=JSON.parse(api.exportDiagnostics());assert.equal(report.rows[0].download_ms,null);assert.equal(report.rows[1].path,'/article/:id');assert(!JSON.stringify(report).includes('secret'));
+});
