@@ -90,7 +90,8 @@ async function main() {
     return { n: values.length, p50: values[Math.ceil(values.length * .5) - 1], p95: values[Math.ceil(values.length * .95) - 1] };
   };
   console.log(JSON.stringify({ event: 'smtp_summary', cold: stats('cold'), warm: stats('warm'), accepted: rows.length,
-    measurement: 'real TLS/AUTH/MAIL/RCPT/DATA/final acceptance; sequential local recipient; pool wait not exposed' }));
+    measurement: 'real TLS/AUTH/MAIL/RCPT/DATA/final acceptance; sequential local recipient',
+    pool_wait_measured: candidate }));
 }
 main().catch(() => { console.error(JSON.stringify({ event: 'smtp_benchmark_failed', completed: rows.length, retry: false })); process.exitCode = 1; })
   .finally(async () => { for (const t of transports) t.close(); await db.end(); });
