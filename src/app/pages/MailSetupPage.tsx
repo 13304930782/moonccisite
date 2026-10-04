@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PageHeading, SitePage } from '../components/ContentUI';
 import config from '../../../server/src/config/mail-client.json';
 import '../../styles/mail-setup.css';
@@ -9,7 +10,8 @@ function emailAddress(value: string) {
   return `${parts[0]}@${config.domain}`;
 }
 export default function MailSetupPage() {
-  const [input, setInput] = useState(''), [status, setStatus] = useState('');
+  const [searchParams] = useSearchParams();
+  const [input, setInput] = useState(() => emailAddress(searchParams.get('email') || '')), [status, setStatus] = useState('');
   const [error, setError] = useState(''), [busy, setBusy] = useState(false);
   const [download, setDownload] = useState('');
   const [fallback, setFallback] = useState('');
