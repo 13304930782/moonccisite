@@ -52,6 +52,6 @@ for attempt in $(seq 1 15); do
   sleep 2
 done
 test "$healthy" = 1
-test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3001/api/mailboxes/credentials/code)" = 401
-test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3001/api/mailboxes/agent/rotation-claim)" = 401
+test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'X-Requested-With: XMLHttpRequest' -X POST http://127.0.0.1:3001/api/mailboxes/credentials/code)" = 401
+test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'X-Requested-With: XMLHttpRequest' -X POST http://127.0.0.1:3001/api/mailboxes/agent/rotation-claim)" = 401
 printf 'PASS: mailbox password API and additive migration installed; API healthy. No frontend, worker, dependencies or Nginx changes.\n'
