@@ -68,6 +68,16 @@ test('idle expiry closes the retained socket and next operation is cold', async 
   await pool.run(account(), async () => {}); assert.equal(clients.length, 2);
 });
 
+test('half-open NOOP is bounded and reconnects before any work', async t => {
+  const { pool, clients } = setup(t, { healthMs: 10 });
+  await pool.run(account(), async () => {});
+  clients[0].noop = () => new Promise(() => {});
+  const timing = createTiming('list');
+  await pool.run(account(), async () => {}, timing);
+  assert.equal(clients[0].closed, 1); assert.equal(clients.length, 2);
+  assert.equal(timing.snapshot().reconnect_count, 1);
+});
+
 test('credential version change invalidates old connection', async t => {
   const { pool, clients } = setup(t);
   await pool.run(account(), async () => {});

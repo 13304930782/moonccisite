@@ -6,7 +6,7 @@ const failure = code => Object.assign(new Error(code), { code });
 // One serialized lane per account. No operation is replayed after work(client) starts.
 class MailboxImapPool {
   constructor({ createClient, validate = async () => true, maxConnections = 1, idleMs = 30000,
-    maxQueued = 8, waitMs = 15000, operationMs = 60000 }) {
+    maxQueued = 8, waitMs = 15000, operationMs = 60000, healthMs = 4000 }) {
     this.createClient = createClient;
     this.validate = validate;
     this.maxConnections = maxConnections;
@@ -14,6 +14,7 @@ class MailboxImapPool {
     this.maxQueued = maxQueued;
     this.waitMs = waitMs;
     this.operationMs = operationMs;
+    this.healthMs = healthMs;
     this.entries = new Map();
     this.salt = randomBytes(32);
     this.stopping = false;
@@ -43,6 +44,15 @@ class MailboxImapPool {
       this.drop(entry);
       if (!entry.pending) this.entries.delete(key);
     }
+  }
+
+  async probe(client) {
+    let timer;
+    try {
+      await Promise.race([client.noop(), new Promise((_, reject) => {
+        timer = setTimeout(() => reject(failure('IMAP_HEALTH_TIMEOUT')), this.healthMs);
+      })]);
+    } finally { clearTimeout(timer); }
   }
 
   async run(account, work, timing) {
@@ -117,7 +127,7 @@ class MailboxImapPool {
       if (entry.client) {
         try {
           if (!entry.client.usable) throw failure('IMAP_STALE');
-          await (timing ? timing.measure('imap_health_ms', () => entry.client.noop()) : entry.client.noop());
+          await (timing ? timing.measure('imap_health_ms', () => this.probe(entry.client)) : this.probe(entry.client));
           valid();
           reused = true;
         } catch (error) {

@@ -762,7 +762,8 @@ Pooling is OFF by default. Enabling `MAILBOX_IMAP_POOL_ENABLED=true` also requir
 `mooncci@mooncci.site`. Ordinary users retain the original cold path. The pilot has one retained
 connection in the API process, a 30s idle TTL and 45s socket inactivity timeout, max 8 admitted tasks
 per account, 15s queue wait limit and 60s active-operation deadline. Busy exhaustion fails closed;
-it never opens an extra connection. A reused connection is checked using NOOP. Reconnection is
+it never opens an extra connection. A reused connection is checked using NOOP with a 4s deadline,
+so a half-open socket does not wait for the longer idle-compatible socket timeout. Reconnection is
 allowed only before the mailbox operation begins; FETCH/STORE/APPEND are never automatically replayed.
 Each admitted operation rechecks active user/mailbox, owner role, rotation status and encrypted
 credential version after queueing. Website password change/rotation, reconnect/disconnect, mailbox
