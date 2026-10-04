@@ -2,6 +2,7 @@ import { notify } from '../lib/feedback';
 import { FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
+import { publicRead, publicReadPath } from '../lib/publicRead';
 import { Header } from './Header';
 import { SiteFooter } from './SiteFooter';
 import { visibleDiagnostic } from '../lib/browserDiagnostics';
@@ -9,7 +10,7 @@ import { visibleDiagnostic } from '../lib/browserDiagnostics';
 export type PageData<T = any> = { items: T[]; total: number; page: number; pageSize: number };
 // Only published, user-independent endpoints may share an in-memory snapshot.
 const publicSnapshots = new Map<string, { data: any; time: number }>();
-const cacheable = (path: string) => /^\/(now|activity|projects|updates)(?:[/?]|$)/.test(path);
+const cacheable = publicReadPath;
 export function useResource<T = any>(path: string, enabled = true) {
   const cached = cacheable(path) ? publicSnapshots.get(path) : undefined;
   const snapshot = cached && Date.now() - cached.time < 30000 ? cached.data : null;
@@ -35,7 +36,7 @@ export function useResource<T = any>(path: string, enabled = true) {
     setLoading(true);
     setError('');setErrorStatus(null);
     setState(current => current.path === path ? current : { path, data: snapshot });
-    api(path, { signal: controller.signal })
+    publicRead(path, controller.signal)
       .then((v) => {
         if (active) {
           setState({ path, data: v });
