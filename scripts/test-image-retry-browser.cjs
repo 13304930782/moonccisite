@@ -17,7 +17,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium}=requ
    return r.fulfill({json});
   });
   await page.goto('http://127.0.0.1:4261/admin/write?draft='+draft.id);
-  await page.getByRole('button',{name:'检查并发布',exact:true}).click();
+  await page.getByRole('button',{name:'预览并发布',exact:true}).click();
   await page.getByRole('button',{name:'运行发布前检查',exact:true}).click();
   await page.getByRole('button',{name:'重试图片 1',exact:true}).waitFor();
   await page.getByRole('button',{name:'重试图片 2',exact:true}).waitFor();

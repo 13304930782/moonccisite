@@ -28,7 +28,7 @@ const {chromium}=require('playwright');
   assert.equal(await page.getByRole('link',{name:'控制台'}).count(),0);
   await page.getByRole('link',{name:'继续编辑'}).click();
   await page.getByRole('textbox',{name:'标题',exact:true}).waitFor();
-  assert.equal(await page.getByRole('button',{name:'检查并发布',exact:true}).count(),0);
+  assert.equal(await page.getByRole('button',{name:'预览并发布',exact:true}).count(),0);
   await page.getByRole('button',{name:'预览并提交审核',exact:true}).click();
   await page.getByRole('button',{name:'运行发布前检查',exact:true}).click();
   await page.getByRole('button',{name:'确认提交审核',exact:true}).click();
