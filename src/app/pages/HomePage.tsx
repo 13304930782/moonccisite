@@ -44,7 +44,7 @@ export default function HomePage() {
   const settings = useSiteSettings(),
     now = useResource('/now'),
     activity = useResource('/activity?pageSize=6'),
-    latest = useResource('/activity?type=update&pageSize=1', Boolean(now.data && !now.data.content?.trim())),
+    latest = useResource('/activity?type=update&pageSize=1'),
     posts = useResource('/posts?pageSize=4'),
     projects = useResource('/projects?featured=true');
   const hero = settings.data?.hero || {};

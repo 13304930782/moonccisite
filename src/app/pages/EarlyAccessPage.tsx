@@ -1,3 +1,4 @@
+import { reducedMotion } from '../lib/motionPreference';
 import { FormInput } from '../components/FormInput';
 import { notify } from '../lib/feedback';
 import { ThemeSelect } from '../components/ThemeSelect';
@@ -82,7 +83,7 @@ export default function EarlyAccessPage() {
     if (!formRef.current) return;
     window.scrollTo({
       top: Math.max(0, window.scrollY + formRef.current.getBoundingClientRect().top - 110),
-      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      behavior: reducedMotion()
         ? 'auto'
         : 'smooth',
     });

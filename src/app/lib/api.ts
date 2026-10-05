@@ -1,3 +1,4 @@
+import { clearPublicSnapshots } from './publicSnapshots';
 import { beginApiDiagnostic } from './browserDiagnostics';
 export type ApiErrorKind = 'http' | 'network' | 'timeout' | 'cancelled' | 'format';
 export class ApiError extends Error {
@@ -40,6 +41,7 @@ export async function api(path: string, options: ApiOptions = {}) {
       const message = uncertain ? uncertainMessage : res.status >= 500 ? '服务暂时不可用，请稍后重试。' : data?.message || (res.status === 401 ? '登录已过期，请重新登录后继续。' : res.status === 403 ? '当前账号没有此操作权限。' : '操作未完成，请检查后重试。');
       throw new ApiError(message, res.status, 'http', uncertain);
     }
+    if (writing && /^\/(?:admin\/posts|article-drafts|publishing)(?:\/|$)/.test(path)) clearPublicSnapshots();
     return data;
   } catch (error) {
     if (error instanceof ApiError) throw error;

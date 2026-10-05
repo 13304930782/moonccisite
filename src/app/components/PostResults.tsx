@@ -20,6 +20,7 @@ export function PostResults({
 
   return (
     <ResourceState resource={resource}>
+      {resource.data && <p className="muted" role="status">共 {resource.data.total} 篇文章</p>}
       {!posts.length && <div className="quiet-state"><p>{empty}</p>{emptyAction}</div>}
       <div className="post-grid">
         {posts.map((post:any) => {

@@ -1,3 +1,4 @@
+import { reducedMotion } from '../lib/motionPreference';
 import {useEffect,useState} from 'react';
 import {useAuth} from '../context/AuthContext';
 import {useEngagement} from '../lib/useEngagement';
@@ -39,7 +40,7 @@ export function ReadingProgress({postId}:{postId:number}){
   return()=>{alive=false;clearInterval(timer);window.removeEventListener('scroll',scroll);document.removeEventListener('visibilitychange',hidden);};
  },[postId,user?.id,enabled,connection]);
  const resume=()=>{
-  const behavior=matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth';
+  const behavior=reducedMotion()?'auto':'smooth';
   const anchor=saved?.anchor&&document.getElementById(saved.anchor);
   if(anchor)anchor.scrollIntoView({behavior,block:'start'});
   else{const article=document.querySelector('.article-presentation');if(article){const rect=article.getBoundingClientRect();window.scrollTo({top:scrollY+rect.top+saved.progress*Math.max(1,rect.height-innerHeight),behavior});}}

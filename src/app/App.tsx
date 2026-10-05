@@ -1,3 +1,5 @@
+import { loadPage } from './lib/preloadPage';
+import { RoutePreload } from './components/RoutePreload';
 import { NavigationProtection } from './components/NavigationProtection';
 import { DiagnosticNavigation } from './components/DiagnosticNavigation';
 import { lazy, Suspense } from 'react';
@@ -23,9 +25,9 @@ const MailSetupPage = lazy(() => import('./pages/MailSetupPage'));
 const DiagnosticsPage = lazy(() => import('./pages/DiagnosticsPage'));
 const RssPage = lazy(() => import('./pages/RssPage'));
 import HomePage from './pages/HomePage';
-const UpdatesPage = lazy(() => import('./pages/UpdatesPage'));
+const UpdatesPage = lazy(() => loadPage('/updates'));
 const UpdateDetailPage = lazy(() => import('./pages/UpdatesPage').then(m => ({ default: m.UpdateDetailPage })));
-const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
+const ProjectsPage = lazy(() => loadPage('/projects'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectsPage').then(m => ({ default: m.ProjectDetailPage })));
 const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
 const AdminUpdatesPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminUpdatesPage })));
@@ -33,9 +35,9 @@ const AdminProjectsPage = lazy(() => import('./pages/AdminContentPage').then(m =
 const AdminNewsletterPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminNewsletterPage })));
 import { createBrowserRouter, RouterProvider, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
+const LoginPage = lazy(() => loadPage('/login'));
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
-const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const RegisterPage = lazy(() => loadPage('/register'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const AdminRuntimePage = lazy(() => import('./pages/AdminRuntimePage'));
@@ -59,14 +61,14 @@ const AdminSendMailPage = lazy(() => import('./pages/AdminSendMailPage'));
 const MailboxPage = lazy(() => import('./pages/MailboxPage'));
 const AdminMailboxRequestsPage = lazy(() => import('./pages/AdminMailboxRequestsPage'));
 const AdminMediaPage = lazy(() => import('./pages/AdminMediaPage'));
-const ArticlePage = lazy(() => import('./pages/ArticlePage'));
-const ArticlesPage = lazy(() => import('./pages/ArticlesPage'));
+const ArticlePage = lazy(() => loadPage('/article'));
+const ArticlesPage = lazy(() => loadPage('/articles'));
 const TagPage = lazy(() => import('./pages/TagPage'));
 const TagsPage = lazy(() => import('./pages/TagsPage'));
 const CategoryPage = lazy(() => import('./pages/CategoryPage'));
 const CategoriesPage = lazy(() => import('./pages/CategoriesPage'));
-const SearchPage = lazy(() => import('./pages/SearchPage'));
-const EarlyAccessPage = lazy(() => import('./pages/EarlyAccessPage'));
+const SearchPage = lazy(() => loadPage('/search'));
+const EarlyAccessPage = lazy(() => loadPage('/early-access'));
 const AdminEarlyAccessPage = lazy(() => import('./pages/AdminEarlyAccessPage'));
 const AdminEarlyAccessDetailPage = lazy(() => import('./pages/AdminEarlyAccessDetailPage'));
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -75,7 +77,7 @@ import { SiteMeta } from './components/SiteMeta';
 import { SitePage, ContentSkeleton } from './components/ContentUI';
 import { ThemeProvider } from './context/ThemeContext';
 
-const ElectricityPage = lazy(() => import('./pages/ElectricityPage'));
+const ElectricityPage = lazy(() => loadPage('/electricity'));
 const AdminElectricityPage = lazy(() => import('./pages/AdminElectricityPage'));
 const ReadingTools = lazy(() => import('./components/ReadingTools'));
 const WeatherCompanion = lazy(() => import('./components/WeatherCompanion'));
@@ -86,7 +88,8 @@ function PublicWeatherCompanion() {
 }
 
 function RouteLoader() {
-  return <SitePage><ContentSkeleton /></SitePage>;
+  const {pathname} = useLocation();
+  return <SitePage>{/^\/(login|register)$/.test(pathname) ? <section className="auth-route-skeleton" aria-label="正在加载表单"><ContentSkeleton/></section> : <ContentSkeleton />}</SitePage>;
 }
 
 function isAdminRole(role?: string) {
@@ -131,7 +134,7 @@ function Guard({
 }
 
 function SiteRoutes() {
-  return <><NavigationProtection/>
+  return <><NavigationProtection/><RoutePreload/>
           <SiteMeta /><Suspense fallback={null}><FeedbackHost/></Suspense>
           <RoutePosition /><PageAnalytics /><DiagnosticNavigation />
           <Suspense fallback={<RouteLoader />}><Routes>
@@ -207,7 +210,10 @@ function SiteRoutes() {
           <PublicWeatherCompanion /><Suspense fallback={null}><ReadingTools /></Suspense>
   </>;
 }
-const router = createBrowserRouter([{ path: '*', element: <SiteRoutes/> }]);
+function RouteFailure() {
+  return <SitePage><section className="resource-notice" role="alert"><div><h1>页面暂时未能加载</h1><p>请重新加载页面后继续。</p></div><button className="quiet-button" onClick={()=>window.location.reload()}>重新加载</button></section></SitePage>;
+}
+const router = createBrowserRouter([{ path: '*', element: <SiteRoutes/>, errorElement:<RouteFailure/> }]);
 export default function App() {
   return <ThemeProvider><SiteSettingsProvider><AuthProvider><RouterProvider router={router}/></AuthProvider></SiteSettingsProvider></ThemeProvider>;
 }

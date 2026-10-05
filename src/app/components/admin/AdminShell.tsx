@@ -1,3 +1,4 @@
+import { reducedMotion } from '../../lib/motionPreference';
 import {useOperations} from '../../lib/useOperations';
 import '../../../styles/workspace-polish.css';
 import {usePublishing} from '../../lib/usePublishing';
@@ -84,7 +85,7 @@ export function AdminShell({ children }: AdminShellProps) {
     heading.focus({ preventScroll: true });
     main.scrollTo({
       top: 0,
-      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+      behavior: reducedMotion()
         ? 'instant'
         : 'smooth',
     });

@@ -49,6 +49,7 @@ export default function LoginPage() {
         ? '暂未确认登录结果，请刷新页面后重试。'
         : err.message || '登录失败，请检查邮箱和密码。';
       setFormError(text);
+      if (!connectionError) document.getElementById('password')?.focus();
       if (connectionError) notify.error(err.kind === 'timeout' ? '登录请求超时，请稍后重试。' : '暂时无法连接，请检查网络后重试。');
     } finally {
       setLoading(false);
