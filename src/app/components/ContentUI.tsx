@@ -108,7 +108,7 @@ export function SitePage({ children, narrow = false, detail = false }: { childre
     <div className="neo-page">
       <Header />
       <main onAnimationEnd={event=>{if(event.target===event.currentTarget) visibleDiagnostic(location.pathname,'motion-complete');}} className={`site-container page-content ${narrow ? 'reading-page' : ''} ${detail ? 'detail-container' : ''}`}>
-        {children}
+        {narrow ? <div className="page-reading-column">{children}</div> : children}
       </main>
       <SiteFooter />
     </div>

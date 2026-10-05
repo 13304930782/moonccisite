@@ -1,4 +1,10 @@
 :root {
+  --site-width:1200px;
+  --site-gutter:40px;
+  --page-top:64px;
+  --page-title-size:36px;
+  --page-heading-gap:40px;
+
   --background: #fafafa;
   --foreground: #171717;
   --card: #fff;
@@ -139,11 +145,11 @@ input[type='checkbox'] {
   margin-bottom: 24px;
 }
 .site-container {
-  width: min(1200px, calc(100% - 80px));
+  width: min(var(--site-width), calc(100% - 2 * var(--site-gutter)));
   margin-inline: auto;
 }
 .page-content {
-  padding-top: 64px;
+  padding-top: var(--page-top);
   padding-bottom: 96px;
 }
 /* Reserve the first viewport while route code and content are loading. */
@@ -151,16 +157,21 @@ input[type='checkbox'] {
   min-height: 100vh;
   min-height: 100svh;
 }
-.reading-page {
-  max-width: 760px;
+.page-reading-column {
+  width:100%;
+  max-width:760px;
+  min-width:0;
 }
 .page-heading {
-  margin-bottom: 40px;
+  margin-bottom: var(--page-heading-gap);
 }
 .page-heading h1 {
-  font-size: 48px;
-  margin: 0 0 24px;
+  font-size: var(--page-title-size);
+  line-height:1.25;
+  font-weight:600;
+  margin:0 0 16px;
 }
+.page-heading .eyebrow,.home-hero .eyebrow {line-height:24px;min-height:24px;margin:0 0 16px;}
 .page-heading .muted {
   max-width: 640px;
 }
@@ -628,11 +639,13 @@ input[type='checkbox'] {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
   gap: 64px;
-  padding: 64px 0;
-  align-items: center;
+  padding: var(--page-top) 0 64px;
+  align-items: start;
 }
 .home-hero h1 {
-  font-size: 48px;
+  font-size:var(--page-title-size);
+  line-height:1.25;
+  font-weight:600;
   max-width: 650px;
   margin-bottom: 24px;
 }
@@ -1199,9 +1212,7 @@ input[type='checkbox'] {
     grid-column: 1;
     grid-row: auto;
   }
-  .site-container {
-    width: calc(100% - 40px);
-  }
+  :root {--site-gutter:20px;--page-top:32px;--page-title-size:28px;--page-heading-gap:32px;}
   .header-inner {
     min-height: 64px;
     gap: 12px;
@@ -1219,12 +1230,12 @@ input[type='checkbox'] {
   .home-hero {
     grid-template-columns: 1fr;
     gap: 40px;
-    padding: 56px 0;
+    padding:var(--page-top) 0 40px;
   }
   .home-hero h1,
   .page-heading h1,
   .article-title {
-    font-size: 34px;
+    font-size:var(--page-title-size);
   }
   .hero-description {
     font-size: 16px;
@@ -1261,8 +1272,8 @@ input[type='checkbox'] {
     padding: 40px 0;
   }
   .page-content {
-    padding-top: 40px;
-    padding-bottom: 56px;
+    padding-top:var(--page-top);
+    padding-bottom:56px;
   }
   .page-heading {
     margin-bottom: 32px;

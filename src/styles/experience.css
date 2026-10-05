@@ -10,7 +10,7 @@
 [data-sonner-toast] { transition:transform var(--motion-feedback),opacity var(--motion-feedback),height var(--motion-feedback) !important; }
 .experience-confirm { border-radius:var(--panel-radius); }
 .experience-confirm [data-slot="alert-dialog-description"] { line-height:1.7; white-space:pre-line; }
-.page-heading h1 { font-size:36px; }
+
 :is(.account-section,.queue-panel,.publishing-card,.workspace-empty) { border-radius:var(--panel-radius); }
 :is(.neo-button,.quiet-button,.theme-select-trigger,.account-primary-button) { border-radius:var(--control-radius); }
 :is(.account-content,.admin-main,.page-content) :is(input:not([type=checkbox]):not([type=radio]),textarea,.theme-select-trigger) { font-size:16px; }
@@ -18,7 +18,7 @@
 .sync-next-at { display:block; margin-top:8px; font-size:14px; color:var(--muted-foreground); }
 .experience-field-error { color:var(--foreground); padding:8px 0; font-size:14px; }
 @media(max-width:767px) {
- .page-heading h1 { font-size:28px; }
+
  :is(.site-header,.account-shell,.admin-shell,.page-content) :is(button,.neo-button,.quiet-button,.theme-select-trigger) { min-height:44px; }
  :is(.icon-button,.feedback-toast button) { min-width:44px; }
  .account-content,.page-content { min-width:0; }

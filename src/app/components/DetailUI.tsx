@@ -47,8 +47,8 @@ export function DetailPage({ className = '', backTo, backLabel, label, title, me
 }) {
   return <article className={`detail-page ${className}`} data-reading-content={preview ? undefined : true}>
     <header className="detail-header">
-      <nav className="detail-breadcrumb" aria-label="面包屑导航" data-reading-ignore><Link className="text-link" to={backTo}>← {backLabel}</Link></nav>
-      <div className="detail-label"><span className="detail-category">{label}</span></div>
+      <div className="detail-intro"><nav className="detail-breadcrumb" aria-label="面包屑导航" data-reading-ignore><Link className="text-link" to={backTo}>← {backLabel}</Link></nav>
+      <div className="detail-label"><span className="detail-category">{label}</span></div></div>
       <h1 className="detail-title">{title}</h1>
       {meta}
     </header>
