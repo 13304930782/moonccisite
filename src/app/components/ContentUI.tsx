@@ -1,5 +1,6 @@
+import { readSnapshot, writeSnapshot, snapshotGeneration, deleteSnapshot, subscribeSnapshotInvalidation } from '../lib/publicSnapshots';
 import { notify } from '../lib/feedback';
-import { FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { FormEvent, ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { publicRead, publicReadPath } from '../lib/publicRead';
@@ -9,11 +10,10 @@ import { visibleDiagnostic } from '../lib/browserDiagnostics';
 
 export type PageData<T = any> = { items: T[]; total: number; page: number; pageSize: number };
 // Only published, user-independent endpoints may share an in-memory snapshot.
-const publicSnapshots = new Map<string, { data: any; time: number }>();
+
 const cacheable = publicReadPath;
 export function useResource<T = any>(path: string, enabled = true) {
-  const cached = cacheable(path) ? publicSnapshots.get(path) : undefined;
-  const snapshot = cached && Date.now() - cached.time < 30000 ? cached.data : null;
+  const snapshot = cacheable(path) ? readSnapshot(path) : null;
   const [state, setState] = useState<{ path: string; data: T | null }>({ path, data: snapshot }),
     [error, setError] = useState(''),
     [errorStatus,setErrorStatus]=useState<number|null>(null),
@@ -22,7 +22,9 @@ export function useResource<T = any>(path: string, enabled = true) {
   const requestController = useRef<AbortController | null>(null);
   const cancel = useCallback(() => requestController.current?.abort(), []);
   const reload = useCallback(() => setVersion((v) => v + 1), []);
+  useEffect(() => subscribeSnapshotInvalidation(() => { if (cacheable(path)) { setState({path,data:null}); reload(); } }), [path, reload]);
   useEffect(() => {
+    const generation = snapshotGeneration();
     if (!enabled) {
       requestController.current?.abort();
       setState({ path, data: null });
@@ -38,11 +40,10 @@ export function useResource<T = any>(path: string, enabled = true) {
     setState(current => current.path === path ? current : { path, data: snapshot });
     publicRead(path, controller.signal)
       .then((v) => {
-        if (active) {
+        if (active && (!cacheable(path) || generation === snapshotGeneration())) {
           setState({ path, data: v });
           if (cacheable(path)) {
-            if (publicSnapshots.size >= 40) publicSnapshots.delete(publicSnapshots.keys().next().value!);
-            publicSnapshots.set(path, { data: v, time: Date.now() });
+            writeSnapshot(path, v, generation);
           }
         }
       })
@@ -50,7 +51,7 @@ export function useResource<T = any>(path: string, enabled = true) {
         if (active) {
           setError(e.message);setErrorStatus(e.status||null);
           if ([401, 403, 404].includes(e.status)) {
-            publicSnapshots.delete(path);
+            deleteSnapshot(path);
             setState({ path, data: null });
           }
         }
@@ -81,7 +82,7 @@ export function ResourceState({
   const location=useLocation();
   useEffect(() => {
     if (!resource.loading && resource.data !== null) {
-      const frame = requestAnimationFrame(() => visibleDiagnostic(location.pathname, 'content-ready'));
+      const frame = requestAnimationFrame(() => { visibleDiagnostic(location.pathname, 'content-ready'); window.dispatchEvent(new Event('mooncci:content-ready')); });
       return () => cancelAnimationFrame(frame);
     }
   }, [resource.loading, resource.data, location.pathname]);
@@ -101,10 +102,12 @@ export function ResourceState({
   </div>;
 }
 export function SitePage({ children, narrow = false, detail = false }: { children: ReactNode; narrow?: boolean; detail?: boolean }) {
+  const location=useLocation();
+  useLayoutEffect(() => { visibleDiagnostic(location.pathname, 'code-ready'); }, [location.key]);
   return (
     <div className="neo-page">
       <Header />
-      <main className={`site-container page-content ${narrow ? 'reading-page' : ''} ${detail ? 'detail-container' : ''}`}>
+      <main onAnimationEnd={event=>{if(event.target===event.currentTarget) visibleDiagnostic(location.pathname,'motion-complete');}} className={`site-container page-content ${narrow ? 'reading-page' : ''} ${detail ? 'detail-container' : ''}`}>
         {children}
       </main>
       <SiteFooter />

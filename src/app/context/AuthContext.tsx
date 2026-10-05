@@ -1,3 +1,4 @@
+import { clearPublicSnapshots } from '../lib/publicSnapshots';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api, ApiError } from '../lib/api';
@@ -33,6 +34,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  useEffect(() => { clearPublicSnapshots(); }, [user?.id]);
 
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState('');

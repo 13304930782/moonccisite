@@ -1,5 +1,6 @@
+import { visibleDiagnostic } from '../lib/browserDiagnostics';
 import { ReactNode, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { SitePage, PageHeading } from './ContentUI';
 import './AuthShell.css';
 type AuthShellProps = {
@@ -22,6 +23,8 @@ export function AuthShell({
   alternateTo,
   children,
 }: AuthShellProps) {
+  const location=useLocation();
+  useEffect(() => { visibleDiagnostic(location.pathname,'interactive'); }, [location.key]);
   useEffect(() => {
     document.documentElement.classList.add('auth-touch-page');
     return () => document.documentElement.classList.remove('auth-touch-page');

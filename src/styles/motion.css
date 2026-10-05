@@ -31,3 +31,8 @@ html[data-reduced-motion="true"] :is(.neo-button,.quiet-button,.article-button,.
   *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
   :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button):active { scale:1; }
 }
+
+.auth-route-skeleton { width:min(100%,480px); margin-inline:auto; min-height:540px; }
+.search-filters { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:24px; }
+.search-filters label { display:grid; gap:8px; flex:1; min-width:min(200px,100%); }
+.search-filters select { width:100%; min-height:44px; }

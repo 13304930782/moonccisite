@@ -35,7 +35,7 @@ export default defineConfig({
   build: {
     // Keep the existing JS budget while adding the mail setup route.
     minify: 'terser',
-    terserOptions: { compress: { passes: 2 } },
+    terserOptions: { ecma: 2020, module: true, compress: { passes: 3, ecma: 2020 } },
     manifest: 'asset-manifest.json',
     rollupOptions: {
       output: {

@@ -5,6 +5,15 @@ const MAX_ROWS = 500;
 type Row = Record<string, string | number | boolean | null>;
 type Session = { version: 1; started: number; expires: number; active: boolean; mode: 'relay-on' | 'relay-off' | 'unknown'; rows: Row[] };
 let session: Session | null = null;
+let navigation = {id: Date.now(), path: '', key: ''};
+export function navigationDiagnostic(path: string, key = '') {
+  const safe=diagnosticPath(path);
+  if (!safe) return;
+  if (navigation.path !== safe || (key && navigation.key && navigation.key !== key)) navigation={id:navigation.id+1,path:safe,key};
+  else if (key) navigation.key=key;
+}
+export function navigationCodeReady(path: string) { visibleDiagnostic(path,'code-ready'); }
+
 const listeners = new Set<() => void>();
 let observer: PerformanceObserver | undefined;
 let expiry: ReturnType<typeof setTimeout> | undefined;
@@ -32,16 +41,16 @@ function navigationIntent(event: MouseEvent) {
   let url: URL; try { url = new URL(link.getAttribute('href') || '', location.href); } catch { return; }
   if (url.origin !== location.origin || url.pathname === location.pathname) return;
   const path = diagnosticPath(url.pathname);
-  if (path && !path.startsWith('/api/') && !path.startsWith('/assets/')) add({type: 'navigation-intent', path, at: Date.now()});
+  if (path && !path.startsWith('/api/') && !path.startsWith('/assets/')) { navigation={id:navigation.id+1,path,key:''}; add({type: 'navigation-intent', path, at: Date.now(), navigation_id:navigation.id}); }
 }
 
 export function diagnosticPath(value: string): string | null {
   const pathname = value.split(/[?#]/, 1)[0];
-  if (/^\/(?:|articles|projects|updates|account\/mailbox|admin\/mailbox|diagnostics)$/.test(pathname)) return pathname;
+  if (/^\/(?:|articles|projects|updates|login|register|search|account\/mailbox|admin\/mailbox|diagnostics)$/.test(pathname)) return pathname;
   if (/^\/article\/(?:\d+|:id)$/.test(pathname)) return '/article/:id';
   if (/^\/projects\/(?:[\w-]+|:slug)$/.test(pathname)) return '/projects/:slug';
   if (/^\/assets\/[^/]+$/.test(pathname)) return '/assets/:asset';
-  if (/^\/api\/(?:now|activity|projects|posts|updates|site-settings|settings\/public|auth\/me|seo)$/.test(pathname)) return pathname;
+  if (/^\/api\/(?:now|activity|projects|posts|updates|site-settings|settings\/public|auth\/me|auth\/login|auth\/register|auth\/providers|auth\/google|login-settings\/public|posts\/meta\/(?:categories|tags)|seo)$/.test(pathname)) return pathname;
   if (/^\/api\/posts\/(?:\d+|:id)$/.test(pathname)) return '/api/posts/:id';
   if (/^\/api\/projects\/(?:[\w-]+|:slug)$/.test(pathname)) return '/api/projects/:slug';
   if (/^\/api\/mailboxes\/(?:me|sent|send|folders\/(?:inbox|sent))$/.test(pathname)) return pathname;
@@ -94,12 +103,13 @@ export function startDiagnostics(mode: Session['mode']) {
 }
 export function stopDiagnostics() { if (session) session.active = false; observer?.disconnect(); clearTimeout(expiry); if (typeof document !== 'undefined') document.removeEventListener('click', navigationIntent, true); persist(); }
 export function clearDiagnostics() { stopDiagnostics(); session = null; persist(); }
-export function visibleDiagnostic(path: string, stage: 'route' | 'content-ready' | 'mail-ready') {
-  const safe = diagnosticPath(path); if (safe) add({ type: stage, path: safe, at: Date.now() });
+export function visibleDiagnostic(path: string, stage: 'route' | 'content-ready' | 'mail-ready' | 'code-ready' | 'interactive' | 'motion-complete') {
+  const safe = diagnosticPath(path); if (safe) { navigationDiagnostic(path); add({ type: stage, path: safe, at: Date.now(), navigation_id:navigation.id }); }
 }
 export function beginApiDiagnostic(path: string) {
   const safe = diagnosticPath('/api' + path);
   if (!safe || !diagnosticsActive()) return null;
+  const navId = navigation.id;
   const current = session, began = performance.now(), at = Date.now();
   let status = 0, requestId = '', ingress = 'UNKNOWN', apiMs: number | null = null;
   return {
@@ -108,13 +118,13 @@ export function beginApiDiagnostic(path: string) {
       const id = response.headers.get('X-Mail-Request-ID') || response.headers.get('X-Diagnostic-Request-ID') || '';
       requestId = /^[a-f0-9-]{36}$/i.test(id) ? id : '';
       const rawIngress = response.headers.get('X-Diagnostic-Ingress');
-      if (rawIngress === 'CN_DIRECT' || rawIngress === 'US_PROXY') ingress = rawIngress;
+      if (rawIngress === 'CN_DIRECT' || rawIngress === 'US_PROXY' || rawIngress === 'HK_LOCAL_TEST') ingress = rawIngress;
       const duration = response.headers.get('Server-Timing')?.match(/(?:^|,)\s*app;dur=([\d.]+)/)?.[1];
       if (duration && Number.isFinite(Number(duration))) apiMs = round(Number(duration));
     },
     finish() {
       if (session !== current) return;
-      add({ type: 'api', path: safe, at, duration_ms: round(performance.now() - began), status, request_id: requestId, ingress, api_ms: apiMs });
+      add({ type: 'api', path: safe, at, navigation_id:navId, duration_ms: round(performance.now() - began), status, request_id: requestId, ingress, api_ms: apiMs });
     },
   };
 }
@@ -126,16 +136,16 @@ try {
   const saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
   if (saved?.version === 1 && saved.expires > Date.now() && saved.expires <= Date.now() + TTL && Array.isArray(saved.rows)
     && ['relay-on','relay-off','unknown'].includes(saved.mode) && Number.isFinite(saved.started)) {
-    const fields = new Set(['at','duration_ms','dns_ms','connect_ms','tls_ms','ttfb_ms','request_wait_ms','download_ms','transfer_bytes','status','api_ms']);
+    const fields = new Set(['navigation_id','at','duration_ms','dns_ms','connect_ms','tls_ms','ttfb_ms','request_wait_ms','download_ms','transfer_bytes','status','api_ms']);
     const rows: Row[] = saved.rows.slice(-MAX_ROWS).filter((r: Row) => r && typeof r.path === 'string' && diagnosticPath(r.path)
-      && ['api','resource','navigation','navigation-intent','route','content-ready','mail-ready'].includes(String(r.type))).map((r: Row) => {
+      && ['api','resource','navigation','navigation-intent','route','content-ready','mail-ready','code-ready','interactive','motion-complete'].includes(String(r.type))).map((r: Row) => {
       const row: Row = {type:r.type,path:diagnosticPath(String(r.path))};
       for (const k of fields) {
         if (typeof r[k] === 'number' && Number.isFinite(r[k])) row[k] = round(r[k] as number);
         else if (r[k] === null) row[k] = null;
       }
       if (/^[a-f0-9-]{36}$/i.test(String(r.request_id))) row.request_id = r.request_id;
-      if (['CN_DIRECT','US_PROXY','UNKNOWN'].includes(String(r.ingress))) row.ingress = r.ingress;
+      if (['CN_DIRECT','US_PROXY','HK_LOCAL_TEST','UNKNOWN'].includes(String(r.ingress))) row.ingress = r.ingress;
       if (['h2','h3','http/1.1','unknown'].includes(String(r.protocol))) row.protocol = r.protocol;
       return row;
     });
