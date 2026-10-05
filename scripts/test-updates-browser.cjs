@@ -50,7 +50,9 @@ async function main() {
     await page.locator('.activity-list').getByRole('link', { name: /测试近况入口/ }).waitFor();
     assert.equal(await page.locator('.activity-row').first().getAttribute('href'), '/article/1');
     await page.locator('.now-panel').getByText('当前真实记录', { exact: true }).waitFor();
-    assert.ok(!requests.some(url => url.includes('type=update&pageSize=1')), 'manual NOW must not fetch an automatic note');
+    assert.ok(requests.some(url => url.includes('type=update&pageSize=1')), 'fallback is prepared in parallel');
+    assert.equal(await page.locator('.now-panel').getByRole('link', {name:'查看这条近况 ↗'}).count(),0,'manual NOW stays authoritative');
+    assert.equal(await page.locator('.activity-list').getByRole('link',{name:/测试近况入口/}).count(),1,'independent NOW must not remove an activity');
     nowContent = '   '; await page.reload();
     await page.locator('.now-panel').getByRole('link', { name: '查看这条近况 ↗' }).waitFor();
     assert.equal(await page.locator('.now-panel').getByRole('link').getAttribute('href'), '/updates/1');

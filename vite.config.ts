@@ -1,3 +1,4 @@
+import { licenseNotices } from './scripts/license-notices.mjs'
 import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
@@ -19,6 +20,7 @@ function figmaAssetResolver() {
 
 export default defineConfig({
   plugins: [
+    licenseNotices(),
     editorSanitizerPlugin(),
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
@@ -35,7 +37,7 @@ export default defineConfig({
   build: {
     // Keep the existing JS budget while adding the mail setup route.
     minify: 'terser',
-    terserOptions: { ecma: 2020, module: true, compress: { passes: 3, ecma: 2020 } },
+    terserOptions: { ecma: 2020, module: true, format: { comments: false, preamble: '/*! Third-party notices: /THIRD_PARTY_LICENSES.txt */' }, compress: { passes: 3, ecma: 2020 } },
     manifest: 'asset-manifest.json',
     rollupOptions: {
       output: {
