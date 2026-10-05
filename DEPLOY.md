@@ -976,3 +976,14 @@ python3 /root/mooncci-us-http2.py rollback /www/backup/mooncci-us-http2.RETURNED
 ```
 
 手动回滚也有 SHA 漂移检查；如配置已被另一个发布修改，拒绝覆盖，须审查差异。实际用户体验需重新导出设备记录确认，HTTP/2 握手通过本身不是性能达标证据。调查记录见 `docs/real-device-diagnostics-20261005.md`。
+
+
+## Tiptap frontend release (2026-10-06)
+
+This release replaces the visual editor with Tiptap. Native rich text is stored in the existing content field with `<!--mooncci-richtext:v1-->`; legacy Markdown is preserved until edited in visual mode. No database migration or backend dependency change is required. The frontend renders both formats and sanitizes rich HTML before rendering/importing.
+
+The mobile toolbar sits below the bounded editor and scrolls horizontally. Legacy Markdown conversion and the search panel load on demand. Existing Radix dependencies are reused. Entry budgets remain unchanged.
+
+Release exception: the user explicitly requested immediate deployment after reviewing the aggregate bundle-budget failure. `bundle-budget.json` and CI checks remain unchanged. Type checking, unit tests and production build must pass; record the measured aggregate failure separately instead of claiming `npm run check` passed. Build the scoped frontend archive locally using `make_bundle` only after those checks and a clean committed tree, preserving its LF/checksum verification. Upload and run the packaged deploy script in a child shell with nohup; do not restart PM2.
+
+Rollback: the deploy script saves the previous index and retains hashed resources. Restoring that index reverts the UI, but the previous renderer does not support newly saved native rich text. After users save native content, keep the new dual-format reader in any rollback release; do not convert or discard saved content. An immediate rollback before native content is created may restore the saved index atomically.

@@ -1,7 +1,9 @@
+import {isRichText} from '../lib/richText';
+import {RichTextContent,richTextHeadings} from './RichTextContent';
 import {CodeBlock} from './CodeBlock';
 import { createElement } from 'react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import remarkGfm from '../lib/remarkGfmRead';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { safeHref, safeImageSrc } from '../lib/safeUrl';
@@ -13,6 +15,7 @@ function plainText(node: any): string {
   );
 }
 export function headingsFor(content: string) {
+  if(isRichText(content)) return richTextHeadings(content);
   const tree = unified()
     .use(remarkParse)
     .use(remarkGfm)
@@ -39,6 +42,7 @@ export function MarkdownContent({
   headingPrefix?: string;
   imageDimensions?: ImageDimensions;
 }) {
+  if(isRichText(content)) return <RichTextContent content={content} headingPrefix={headingPrefix} imageDimensions={imageDimensions}/>;
   const heading =
     (level: number) =>
     ({ node, children }: any) =>

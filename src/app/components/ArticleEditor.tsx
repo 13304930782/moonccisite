@@ -1,3 +1,4 @@
+import {isRichText} from '../lib/richText';
 import { lazy, Suspense, useState, useRef, useEffect } from 'react';
 import { MarkdownContent } from './MarkdownContent';
 import '../../styles/article-editor.css';
@@ -19,10 +20,12 @@ export function ArticleEditor({
   onBusy: (busy: boolean) => void;
   registerImageInsert?: (insert:(url:string,alt:string)=>void)=>void;
 }) {
-  const [mode, setMode] = useState(existing ? 'source' : 'visual');
+  const [mode, setMode] = useState(existing && !isRichText(value) ? 'source' : 'visual');
+  useEffect(()=>{if(isRichText(value) && mode==='source')setMode('visual')},[value,mode]);
   const source=useRef<HTMLTextAreaElement>(null), visual=useRef<((url:string,alt:string)=>void)|null>(null);
   useEffect(()=>{registerImageInsert?.((url,alt)=>{
     if(mode==='visual'&&visual.current){visual.current(url,alt);return;}
+    if(isRichText(value) && visual.current){setMode('visual');visual.current(url,alt);return;}
     const escaped=alt.replace(/\\/g,'\\\\').replace(/\[/g,'\\[').replace(/\]/g,'\\]').replace(/[\r\n]/g,' ');
     const markdown=`![${escaped}](<${url.replace(/>/g,'%3E').replace(/</g,'%3C').replace(/\s/g,'%20')}>)`;
     const el=source.current,start=el?.selectionStart??value.length,end=el?.selectionEnd??value.length;
@@ -39,8 +42,8 @@ export function ArticleEditor({
         aria-label="正文编辑模式"
       >
         {[
-          ['visual', '可视化'],
-          ['source', 'Markdown 源码'],
+          ['visual', '富文本编辑'],
+          ...(!isRichText(value) && (existing || mode==='source') ? [['source', 'Markdown 源码']] : []),
           ['preview', '阅读预览'],
         ].map(([key, title]) => (
           <button
@@ -55,7 +58,7 @@ export function ArticleEditor({
       </div>
       <p className="article-editor-hint">
         {mode === 'visual'
-          ? '支持标题、列表、引用、表格、代码块和图片。正文仍以 Markdown 保存。'
+          ? '选中文字即可设置格式，或直接开始写作。'
           : mode === 'source'
             ? '源码会原样保留。已有文章默认在此编辑；特殊 HTML 或扩展语法建议继续使用源码模式。'
             : '使用与公开文章页相同的阅读排版。'}
@@ -70,12 +73,11 @@ export function ArticleEditor({
           onChange={(e) => onChange(e.target.value)}
           placeholder="用 Markdown 写下你的文章…"
         />
-      ) : mode === 'preview' ? (
+      ) : (<>{mode === 'preview' && (
         <div className="article-editor-preview">
           <MarkdownContent content={value || '还没有正文内容。'} />
         </div>
-      ) : (
-        <Suspense
+      )}<div hidden={mode==='preview'}><Suspense
           fallback={<p className="quiet-state">正在加载可视化编辑器…</p>}
         >
           <VisualMarkdownEditor
@@ -86,7 +88,7 @@ export function ArticleEditor({
             onBusy={onBusy}
             registerImageInsert={insert=>{visual.current=insert;}}
           />
-        </Suspense>
+        </Suspense></div></>
       )}
     </div>
   );

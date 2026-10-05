@@ -1,0 +1,56 @@
+.mooncci-tiptap-editor {width:100%;min-width:0;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--foreground);position:relative}
+.mooncci-tiptap-editor .tiptap-toolbar[data-variant="fixed"] {position:sticky;top:0;height:auto;min-height:48px;max-width:100%;padding:4px 8px;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;border-bottom:1px solid var(--border);border-top:0;border-radius:12px 12px 0 0;z-index:20;background:var(--card)}
+.mooncci-tiptap-editor .tiptap-toolbar .tiptap-spacer {display:none}
+.mooncci-tiptap-editor .simple-editor-content {min-width:0;max-width:100%;padding:48px 32px;max-width:744px;margin:0 auto}
+.mooncci-tiptap-editor .tiptap {min-height:420px;outline:none;font-family:inherit;font-size:16px;line-height:1.8;overflow-wrap:anywhere}
+.mooncci-tiptap-editor .tiptap > :first-child {margin-top:0}
+.mooncci-tiptap-editor .tiptap > p:last-child {min-height:1.8em}
+.mooncci-tiptap-editor .tiptap img {max-width:100%;height:auto}
+.mooncci-tiptap-editor .tiptap pre {max-width:100%;overflow-x:auto}
+.mooncci-tiptap-editor .tiptap table {width:100%;table-layout:fixed;border-collapse:collapse}
+.mooncci-tiptap-editor .tiptap td,.mooncci-tiptap-editor .tiptap th {min-width:1em;border:1px solid var(--border);padding:6px;position:relative;vertical-align:top}
+.mooncci-tiptap-editor .tiptap .selectedCell {background:var(--muted)}
+.native-editor-actions {display:flex;flex-wrap:wrap;gap:4px;padding:4px 8px;border-bottom:1px solid var(--border)}
+.simple-editor-search-and-replace {position:fixed;top:12vh;right:16px;max-width:calc(100vw - 32px);z-index:100}
+@media(max-width:600px){
+ .mooncci-tiptap-editor .simple-editor-content {padding:16px}
+ .mooncci-tiptap-editor .tiptap-toolbar .tiptap-button,.native-editor-actions .tiptap-button {min-width:44px;min-height:44px}
+ .mooncci-tiptap-editor .tiptap-toolbar[data-variant="fixed"] {flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+}
+
+.mooncci-tiptap-editor .tiptap-toolbar-group {flex:0 0 auto}
+.mooncci-tiptap-editor .tiptap-toolbar > .tiptap-separator {flex-shrink:0}
+
+.editor-toolbar-frame {display:flex;min-width:0;max-width:100%;position:sticky;top:0;z-index:20;background:var(--card);border-radius:12px 12px 0 0;border-bottom:1px solid var(--border)}
+.editor-toolbar-frame .tiptap-toolbar[data-variant="fixed"] {flex:1;min-width:0;position:relative;border-bottom:0;border-radius:0;background:transparent}
+.editor-scroll-control {width:44px;min-height:48px;flex:0 0 44px;display:grid;place-items:center;color:var(--foreground);background:transparent;border:0}
+.editor-scroll-control:disabled {opacity:.25}
+.editor-toolbar-frame[data-overflow="true"] .tiptap-toolbar {mask-image:linear-gradient(to right,transparent,#000 8px,#000 calc(100% - 8px),transparent)}
+.tiptap-popover,.tiptap-dropdown-menu-content {max-width:calc(100vw - 24px);max-height:var(--radix-popover-content-available-height,70vh);overflow-y:auto}
+
+.mooncci-tiptap-editor .tiptap-toolbar::-webkit-scrollbar {display:none;width:0;height:0}
+.editor-toolbar-frame:not([data-view="main"]) .tiptap-toolbar[data-variant="fixed"] {flex-wrap:wrap;overflow:visible;mask-image:none;padding:8px}
+.editor-toolbar-frame:not([data-view="main"]) .tiptap-toolbar>.tiptap-toolbar-group:first-child {flex-basis:100%}
+.editor-toolbar-frame:not([data-view="main"]) .tiptap-toolbar>.tiptap-separator {display:none}
+.editor-toolbar-frame:not([data-view="main"]) .tiptap-card,.editor-toolbar-frame:not([data-view="main"]) .tiptap-card-body {width:100%;max-width:100%;min-width:0}
+.editor-toolbar-frame:not([data-view="main"]) .tiptap-card-item-group {min-width:0;flex-wrap:wrap}
+.editor-toolbar-frame:not([data-view="main"]) .tiptap-link-input {min-width:0;flex:1 0 100%;width:100%;font-size:16px;border:1px solid var(--border);padding:10px}
+@media(prefers-reduced-motion:reduce){.tiptap-popover,.tiptap-dropdown-menu-content {animation:none!important;transition:none!important}}
+[data-reduced-motion="true"] .tiptap-popover,[data-reduced-motion="true"] .tiptap-dropdown-menu-content {animation:none!important}
+
+.editor-toolbar-frame .tiptap-link-input {min-height:44px}
+
+/* Mobile: bounded writing surface with a bottom, touch-scrollable toolbar. */
+@media (max-width: 768px) {
+ .mooncci-tiptap-editor {display:flex;flex-direction:column}
+ .mooncci-tiptap-editor .simple-editor-content {order:1;width:100%;margin:0;max-width:none;padding:20px 16px;max-height:60svh;min-height:280px;overflow:auto;overscroll-behavior:contain;scroll-padding-block:20px}
+ .mooncci-tiptap-editor .tiptap {min-height:240px}
+ .mooncci-tiptap-editor .editor-toolbar-frame {order:2;position:relative;top:auto;bottom:auto;border-top:1px solid var(--border);border-bottom:0;border-radius:0 0 12px 12px;flex-shrink:0}
+ .mooncci-tiptap-editor .editor-toolbar-frame[data-view="main"] .tiptap-toolbar {flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:4px 8px;mask-image:none}
+ .mooncci-tiptap-editor .tiptap-toolbar .tiptap-button {min-width:44px;min-height:44px;flex-shrink:0}
+ .mooncci-tiptap-editor .tiptap-toolbar .tiptap-button-icon {width:18px;height:18px}
+}
+
+@media (max-width:768px) {
+ .admin-frame:has(.mooncci-tiptap-editor:focus-within) .admin-back-top {display:none}
+}

@@ -25,7 +25,7 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
  const completion=useRef<HTMLHeadingElement>(null);
  useEffect(()=>{if(published)completion.current?.focus();},[published]);
  const [preview,setPreview]=useState(false),[picker,setPicker]=useState<'cover'|'body'|null>(null); const insert=useRef<(url:string,alt:string)=>void>(()=>{});
- const d=useArticleDraft(userId,postId);const [uploads,setUploads]=useState(0),[uploadError,setUploadError]=useState(''),[quality,setQuality]=useState('medium');
+ const d=useArticleDraft(userId,postId);const [uploadCount,setUploads]=useState(0),[editorPending,setEditorPending]=useState(false),[uploadError,setUploadError]=useState(''),[quality,setQuality]=useState('medium');const uploads=uploadCount+(editorPending?1:0);
  const locked=publishing&&['submitted','approved','scheduled'].includes(d.draft?.workflow?.state);
  const submissionPanel=useRef<HTMLDivElement>(null);
  useEffect(()=>{const shortcut=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&!event.altKey&&event.key.toLowerCase()==='s'){event.preventDefault();if(!event.repeat&&d.ready&&!locked&&!d.busy&&!d.blocked&&!d.isRestoring)void d.save('manual');}};window.addEventListener('keydown',shortcut);return()=>window.removeEventListener('keydown',shortcut);},[d.save,d.ready,d.busy,d.blocked,d.isRestoring,locked]);
@@ -53,7 +53,7 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
  {locked&&<article className="submission-document"><header><span className="account-eyebrow">稿件详情</span><h1>{d.form.title||'未命名稿件'}</h1><p className="submission-document-meta">提交的审核版本 · 仅作者与审核人员可见</p></header><div className="submission-document-body">{safeImageSrc(d.form.cover_image)&&<img className="content-image" src={safeImageSrc(d.form.cover_image)} alt=""/>}<MarkdownContent content={d.form.content||''} headingPrefix="submission-heading"/></div></article>}
  <fieldset hidden={preview||locked||showComparison} disabled={!d.ready||locked||!!d.recovery||d.isRestoring} className="article-writing-fields"><label>标题<input id="article-title" value={d.form.title} maxLength={255} onChange={e=>change('title',e.target.value)} placeholder="未命名草稿"/></label>
  <button type="button" onClick={()=>setPicker('body')}>从媒体库插入正文图片</button>
- {d.ready&&<ArticleEditor registerImageInsert={fn=>{insert.current=fn;}} value={d.form.content} onChange={value=>change('content',value)} existing={!!postId||!!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={()=>{}}/>}
+ {d.ready&&<ArticleEditor registerImageInsert={fn=>{insert.current=fn;}} value={d.form.content} onChange={value=>change('content',value)} existing={!!postId||!!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={setEditorPending}/>}
  <details className="article-settings"><summary>文章设置</summary>
  <div className="article-settings-body">
   <section className="article-settings-section"><h2>摘要</h2><label>文章简介<textarea id="article-summary" rows={4} value={d.form.summary} onChange={e=>change('summary',e.target.value)} placeholder="简要介绍文章内容"/></label></section>

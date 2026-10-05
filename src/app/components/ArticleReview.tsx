@@ -1,3 +1,4 @@
+import {isRichText,richTextHasContent} from '../lib/richText';
 import {CheckCircle2, CircleAlert, CircleDashed} from 'lucide-react';
 import {ThemeSelect} from './ThemeSelect';
 import {useEffect,useMemo,useRef,useState} from 'react';
@@ -16,12 +17,12 @@ export function ArticleReview({post,onPublish,busy,disabled=false,publishLabel='
  await Promise.all(loads);if(frame.current?.contentDocument===doc)setRoot(doc.getElementById('preview-root'));
  }
  async function check(){if(!root)return;const id=++run.current;setChecking(true);const errors:string[]=[],warnings:string[]=[],imageIssues:ImageIssue[]=[];
-  if(!post.title?.trim())errors.push('请填写文章标题。');if(!post.content?.trim())errors.push('请填写正文。');
+  if(!post.title?.trim())errors.push('请填写文章标题。');if(!richTextHasContent(post.content || ''))errors.push('请填写正文。');
   const rendered=Array.from(root.querySelectorAll('img'));
   const urls=[...new Set(rendered.map(i=>i.src))];
   if(urls.length>80)errors.push('图片超过 80 张，请分篇发布后再检查。');
   let next=0;await Promise.all(Array.from({length:Math.min(4,urls.length)},async()=>{while(next<Math.min(80,urls.length)){const i=next++,url=urls[i];const result=await checkArticleImage(url,rendered);if(result!=='loaded')imageIssues.push({url,index:i+1,result});}}));
-  for(const match of String(post.content||'').matchAll(/(?<!!)\[[^\]]*\]\(([^)\s]+)[^)]*\)/g)){try{const u=new URL(match[1],location.origin);if(!['http:','https:','mailto:'].includes(u.protocol))errors.push('正文含不支持的链接协议，请修正 Markdown 链接。');}catch{errors.push('正文含格式无效的链接。');}}
+  for(const match of (isRichText(post.content || '') ? '' : String(post.content||'')).matchAll(/(?<!!)\[[^\]]*\]\(([^)\s]+)[^)]*\)/g)){try{const u=new URL(match[1],location.origin);if(!['http:','https:','mailto:'].includes(u.protocol))errors.push('正文含不支持的链接协议，请修正 Markdown 链接。');}catch{errors.push('正文含格式无效的链接。');}}
   const anchors=Array.from(root.querySelectorAll('a'));let external=0;for(const a of anchors){const href=a.getAttribute('href')||'';try{const u=new URL(href,location.origin);if(!['http:','https:','mailto:'].includes(u.protocol))errors.push('有不支持的链接协议。');if(u.origin!==location.origin&&u.protocol!=='mailto:')external++;}catch{errors.push('有格式无效的链接。');}}
   if(external)warnings.push(`${external} 个外部链接仅检查格式，发布前请自行打开确认内容。`);
   if(!post.category)warnings.push('尚未设置分类。');if(!post.summary)warnings.push('尚未填写摘要。');

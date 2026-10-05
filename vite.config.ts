@@ -3,7 +3,7 @@ import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { editorSanitizerPlugin } from './scripts/editor-sanitizer.mjs'
+
 
 
 function figmaAssetResolver() {
@@ -21,7 +21,7 @@ function figmaAssetResolver() {
 export default defineConfig({
   plugins: [
     licenseNotices(),
-    editorSanitizerPlugin(),
+
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them
@@ -41,13 +41,16 @@ export default defineConfig({
     manifest: 'asset-manifest.json',
     rollupOptions: {
       output: {
+        onlyExplicitManualChunks: true,
         manualChunks(id) {
+          if (id.replace(/\\/g, '/').includes('/node_modules/@tiptap/')) return 'editor-tiptap-core';
+          if (id.includes('/node_modules/re2js/') || id.includes('\\node_modules\\re2js\\')) return 'editor-search-engine';
           if (/[\\/]node_modules[\\/](prosemirror-[^\\/]+|orderedmap|rope-sequence|w3c-keyname)[\\/]/.test(id)) return 'editor-engine';
         },
       },
     },
   },
-  optimizeDeps: { exclude: ['@toast-ui/editor'] },
+
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   server: { host: '127.0.0.1', proxy: { '/api': 'http://127.0.0.1:3001' } },
