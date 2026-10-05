@@ -1,3 +1,4 @@
+import { syncMotionPreference } from '../lib/motionPreference';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -5,11 +6,11 @@ import { Accessibility, X } from 'lucide-react';
 import '../../styles/reading.css';
 
 const colors = [['auto', '跟随主题'], ['paper', '暖纸色'], ['dark', '深色'], ['contrast', '高对比']] as const;
-const defaults = { size: 0, color: 'auto' };
+const defaults = { size: 0, color: 'auto', reduceMotion: false };
 function load() {
   try {
     const value = JSON.parse(localStorage.getItem('mooncci-reading') || '{}');
-    return { size: [16,18,20,22,24].includes(value.size) ? value.size : 0,
+    return { reduceMotion: value.reduceMotion === true, size: [16,18,20,22,24].includes(value.size) ? value.size : 0,
       color: colors.some(([key]) => key === value.color) ? value.color : 'auto' };
   } catch { return defaults; }
 }
@@ -30,6 +31,7 @@ export default function ReadingTools() {
     const root = document.documentElement;
     if(active) { root.dataset.readingColor=prefs.color; if(prefs.size) root.style.setProperty('--reading-size', `${prefs.size}px`); else root.style.removeProperty('--reading-size'); }
     try { localStorage.setItem('mooncci-reading', JSON.stringify(prefs)); } catch { /* Preferences still work for this page. */ }
+    syncMotionPreference();
     return () => { delete root.dataset.readingColor; root.style.removeProperty('--reading-size'); };
   }, [prefs, active]);
   function read() {
@@ -61,6 +63,7 @@ export default function ReadingTools() {
       <Dialog.Description>调整当前设备的阅读体验，设置会自动记住。</Dialog.Description>
       <fieldset><legend>正文字号</legend><div className="reading-options"><button aria-pressed={prefs.size===0} onClick={()=>setPrefs({...prefs,size:0})}>默认</button>{[16,18,20,22,24].map(size=><button key={size} aria-pressed={prefs.size===size} onClick={()=>setPrefs({...prefs,size})}>{size}</button>)}</div></fieldset>
       <fieldset><legend>页面配色</legend><div className="reading-options">{colors.map(([color,label])=><button key={color} aria-pressed={prefs.color===color} onClick={()=>setPrefs({...prefs,color})}>{label}</button>)}</div></fieldset>
+      <fieldset><legend>动态效果</legend><label className="reading-motion-option"><input type="checkbox" checked={prefs.reduceMotion} onChange={e=>setPrefs({...prefs,reduceMotion:e.target.checked})}/>减少动态效果</label><p>默认跟随系统；此选项可进一步减少动画。</p></fieldset>
       <fieldset><legend>朗读正文</legend>{supported?<div className="reading-options">
         {speech==='idle'?<button onClick={read}>开始朗读</button>:<><button onClick={()=>{if(speech==='paused'){window.speechSynthesis.resume();setSpeech('speaking');}else{window.speechSynthesis.pause();setSpeech('paused');}}}>{speech==='paused'?'继续朗读':'暂停朗读'}</button><button onClick={stop}>停止</button></>}
       </div>:<p>此浏览器不支持朗读，可使用系统朗读功能。</p>}<p role="status">{message || progress}</p></fieldset>

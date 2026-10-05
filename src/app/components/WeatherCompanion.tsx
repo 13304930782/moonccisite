@@ -1,3 +1,4 @@
+import { reducedMotion } from '../lib/motionPreference';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { CloudSun, Minus, X, CircleHelp } from 'lucide-react';
@@ -216,7 +217,7 @@ export default function WeatherCompanion() {
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const angryUntil = useRef(0);
   const [reduced, setReduced] = useState(
-    () => matchMedia('(prefers-reduced-motion: reduce)').matches,
+    () => reducedMotion(),
   );
   const mount = useRef<HTMLSpanElement>(null);
   const root = useRef<HTMLElement>(null);
@@ -300,9 +301,10 @@ export default function WeatherCompanion() {
 
   useEffect(() => {
     const preference = matchMedia('(prefers-reduced-motion: reduce)');
-    const change = () => setReduced(preference.matches);
+    const change = () => setReduced(reducedMotion());
     preference.addEventListener('change', change);
-    return () => preference.removeEventListener('change', change);
+    window.addEventListener('mooncci:motion-change', change);
+    return () => { preference.removeEventListener('change', change); window.removeEventListener('mooncci:motion-change', change); };
   }, []);
 
   useEffect(() => {

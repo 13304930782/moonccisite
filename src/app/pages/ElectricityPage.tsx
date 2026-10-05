@@ -1,3 +1,4 @@
+import { reducedMotion } from '../lib/motionPreference';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useAuth } from '../context/AuthContext';
 import { useSearchParams, Link } from 'react-router-dom';
@@ -191,13 +192,14 @@ function ElectricityDashboard({
     'hover',
   );
   const [reduceMotion, setReduceMotion] = useState(
-    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    () => reducedMotion(),
   );
   useEffect(() => {
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const update = () => setReduceMotion(preference.matches);
+    const update = () => setReduceMotion(reducedMotion());
     preference.addEventListener('change', update);
-    return () => preference.removeEventListener('change', update);
+    window.addEventListener('mooncci:motion-change', update);
+    return () => { preference.removeEventListener('change', update); window.removeEventListener('mooncci:motion-change', update); };
   }, []);
   const [data, setData] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
