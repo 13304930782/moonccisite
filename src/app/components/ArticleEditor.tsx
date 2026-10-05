@@ -27,6 +27,8 @@ export function ArticleEditor({
     const markdown=`![${escaped}](<${url.replace(/>/g,'%3E').replace(/</g,'%3C').replace(/\s/g,'%20')}>)`;
     const el=source.current,start=el?.selectionStart??value.length,end=el?.selectionEnd??value.length;
     onChange(value.slice(0,start)+markdown+value.slice(end));
+    if(mode==='preview')setMode('source');
+    requestAnimationFrame(()=>{source.current?.focus({preventScroll:true});source.current?.setSelectionRange(start+markdown.length,start+markdown.length);});
   });},[mode,value,onChange,registerImageInsert]);
 
   return (

@@ -69,7 +69,7 @@ export default function VisualMarkdownEditor({
       },
     });
     instance.current = editor;
-    registerImageInsert?.((url,alt)=>{if(alive)editor.exec('addImage',{imageUrl:url,altText:alt});});
+    registerImageInsert?.((url,alt)=>{if(alive){editor.exec('addImage',{imageUrl:url,altText:alt});requestAnimationFrame(()=>{if(alive)editor.focus();});}});
     lastValue.current = props.current.value;
     externalUpdate.current = false;
     editor.on('change', () => {
