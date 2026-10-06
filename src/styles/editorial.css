@@ -642,6 +642,22 @@ input[type='checkbox'] {
   padding: var(--page-top) 0 64px;
   align-items: start;
 }
+/* Match the top labels and bottom actions without fixing content heights. */
+@media (min-width: 761px) {
+  .home-hero { align-items:stretch; }
+  .hero-copy, .hero-copy > .resource-content,
+  .now-panel, .now-panel > .resource-content,
+  .now-panel > .resource-content > .resource-content {
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+  }
+  .hero-copy > .resource-content,
+  .now-panel > .resource-content,
+  .now-panel > .resource-content > .resource-content { flex:1; }
+  .hero-copy .inline-actions { margin-top:auto; margin-bottom:0; }
+  .hero-note-actions { display:flex; align-items:center; margin-top:auto; padding-top:24px; }
+}
 .home-hero h1 {
   font-size:var(--page-title-size);
   line-height:1.25;
@@ -1732,3 +1748,14 @@ html { scrollbar-gutter: stable; }
 .mobile-account-menu .nav-disclosure summary{padding:8px 0;max-width:220px;overflow-wrap:anywhere}
 .mobile-account-menu .nav-popover{top:100%;z-index:2;max-width:calc(100vw - 48px)}
 @media(min-width:761px){.mobile-menu-panel{display:none}}
+
+/* Keep account entry visible before opening compact navigation. */
+.header-theme { display:flex; }
+.mobile-login-link,.mobile-theme-row { display:none; }
+@media(max-width:760px) {
+ .mobile-login-link { display:inline-flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; padding:0 8px; border:1px solid var(--border); border-radius:8px; white-space:nowrap; }
+}
+@media(max-width:420px) {
+ .header-theme,.mobile-login-link span { display:none; }
+ .mobile-theme-row { display:flex; align-items:center; justify-content:space-between; margin:0 24px; padding:12px 0; border-top:1px solid var(--border); font-size:14px; }
+}

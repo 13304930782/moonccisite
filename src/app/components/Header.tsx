@@ -94,10 +94,11 @@ export function Header() {
           >
             <Search />
           </button>
-          <ThemeToggle />
+          <div className="header-theme"><ThemeToggle /></div>
           <div className="header-account">
             {accountMenu}
           </div>
+          {!user && <Link className="mobile-login-link" to="/login" aria-label="登录 / 注册" onPointerEnter={() => preloadPage('/login')} onFocus={() => preloadPage('/login')} onTouchStart={() => preloadPage('/login')}>登录<span> / 注册</span></Link>}
           <button
             className="icon-button mobile-menu-button"
             aria-expanded={menu}
@@ -138,7 +139,8 @@ export function Header() {
           ))}
 
         </nav>
-        <div className="mobile-account-menu"><span>账户</span>{accountMenu}</div>
+        {user && <div className="mobile-account-menu"><span>账户</span>{accountMenu}</div>}
+        <div className="mobile-theme-row"><span>外观</span><ThemeToggle /></div>
         </div>
       )}
       {logoutError && (
