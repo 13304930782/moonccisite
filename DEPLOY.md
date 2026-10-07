@@ -1034,3 +1034,6 @@ and mail DNS records remain unchanged. Check certificate renewal through the exi
 打包：`python scripts/build-sitemap-release.py`。上传包与 SHA256 后在子 shell 执行 `nohup bash deploy.sh > deploy.log 2>&1 < /dev/null &`。无需重启 PM2 或迁移数据库。
 检查：`systemctl status mooncci-sitemap.timer`、`journalctl -u mooncci-sitemap.service -n 20`。
 回滚：`nohup bash rollback.sh /www/backup/mooncci-sitemap.XXXXXX > rollback.log 2>&1 < /dev/null &`（用部署日志实际备份目录替换）。
+
+### 依赖监控瞬时故障处理（2026-10-07）
+成功探测缓存仍为 60 秒，失败缓存缩短至 5 秒。只读 GET 发生连接重置、临时 DNS 错误或超时时最多重试一次，每次 4 秒，整次探测仍受 10 秒上限约束。HTTP 错误和证书内容错误不重试；持续失败返回 503。重试恢复记录 retry_succeeded 和次数。OAuth token 交换与真实登录流程保持不变。

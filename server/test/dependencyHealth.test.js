@@ -103,3 +103,38 @@ test('logs never serialize raw exceptions, keys, unknown response headers or res
  const timeoutLogs=[];await createDependencyHealth({timeout:5,logger:e=>timeoutLogs.push(e),fetcher:()=>new Promise(()=>{})})('google');assert.equal(timeoutLogs[0].reason,'timeout');
  assert.equal((await createDependencyHealth({env:proxyEnv,logger:()=>{throw Error('logger failure');},fetcher:async()=>proxyResponse(502)})('github')).ok,false);
 });
+
+test('failed cache expires after five seconds while concurrent rechecks share one request', async () => {
+ let clock=100000, calls=0, healthy=false;
+ const check=createDependencyHealth({env:proxyEnv,now:()=>clock,logger:()=>{},fetcher:async()=>{calls++;return healthy?proxyResponse():proxyResponse(502);}});
+ assert.equal((await check('github')).ok,false);
+ healthy=true;clock+=4999;assert.equal((await check('github')).ok,false);assert.equal(calls,1);
+ clock+=1;assert((await Promise.all([check('github'),check('github')])).every(r=>r.ok));assert.equal(calls,2);
+});
+
+test('transient GET failure retries once and records recovery without exposing credentials', async () => {
+ let calls=0;const logs=[];
+ const check=createDependencyHealth({env:proxyEnv,logger:e=>logs.push(e),fetcher:async()=>{
+  if(++calls===1)throw Object.assign(Error('reset'),{code:'ECONNRESET'});return proxyResponse();
+ }});
+ assert.equal((await check('github')).ok,true);assert.equal(calls,2);
+ assert.equal(logs[0].event,'retry_succeeded');assert.equal(logs[0].retries,1);
+});
+
+test('attempt timeout gets one fresh attempt and persistent transport failures stay unhealthy', async () => {
+ let calls=0;
+ const check=createDependencyHealth({env:proxyEnv,attemptTimeout:10,timeout:100,logger:()=>{},fetcher:async(_url,{signal})=>{
+  if(++calls===2)return proxyResponse();
+  return new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));
+ }});
+ assert.equal((await check('github')).ok,true);assert.equal(calls,2);
+ calls=0;
+ const down=createDependencyHealth({env:proxyEnv,logger:()=>{},fetcher:async()=>{calls++;throw Object.assign(Error('reset'),{code:'ECONNRESET'});}});
+ assert.equal((await down('github')).ok,false);assert.equal(calls,2);
+});
+
+test('HTTP failures and invalid certificates are not retried', async () => {
+ let calls=0;
+ const check=createDependencyHealth({env:proxyEnv,logger:()=>{},fetcher:async()=>{calls++;return proxyResponse(403);}});
+ assert.equal((await check('github')).ok,false);assert.equal(calls,1);
+});

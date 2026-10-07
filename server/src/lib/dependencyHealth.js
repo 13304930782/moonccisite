@@ -20,16 +20,30 @@ async function json(response) {
   }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw fail('invalid_json'); }
 }
-function createDependencyHealth({ env = process.env, fetcher = (...args) => proxyTransport.fetch(...args), now = Date.now, ttl = 60000, timeout = 10000, logger = event => console.warn('[dependency-health]', JSON.stringify(event)) } = {}) {
+function createDependencyHealth({ env = process.env, fetcher = (...args) => proxyTransport.fetch(...args), now = Date.now, ttl = 60000, failureTtl = 5000, attemptTimeout = 4000, timeout = 10000, logger = event => console.warn('[dependency-health]', JSON.stringify(event)) } = {}) {
   const cache = new Map(); const pending = new Map(); const previous = new Map();
   async function probe(id) {
     const started = now(); const signal = AbortSignal.timeout(timeout);
-    let stage = 'configuration', responseStatus = null, proxyDiagnostic = null, proxyVersion = null;
+    let stage = 'configuration', responseStatus = null, proxyDiagnostic = null, proxyVersion = null, retries = 0;
     const get = async (url, headers = {}) => {
       const target = httpsUrl(url);
       stage = id === 'github' ? 'proxy_request' : 'upstream_request';
       responseStatus = null;
-      const response = await fetcher(target, { signal, redirect: 'error', headers: { Accept: 'application/json', 'User-Agent': 'mooncci-dependency-health', ...headers } });
+      let response;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        // GET probes only. Never replay OAuth exchanges or retry HTTP/auth errors.
+        const bounded = timeout > attemptTimeout;
+        const attemptSignal = bounded ? AbortSignal.any([signal, AbortSignal.timeout(attemptTimeout)]) : signal;
+        try {
+          response = await fetcher(target, { signal: attemptSignal, redirect: 'error', headers: { Accept: 'application/json', 'User-Agent': 'mooncci-dependency-health', ...headers } });
+          break;
+        } catch (error) {
+          const code = error?.cause?.code || error?.code;
+          const transient = ['EAI_AGAIN','ECONNRESET','ETIMEDOUT','UND_ERR_CONNECT_TIMEOUT','UND_ERR_SOCKET'].includes(code) || ['AbortError','TimeoutError'].includes(error?.name);
+          if (attempt || !bounded || signal.aborted || !transient) throw error;
+          retries++;
+        }
+      }
       responseStatus = Number.isInteger(response.status) && response.status >= 100 && response.status <= 599 ? response.status : null;
       stage = 'response_validation';
       if (id === 'github') {
@@ -81,8 +95,8 @@ function createDependencyHealth({ env = process.env, fetcher = (...args) => prox
     const result = { ok, service: id, scope: 'dependency-connectivity', checkedAt: new Date(now()).toISOString(), responseTimeMs: Math.max(0, now() - started) };
     // Log actual probes only, never cache hits. Whitelisted scalar fields only:
     // no request URL, headers, body, raw exception, proxy key or user token.
-    if (!ok || previous.get(id) === false) {
-      try { logger({ event: ok ? 'recovered' : 'failed', ...result, stage, reason, responseStatus, proxyDiagnostic, proxyVersion, networkCode }); } catch { /* Logging cannot change probe availability. */ }
+    if (!ok || previous.get(id) === false || retries) {
+      try { logger({ event: ok ? (previous.get(id) === false ? 'recovered' : 'retry_succeeded') : 'failed', ...result, stage, reason, responseStatus, proxyDiagnostic, proxyVersion, networkCode, retries }); } catch { /* Logging cannot change probe availability. */ }
     }
     previous.set(id, ok);
     return result;
@@ -90,7 +104,7 @@ function createDependencyHealth({ env = process.env, fetcher = (...args) => prox
   return async id => {
     if (!['google', 'microsoft', 'github'].includes(id)) return null;
     const saved = cache.get(id);
-    if (saved && now() - saved.at < ttl) return saved.result;
+    if (saved && now() - saved.at < (saved.result.ok ? ttl : Math.min(ttl, failureTtl))) return saved.result;
     if (!pending.has(id)) pending.set(id, probe(id).then(result => { cache.set(id, { at: now(), result }); return result; }).finally(() => pending.delete(id)));
     return pending.get(id);
   };
