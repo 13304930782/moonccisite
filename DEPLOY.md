@@ -247,7 +247,7 @@ bash /root/mooncci-electricity-charts-20260908/deploy-electricity-charts.sh
 
 ### 电量后台运行计划与页面整理（2026-09-09 v5）
 
-后台“水电监控设置”支持逐行添加整点计划、修改任务和删除非零点行，00:00 日统计固定保留。计划保存在现有 site_settings，worker 每 30 秒读取更新；早报、晚报各最多一次，保存不补发。首次部署需同时更新 API、worker 与前端，无新增迁移或依赖；原手动历史同步、冷却与零点预测逻辑保持。上传和发布命令见 [ELECTRICITY-HISTORY-SYNC.md](./ELECTRICITY-HISTORY-SYNC.md)。
+后台“水电监控设置”支持逐行添加整点计划、修改任务和删除非零点行，00:00 日统计固定保留。计划保存在现有 site_settings，worker 每 5 分钟读取更新；早报、晚报各最多一次，保存不补发。首次部署需同时更新 API、worker 与前端，无新增迁移或依赖；原手动历史同步、冷却与零点预测逻辑保持。上传和发布命令见 [ELECTRICITY-HISTORY-SYNC.md](./ELECTRICITY-HISTORY-SYNC.md)。
 
 ### 多宿舍电量管理（2026-09-09）
 
@@ -1030,7 +1030,7 @@ and mail DNS records remain unchanged. Check certificate renewal through the exi
 
 ### 自动静态 sitemap（2026-10-07）
 `/sitemap-pages.xml` 是运行时生成的完整公开地图，不放入前端 public 目录。
-`mooncci-sitemap.timer` 每 30 秒调用本机已有的 `/sitemap.xml` 公开查询，校验后原子替换；失败保留上一份并记录 systemd 错误。发布/撤回/删除最多约 30 秒同步。数据库不可用期间会保留上次地图，恢复后自动更新。
+`mooncci-sitemap.timer` 每 5 分钟调用本机已有的 `/sitemap.xml` 公开查询，校验后原子替换；失败保留上一份并记录 systemd 错误。发布/撤回/删除最多约 5 分钟同步。数据库不可用期间会保留上次地图，恢复后自动更新。
 打包：`python scripts/build-sitemap-release.py`。上传包与 SHA256 后在子 shell 执行 `nohup bash deploy.sh > deploy.log 2>&1 < /dev/null &`。无需重启 PM2 或迁移数据库。
 检查：`systemctl status mooncci-sitemap.timer`、`journalctl -u mooncci-sitemap.service -n 20`。
 回滚：`nohup bash rollback.sh /www/backup/mooncci-sitemap.XXXXXX > rollback.log 2>&1 < /dev/null &`（用部署日志实际备份目录替换）。
