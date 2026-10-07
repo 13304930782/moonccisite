@@ -1,5 +1,5 @@
 import { clearPublicSnapshots } from '../lib/publicSnapshots';
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { startTransition, createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api, ApiError } from '../lib/api';
 import { clearAuthCache } from '../lib/authToken';
@@ -34,7 +34,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { clearPublicSnapshots(); }, [user?.id]);
+  const previousUser = useRef(user?.id);
+  useEffect(() => { if(previousUser.current !== user?.id) { previousUser.current=user?.id; clearPublicSnapshots(); } }, [user?.id]);
 
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState('');
@@ -48,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const data = await api('/auth/me', { cache: 'no-store' });
       if (version !== authVersion.current) return null;
-      setUser(data.user);
+      startTransition(()=>setUser(data.user));
       return data.user;
     } catch (error) {
       if (version !== authVersion.current) return null;
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    refreshUser().finally(() => setLoading(false));
+    refreshUser().finally(() => startTransition(()=>setLoading(false)));
     const onLogout = (event: StorageEvent) => {
       if (event.key !== 'mooncci:logout' || !event.newValue) return;
       authVersion.current += 1;

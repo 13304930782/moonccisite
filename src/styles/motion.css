@@ -36,3 +36,7 @@ html[data-reduced-motion="true"] :is(.neo-button,.quiet-button,.article-button,.
 .search-filters { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:24px; }
 .search-filters label { display:grid; gap:8px; flex:1; min-width:min(200px,100%); }
 .search-filters select { width:100%; min-height:44px; }
+
+/* Server content is already visible; hydration must not replay its entrance. */
+html[data-document-hydrating] :is(.page-content,.home-main,.resource-content) { animation:none; }
+.pagination [aria-disabled="true"] { opacity:.45; cursor:default; }

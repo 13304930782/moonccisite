@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "node scripts/generate-mail-autoconfig.cjs --check && vite build",
+    "build": "node scripts/generate-mail-autoconfig.cjs --check && vite build && node scripts/build-document.mjs",
     "dev": "vite",
     "test": "node --test test/*.test.cjs",
     "typecheck": "tsc --noEmit",

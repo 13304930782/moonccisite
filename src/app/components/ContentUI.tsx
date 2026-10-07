@@ -1,3 +1,4 @@
+import { useDocumentResource } from '../context/DocumentData';
 import { readSnapshot, writeSnapshot, snapshotGeneration, deleteSnapshot, subscribeSnapshotInvalidation } from '../lib/publicSnapshots';
 import { notify } from '../lib/feedback';
 import { FormEvent, ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -13,17 +14,19 @@ export type PageData<T = any> = { items: T[]; total: number; page: number; pageS
 
 const cacheable = publicReadPath;
 export function useResource<T = any>(path: string, enabled = true) {
-  const snapshot = cacheable(path) ? readSnapshot(path) : null;
+  const initial = useDocumentResource(path, enabled);
+  const snapshot = initial.data ?? (cacheable(path) ? readSnapshot(path) : null);
   const [state, setState] = useState<{ path: string; data: T | null }>({ path, data: snapshot }),
-    [error, setError] = useState(''),
-    [errorStatus,setErrorStatus]=useState<number|null>(null),
-    [loading, setLoading] = useState(true),
+    [error, setError] = useState(initial.status ? '内容不存在或未公开。' : ''),
+    [errorStatus,setErrorStatus]=useState<number|null>(initial.status || null),
+    [loading, setLoading] = useState(!snapshot && !initial.status),
     [version, setVersion] = useState(0);
   const requestController = useRef<AbortController | null>(null);
   const cancel = useCallback(() => requestController.current?.abort(), []);
   const reload = useCallback(() => setVersion((v) => v + 1), []);
   useEffect(() => subscribeSnapshotInvalidation(() => { if (cacheable(path)) { setState({path,data:null}); reload(); } }), [path, reload]);
   useEffect(() => {
+    if (initial.data !== undefined && version === 0) return;
     const generation = snapshotGeneration();
     if (!enabled) {
       requestController.current?.abort();
@@ -97,7 +100,7 @@ export function ResourceState({
     );
   return <div className="resource-content" aria-busy={resource.loading}>
     {resource.error && <div className="resource-notice" role="status"><div><strong>暂时无法更新</strong><p>保留上次加载的内容，你可以稍后重试。</p></div><button className="quiet-button" disabled={resource.loading} onClick={resource.reload}>重新加载</button></div>}
-    {resource.loading && resource.data !== null && <p className="muted" role="status">正在刷新，当前内容仍可查看。</p>}
+    {resource.loading && resource.data !== null && <p className="sr-only" role="status">正在刷新，当前内容仍可查看。</p>}
     {children}
   </div>;
 }
@@ -183,21 +186,18 @@ export function ActivityList({ items }: { items: any[] }) {
   );
 }
 export function Pagination({ data, onPage }: { data: PageData; onPage: (page: number) => void }) {
+  const location = useLocation();
   const pages = Math.max(1, Math.ceil(data.total / data.pageSize));
   if (pages <= 1) return null;
-  return (
-    <nav className="pagination" aria-label="分页">
-      <button className="quiet-button" disabled={data.page <= 1} onClick={() => onPage(data.page - 1)}>
-        上一页
-      </button>
-      <span aria-live="polite" aria-atomic="true">
-        {data.page} / {pages}
-      </span>
-      <button className="quiet-button" disabled={data.page >= pages} onClick={() => onPage(data.page + 1)}>
-        下一页
-      </button>
-    </nav>
-  );
+  const link = (page: number) => { const params = new URLSearchParams(location.search); if(page===1)params.delete('page');else params.set('page',String(page)); return location.pathname + (params.size ? '?' + params : ''); };
+  const control = (page: number, label: string, disabled: boolean) => disabled
+    ? <span className="quiet-button" aria-disabled="true">{label}</span>
+    : <Link className="quiet-button" to={link(page)} onClick={event=>{if(event.button===0&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();onPage(page);}}}>{label}</Link>;
+  return <nav className="pagination" aria-label="分页">
+    {control(data.page-1,'上一页',data.page<=1)}
+    <span aria-live="polite" aria-atomic="true">{data.page} / {pages}</span>
+    {control(data.page+1,'下一页',data.page>=pages)}
+  </nav>;
 }
 export function SubscribeForm() {
   const [email, setEmail] = useState(''),

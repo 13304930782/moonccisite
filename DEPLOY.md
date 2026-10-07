@@ -987,3 +987,43 @@ The mobile toolbar sits below the bounded editor and scrolls horizontally. Legac
 Release exception: the user explicitly requested immediate deployment after reviewing the aggregate bundle-budget failure. `bundle-budget.json` and CI checks remain unchanged. Type checking, unit tests and production build must pass; record the measured aggregate failure separately instead of claiming `npm run check` passed. Build the scoped frontend archive locally using `make_bundle` only after those checks and a clean committed tree, preserving its LF/checksum verification. Upload and run the packaged deploy script in a child shell with nohup; do not restart PM2.
 
 Rollback: the deploy script saves the previous index and retains hashed resources. Restoring that index reverts the UI, but the previous renderer does not support newly saved native rich text. After users save native content, keep the new dual-format reader in any rollback release; do not convert or discard saved content. An immediate rollback before native content is created may restore the saved index atomically.
+
+
+## Public document rendering (SEO)
+
+`npm run build` builds the browser into `dist/` and the isolated Node renderer into
+`server/runtime/`. Install server dependencies for local rendering with `npm ci --prefix server`.
+The Express document route reads the same frontend `index.html` and renders the existing React
+pages using anonymous, allowlisted loopback reads. It never forwards session cookies or credentials.
+Only published content enters public HTML; private tools remain noindex and client rendered.
+Set `SEO_HTML_TEMPLATE` when the frontend root differs from `/www/wwwroot/mooncci.site/index.html`.
+Retain the existing `PUBLISHING_ENABLED` setting; disabled series are omitted from indexing.
+
+Validate with `npm run typecheck`, `npm test`, `npm test --prefix server`,
+`npm run build`, `node scripts/test-document.mjs`, and `npm run check:bundle`.
+MySQL integration cases require the existing test database setup; skipped cases are not passes.
+
+The scoped offline package uses `scripts/build-document-release.py` and `scripts/deploy-document.sh`.
+Before packaging, copy `scripts/document-runtime/package*.json` into `.cache/document-deps/`
+and run `npm ci --prefix .cache/document-deps --omit=dev --ignore-scripts`.
+Commit source, build, then run `python scripts/build-document-release.py`.
+The bundle includes pure-JavaScript jsdom dependencies under `server/runtime/node_modules`,
+not Windows native modules and not the live backend node_modules directory.
+It replaces only three SEO source files, the renderer, frontend assets and the SEO Nginx snippet.
+No migrations, environment replacement, upload deletion, mail changes or worker restart occur.
+The API restart is required for the new Node renderer. This is not a frontend-only package.
+
+Upload the archive and its `.sha256` with PowerShell `scp -i <existing-key> <archive> <sidecar> root@182.92.179.81:/www/backup/`.
+On the server, verify `sha256sum -c <archive>.sha256`, unpack to a new named directory,
+and run `nohup bash <unpacked-directory>/deploy.sh > <release-log> 2>&1 < /dev/null &`.
+The script records a unique backup directory and automatically restores source, index and Nginx
+on failure. Retain hashed frontend assets so open tabs and rollback remain functional.
+For manual rollback, restore `src/routes/seo.js` and `src/lib/seo.js` from that backup,
+restore `index.html`, `vhost.conf` and `nginx-before.inc` to their original paths;
+restore the prior `runtime` directory when present, run `nginx -t`, reload Nginx and restart
+`mooncci-api` as user `mooncci`. Use a child shell, never `set -e` or `exit` in an interactive SSH shell.
+
+The independent `www.mooncci.site` virtual host uses a separate certificate and returns 301 to
+`https://mooncci.site$request_uri`. Its HTTP ACME challenge path must remain accessible for renewal.
+DNS defaults to the existing Beijing server solely for this redirect; root-domain regional records
+and mail DNS records remain unchanged. Check certificate renewal through the existing BaoTa ACME job.

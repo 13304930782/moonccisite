@@ -90,3 +90,5 @@
 .article-age-notice { margin:0 0 20px; padding:10px 14px; border-left:2px solid var(--border); background:var(--muted); color:var(--muted-foreground); font-size:14px; line-height:1.7; }
 
 .release-prerelease { display:inline-flex; vertical-align:middle; align-items:center; padding:3px 8px; border:1px dashed var(--border); border-radius:5px; font-size:11px; line-height:1.5; font-weight:500; color:var(--muted-foreground); background:var(--muted); white-space:nowrap; }
+
+@media (max-width:1099px) { .detail-panel[data-initial] > .detail-panel-content { display:none; } }

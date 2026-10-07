@@ -4,6 +4,7 @@ const positions = new Map<string, number>();
 export function RoutePosition() {
   const location = useLocation(), navigation = useNavigationType();
   useLayoutEffect(() => {
+    if (location.key !== 'default') delete document.documentElement.dataset.documentHydrating;
     const previous = history.scrollRestoration; history.scrollRestoration = 'manual';
     const target = navigation === 'POP' ? positions.get(location.key) || 0 : 0;
     let restoring = navigation === 'POP' && target > 0;

@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { startTransition, createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
 type MoonTheme = 'light' | 'dark';
 const ThemeContext = createContext<{
@@ -15,15 +15,18 @@ function initial(): MoonTheme {
   }
 }
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<MoonTheme>(initial);
+  const [theme, setTheme] = useState<MoonTheme>(() => typeof document !== 'undefined' && !document.getElementById('mooncci-document-data') ? initial() : 'light');
+  const [ready,setReady]=useState(false);
+  useEffect(() => { startTransition(() => { setTheme(initial());setReady(true); }); }, []);
   useEffect(() => {
+    if(!ready)return;
     document.documentElement.dataset.moonTheme = theme;
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.documentElement.style.colorScheme = theme;
     try {
       localStorage.setItem('mooncci-theme', theme);
     } catch {}
-  }, [theme]);
+  }, [theme,ready]);
   const value = useMemo(
     () => ({
       theme,

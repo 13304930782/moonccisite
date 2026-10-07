@@ -43,6 +43,7 @@
     <script>
       (function () {
         var retry = document.getElementById('startup-retry');
+        if (!retry) return;
         retry.addEventListener('click', function () { location.reload(); });
         var timer = setTimeout(function () {
           var message = document.getElementById('startup-message');

@@ -1,8 +1,9 @@
+import {DocumentDataProvider, useDocumentStatus, type DocumentData} from './context/DocumentData';
 import { loadPage } from './lib/preloadPage';
 import { RoutePreload } from './components/RoutePreload';
 import { NavigationProtection } from './components/NavigationProtection';
 import { DiagnosticNavigation } from './components/DiagnosticNavigation';
-import { lazy, Suspense } from 'react';
+import { startTransition, lazy, Suspense, useState, useEffect } from 'react';
 import { RoutePosition } from './components/RoutePosition';
 import '../styles/experience.css';
 const FeedbackHost = lazy(() => import('./components/FeedbackHost').then(m => ({ default: m.FeedbackHost })));
@@ -33,7 +34,7 @@ const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
 const AdminUpdatesPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminUpdatesPage })));
 const AdminProjectsPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminProjectsPage })));
 const AdminNewsletterPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminNewsletterPage })));
-import { createBrowserRouter, RouterProvider, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { createBrowserRouter, createMemoryRouter, RouterProvider, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const LoginPage = lazy(() => loadPage('/login'));
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
@@ -134,10 +135,14 @@ function Guard({
 }
 
 function SiteRoutes() {
+  const status=useDocumentStatus(), location=useLocation();
+  const [initialKey]=useState(location.key);
+  const [interactive, setInteractive] = useState(false);
+  useEffect(() => { startTransition(()=>setInteractive(true)); }, []);
   return <><NavigationProtection/><RoutePreload/>
-          <SiteMeta /><Suspense fallback={null}><FeedbackHost/></Suspense>
+          <SiteMeta /><Suspense fallback={null}>{interactive && <FeedbackHost/>}</Suspense>
           <RoutePosition /><PageAnalytics /><DiagnosticNavigation />
-          <Suspense fallback={<RouteLoader />}><Routes>
+          <Suspense fallback={<RouteLoader />}>{status && status>=400 && location.key===initialKey ? (status===404 ? <NotFoundPage/> : <RouteFailure/>) : <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/updates" element={<UpdatesPage/>}/>
           <Route path="/updates/:id" element={<UpdateDetailPage/>}/>
@@ -206,14 +211,14 @@ function SiteRoutes() {
           <Route path="/admin/electricity" element={<Guard ownerOnly><AdminShell><Suspense fallback={<RouteLoader />}><AdminElectricityPage /></Suspense></AdminShell></Guard>} />
 
           <Route path="*" element={<NotFoundPage />} />
-          </Routes></Suspense>
-          <PublicWeatherCompanion /><Suspense fallback={null}><ReadingTools /></Suspense>
+          </Routes>}</Suspense>
+          {interactive && <><PublicWeatherCompanion /><Suspense fallback={null}><ReadingTools /></Suspense></>}
   </>;
 }
 function RouteFailure() {
   return <SitePage><section className="resource-notice" role="alert"><div><h1>页面暂时未能加载</h1><p>请重新加载页面后继续。</p></div><button className="quiet-button" onClick={()=>window.location.reload()}>重新加载</button></section></SitePage>;
 }
-const router = createBrowserRouter([{ path: '*', element: <SiteRoutes/>, errorElement:<RouteFailure/> }]);
-export default function App() {
-  return <ThemeProvider><SiteSettingsProvider><AuthProvider><RouterProvider router={router}/></AuthProvider></SiteSettingsProvider></ThemeProvider>;
+export default function App({url, documentData}: {url?:string; documentData?:DocumentData} = {}) {
+  const [router] = useState(() => { const routes=[{path:'*',element:<SiteRoutes/>,errorElement:<RouteFailure/>}]; return url ? createMemoryRouter(routes,{initialEntries:[url]}) : createBrowserRouter(routes); });
+  return <DocumentDataProvider data={documentData}><ThemeProvider><SiteSettingsProvider><AuthProvider><RouterProvider router={router}/></AuthProvider></SiteSettingsProvider></ThemeProvider></DocumentDataProvider>;
 }
