@@ -1027,3 +1027,10 @@ The independent `www.mooncci.site` virtual host uses a separate certificate and 
 `https://mooncci.site$request_uri`. Its HTTP ACME challenge path must remain accessible for renewal.
 DNS defaults to the existing Beijing server solely for this redirect; root-domain regional records
 and mail DNS records remain unchanged. Check certificate renewal through the existing BaoTa ACME job.
+
+### 自动静态 sitemap（2026-10-07）
+`/sitemap-pages.xml` 是运行时生成的完整公开地图，不放入前端 public 目录。
+`mooncci-sitemap.timer` 每 30 秒调用本机已有的 `/sitemap.xml` 公开查询，校验后原子替换；失败保留上一份并记录 systemd 错误。发布/撤回/删除最多约 30 秒同步。数据库不可用期间会保留上次地图，恢复后自动更新。
+打包：`python scripts/build-sitemap-release.py`。上传包与 SHA256 后在子 shell 执行 `nohup bash deploy.sh > deploy.log 2>&1 < /dev/null &`。无需重启 PM2 或迁移数据库。
+检查：`systemctl status mooncci-sitemap.timer`、`journalctl -u mooncci-sitemap.service -n 20`。
+回滚：`nohup bash rollback.sh /www/backup/mooncci-sitemap.XXXXXX > rollback.log 2>&1 < /dev/null &`（用部署日志实际备份目录替换）。

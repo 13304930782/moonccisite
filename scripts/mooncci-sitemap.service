@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh mooncci public static sitemap
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/mooncci-sitemap/refresh-sitemap.py --destination /www/wwwroot/mooncci.site/sitemap-pages.xml
+TimeoutStartSec=25
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/www/wwwroot/mooncci.site
+ProtectHome=true
+PrivateTmp=true
