@@ -16,8 +16,9 @@ test ! -e "$live/vendor/mmdb-lib"
 test ! -e "$live/data/dbip"
 node --check server/src/lib/weatherNetworkCity.js
 node --check server/src/lib/weatherGlobalIp.js
+node --check server/src/lib/weatherGlobalIpWorker.js
 node --check server/src/lib/weatherLocation.js
-node -e 'const {lookupGlobalIp,globalIpCity}=require("./server/src/lib/weatherGlobalIp"); if(globalIpCity(lookupGlobalIp("104.245.13.12"))?.name!=="San Jose")throw Error("IP city validation failed"); if(globalIpCity(lookupGlobalIp("39.144.58.249"))!==null)throw Error("Domestic IP city must not be used")'
+node -e 'const {lookupGlobalIp,globalIpCity}=require("./server/src/lib/weatherGlobalIp");(async()=>{try {if(globalIpCity(await lookupGlobalIp("104.245.13.12"))?.name!=="San Jose")throw Error("IP city validation failed");if(globalIpCity(await lookupGlobalIp("39.144.58.249"))!==null)throw Error("Domestic IP city must not be used")}finally{lookupGlobalIp.close()}})().catch(e=>{console.error(e.message);process.exitCode=1})'
 node --input-type=module -e "await import('./server/runtime/document.mjs')"
 backup=$(mktemp -d /www/backup/mooncci-weather-city.XXXXXX)
 cp -p "$web/index.html" "$backup/index.html"
@@ -35,6 +36,7 @@ finish() {
     cp -p "$backup/weatherNetworkCity.js" "$live/src/lib/weatherNetworkCity.js"
     cp -p "$backup/weatherLocation.js" "$live/src/lib/weatherLocation.js"
     rm -f -- "$live/src/lib/weatherGlobalIp.js"
+    rm -f -- "$live/src/lib/weatherGlobalIpWorker.js"
     if [ -d "$backup/runtime" ]; then mv "$live/runtime" "$backup/runtime-failed"; mv "$backup/runtime" "$live/runtime"; fi
     pm
   fi
@@ -48,6 +50,7 @@ mv "$staged" "$live/runtime"
 install -o mooncci -g mooncci -m 644 server/src/lib/weatherNetworkCity.js "$live/src/lib/weatherNetworkCity.js"
 install -o mooncci -g mooncci -m 644 server/src/lib/weatherLocation.js "$live/src/lib/weatherLocation.js"
 install -o mooncci -g mooncci -m 644 server/src/lib/weatherGlobalIp.js "$live/src/lib/weatherGlobalIp.js"
+install -o mooncci -g mooncci -m 644 server/src/lib/weatherGlobalIpWorker.js "$live/src/lib/weatherGlobalIpWorker.js"
 mkdir -p "$live/vendor/mmdb-lib" "$live/data/dbip"
 rsync -ac server/vendor/mmdb-lib/ "$live/vendor/mmdb-lib/"
 rsync -ac server/data/dbip/ "$live/data/dbip/"

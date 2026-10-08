@@ -13,6 +13,7 @@ cp -p "$backup/index.html" /www/wwwroot/mooncci.site/index.html
 cp -p "$backup/weatherNetworkCity.js" "$live/src/lib/weatherNetworkCity.js"
 cp -p "$backup/weatherLocation.js" "$live/src/lib/weatherLocation.js"
 rm -f -- "$live/src/lib/weatherGlobalIp.js"
+rm -f -- "$live/src/lib/weatherGlobalIpWorker.js"
 mv "$live/runtime" "$backup/runtime-after-release"
 mv "$backup/runtime" "$live/runtime"
 su -s /bin/bash mooncci -c 'export PATH=/opt/mooncci-node-v24.20.0/bin:$PATH; pm2 restart mooncci-api --update-env'

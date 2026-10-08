@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+backup=$(realpath -- "${1:?Pass backup directory}")
+case "$backup" in /www/backup/mooncci-weather-ip-worker.*) ;; *) exit 2;; esac
+test -s "$backup/weatherGlobalIp.js"
+live=/www/wwwroot/mooncci-source/server
+exec 9>/www/backup/mooncci-deploy.lock
+flock -w 120 9
+cp -p "$backup/weatherGlobalIp.js" "$live/src/lib/weatherGlobalIp.js"
+rm -f -- "$live/src/lib/weatherGlobalIpWorker.js"
+su -s /bin/bash mooncci -c 'export PATH=/opt/mooncci-node-v24.20.0/bin:$PATH; pm2 restart mooncci-api --update-env'
