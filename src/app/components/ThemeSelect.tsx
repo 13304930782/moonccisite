@@ -23,7 +23,7 @@ export function ThemeSelect({value,onValueChange,children,required,allowEmpty=fa
     const buttons=Array.from(event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('button[role="radio"]')).filter(button=>!button.matches(':disabled'));
     if(!buttons.length)return;event.preventDefault();const index=buttons.indexOf(event.currentTarget),step=['ArrowLeft','ArrowUp'].includes(event.key)?-1:1;
     const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+step+buttons.length)%buttons.length;buttons[next].focus();buttons[next].click();
-   }}><Check size={14} aria-hidden="true" className="choice-mark"/><span>{option.props.children}</span></button>)}
+   }}><span className="choice-caption"><Check size={14} aria-hidden="true" className="choice-mark"/><span>{option.props.children}</span></span></button>)}
   </span>
   {!visible.length&&<span className="choice-empty" role="status">没有匹配的选项。</span>}
   <select className="theme-select-native" aria-hidden="true" tabIndex={-1} name={name} required={required} disabled={disabled} value={value} onChange={event=>choose(event.target.value)}>{children}</select>
