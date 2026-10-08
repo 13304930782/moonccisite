@@ -431,7 +431,7 @@ export default function AdminMediaPage() {
   return (
     <div className="space-y-6">
       <div className="rounded-[10px] border border-border bg-card p-8 shadow-none ">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-5">
           <div>
             <h1 className="admin-title">媒体库</h1>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -439,11 +439,11 @@ export default function AdminMediaPage() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <ThemeSelect
+          <div className="flex flex-wrap items-center gap-3">
+            <ThemeSelect aria-label="上传图片质量"
               value={imageQuality}
               onValueChange={(nextValue) => setImageQuality(nextValue)}
-              className="rounded-[10px] border border-border bg-card px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+
             >
               <option value="low">低清晰度</option>
               <option value="medium">中清晰度</option>
@@ -743,10 +743,10 @@ export default function AdminMediaPage() {
                     </button>
 
                     <div className="grid grid-cols-[1fr_auto] gap-2">
-                      <ThemeSelect
+                      <ThemeSelect aria-label="压缩图片质量"
                         value={recompressQuality}
                         onValueChange={(nextValue) => setRecompressQuality(nextValue)}
-                        className="rounded-[10px] border border-border bg-card px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+
                       >
                         <option value="low">低清晰度</option>
                         <option value="medium">中清晰度</option>

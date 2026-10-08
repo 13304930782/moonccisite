@@ -1,0 +1,23 @@
+.choice-field{display:block;min-width:0;max-width:100%;position:relative}
+.choice-options{display:flex;flex-wrap:wrap;gap:8px;min-width:0;margin-block:8px}
+.choice-field .choice-options>button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;min-width:44px;max-width:100%;padding:10px 14px;border:1px solid var(--muted-foreground);border-radius:10px;background:var(--card);color:var(--foreground);font-size:14px;line-height:1.4;font-weight:500;text-align:center;white-space:normal;overflow-wrap:anywhere;cursor:pointer;transition:background-color var(--motion-control) ease-out,color var(--motion-control) ease-out}
+.choice-field .choice-options>button[aria-checked=true]{background:var(--foreground);color:var(--background);border-color:var(--foreground);font-weight:650}
+.choice-field .choice-options>button:hover:not(:disabled):not([aria-checked=true]){background:var(--muted)}
+.choice-field .choice-options>button:focus-visible,.choice-search input:focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
+.choice-field .choice-options>button:disabled{opacity:.45;cursor:not-allowed}
+.choice-mark{visibility:hidden;flex:none}.choice-options>button[aria-checked=true] .choice-mark{visibility:visible}
+.choice-options--many{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),1fr));max-height:280px;overflow:auto;padding:4px;scroll-padding:8px}
+.choice-search input{width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid var(--muted-foreground);border-radius:10px;background:var(--background);color:var(--foreground);font-size:16px}
+.choice-empty,.choice-error{display:block;margin-top:8px;font-size:14px}.choice-error{color:var(--foreground)}
+.admin-toolbar>.choice-field{flex-basis:100%}
+.queue-toolbar:has(.choice-field){align-items:flex-start;flex-wrap:wrap}.queue-toolbar:has(.choice-field)>label{display:block;min-width:0;width:100%;margin:8px 0 0}
+.engagement-toolbar:has(.choice-field){flex-wrap:wrap}.engagement-toolbar>label:has(.choice-field){flex:1 1 320px;min-width:0}
+.admin-page fieldset:has(>.choice-field){flex-wrap:wrap}.admin-page fieldset>.choice-field{flex-basis:100%}
+.electricity-admin-v2 .electricity-schedule-row:has(.choice-field){display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px;padding:20px;border:1px solid var(--border);border-radius:12px}
+.electricity-admin-v2 .electricity-schedule-row>.choice-field{flex:1 1 320px;min-width:0}
+.electricity-admin-v2 .electricity-schedule-row .choice-options--many{grid-template-columns:repeat(auto-fit,minmax(80px,1fr))}
+.electricity-admin-v2 .electricity-schedule-remove{min-width:44px;min-height:44px}
+.search-filters>.choice-field,.search-filters>label{min-width:0}
+@media(prefers-reduced-motion:reduce){.choice-field .choice-options>button{transition:none}}
+@media(max-width:600px){.choice-options>button{flex:1 1 auto}.choice-options--many{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(forced-colors:active){.choice-field .choice-options>button[aria-checked=true]{border:2px solid Highlight}.choice-mark{forced-color-adjust:auto}}

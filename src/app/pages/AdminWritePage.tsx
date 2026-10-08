@@ -61,7 +61,7 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
    <label className="article-field-wide">封面地址<input value={d.form.cover_image} onChange={e=>change('cover_image',e.target.value)} placeholder="输入图片地址，或从媒体库选择"/></label>
    <div className="inline-actions article-field-wide"><button type="button" onClick={()=>setPicker('cover')}>从媒体库选择封面</button><button type="button" disabled={!d.form.cover_image} onClick={()=>change('cover_image','')}>移除封面</button></div>
    <label>上传封面<input type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f)void upload(f).then(url=>change('cover_image',url)).catch(e=>setUploadError(e.message));e.target.value='';}}/></label>
-   <label>图片质量<ThemeSelect value={quality} onValueChange={setQuality}><option value="low">较小</option><option value="medium">标准</option><option value="high">高清</option></ThemeSelect></label>
+   <label>图片质量<ThemeSelect aria-label="图片质量" value={quality} onValueChange={setQuality}><option value="low">较小</option><option value="medium">标准</option><option value="high">高清</option></ThemeSelect></label>
   </div></section>
   {d.form.source_url&&<section className="article-settings-section"><h2>旧站来源</h2><p>{d.form.source_url}</p><p>原发布时间：{d.form.published_at}（首次发布时保留）</p></section>}
   <section className="article-settings-section"><h2>分类与链接</h2><div className="article-settings-grid">

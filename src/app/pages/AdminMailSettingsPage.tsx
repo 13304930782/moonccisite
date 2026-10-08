@@ -177,10 +177,10 @@ export default function AdminMailSettingsPage() {
 
             <div className="mt-5">
               <label className="block mb-2 text-sm font-medium text-foreground">是否启用邮件提醒</label>
-              <ThemeSelect
+              <ThemeSelect aria-label="邮件提醒"
                 value={mail.enabled}
                 onValueChange={(nextValue) => update('enabled', nextValue)}
-                className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+
               >
                 <option value="true">启用</option>
                 <option value="false">关闭</option>
@@ -217,10 +217,10 @@ export default function AdminMailSettingsPage() {
 
               <div>
                 <label className="block mb-2 text-sm font-medium text-foreground">连接加密</label>
-                <ThemeSelect
+                <ThemeSelect aria-label="连接加密"
                   value={mail.smtp_secure}
                   onValueChange={(nextValue) => update('smtp_secure', nextValue)}
-                  className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+
                 >
                   <option value="true">SSL/TLS（通常为 465）</option>
                   <option value="false">STARTTLS（通常为 587，按邮局配置）</option>

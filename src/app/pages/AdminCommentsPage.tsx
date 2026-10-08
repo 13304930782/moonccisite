@@ -78,7 +78,7 @@ export default function AdminCommentsPage() {
           <ThemeSelect aria-label="筛选评论状态"
             value={filters.status}
             onValueChange={(status) => filter({ status })}
-            className="rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+
           >
             <option value="pending">待审核</option>
             <option value="visible">已通过</option>

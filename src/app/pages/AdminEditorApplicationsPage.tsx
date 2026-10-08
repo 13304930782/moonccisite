@@ -52,7 +52,7 @@ export default function AdminEditorApplicationsPage() {
             <p className="mt-2 text-sm text-muted-foreground">审核普通用户的写文章权限申请。</p>
           </div>
 
-          <ThemeSelect value={status} onValueChange={(nextValue) => setStatus(nextValue)} className="rounded-[6px] border px-4 py-2 bg-card">
+          <ThemeSelect aria-label="筛选编辑申请状态" value={status} onValueChange={(nextValue) => setStatus(nextValue)} >
             <option value="all">全部</option>
             <option value="pending">待审核</option>
             <option value="approved">已通过</option>

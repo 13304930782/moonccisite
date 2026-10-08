@@ -1,0 +1,49 @@
+.blog-pages-editor.settings-workspace{max-width:1100px;margin-inline:auto}
+.settings-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:32px}
+.settings-workspace .settings-kicker{font-size:12px;letter-spacing:.12em;color:var(--muted-foreground);margin:0 0 12px}
+.settings-workspace h1{font-size:32px;line-height:1.25;margin:0 0 14px;font-weight:650}
+.settings-heading .muted{font-size:14px;line-height:1.7}
+.settings-workspace .settings-form-body{border:0;padding:0;margin:0;min-width:0}
+.settings-panel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:32px;min-width:0}
+.settings-section-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}
+.settings-workspace .settings-section-heading h2{font-size:21px;line-height:1.4;margin:0 0 6px;font-weight:650}
+.settings-section-heading p,.settings-form-footer p,.newsletter-section>header p{color:var(--muted-foreground);font-size:14px;line-height:1.6;margin:0}
+.settings-count{display:inline-block;font-size:13px;font-weight:500;margin-left:12px;padding:2px 8px;border-radius:8px;background:var(--muted);vertical-align:middle}
+.settings-workspace .settings-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 24px}
+.settings-workspace .settings-fields>label{display:block;min-width:0;font-size:14px;line-height:1.5;margin:0}
+.settings-workspace .settings-wide{grid-column:1/-1}
+.settings-workspace .settings-fields :is(input,textarea){width:100%;min-width:0;min-height:44px;margin:8px 0 0;padding:11px 12px;border:1px solid var(--muted-foreground);border-radius:10px;background:var(--background);color:var(--foreground);font:inherit;font-size:16px;line-height:1.5}
+.settings-workspace .settings-fields textarea{resize:vertical}
+.settings-workspace label.settings-toggle{display:inline-flex;align-items:center;gap:10px;min-height:44px;margin:0;font-size:14px;white-space:nowrap;cursor:pointer}
+.settings-workspace .settings-toggle input{appearance:none;position:relative;width:40px;height:24px;min-width:40px;margin:0;border:1px solid var(--muted-foreground);border-radius:999px;background:var(--muted);cursor:pointer}
+.settings-workspace .settings-toggle input:before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:var(--muted-foreground);border-radius:50%}
+.settings-workspace .settings-toggle input:checked{background:var(--foreground);border-color:var(--foreground)}
+.settings-workspace .settings-toggle input:checked:before{left:19px;background:var(--background)}
+.settings-preview{margin-top:20px;border-top:1px solid var(--border);padding-top:12px}
+.settings-preview summary{padding-block:12px;min-height:44px;font-size:14px;cursor:pointer}
+.settings-link-list{display:grid;gap:20px}
+.settings-workspace .settings-link-card{padding:20px;border:1px solid var(--border);border-radius:12px;min-width:0;margin:0}
+.settings-link-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.settings-link-heading strong{font-size:16px;overflow-wrap:anywhere;min-width:0}
+.settings-index{color:var(--muted-foreground);font-size:13px;font-weight:500;margin-right:12px;font-variant-numeric:tabular-nums}
+.settings-link-actions{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--border);padding-top:16px;margin-top:20px}
+.settings-link-actions>div{display:flex;gap:8px}
+.settings-workspace button,.newsletter-admin button{min-height:44px;min-width:44px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;line-height:1.4;background:var(--card);color:var(--foreground)}
+.settings-workspace button:disabled{opacity:.45;cursor:not-allowed}
+.settings-workspace .settings-save{background:var(--foreground);color:var(--background);border-color:var(--foreground);white-space:nowrap;margin:0}
+.settings-workspace :is(button,input,textarea,summary):focus-visible,.newsletter-admin :is(button,summary,a):focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
+.settings-form-footer{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:0 0 24px}
+.settings-empty{padding-block:20px;color:var(--muted-foreground);font-size:14px;line-height:1.7}
+.newsletter-admin .newsletter-overview h2{margin-bottom:8px}
+.newsletter-schedule{font-size:18px;line-height:1.6;font-weight:500;margin-bottom:20px}
+.newsletter-overview>button{margin-top:20px}
+.newsletter-counts{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
+.newsletter-counts p{padding:10px 14px;background:var(--muted);border-radius:10px;font-size:14px}
+.newsletter-admin details summary{min-height:44px;display:list-item;padding-block:12px;cursor:pointer}
+.newsletter-section{border:1px solid var(--border);border-radius:16px;background:var(--card);padding:24px;margin-top:32px;min-width:0}
+.newsletter-admin .newsletter-section>header{margin-bottom:24px}
+.newsletter-section h2{font-size:21px;font-weight:650;line-height:1.4;margin:0 0 8px}
+.newsletter-section table{margin:0}.newsletter-section th{white-space:nowrap}
+.newsletter-section .admin-records article{gap:16px;align-items:center}
+.newsletter-section .admin-records article p{overflow-wrap:anywhere;min-width:0}
+@media(max-width:700px){.settings-heading{flex-wrap:wrap;gap:20px}.settings-heading>div{flex:1 1 100%}.settings-workspace h1{font-size:28px}.settings-panel,.newsletter-section{padding:20px 16px}.settings-section-heading,.settings-link-heading{flex-wrap:wrap;gap:12px}.settings-workspace .settings-fields{grid-template-columns:minmax(0,1fr);gap:20px}.settings-link-card .settings-link-heading>strong{flex-basis:100%}.settings-workspace .settings-link-card{padding:16px 12px}.settings-form-footer{flex-wrap:wrap}.newsletter-section .admin-records article{flex-wrap:wrap}.newsletter-section .admin-records article p{flex-basis:100%}}
