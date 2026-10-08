@@ -1,8 +1,6 @@
 const { isIP } = require('node:net');
 const { createHash } = require('node:crypto');
-const { requestAmap } = require('./weatherAmap');
-const { parseLocation } = require('./weatherLocation');
-const { gcj02towgs84 } = require('../vendor/coordtransform');
+const { lookupOfflineIp } = require('./weatherOfflineIp');
 function unavailable() {
   return Object.assign(new Error('当前网络暂未识别出城市，请重试或搜索城市。'), { publicCode: 'CITY_NETWORK_UNAVAILABLE' });
 }
@@ -21,7 +19,7 @@ function publicClientIp(value) {
   // Global unicast only; never identify localhost, private or link-local addresses.
   return version === 6 && /^[23]/.test(ip) && !/^2001:db8:/i.test(ip) ? ip : null;
 }
-function createNetworkCity({ fetchImpl = fetch, reverseGeocode, lookup = ip => require('geoip-lite').lookup(ip), clock = Date.now } = {}) {
+function createNetworkCity({ searchCities, lookup = lookupOfflineIp, clock = Date.now } = {}) {
   const cache = new Map(), pending = new Map();
   return async function networkCity(clientIp) {
     const ip = publicClientIp(clientIp);
@@ -31,22 +29,13 @@ function createNetworkCity({ fetchImpl = fetch, reverseGeocode, lookup = ip => r
     if (saved && saved.until > clock()) return saved.location;
     if (pending.has(id)) return pending.get(id);
     const work = (async () => {
-      let location;
-      if (isIP(ip) === 4) {
-        // Always use the trusted visitor address, never Amap's implicit server IP.
-        const body = await requestAmap('ip', { ip }, { key: process.env.AMAP_WEB_SERVICE_KEY, fetchImpl });
-        const city = typeof body.city === 'string' ? body.city.trim() : '';
-        const points = typeof body.rectangle === 'string' ? body.rectangle.split(';').map(point => point.split(',').map(Number)) : [];
-        if (city && /^\d{6}$/.test(body.adcode || '') && points.length === 2 && points.every(point => point.length === 2 && point.every(Number.isFinite))) {
-          const [longitude, latitude] = gcj02towgs84((points[0][0] + points[1][0]) / 2, (points[0][1] + points[1][1]) / 2);
-          location = parseLocation({ name: city, region: body.province === city ? '中国' : `中国 · ${body.province}`, countryCode: 'CN', adcode: body.adcode, provider: 'amap', latitude, longitude });
-        }
-      }
-      if (!location) {
-        const info = lookup(ip);
-        if (info?.country !== 'CN' || !Array.isArray(info.ll) || info.ll.length !== 2) throw unavailable();
-        location = await reverseGeocode({ latitude: info.ll[0], longitude: info.ll[1] });
-      }
+      // Resolve IP entirely locally. Map its actual province/city label to the
+      // existing cached national city index; never reverse-geocode a country center.
+      const info = await lookup(ip);
+      if (info?.countryCode !== 'CN' || !info.province || !info.city || info.province === '0' || info.city === '0') throw unavailable();
+      const cities = await searchCities(info.province + info.city);
+      const label = value => String(value || '').replace(/省|市|地区|自治州/g, '');
+      const location = cities.find(city => label(city.name) === label(info.city) && label(city.region).includes(label(info.province)));
       if (!location?.name || location.name === '当前位置附近') throw unavailable();
       if (cache.size >= 256) cache.delete(cache.keys().next().value);
       cache.set(id, { location, until: clock() + 600000 });

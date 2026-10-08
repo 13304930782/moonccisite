@@ -149,7 +149,7 @@ export function WeatherCityPicker({
       requestChoice(resolved, 'device', approximate);
     } catch (error: any) {
       if (generation.current !== request) return;
-      if (error instanceof ApiError && error.code === 'AMAP_NO_CITY') {
+      if (error instanceof ApiError && (error.code === 'AMAP_NO_CITY' || ['timeout', 'network'].includes(error.kind))) {
         await locateNetwork(request);
         return;
       }
@@ -208,15 +208,14 @@ export function WeatherCityPicker({
           longitude: position.coords.longitude,
         });
         if (location) {
-          void resolveName(location, request,
+          await resolveName(location, request,
             !Number.isFinite(position.coords.accuracy) || position.coords.accuracy > 1000);
         } else {
-          setBusy('');
-          setMessage('无法读取有效位置，请手动选择城市。');
+          await locateNetwork(request);
         }
     } catch (error: any) {
         if (generation.current !== request) return;
-        if ([2, 3].includes(error.code)) {
+        if ([1, 2, 3].includes(error.code)) {
           await locateNetwork(request);
           return;
         }

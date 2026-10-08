@@ -12,7 +12,7 @@ const LIMITS = Object.freeze({
 function groupFor(url) {
   if (url.hostname === 'restapi.amap.com') {
     if (url.pathname === '/v3/weather/weatherInfo') return 'amap-weather';
-    if (['/v3/geocode/regeo', '/v3/config/district', '/v3/ip'].includes(url.pathname))
+    if (['/v3/geocode/regeo', '/v3/config/district'].includes(url.pathname))
       return 'amap-lbs';
     throw Error('UNSUPPORTED_AMAP_ENDPOINT');
   }

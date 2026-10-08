@@ -14,7 +14,7 @@ const reverseGeocode = createWeatherGeocoder({
   fetchImpl: guardedFetch,
 });
 const searchCities = createCitySearch(guardedFetch, reverseGeocode.search);
-const networkCity = require('../lib/weatherNetworkCity').createNetworkCity({ fetchImpl: guardedFetch, reverseGeocode });
+const networkCity = require('../lib/weatherNetworkCity').createNetworkCity({ searchCities: reverseGeocode.search });
 const cityLimiter = createClientLimiter(10);
 const weatherLimiter = createClientLimiter(30);
 router.use(createClientIdentity());

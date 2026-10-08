@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FILES = {
     "server/src/lib/weatherGeocoder.js": ROOT / "server/src/lib/weatherGeocoder.js",
     "server/src/lib/weatherNetworkCity.js": ROOT / "server/src/lib/weatherNetworkCity.js",
+    "server/src/lib/weatherOfflineIp.js": ROOT / "server/src/lib/weatherOfflineIp.js",
     "server/src/lib/weatherBudget.js": ROOT / "server/src/lib/weatherBudget.js",
     "server/src/routes/weatherMood.js": ROOT / "server/src/routes/weatherMood.js",
     "deploy.sh": ROOT / "scripts/deploy-weather-city.sh",
@@ -26,6 +27,13 @@ def main():
     if subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT).strip():
         raise SystemExit("Commit source changes before packaging")
     entries = {}
+    for source in sorted((ROOT / "server/vendor/ip2region").glob("*")):
+        if source.is_file(): FILES[source.relative_to(ROOT).as_posix()] = source
+    provenance = json.loads((ROOT / "server/vendor/ip2region/PROVENANCE.json").read_text())
+    for name, expected in provenance["database_sha256"].items():
+        source = ROOT / "server/data/ip2region" / name
+        if digest(source.read_bytes()) != expected: raise ValueError(f"Offline IP database checksum mismatch: {name}")
+        entries[source.relative_to(ROOT).as_posix()] = source.read_bytes()
     for name, source in FILES.items():
         data = source.read_bytes().replace(b"\r\n", b"\n")
         if b"\r" in data:
