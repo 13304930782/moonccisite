@@ -17,7 +17,7 @@ test('city lookup accepts coarse desktop positions, requires confirmation and pr
   await act(async()=>button('切换城市').props.onClick());
   await act(async()=>button('使用当前位置').props.onClick());
   assert.equal(calls,1);assert.equal(picked.length,0);
-  assert.match(JSON.stringify(root.toJSON()),/设备返回的是大致位置/);
+  assert.match(JSON.stringify(root.toJSON()),/设备仅提供了大致位置/);
   await act(async()=>root.unmount());
   await act(async()=>{root=create(React.createElement(WeatherCityPicker,{...props,selected:{name:'当前位置附近',region:'',latitude:0,longitude:0}}),{createNodeMock:element=>element.type==='dialog'?{open:false,showModal(){this.open=true}}:null});});
   await act(async()=>button('重新定位并识别城市').props.onClick());
@@ -53,9 +53,9 @@ test('device failures use IP but valid coordinates are never replaced when city 
    if(['unavailable','denied','timeout','invalid','no-api'].includes(mode)){
     assert.deepEqual(paths,['/weather-mood/locate-network']);
     const view=JSON.stringify(root.toJSON());
-    assert.match(view,/市一级城市/);assert.match(view,/更细致的定位和天气服务/);
+    assert.match(view,/市一级城市/);assert.match(view,/更细致的定位和天气/);
     if(mode==='denied')assert.match(view,/未获得位置权限/);
-    else {assert.match(view,/无法取得设备位置/);assert.doesNotMatch(view,/未获得位置权限/);}
+    else {assert.match(view,/无法获取设备位置/);assert.doesNotMatch(view,/未获得位置权限/);}
    }
    else assert(!paths.includes('/weather-mood/locate-network'));
    assert.equal(picked.length,0,'candidate is not saved without confirmation');
@@ -64,20 +64,35 @@ test('device failures use IP but valid coordinates are never replaced when city 
  }finally{if(root)await act(async()=>root.unmount());if(descriptor)Object.defineProperty(global,'navigator',descriptor);else delete global.navigator;}
 });
 
-test('domestic IP permission prompt never offers or saves a guessed city',async()=>{
+test('domestic IP permission notice opens only in a dialog and never saves a guessed city',async()=>{
  const locations=load('src/app/lib/weatherLocation.ts',require);
  const prompt='境内网络不使用 IP 推测城市。请允许此网站使用位置权限，以获取更细致的定位和天气服务；也可手动搜索城市。';
  class ApiError extends Error {constructor(){super(prompt);this.code='CITY_NETWORK_LOCATION_PERMISSION';this.kind='http'}}
- let saved=0,root;
+ let saved=0,root,dialogMocks={};
  const {WeatherCityPicker}=load('src/app/components/WeatherCityPicker.tsx',name=>name==='lucide-react'?{LocateFixed:'svg',Search:'svg'}:name.endsWith('/weatherLocation')?locations:name.endsWith('/weatherGeolocation')?{locateWeatherDevice:async()=>{throw {code:1}}}:name.endsWith('/api')?{ApiError,api:async path=>{assert.equal(path,'/weather-mood/locate-network');throw new ApiError()}}:require(name));
  const descriptor=Object.getOwnPropertyDescriptor(global,'navigator');
  Object.defineProperty(global,'navigator',{configurable:true,value:{geolocation:{}}});
  try{
-  await act(async()=>{root=create(React.createElement(WeatherCityPicker,{selected:null,onChange(){saved++;return true},onAttributionChange(){}}));});
+  await act(async()=>{root=create(React.createElement(WeatherCityPicker,{selected:null,onChange(){saved++;return true},onAttributionChange(){}}),{createNodeMock:e=>{if(e.type!=='dialog')return null;const node={open:false,showModal(){this.open=true},close(){this.open=false}};dialogMocks[e.props['aria-labelledby']]=node;return node}});});
+  assert.doesNotMatch(JSON.stringify(root.toJSON()),/位置权限|市一级|境内网络/);
   await act(async()=>root.root.findAllByType('button').find(b=>b.children.includes('使用当前位置')).props.onClick());
-  assert.match(JSON.stringify(root.toJSON()),/请允许此网站使用位置权限/);
-  assert.equal(root.root.findByType('dialog').children.length,0);
+  assert.match(JSON.stringify(root.toJSON()),/需要位置权限/);
+  const dialogs=root.root.findAllByType('dialog');
+  const confirmation=dialogs.find(d=>d.props['aria-labelledby']==='weather-city-confirm-title');
+  const notice=dialogs.find(d=>d.props['aria-labelledby']==='weather-city-notice-title');
+  assert.equal(confirmation.children.length,0);
+  assert.equal(dialogMocks['weather-city-notice-title'].open,true);
+  assert.match(notice.findByType('p').children.join(''),/允许位置权限/);
+  assert.equal(root.root.findAll(n=>n.props.className==='weather-city-message').length,0);
+  for(const paragraph of root.root.findAllByType('p')){
+   let owner=paragraph.parent;
+   while(owner&&owner.type!=='dialog')owner=owner.parent;
+   assert(owner,'explanatory text must stay inside a dialog');
+  }
   assert.doesNotMatch(JSON.stringify(root.toJSON()),/确认使用/);
   assert.equal(saved,0);
+  await act(async()=>notice.props.onCancel());
+  assert.equal(notice.children.length,0);
+  assert(root.root.findByType('input'),'search remains available after dismissing permission notice');
  }finally{if(root)await act(async()=>root.unmount());if(descriptor)Object.defineProperty(global,'navigator',descriptor);else delete global.navigator;}
 });
