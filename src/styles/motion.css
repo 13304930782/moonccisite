@@ -5,8 +5,9 @@
   --ease-enter:cubic-bezier(.2,.8,.2,1); --ease-exit:ease-in; --ease-feedback:ease-out;
 }
 @keyframes mooncci-fade { from { opacity:0; } to { opacity:1; } }
-@keyframes mooncci-panel-in { from { opacity:0; translate:0 8px; } to { opacity:1; translate:0 0; } }
-@keyframes mooncci-panel-out { from { opacity:1; translate:0 0; } to { opacity:0; translate:0 8px; } }
+/* Keep positioning translate (for example, dialog centering) independent of motion. */
+@keyframes mooncci-panel-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes mooncci-panel-out { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(8px); } }
 html[data-navigation-type="PUSH"] :is(.page-content,.home-main,.auth-form-panel) { animation:mooncci-fade var(--motion-page) var(--ease-feedback); }
 html[data-navigation-type="POP"] :is(.page-content,.home-main,.auth-form-panel,.resource-content) { animation:none; }
 html[data-navigation-type="PUSH"] html[data-navigation-type="PUSH"] .resource-content { animation:mooncci-fade var(--motion-content) var(--ease-feedback); }
