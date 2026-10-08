@@ -1,5 +1,5 @@
 // City weather can use a coarse Wi-Fi fix; the user confirms the suggested city.
-// Start with a quick cached fix, then try a fresh fix on timeout/unavailability.
+// Every user-initiated retry must request a fresh fix, not an old saved coordinate.
 export async function locateWeatherDevice(geolocation: Geolocation, signal?: AbortSignal) {
   const read = (options: PositionOptions) =>
     new Promise<GeolocationPosition>((resolve, reject) => {
@@ -15,9 +15,9 @@ export async function locateWeatherDevice(geolocation: Geolocation, signal?: Abo
       );
     });
   try {
-    return await read({ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
+    return await read({ enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
   } catch (error: any) {
     if (![2, 3].includes(error.code)) throw error;
-    return read({ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    return read({ enableHighAccuracy: false, timeout: 8000, maximumAge: 0 });
   }
 }

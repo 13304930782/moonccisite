@@ -311,13 +311,9 @@ export function WeatherCityPicker({
           type="button"
           className="weather-city-locate"
           disabled={busy === 'locate'}
-          onClick={() => {
-            const request = ++generation.current;
-            // Saved coordinates are intentionally coarse; confirm the suggested name.
-            void resolveName(selected!, request, true);
-          }}
+          onClick={() => void locate()}
         >
-          {busy === 'locate' ? '正在识别城市…' : '重试识别城市'}
+          {busy === 'locate' ? '正在定位并识别城市…' : '重新定位并识别城市'}
         </button>
       )}
       <dialog

@@ -3,15 +3,15 @@ const m={exports:{}};
 new Function('exports','module',ts.transpileModule(fs.readFileSync('src/app/lib/weatherGeolocation.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(m.exports,m);
 const {locateWeatherDevice}=m.exports;
 const position={coords:{latitude:30.274,longitude:120.155,accuracy:5000}};
-test('desktop coarse fix is accepted and avoids a fresh high-accuracy request',async()=>{
+test('desktop coarse fix is accepted and every user action requests a fresh position',async()=>{
  const options=[];
  assert.equal(await locateWeatherDevice({getCurrentPosition:(ok,_fail,opts)=>{options.push(opts);ok(position)}}),position);
- assert.deepEqual(options,[{enableHighAccuracy:false,timeout:10000,maximumAge:60000}]);
+ assert.deepEqual(options,[{enableHighAccuracy:true,timeout:12000,maximumAge:0}]);
 });
 test('unavailable or timed-out fix retries once; permission denial never retries',async()=>{
  for(const code of [2,3]){
   let calls=0;
-  assert.equal(await locateWeatherDevice({getCurrentPosition:(ok,fail,opts)=>{if(++calls===1)fail({code});else{assert.equal(opts.enableHighAccuracy,true);ok(position)}}}),position);
+  assert.equal(await locateWeatherDevice({getCurrentPosition:(ok,fail,opts)=>{if(++calls===1)fail({code});else{assert.equal(opts.enableHighAccuracy,false);assert.equal(opts.maximumAge,0);ok(position)}}}),position);
   assert.equal(calls,2);
  }
  let calls=0;

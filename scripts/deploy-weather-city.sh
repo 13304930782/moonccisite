@@ -8,7 +8,7 @@ exec 9>/www/backup/mooncci-deploy.lock
 flock -w 120 9
 cd "$package"
 sha256sum --strict -c SHA256SUMS >/dev/null
-test "$(sha256sum "$live/src/lib/weatherGeocoder.js" | cut -d' ' -f1)" = 77a68dad9035eee6aa1d99bd1941e22b8af18b48223b748822a26551478b7bfd
+test "$(sha256sum "$live/src/lib/weatherGeocoder.js" | cut -d' ' -f1)" = 1881fbb262a4b29933bf777d4cf14be56700d795663334bf590d5d8e3291c4a4
 node --check server/src/lib/weatherGeocoder.js
 node --input-type=module -e "await import('./server/runtime/document.mjs')"
 backup=$(mktemp -d /www/backup/mooncci-weather-city.XXXXXX)
