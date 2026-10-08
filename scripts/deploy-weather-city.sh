@@ -8,9 +8,12 @@ exec 9>/www/backup/mooncci-deploy.lock
 flock -w 120 9
 cd "$package"
 sha256sum --strict -c SHA256SUMS >/dev/null
+test "$(sha256sum "$live/src/lib/weatherGeocoder.js" | cut -d' ' -f1)" = 77a68dad9035eee6aa1d99bd1941e22b8af18b48223b748822a26551478b7bfd
+node --check server/src/lib/weatherGeocoder.js
 node --input-type=module -e "await import('./server/runtime/document.mjs')"
 backup=$(mktemp -d /www/backup/mooncci-weather-city.XXXXXX)
 cp -p "$web/index.html" "$backup/index.html"
+cp -p "$live/src/lib/weatherGeocoder.js" "$backup/weatherGeocoder.js"
 staged=$(mktemp -d "$live/runtime-weather-city.XXXXXX")
 rsync -ac server/runtime/ "$staged/"
 chown -R mooncci:mooncci "$staged"
@@ -20,6 +23,7 @@ finish() {
   rc=$?; trap - EXIT; set +e
   if [ "$rc" -ne 0 ] && [ "$changed" = 1 ]; then
     cp -p "$backup/index.html" "$web/index.html"
+    cp -p "$backup/weatherGeocoder.js" "$live/src/lib/weatherGeocoder.js"
     if [ -d "$backup/runtime" ]; then mv "$live/runtime" "$backup/runtime-failed"; mv "$backup/runtime" "$live/runtime"; fi
     pm
   fi
@@ -30,6 +34,7 @@ trap finish EXIT
 changed=1
 mv "$live/runtime" "$backup/runtime"
 mv "$staged" "$live/runtime"
+install -o mooncci -g mooncci -m 644 server/src/lib/weatherGeocoder.js "$live/src/lib/weatherGeocoder.js"
 pm
 healthy=0
 for attempt in $(seq 1 20); do
@@ -46,4 +51,4 @@ sed -n 's|  dist/|  |p' SHA256SUMS > "$backup/frontend-checksums"
 curl -fsS --resolve mooncci.site:443:127.0.0.1 https://mooncci.site/ > "$backup/home.html"
 grep -q 'id="mooncci-home-css"' "$backup/home.html"
 test "$(curl -sS -o /dev/null -w '%{http_code}' https://mooncci.site/api/auth/me)" = 401
-printf 'PASS: scoped weather-city frontend and matching SSR runtime release; no migrations or dependency installation.\n'
+printf 'PASS: scoped weather-city frontend, matching SSR runtime and geocoder release; no migrations or dependency installation.\n'

@@ -1056,6 +1056,6 @@ Build with `npm run build`, then `python scripts/build-home-performance-release.
 先运行 `npm run check` 和 `node scripts/test-document.mjs`，提交源代码后再打包。
 归档、校验文件及部署脚本使用 LF；上传后校验归档及包内 `SHA256SUMS`。
 在子 shell 中使用 `nohup bash deploy.sh` 发布，日志应包含 `EXIT_CODE=0`。
-此包会更新 SSR 运行时并重启 `mooncci-api`，不安装依赖、不执行迁移，也不修改 `.env` 或 uploads。
+此包会更新 SSR 运行时和 `server/src/lib/weatherGeocoder.js`，并重启 `mooncci-api`，不安装依赖、不执行迁移，也不修改 `.env` 或 uploads。部署前检查 geocoder 的线上基线校验值；高德无城市结果时才调用现有的缓存、节流全球城市识别服务。
 回滚使用包内 `rollback.sh`，参数为部署日志中的 `/www/backup/mooncci-weather-city.*` 备份目录。
 

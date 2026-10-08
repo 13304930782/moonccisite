@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = {
+    "server/src/lib/weatherGeocoder.js": ROOT / "server/src/lib/weatherGeocoder.js",
     "deploy.sh": ROOT / "scripts/deploy-weather-city.sh",
     "rollback.sh": ROOT / "scripts/rollback-weather-city.sh",
 }
@@ -47,7 +48,7 @@ def main():
     if not entries.get("dist/index.html"):
         raise ValueError("Frontend build missing")
     entries["REVISION"] = (revision + "\n").encode("ascii")
-    entries["MANIFEST.json"] = (json.dumps({"revision": revision,"scope": ["public-document-runtime", "weather-city-query", "frontend"], "migrations": False, "dependency_install": False, "restart": ["mooncci-api"]}, indent=2) + "\n").encode()
+    entries["MANIFEST.json"] = (json.dumps({"revision": revision,"scope": ["public-document-runtime", "weather-city-query", "weather-city-geocoder", "frontend"], "migrations": False, "dependency_install": False, "restart": ["mooncci-api"]}, indent=2) + "\n").encode()
     entries["SHA256SUMS"] = "".join(f"{digest(data)}  {name}\n" for name, data in sorted(entries.items())).encode("ascii")
     output = ROOT / ".cache" / f"mooncci-weather-city-{revision[:12]}.tar.gz"
     output.parent.mkdir(exist_ok=True)

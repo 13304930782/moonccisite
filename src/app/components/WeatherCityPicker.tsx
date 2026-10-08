@@ -156,7 +156,9 @@ export function WeatherCityPicker({
       setMessage(
         error instanceof ApiError && error.kind === 'timeout'
           ? '城市识别超时，请重试或手动选择城市。'
-          : '暂时无法识别城市名称，请重试或手动选择城市。',
+          : error instanceof ApiError && error.kind === 'http'
+            ? error.message
+            : '暂时无法识别城市名称，请重试或手动选择城市。',
       );
     }
   }

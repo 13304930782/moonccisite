@@ -17,7 +17,18 @@ function createWeatherGeocoder(options) {
       publicCode: 'CITY_PROVIDER_INVALID',
     });
   }
-  const reverse = (input) => current()(input);
+  const reverse = async (input) => {
+    const provider = current();
+    try {
+      return await provider(input);
+    } catch (error) {
+      // Amap may have no administrative address for an otherwise valid device fix.
+      // Keep configuration, quota and network errors visible; only missing coverage
+      // uses the existing throttled, cached global reverse geocoder.
+      if (provider !== amap || error.publicCode !== 'AMAP_NO_CITY') throw error;
+      try { return await nominatim(input); } catch { throw error; }
+    }
+  };
   reverse.search = (query) => current().search(query);
   return reverse;
 }

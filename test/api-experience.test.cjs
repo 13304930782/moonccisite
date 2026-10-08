@@ -25,5 +25,8 @@ test('request timeout, cancellation, response classification, credentials and no
   await assert.rejects(api('/write',{method:'POST'}),e=>e.message==='邮箱格式错误'&&!e.uncertain);
   global.fetch=async (_url,options)=>{assert.equal('readOnly' in options,false);throw new Error('offline');};
   await assert.rejects(api('/weather-mood/cities',{method:'POST',readOnly:true}),e=>e.kind==='network'&&!e.uncertain);
+  global.fetch=async()=>Response.json({message:'该位置暂未识别到城市，可手动选择。',code:'AMAP_NO_CITY'},{status:502});
+  await assert.rejects(api('/weather-mood/locate',{method:'POST',readOnly:true}),e=>e.message==='该位置暂未识别到城市，可手动选择。'&&!e.uncertain);
+  await assert.rejects(api('/other',{readOnly:true}),e=>e.message==='服务暂时不可用，请稍后重试。');
  } finally {global.fetch=original;}
 });
