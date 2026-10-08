@@ -1,3 +1,4 @@
+import { afterInitialLoad } from '../lib/afterInitialLoad';
 import {useEffect,useState} from 'react';
 import {useLocation} from 'react-router-dom';
 import {useAuth} from '../context/AuthContext';
@@ -7,7 +8,7 @@ export function usePageView(path:string|null,postId?:number){
  useEffect(()=>{
   setViews(null);if(!path||loading)return;
   let active=true;
-  const timer=window.setTimeout(async()=>{
+  const cancel=afterInitialLoad(async()=>{
    const ignored=navigator.doNotTrack==='1'||document.visibilityState==='hidden';
    try{
     let result;
@@ -21,8 +22,8 @@ export function usePageView(path:string|null,postId?:number){
     // Analytics failure must never interrupt reading or authentication.
     if(postId)try{const result=await api(`/analytics/article/${postId}`);if(active&&typeof result.views==='number')setViews(result.views);}catch{}
    }
-  },500);
-  return()=>{active=false;clearTimeout(timer);};
+  });
+  return()=>{active=false;cancel();};
  },[path,postId,loading]);
  return views;
 }

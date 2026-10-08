@@ -26,16 +26,26 @@ async function renderDocument(url, loader=loadPublicResource,status=200) {
 }
 function serialize(value) { return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g,c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0')); }
 async function injectDocument(template, rendered) {
-  const start=template.indexOf('<div id="root">'), script=template.indexOf('<script',start);
+  let start=template.indexOf('<div id="root">'), script=template.indexOf('<script',start);
   if(start<0||script<0) throw Error('Document root missing');
   const assets=JSON.parse(await fs.readFile(path.resolve(__dirname,'../../runtime/styles.json'),'utf8'));
   const pathname=new URL(rendered.data.url||'/','http://local').pathname;
   const routes={'/articles':'ArticlesPage','/article':'ArticlePage','/archives':'ArchivesPage','/about':'BlogInfoPages','/links':'BlogInfoPages','/projects':'ProjectsPage','/updates':'UpdatesPage','/tags':'TagsPage','/tag':'TagPage','/categories':'CategoriesPage','/category':'CategoryPage','/series':'SeriesPage','/early-access':'EarlyAccessPage','/mail-setup':'MailSetupPage','/rss':'RssPage'};
   const name=rendered.data.status===404?'NotFoundPage':routes['/'+pathname.split('/')[1]]||'index';
+  if(pathname==='/' && rendered.data.status!==404) {
+    const homeCss=await fs.readFile(path.resolve(__dirname,'../../runtime/home.css'),'utf8');
+    const entryCss=new Set(assets.index?.css || []);
+    template=template.replace(/<link\b[^>]*>/g,link=>{
+      const href=link.match(/href="([^"]+)"/)?.[1];
+      return /rel="stylesheet"/.test(link) && entryCss.has(href) ? '' : link;
+    }).replace('</head>', '<style id="mooncci-home-css">'+homeCss+'</style></head>');
+  }
   const selected=[assets[name],...(pathname==='/' && rendered.data.resources?.['/now']?.content?.trim()?[assets.MarkdownContent]:[])].filter(Boolean);
-  const css=[...new Set(selected.flatMap(x=>x.css))].filter(url=>!template.includes(url));
+  start=template.indexOf('<div id="root">');
+  const rootScript=template.indexOf('<script',start);
+  const css=[...new Set(selected.flatMap(x=>x.css))].filter(url=>!template.includes(url) && !(pathname==='/' && rendered.data.status!==404 && (assets.index?.css||[]).includes(url)));
   const js=[...new Set(selected.flatMap(x=>x.js))].filter(url=>!template.includes(url));
-  return (template.slice(0,start).replace(/<html\b/, '<html data-document-hydrating="true"')+`<div id="root">${rendered.html}</div>\n<script id="mooncci-document-data" type="application/json">${serialize(rendered.data)}</script>\n`+template.slice(script))
+  return (template.slice(0,start).replace(/<html\b/, '<html data-document-hydrating="true"')+`<div id="root">${rendered.html}</div>\n<script id="mooncci-document-data" type="application/json">${serialize(rendered.data)}</script>\n`+template.slice(rootScript))
     .replace('</head>',css.map(url=>`<link rel="stylesheet" href="${url}">`).join('')+js.map(url=>`<link rel="modulepreload" href="${url}">`).join('')+'</head>');
 }
 module.exports={publicRoutes,privateRoutes,isPublicResource,loadPublicResource,renderDocument,injectDocument,serialize};

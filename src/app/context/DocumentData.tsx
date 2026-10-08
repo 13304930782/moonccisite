@@ -1,6 +1,6 @@
 import {createContext, startTransition, useContext, useEffect, useState, type ReactNode} from 'react';
 
-export type DocumentData = {status?: number; resources: Record<string, any>; errors?: Record<string, number>; collect?: Set<string>};
+export type DocumentData = {status?: number; url?: string; seo?: any; resources: Record<string, any>; errors?: Record<string, number>; collect?: Set<string>};
 const Context = createContext<DocumentData | null>(null);
 /** Request-local during SSR; only seeds the first client render, never a public detail cache. */
 export function DocumentDataProvider({data, children}: {data?: DocumentData; children: ReactNode}) {
@@ -15,3 +15,5 @@ export function useDocumentResource(path: string, enabled = true) {
 }
 
 export const useDocumentStatus = () => useContext(Context)?.status;
+
+export const useDocumentMetadata = () => { const data=useContext(Context); return data?.seo ? {url:data.url,meta:data.seo} : null; };

@@ -93,7 +93,7 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
    }
    rendered.data.status=result.status;
    if(result.status!==200)res.set('X-Robots-Tag','noindex, nofollow');
-   html=await injectDocument(html,rendered);
+   html=await injectDocument(html,{...rendered,data:{...rendered.data,seo:result.meta}});
    res.status(result.status).type('html').send(seo.renderHtml(html,result.meta));
   } catch(error) {
    console.error('[seo/document]',error.message);

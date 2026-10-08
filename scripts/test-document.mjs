@@ -31,10 +31,20 @@ const template=await readFile('dist/index.html','utf8');
 const styles=JSON.parse(await readFile('server/runtime/styles.json','utf8'));
 for(const content of ['', '# 当前进展']) {
  const homepage=await renderDocument('/',p=>p==='/now'?Promise.resolve({content}):p==='/posts?pageSize=4'?Promise.resolve([]):load(p));
+ homepage.data.seo={title:'首页标题',canonical:'https://mooncci.site/'};
  const html=await injectDocument(template,homepage);
+ const inline=html.match(/<style id="mooncci-home-css">([\s\S]*?)<\/style>/)?.[1];
+ assert.equal(inline,await readFile('server/runtime/home.css','utf8'));
+ for(const css of styles.index.css) assert.ok(!html.includes('rel="stylesheet" crossorigin href="'+css+'"'));
+ assert.ok(html.includes('"seo":{"title":"首页标题"'));
+
  assert.match(html,/<html data-document-hydrating="true"/);
  assert.match(html,/首页标题/);
  for(const css of styles.MarkdownContent.css.filter(css=>!template.includes(css)))
    assert.equal(html.includes('href="'+css+'"'),Boolean(content),'Markdown CSS should follow actual NOW content');
 }
 console.log('Homepage acceptance: visible SSR bootstrap and conditional Markdown styles passed.');
+
+const listing=await injectDocument(template,list);
+assert.ok(!listing.includes('mooncci-home-css'));
+assert.ok(listing.includes(styles.index.css[0]));

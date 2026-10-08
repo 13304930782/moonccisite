@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+import { useDocumentMetadata } from '../context/DocumentData';
 import {useLocation} from 'react-router-dom';
 import {api} from '../lib/api';
 import {applyPageMeta} from '../lib/pageMeta';
@@ -20,9 +22,17 @@ function ensureFavicon() {
 
 export function SiteMeta() {
   const { data } = useSiteSettings();
+  const initialMetadata=useRef(useDocumentMetadata());
+  const initialBrand=useRef(data?.brand?.site_title);
   const {pathname,search}=useLocation();
   const name=brandText(data?.brand?.site_title||'mooncci');
   useEffect(()=>{
+    const seed=initialMetadata.current;
+    if(seed && seed.url===pathname+search && initialBrand.current===data?.brand?.site_title) {
+      applyPageMeta(seed.meta);
+      return;
+    }
+    initialMetadata.current=null;
     const controller=new AbortController();
     const canonical=document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     if(!canonical || new URL(canonical.href).pathname!==pathname)applyPageMeta({title:name,description:'记录文章、日常近况与作品进展。',robots:'noindex, follow'});

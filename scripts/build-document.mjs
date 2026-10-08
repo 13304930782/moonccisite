@@ -19,3 +19,9 @@ for(const [key,entry] of Object.entries(manifest)) {
   visit(key);assets[entry.name]={css:[...css],js:[...js]};
 }
 await fs.writeFile('server/runtime/styles.json',JSON.stringify(assets)+'\n');
+
+// The home document uses the exact entry styles, preserving cascade and theme rules.
+const homeCss=(await Promise.all(manifest['index.html'].css.map(file=>fs.readFile(file,'utf8').catch(()=>fs.readFile('dist/'+file,'utf8'))))).join('\n');
+const inlineCss=homeCss.replace(/url\((['"]?)(?:\.\/)?(?!data:|https?:|\/|#)([^)'"\s]+)\1\)/g, 'url($1/assets/$2$1)');
+if(Buffer.byteLength(inlineCss)>200000 || /<\/style/i.test(inlineCss)) throw Error('Unsafe or oversized homepage CSS');
+await fs.writeFile('server/runtime/home.css',inlineCss);
