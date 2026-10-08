@@ -149,8 +149,11 @@ export function WeatherCityPicker({
       requestChoice(resolved, 'device', approximate);
     } catch (error: any) {
       if (generation.current !== request) return;
-      // Keep a working city if a new device lookup fails.
-      if (!selected || needsWeatherCityName(selected)) choose(location, 'device');
+      if (error instanceof ApiError && error.code === 'AMAP_NO_CITY') {
+        await locateNetwork(request);
+        return;
+      }
+      // Only a confirmed, named city is saved; a failed lookup preserves selection.
       setBusy('');
       setEditing(true);
       setMessage(
@@ -162,14 +165,33 @@ export function WeatherCityPicker({
       );
     }
   }
+  async function locateNetwork(request = ++generation.current) {
+    controller.current?.abort();
+    const networkController = new AbortController();
+    controller.current = networkController;
+    setBusy('locate');
+    setMessage('正在按网络识别大致城市…');
+    try {
+      const response = await api('/weather-mood/locate-network', { method: 'POST', readOnly: true, timeoutMs: 15000, body: '{}', signal: networkController.signal });
+      if (generation.current !== request) return;
+      const location = normalizeWeatherLocation(response.data);
+      if (!location || needsWeatherCityName(location)) throw new Error('网络城市识别没有返回有效名称。');
+      setMessage('');
+      requestChoice(location, 'network', true);
+    } catch (error: any) {
+      if (generation.current !== request) return;
+      setBusy('');
+      setEditing(true);
+      setMessage(error.message || '当前网络暂未识别出城市，请重试或搜索城市。');
+    }
+  }
   async function locate() {
     const request = ++generation.current;
     controller.current?.abort();
     setResults([]);
     setMessage('');
     if (!navigator.geolocation) {
-      setBusy('');
-      setMessage('当前浏览器不支持定位，请手动搜索城市。');
+      await locateNetwork(request);
       return;
     }
     setBusy('locate');
@@ -194,6 +216,10 @@ export function WeatherCityPicker({
         }
     } catch (error: any) {
         if (generation.current !== request) return;
+        if ([2, 3].includes(error.code)) {
+          await locateNetwork(request);
+          return;
+        }
         setBusy('');
         setEditing(true);
         setMessage(
@@ -270,8 +296,11 @@ export function WeatherCityPicker({
             {busy === 'locate' ? '正在定位…' : '使用当前位置'}
           </button>
           <small className="weather-city-privacy">
-            仅在你授权后获取位置；电脑可能返回大致范围，请核对城市后确认。
+            点击后请求设备定位；无法识别时按网络 IP 查找大致城市，请核对后确认。
           </small>
+          <button type="button" className="weather-city-locate" disabled={busy === 'locate'} onClick={() => void locateNetwork()}>
+            按网络识别城市
+          </button>
           {busy === 'search' && (
             <p className="weather-city-message" role="status">
               正在搜索城市…
@@ -333,7 +362,7 @@ export function WeatherCityPicker({
               {pendingChoice.location.region}
             </p>
             {pendingChoice.approximate && (
-              <p>设备返回的是大致位置，可能落在邻近城市或区县。请核对后确认，不正确时可取消并手动搜索。</p>
+              <p>{pendingChoice.source === 'network' ? '按网络 IP 识别的大致城市，可能受 VPN、代理或运营商出口影响。' : '设备返回的是大致位置，可能落在邻近城市或区县。'}请核对后确认，不正确时可取消并手动搜索。</p>
             )}
             <p>
               已选城市将在此浏览器保存 30
