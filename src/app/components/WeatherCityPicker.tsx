@@ -149,13 +149,14 @@ export function WeatherCityPicker({
       requestChoice(resolved, 'device', approximate);
     } catch (error: any) {
       if (generation.current !== request) return;
-      choose(location, 'device');
+      // Keep a working city if a new device lookup fails.
+      if (!selected || needsWeatherCityName(selected)) choose(location, 'device');
       setBusy('');
       setEditing(true);
       setMessage(
         error instanceof ApiError && error.kind === 'timeout'
-          ? '城市识别超时；附近天气仍可用，可以重试识别或手动选择城市。'
-          : '暂时无法识别城市名称；附近天气仍可用，可以重试识别或手动选择城市。',
+          ? '城市识别超时，请重试或手动选择城市。'
+          : '暂时无法识别城市名称，请重试或手动选择城市。',
       );
     }
   }
