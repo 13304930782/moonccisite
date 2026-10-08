@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { LocateFixed, Search } from 'lucide-react';
+import { LocateFixed, Search, X } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { locateWeatherDevice } from '../lib/weatherGeolocation';
 import {
@@ -23,7 +23,7 @@ export function WeatherCityPicker({
     source: WeatherLocationSource,
   ) => boolean;
 }) {
-  const [editing, setEditing] = useState(!selected);
+  const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<(WeatherLocation & { id: string })[]>(
     [],
@@ -38,7 +38,18 @@ export function WeatherCityPicker({
     networkReason?: 'permission' | 'unavailable' | 'manual';
   } | null>(null);
   const confirmDialog = useRef<HTMLDialogElement>(null);
+  const editorDialog = useRef<HTMLDialogElement>(null);
+  const queryInput = useRef<HTMLInputElement>(null);
   const changeButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const dialog = editorDialog.current;
+    if (editing && !pendingChoice && !notice) {
+      if (dialog && !dialog.open) {
+        dialog.showModal();
+        queryInput.current?.focus();
+      }
+    } else if (dialog?.open) dialog.close();
+  }, [editing, pendingChoice, notice]);
   useEffect(() => {
     if (pendingChoice && !confirmDialog.current?.open)
       confirmDialog.current?.showModal();
@@ -72,6 +83,14 @@ export function WeatherCityPicker({
 
   const generation = useRef(0);
   const controller = useRef<AbortController | null>(null);
+  function closeEditor() {
+    generation.current++;
+    controller.current?.abort();
+    setBusy('');
+    setResults([]);
+    setEditing(false);
+    editorDialog.current?.close();
+  }
   useEffect(
     () => () => {
       generation.current++;
@@ -87,7 +106,7 @@ export function WeatherCityPicker({
     controller.current?.abort();
     setBusy('');
     setResults([]);
-    setEditing(!location);
+    setEditing(false);
     if (!onChange(location, source)) {
       showNotice('城市未保存', '本次选择仍可使用。请允许浏览器保存网站数据，避免刷新后丢失。');
     }
@@ -231,35 +250,43 @@ export function WeatherCityPicker({
     <div className="weather-city-picker">
       <div className="weather-city-current">
         <span>
-          {selected?.name || '选择天气城市'}
+          {selected?.name || '未选择城市'}
           {selected?.region && (
             <small className="weather-city-privacy">{selected.region}</small>
           )}
         </span>
-        {selected && (
-          <button
-            ref={changeButton}
-            type="button"
-            onClick={() => {
-              generation.current++;
-              controller.current?.abort();
-              setBusy('');
-              setEditing((value) => !value);
-            }}
-          >
-            {' '}
-            {editing ? '取消' : '切换城市'}{' '}
-          </button>
-        )}
+        <button
+          ref={changeButton}
+          type="button"
+          onClick={() => {
+            generation.current++;
+            controller.current?.abort();
+            setBusy('');
+            setEditing(true);
+          }}
+        >
+          {selected ? '切换城市' : '选择城市'}
+        </button>
       </div>
-      {editing && (
+      <dialog
+        ref={editorDialog}
+        className="weather-city-confirm weather-city-editor"
+        aria-labelledby="weather-city-editor-title"
+        onCancel={closeEditor}
+      >
+        {editing && (
         <>
+          <div className="weather-companion-heading">
+            <h3 id="weather-city-editor-title">选择城市</h3>
+            <button type="button" aria-label="关闭城市选择" onClick={closeEditor}><X size={16} /></button>
+          </div>
           <form className="weather-city-search" onSubmit={search}>
             <label className="sr-only" htmlFor="weather-city-query">
               城市名称
             </label>
             <input
               id="weather-city-query"
+              ref={queryInput}
               value={query}
               minLength={2}
               maxLength={80}
@@ -281,18 +308,20 @@ export function WeatherCityPicker({
               <Search size={16} />
             </button>
           </form>
-          <button
-            type="button"
-            className="weather-city-locate"
-            onClick={locate}
-            disabled={!!busy}
-          >
-            <LocateFixed size={15} />
-            {busy === 'locate' ? '正在定位…' : '使用当前位置'}
-          </button>
-          <button type="button" className="weather-city-locate" disabled={!!busy} onClick={() => void locateNetwork()}>
-            {busy === 'network' ? '正在识别…' : '按 IP 定位'}
-          </button>
+          <div className="weather-city-editor-actions">
+            <button
+              type="button"
+              className="weather-city-locate"
+              onClick={locate}
+              disabled={!!busy}
+            >
+              <LocateFixed size={15} />
+              {busy === 'locate' ? '正在定位…' : '使用当前位置'}
+            </button>
+            <button type="button" className="weather-city-locate" disabled={!!busy} onClick={() => void locateNetwork()}>
+              {busy === 'network' ? '正在识别…' : '按 IP 定位'}
+            </button>
+          </div>
           {results.length > 0 && (
             <ul className="weather-city-results" aria-label="城市搜索结果">
               {results.map((result) => (
@@ -316,17 +345,8 @@ export function WeatherCityPicker({
             </button>
           )}
         </>
-      )}
-      {needsWeatherCityName(selected) && (
-        <button
-          type="button"
-          className="weather-city-locate"
-          disabled={!!busy}
-          onClick={() => void locate()}
-        >
-          {busy === 'locate' ? '正在定位并识别城市…' : '重新定位并识别城市'}
-        </button>
-      )}
+        )}
+      </dialog>
       <dialog
         ref={confirmDialog}
         className="weather-city-confirm"
@@ -387,7 +407,7 @@ export function WeatherCityPicker({
             <div className="weather-city-confirm-actions">
               <button type="button" autoFocus onClick={() => {
                 noticeDialog.current?.close();
-                if (notice.search) requestAnimationFrame(() => document.getElementById('weather-city-query')?.focus());
+                if (notice.search) setEditing(true);
               }}>{notice.search ? '搜索城市' : '知道了'}</button>
             </div>
           </>
