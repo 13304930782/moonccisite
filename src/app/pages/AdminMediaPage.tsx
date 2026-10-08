@@ -742,7 +742,7 @@ export default function AdminMediaPage() {
                       修改文件名并同步文章引用
                     </button>
 
-                    <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <div className="grid gap-3">
                       <ThemeSelect aria-label="压缩图片质量"
                         value={recompressQuality}
                         onValueChange={(nextValue) => setRecompressQuality(nextValue)}

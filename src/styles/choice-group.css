@@ -6,6 +6,7 @@
 .choice-field .choice-options>button:focus-visible,.choice-search input:focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
 .choice-field .choice-options>button:disabled{opacity:.45;cursor:not-allowed}
 .choice-caption{display:inline-block;position:relative;min-width:0;max-width:100%;transform:translateX(0);transition:transform 180ms cubic-bezier(.2,.8,.2,1)}
+.choice-field .choice-caption,.choice-field .choice-caption>span,.choice-field .choice-mark{color:inherit;font:inherit}
 .choice-mark{position:absolute;left:-20px;top:50%;width:14px;height:14px;opacity:0;transform:translate(-4px,-50%) scale(.8);transition:opacity 180ms ease-out,transform 180ms cubic-bezier(.2,.8,.2,1)}
 .choice-options>button[aria-checked=true] .choice-caption{transform:translateX(10px)}
 .choice-options>button[aria-checked=true] .choice-mark{opacity:1;transform:translate(0,-50%) scale(1)}
@@ -18,9 +19,11 @@
 .admin-page fieldset:has(>.choice-field){flex-wrap:wrap}.admin-page fieldset>.choice-field{flex-basis:100%}
 .electricity-admin-v2 .electricity-schedule-row:has(.choice-field){display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px;padding:20px;border:1px solid var(--border);border-radius:12px}
 .electricity-admin-v2 .electricity-schedule-row>.choice-field{flex:1 1 320px;min-width:0}
-.electricity-admin-v2 .electricity-schedule-row .choice-options--many{grid-template-columns:repeat(auto-fit,minmax(80px,1fr))}
+.electricity-admin-v2 .electricity-schedule-row .choice-options--many{grid-template-columns:repeat(auto-fit,minmax(min(100px,100%),1fr))}
 .electricity-admin-v2 .electricity-schedule-remove{min-width:44px;min-height:44px}
 .search-filters>.choice-field,.search-filters>label{min-width:0}
+.search-filters{align-items:flex-start}.search-filters>label{display:block;align-content:start}
 @media(prefers-reduced-motion:reduce){.choice-field .choice-options>button,.choice-caption,.choice-mark{transition:none}}
-@media(max-width:600px){.choice-options>button{flex:1 1 auto}.choice-options--many{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.search-filters>label{flex:1 1 100%}}
+@media(max-width:600px){.choice-options>button{flex:1 1 auto}.choice-options--many{grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr))}}
 @media(forced-colors:active){.choice-field .choice-options>button[aria-checked=true]{border:2px solid Highlight}.choice-mark{forced-color-adjust:auto}}
