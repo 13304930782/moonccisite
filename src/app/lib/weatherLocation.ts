@@ -1,5 +1,5 @@
 export type WeatherLocation = {
-  provider?: 'amap' | 'nominatim' | 'geonames';
+  provider?: 'amap' | 'nominatim' | 'geonames' | 'photon';
   countryCode?: string;
   adcode?: string;
   name: string;
@@ -42,7 +42,7 @@ export function normalizeWeatherLocation(
     ...(typeof value.adcode === 'string' && /^\d{6}$/.test(value.adcode)
       ? { adcode: value.adcode }
       : {}),
-    ...(['amap', 'nominatim', 'geonames'].includes(value.provider || '')
+    ...(['amap', 'nominatim', 'geonames', 'photon'].includes(value.provider || '')
       ? { provider: value.provider }
       : {}),
     name:

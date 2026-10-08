@@ -10,10 +10,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FILES = {
     "server/src/lib/weatherGeocoder.js": ROOT / "server/src/lib/weatherGeocoder.js",
-    "server/src/lib/weatherNetworkCity.js": ROOT / "server/src/lib/weatherNetworkCity.js",
-    "server/src/lib/weatherOfflineIp.js": ROOT / "server/src/lib/weatherOfflineIp.js",
-    "server/src/lib/weatherBudget.js": ROOT / "server/src/lib/weatherBudget.js",
-    "server/src/routes/weatherMood.js": ROOT / "server/src/routes/weatherMood.js",
+    "server/src/lib/weatherPhoton.js": ROOT / "server/src/lib/weatherPhoton.js",
+    "server/src/lib/weatherReverseGeocode.js": ROOT / "server/src/lib/weatherReverseGeocode.js",
+    "server/src/lib/weatherLocation.js": ROOT / "server/src/lib/weatherLocation.js",
     "deploy.sh": ROOT / "scripts/deploy-weather-city.sh",
     "rollback.sh": ROOT / "scripts/rollback-weather-city.sh",
 }
@@ -27,13 +26,6 @@ def main():
     if subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT).strip():
         raise SystemExit("Commit source changes before packaging")
     entries = {}
-    for source in sorted((ROOT / "server/vendor/ip2region").glob("*")):
-        if source.is_file(): FILES[source.relative_to(ROOT).as_posix()] = source
-    provenance = json.loads((ROOT / "server/vendor/ip2region/PROVENANCE.json").read_text())
-    for name, expected in provenance["database_sha256"].items():
-        source = ROOT / "server/data/ip2region" / name
-        if digest(source.read_bytes()) != expected: raise ValueError(f"Offline IP database checksum mismatch: {name}")
-        entries[source.relative_to(ROOT).as_posix()] = source.read_bytes()
     for name, source in FILES.items():
         data = source.read_bytes().replace(b"\r\n", b"\n")
         if b"\r" in data:
@@ -59,7 +51,7 @@ def main():
     if not entries.get("dist/index.html"):
         raise ValueError("Frontend build missing")
     entries["REVISION"] = (revision + "\n").encode("ascii")
-    entries["MANIFEST.json"] = (json.dumps({"revision": revision,"scope": ["public-document-runtime", "weather-city-query", "weather-city-geocoder", "weather-network-city", "weather-upstream-budget", "frontend"], "migrations": False, "dependency_install": False, "restart": ["mooncci-api"]}, indent=2) + "\n").encode()
+    entries["MANIFEST.json"] = (json.dumps({"revision": revision,"scope": ["public-document-runtime", "browser-coordinate-city-geocoder", "photon-reverse-geocoder", "frontend"], "migrations": False, "dependency_install": False, "restart": ["mooncci-api"]}, indent=2) + "\n").encode()
     entries["SHA256SUMS"] = "".join(f"{digest(data)}  {name}\n" for name, data in sorted(entries.items())).encode("ascii")
     output = ROOT / ".cache" / f"mooncci-weather-city-{revision[:12]}.tar.gz"
     output.parent.mkdir(exist_ok=True)

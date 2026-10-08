@@ -16,7 +16,7 @@ export function WeatherCityPicker({
 }: {
   selected: WeatherLocation | null;
   onAttributionChange: (
-    provider: 'amap' | 'nominatim' | 'geonames' | null,
+    provider: 'amap' | 'nominatim' | 'geonames' | 'photon' | null,
   ) => void;
   onChange: (
     location: WeatherLocation | null,
@@ -149,10 +149,6 @@ export function WeatherCityPicker({
       requestChoice(resolved, 'device', approximate);
     } catch (error: any) {
       if (generation.current !== request) return;
-      if (error instanceof ApiError && (error.code === 'AMAP_NO_CITY' || ['timeout', 'network'].includes(error.kind))) {
-        await locateNetwork(request);
-        return;
-      }
       // Only a confirmed, named city is saved; a failed lookup preserves selection.
       setBusy('');
       setEditing(true);
@@ -295,7 +291,7 @@ export function WeatherCityPicker({
             {busy === 'locate' ? '正在定位…' : '使用当前位置'}
           </button>
           <small className="weather-city-privacy">
-            点击后请求设备定位；无法识别时按网络 IP 查找大致城市，请核对后确认。
+            按浏览器提供的位置识别城市；取不到坐标时才使用网络 IP，请核对后确认。
           </small>
           <button type="button" className="weather-city-locate" disabled={busy === 'locate'} onClick={() => void locateNetwork()}>
             按网络识别城市

@@ -36,7 +36,7 @@ test('city lookup accepts coarse desktop positions, requires confirmation and pr
   assert.doesNotMatch(JSON.stringify(root.toJSON()),/附近天气仍可用|尚未确认操作结果/);
  } finally {if(root)await act(async()=>root.unmount());if(descriptor)Object.defineProperty(global,'navigator',descriptor);else delete global.navigator;}
 });
-test('failed or denied device positioning falls back to network city, while quota errors remain visible',async()=>{
+test('device failures use IP but valid coordinates are never replaced when city lookup fails',async()=>{
  const city={name:'北京市',region:'中国',countryCode:'CN',adcode:'110000',provider:'amap',latitude:39.9,longitude:116.4};
  const locations=load('src/app/lib/weatherLocation.ts',require);
  class ApiError extends Error {constructor(code){super(code);this.code=code;this.kind='http'}}
@@ -49,7 +49,7 @@ test('failed or denied device positioning falls back to network city, while quot
    paths=[];
    await act(async()=>{root=create(React.createElement(WeatherCityPicker,{selected:null,onAttributionChange(){},onChange:(...v)=>{picked.push(v);return true}}),{createNodeMock:e=>e.type==='dialog'?{open:false,showModal(){this.open=true},close(){this.open=false}}:null});});
    await act(async()=>root.root.findAllByType('button').find(b=>b.children.includes('使用当前位置')).props.onClick());
-   if(['missing','unavailable','denied'].includes(mode)){assert(paths.includes('/weather-mood/locate-network'));assert.match(JSON.stringify(root.toJSON()),/使用北京市|按网络 IP 识别/);}
+   if(['unavailable','denied'].includes(mode)){assert(paths.includes('/weather-mood/locate-network'));assert.match(JSON.stringify(root.toJSON()),/使用北京市|按网络 IP 识别/);}
    else assert(!paths.includes('/weather-mood/locate-network'));
    assert.equal(picked.length,0,'candidate is not saved without confirmation');
    await act(async()=>root.unmount());root=null;

@@ -136,6 +136,9 @@ function createReverseGeocoder({
   endpoint = () =>
     process.env.MOONCCI_REVERSE_GEOCODING_URL ||
     'https://nominatim.openstreetmap.org/reverse',
+  provider = 'nominatim',
+  reverseParameters = null,
+  normalizeReverse = normalizeAddress,
 }) {
   async function lookup(mode, input) {
     const location = mode === 'reverse' ? parseGeocodingLocation(input) : null;
@@ -153,7 +156,7 @@ function createReverseGeocoder({
     // Versioned keys avoid reusing the former prefecture-only reverse result.
     const key =
       mode === 'reverse'
-        ? `district4:${location.latitude},${location.longitude}`
+        ? `${provider === 'nominatim' ? 'district4' : provider + '1'}:${location.latitude},${location.longitude}`
         : `search2:${input.trim()}`;
     const result = await repository.withLock(CACHE_KEY, async (state, save) => {
       const places = (Array.isArray(state.places) ? state.places : [])
@@ -171,7 +174,7 @@ function createReverseGeocoder({
         throw new Error('INVALID_GEOCODING_ENDPOINT');
       if (mode === 'search')
         url.pathname = url.pathname.replace(/reverse\/?$/, 'search');
-      url.search = new URLSearchParams({
+      url.search = new URLSearchParams(mode === 'reverse' && reverseParameters ? reverseParameters(location) : {
         ...(mode === 'reverse'
           ? {
               lat: String(location.latitude),
@@ -196,7 +199,7 @@ function createReverseGeocoder({
       const body = await response.json();
       const value =
         mode === 'reverse'
-          ? normalizeAddress(body, location)
+          ? normalizeReverse(body, location)
           : normalizeAdministrativeCities(body);
       places.push({ key, value, expires: clock() + 86400000 });
       await save({ places, requestedAt });

@@ -103,7 +103,7 @@ export default function WeatherCompanion() {
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
   const [cityAttribution, setCityAttribution] = useState<
-    'amap' | 'nominatim' | 'geonames' | null
+    'amap' | 'nominatim' | 'geonames' | 'photon' | null
   >(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpPosition, setHelpPosition] = useState({ left: 12, top: 12 });
