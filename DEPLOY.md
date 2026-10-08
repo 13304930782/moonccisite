@@ -1050,3 +1050,12 @@ Build with `npm run build`, then `python scripts/build-home-performance-release.
 本次发布必须同步 dist/、server/runtime/、server/src/lib/publicDocument.js 与 server/src/routes/auth-cookie.js。先更新后端再开放新前端；不能使用纯前端发布器部署此修改。需要单独审查限定文件的后端离线包并重启 API，无新增依赖或数据库迁移。保留 .env、uploads 和历史 SQL。
 
 验收：npm run check；node scripts/test-document.mjs；node --test server/test/sessionProbe.test.js server/test/authLogout.test.js server/test/publicDocument.test.js。上线后以无 Cookie 的请求验证 /api/auth/session 返回 200 和 user:null、/api/auth/me 返回 401，再在相同条件下复测 PageSpeed FCP/LCP。
+# 天气城市定位修复发布
+
+`scripts/build-weather-city-release.py` 打包本地构建的前端及匹配的 SSR 页面运行时。
+先运行 `npm run check` 和 `node scripts/test-document.mjs`，提交源代码后再打包。
+归档、校验文件及部署脚本使用 LF；上传后校验归档及包内 `SHA256SUMS`。
+在子 shell 中使用 `nohup bash deploy.sh` 发布，日志应包含 `EXIT_CODE=0`。
+此包会更新 SSR 运行时并重启 `mooncci-api`，不安装依赖、不执行迁移，也不修改 `.env` 或 uploads。
+回滚使用包内 `rollback.sh`，参数为部署日志中的 `/www/backup/mooncci-weather-city.*` 备份目录。
+

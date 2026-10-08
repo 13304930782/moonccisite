@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { LocateFixed, Search } from 'lucide-react';
-import { api } from '../lib/api';
+import { api, ApiError } from '../lib/api';
+import { locateWeatherDevice } from '../lib/weatherGeolocation';
 import {
   normalizeWeatherLocation,
   geocodingLocation,
@@ -32,6 +33,7 @@ export function WeatherCityPicker({
   const [pendingChoice, setPendingChoice] = useState<{
     location: WeatherLocation;
     source: WeatherLocationSource;
+    approximate?: boolean;
   } | null>(null);
   const confirmDialog = useRef<HTMLDialogElement>(null);
   const changeButton = useRef<HTMLButtonElement>(null);
@@ -51,11 +53,12 @@ export function WeatherCityPicker({
   function requestChoice(
     location: WeatherLocation,
     source: WeatherLocationSource = 'manual',
+    approximate = false,
   ) {
     generation.current++;
     controller.current?.abort();
     setBusy('');
-    setPendingChoice({ location, source });
+    setPendingChoice({ location, source, approximate });
   }
 
   const generation = useRef(0);
@@ -63,7 +66,6 @@ export function WeatherCityPicker({
   useEffect(
     () => () => {
       generation.current++;
-      autoAttempted.current = '';
       controller.current?.abort();
     },
     [],
@@ -93,10 +95,11 @@ export function WeatherCityPicker({
     setBusy('search');
     setMessage('');
     setResults([]);
-    const timeout = setTimeout(() => searchController.abort(), 10000);
     try {
       const response = await api('/weather-mood/cities', {
         method: 'POST',
+        readOnly: true,
+        timeoutMs: 15000,
         body: JSON.stringify({ query: query.trim() }),
         signal: searchController.signal,
       });
@@ -113,40 +116,29 @@ export function WeatherCityPicker({
     } catch (error: any) {
       if (generation.current === request)
         setMessage(
-          error.name === 'AbortError'
+          error instanceof ApiError && error.kind === 'timeout'
             ? '搜索超时，请重试。'
             : error.message || '搜索失败，请重试。',
         );
     } finally {
-      clearTimeout(timeout);
       if (generation.current === request) setBusy('');
     }
   }
-  const autoAttempted = useRef('');
-  useEffect(() => {
-    if (!needsWeatherCityName(selected)) return;
-    const key = `${selected!.latitude},${selected!.longitude}`;
-    if (autoAttempted.current === key) return;
-    autoAttempted.current = key;
-    const request = ++generation.current;
-    void resolveName(selected!, request, false);
-    // A saved approximate location needs a name lookup, not a fresh device permission request.
-  }, [selected]);
   async function resolveName(
     location: WeatherLocation,
     request: number,
-    saveFallback: boolean,
+    approximate = false,
   ) {
-    autoAttempted.current = `${location.latitude},${location.longitude}`;
     controller.current?.abort();
     const locateController = new AbortController();
     controller.current = locateController;
     setBusy('locate');
     setMessage('正在识别城市名称…');
-    const timeout = setTimeout(() => locateController.abort(), 12000);
     try {
       const response = await api('/weather-mood/locate', {
         method: 'POST',
+        readOnly: true,
+        timeoutMs: 20000,
         body: JSON.stringify({ location }),
         signal: locateController.signal,
       });
@@ -154,22 +146,20 @@ export function WeatherCityPicker({
       const resolved = normalizeWeatherLocation(response.data);
       if (!resolved || needsWeatherCityName(resolved))
         throw new Error('城市识别没有返回有效名称。');
-      if (saveFallback) requestChoice(resolved, 'device');
-      else choose(resolved, 'device');
+      requestChoice(resolved, 'device', approximate);
     } catch (error: any) {
       if (generation.current !== request) return;
-      if (saveFallback) choose(location, 'device');
+      choose(location, 'device');
       setBusy('');
+      setEditing(true);
       setMessage(
-        error.name === 'AbortError'
+        error instanceof ApiError && error.kind === 'timeout'
           ? '城市识别超时；附近天气仍可用，可以重试识别或手动选择城市。'
-          : `${error.message || '城市识别暂不可用'} 附近天气仍可用。`,
+          : '暂时无法识别城市名称；附近天气仍可用，可以重试识别或手动选择城市。',
       );
-    } finally {
-      clearTimeout(timeout);
     }
   }
-  function locate() {
+  async function locate() {
     const request = ++generation.current;
     controller.current?.abort();
     setResults([]);
@@ -180,20 +170,12 @@ export function WeatherCityPicker({
       return;
     }
     setBusy('locate');
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
+    setMessage('正在获取位置…');
+    const deviceController = new AbortController();
+    controller.current = deviceController;
+    try {
+        const position = await locateWeatherDevice(navigator.geolocation, deviceController.signal);
         if (generation.current !== request) return;
-        // A low-accuracy fix cannot reliably distinguish adjacent districts.
-        if (
-          !Number.isFinite(position.coords.accuracy) ||
-          position.coords.accuracy > 1000
-        ) {
-          setBusy('');
-          setMessage(
-            '定位精度不足，可能落在相邻区。请手动选择城市，或开启精确定位后重试。',
-          );
-          return;
-        }
         const location = geocodingLocation({
           name: '当前位置附近',
           region: '',
@@ -201,15 +183,16 @@ export function WeatherCityPicker({
           longitude: position.coords.longitude,
         });
         if (location) {
-          void resolveName(location, request, true);
+          void resolveName(location, request,
+            !Number.isFinite(position.coords.accuracy) || position.coords.accuracy > 1000);
         } else {
           setBusy('');
           setMessage('无法读取有效位置，请手动选择城市。');
         }
-      },
-      (error) => {
+    } catch (error: any) {
         if (generation.current !== request) return;
         setBusy('');
+        setEditing(true);
         setMessage(
           error.code === 1
             ? '定位未获授权，你仍可手动搜索城市。'
@@ -217,9 +200,7 @@ export function WeatherCityPicker({
               ? '定位超时，请重试或手动选择城市。'
               : '暂时无法取得位置，请手动选择城市。',
         );
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    );
+    }
   }
   return (
     <div className="weather-city-picker">
@@ -286,7 +267,7 @@ export function WeatherCityPicker({
             {busy === 'locate' ? '正在定位…' : '使用当前位置'}
           </button>
           <small className="weather-city-privacy">
-            仅在你授权后获取位置，用于识别所在区县。
+            仅在你授权后获取位置；电脑可能返回大致范围，请核对城市后确认。
           </small>
           {busy === 'search' && (
             <p className="weather-city-message" role="status">
@@ -329,7 +310,8 @@ export function WeatherCityPicker({
           disabled={busy === 'locate'}
           onClick={() => {
             const request = ++generation.current;
-            void resolveName(selected!, request, false);
+            // Saved coordinates are intentionally coarse; confirm the suggested name.
+            void resolveName(selected!, request, true);
           }}
         >
           {busy === 'locate' ? '正在识别城市…' : '重试识别城市'}
@@ -351,6 +333,9 @@ export function WeatherCityPicker({
             <p className="weather-city-confirm-region">
               {pendingChoice.location.region}
             </p>
+            {pendingChoice.approximate && (
+              <p>设备返回的是大致位置，可能落在邻近城市或区县。请核对后确认，不正确时可取消并手动搜索。</p>
+            )}
             <p>
               已选城市将在此浏览器保存 30
               天，期间不会自动切换。你可以随时更改地区或重新定位。

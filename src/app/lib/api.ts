@@ -6,10 +6,11 @@ export class ApiError extends Error {
     super(message); this.name = 'ApiError';
   }
 }
-export type ApiOptions = RequestInit & { timeoutMs?: number };
+// Some privacy-preserving queries use POST without changing stored data.
+export type ApiOptions = RequestInit & { timeoutMs?: number; readOnly?: boolean };
 export async function api(path: string, options: ApiOptions = {}) {
-  const { timeoutMs, signal: callerSignal, ...request } = options;
-  const writing = !['GET', 'HEAD'].includes((request.method || 'GET').toUpperCase());
+  const { timeoutMs, readOnly = false, signal: callerSignal, ...request } = options;
+  const writing = !readOnly && !['GET', 'HEAD'].includes((request.method || 'GET').toUpperCase());
   const controller = new AbortController();
   let timedOut = false;
   const cancel = () => controller.abort(callerSignal?.reason);
