@@ -1,3 +1,4 @@
+import { responsiveImage } from '../lib/responsiveImage';
 import {usePublishing} from '../lib/usePublishing';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -74,7 +75,7 @@ export function Header() {
       <div className="site-container header-inner">
         <Link className="site-brand" to="/">
           {safeImageSrc(brand.logo_url) && (
-            <img src={safeImageSrc(brand.logo_url)} alt="" />
+            <img {...responsiveImage(safeImageSrc(brand.logo_url), true)} width={26} height={26} alt="" />
           )}
           <span>mooncci</span>
         </Link>

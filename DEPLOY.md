@@ -1037,3 +1037,7 @@ and mail DNS records remain unchanged. Check certificate renewal through the exi
 
 ### 依赖监控瞬时故障处理（2026-10-07）
 成功探测缓存仍为 60 秒，失败缓存缩短至 5 秒。只读 GET 发生连接重置、临时 DNS 错误或超时时最多重试一次，每次 4 秒，整次探测仍受 10 秒上限约束。HTTP 错误和证书内容错误不重试；持续失败返回 503。重试恢复记录 retry_succeeded 和次数。OAuth token 交换与真实登录流程保持不变。
+
+## Homepage performance release
+
+Build with `npm run build`, then `python scripts/build-home-performance-release.py` after committing. The scoped package includes the API entry, bounded image variant handler, matching SSR runtime and frontend. It uses existing Sharp dependencies, restarts only mooncci-api, and does not touch uploads, environment or SQL. Run deploy.sh with nohup in a child shell; its output records the backup directory. Roll back using `nohup bash rollback.sh /www/backup/mooncci-home-performance.XXXXXX > rollback.log 2>&1 < /dev/null &`. Image variants are limited to six widths, two concurrent transforms and a 16 MiB process cache. Original images remain available; deletion is checked before serving cached variants. Weather waits for initial load plus 1.5 seconds; automatic login preload waits three seconds while intent-based preload stays immediate.

@@ -1,3 +1,4 @@
+import { afterInitialLoad } from './lib/afterInitialLoad';
 import {DocumentDataProvider, useDocumentStatus, type DocumentData} from './context/DocumentData';
 import { loadPage } from './lib/preloadPage';
 import { RoutePreload } from './components/RoutePreload';
@@ -83,8 +84,10 @@ const AdminElectricityPage = lazy(() => import('./pages/AdminElectricityPage'));
 const ReadingTools = lazy(() => import('./components/ReadingTools'));
 const WeatherCompanion = lazy(() => import('./components/WeatherCompanion'));
 function PublicWeatherCompanion() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => afterInitialLoad(() => setReady(true)), []);
   const { pathname } = useLocation();
-  if ((pathname.startsWith('/admin') && pathname !== '/admin-login') || pathname.startsWith('/account')) return null;
+  if (!ready || (pathname.startsWith('/admin') && pathname !== '/admin-login') || pathname.startsWith('/account')) return null;
   return <Suspense fallback={null}><WeatherCompanion /></Suspense>;
 }
 
