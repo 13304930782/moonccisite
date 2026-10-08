@@ -12,6 +12,7 @@ FILES = {
     "server/src/lib/weatherNetworkCity.js": ROOT / "server/src/lib/weatherNetworkCity.js",
     "server/src/lib/weatherGlobalIp.js": ROOT / "server/src/lib/weatherGlobalIp.js",
     "server/src/lib/weatherLocation.js": ROOT / "server/src/lib/weatherLocation.js",
+    "server/src/lib/weatherSource.js": ROOT / "server/src/lib/weatherSource.js",
     "deploy.sh": ROOT / "scripts/deploy-weather-city.sh",
     "rollback.sh": ROOT / "scripts/rollback-weather-city.sh",
 }

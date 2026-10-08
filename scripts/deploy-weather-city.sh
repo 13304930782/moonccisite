@@ -10,6 +10,7 @@ cd "$package"
 sha256sum --strict -c SHA256SUMS >/dev/null
 test "$(sha256sum "$live/src/lib/weatherNetworkCity.js" | cut -d' ' -f1)" = 06e435927ddfac432c2329c90a26ffca31144185e70b65a3c719cc5d572ec716
 test "$(sha256sum "$live/src/lib/weatherLocation.js" | cut -d' ' -f1)" = 164959635c6ddb4e22b9705478d9c1ebbec955affa7a508a85193a71b93e8128
+test "$(sha256sum "$live/src/lib/weatherSource.js" | cut -d' ' -f1)" = "$(sha256sum server/src/lib/weatherSource.js | cut -d' ' -f1)"
 test ! -e "$live/src/lib/weatherGlobalIp.js"
 test ! -e "$live/vendor/mmdb-lib"
 test ! -e "$live/data/dbip"
