@@ -21,6 +21,10 @@ function figmaAssetResolver() {
 export default defineConfig({
   plugins: [
     licenseNotices(),
+    { name: 'router-production', apply: 'build', resolveId(id) {
+      if(id==='react-router') return path.resolve(__dirname,'node_modules/react-router/dist/production/index.mjs');
+      if(id==='react-router/dom') return path.resolve(__dirname,'node_modules/react-router/dist/production/dom-export.mjs');
+    } },
 
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
