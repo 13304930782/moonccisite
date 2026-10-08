@@ -37,22 +37,47 @@ test('city lookup accepts coarse desktop positions, requires confirmation and pr
  } finally {if(root)await act(async()=>root.unmount());if(descriptor)Object.defineProperty(global,'navigator',descriptor);else delete global.navigator;}
 });
 test('device failures use IP but valid coordinates are never replaced when city lookup fails',async()=>{
- const city={name:'北京市',region:'中国',countryCode:'CN',adcode:'110000',provider:'amap',latitude:39.9,longitude:116.4};
+ const city={name:'San Jose',region:'美国 · California',countryCode:'US',provider:'dbip',latitude:37.3,longitude:-121.9};
  const locations=load('src/app/lib/weatherLocation.ts',require);
  class ApiError extends Error {constructor(code){super(code);this.code=code;this.kind='http'}}
  let mode='missing',paths=[],picked=[],root;
- const {WeatherCityPicker}=load('src/app/components/WeatherCityPicker.tsx',name=>name==='lucide-react'?{LocateFixed:'svg',Search:'svg'}:name.endsWith('/weatherLocation')?locations:name.endsWith('/weatherGeolocation')?{locateWeatherDevice:async()=>{if(mode==='unavailable')throw {code:2};if(mode==='denied')throw {code:1};return {coords:{latitude:40,longitude:116,accuracy:5000}}}}:name.endsWith('/api')?{ApiError,api:async(path,options)=>{paths.push(path);assert.equal(options.readOnly,true);if(path.endsWith('/locate'))throw new ApiError(mode==='quota'?'AMAP_10003':'AMAP_NO_CITY');return {data:city}}}:require(name));
+ const {WeatherCityPicker}=load('src/app/components/WeatherCityPicker.tsx',name=>name==='lucide-react'?{LocateFixed:'svg',Search:'svg'}:name.endsWith('/weatherLocation')?locations:name.endsWith('/weatherGeolocation')?{locateWeatherDevice:async()=>{if(mode==='unavailable')throw {code:2};if(mode==='denied')throw {code:1};if(mode==='timeout')throw {code:3};if(mode==='invalid')return {coords:{latitude:NaN,longitude:116,accuracy:0}};return {coords:{latitude:40,longitude:116,accuracy:5000}}}}:name.endsWith('/api')?{ApiError,api:async(path,options)=>{paths.push(path);assert.equal(options.readOnly,true);if(path.endsWith('/locate'))throw new ApiError(mode==='quota'?'AMAP_10003':'AMAP_NO_CITY');return {data:city}}}:require(name));
  const descriptor=Object.getOwnPropertyDescriptor(global,'navigator');
  Object.defineProperty(global,'navigator',{configurable:true,value:{geolocation:{}}});
  try {
-  for(mode of ['missing','unavailable','denied','quota']) {
+  for(mode of ['missing','unavailable','denied','timeout','invalid','no-api','quota']) {
+   Object.defineProperty(global,'navigator',{configurable:true,value:mode==='no-api'?{}:{geolocation:{}}});
    paths=[];
    await act(async()=>{root=create(React.createElement(WeatherCityPicker,{selected:null,onAttributionChange(){},onChange:(...v)=>{picked.push(v);return true}}),{createNodeMock:e=>e.type==='dialog'?{open:false,showModal(){this.open=true},close(){this.open=false}}:null});});
    await act(async()=>root.root.findAllByType('button').find(b=>b.children.includes('使用当前位置')).props.onClick());
-   if(['unavailable','denied'].includes(mode)){assert(paths.includes('/weather-mood/locate-network'));assert.match(JSON.stringify(root.toJSON()),/使用北京市|按网络 IP 识别/);}
+   if(['unavailable','denied','timeout','invalid','no-api'].includes(mode)){
+    assert.deepEqual(paths,['/weather-mood/locate-network']);
+    const view=JSON.stringify(root.toJSON());
+    assert.match(view,/市一级城市/);assert.match(view,/更细致的定位和天气服务/);
+    if(mode==='denied')assert.match(view,/未获得位置权限/);
+    else {assert.match(view,/无法取得设备位置/);assert.doesNotMatch(view,/未获得位置权限/);}
+   }
    else assert(!paths.includes('/weather-mood/locate-network'));
    assert.equal(picked.length,0,'candidate is not saved without confirmation');
    await act(async()=>root.unmount());root=null;
   }
+ }finally{if(root)await act(async()=>root.unmount());if(descriptor)Object.defineProperty(global,'navigator',descriptor);else delete global.navigator;}
+});
+
+test('domestic IP permission prompt never offers or saves a guessed city',async()=>{
+ const locations=load('src/app/lib/weatherLocation.ts',require);
+ const prompt='境内网络不使用 IP 推测城市。请允许此网站使用位置权限，以获取更细致的定位和天气服务；也可手动搜索城市。';
+ class ApiError extends Error {constructor(){super(prompt);this.code='CITY_NETWORK_LOCATION_PERMISSION';this.kind='http'}}
+ let saved=0,root;
+ const {WeatherCityPicker}=load('src/app/components/WeatherCityPicker.tsx',name=>name==='lucide-react'?{LocateFixed:'svg',Search:'svg'}:name.endsWith('/weatherLocation')?locations:name.endsWith('/weatherGeolocation')?{locateWeatherDevice:async()=>{throw {code:1}}}:name.endsWith('/api')?{ApiError,api:async path=>{assert.equal(path,'/weather-mood/locate-network');throw new ApiError()}}:require(name));
+ const descriptor=Object.getOwnPropertyDescriptor(global,'navigator');
+ Object.defineProperty(global,'navigator',{configurable:true,value:{geolocation:{}}});
+ try{
+  await act(async()=>{root=create(React.createElement(WeatherCityPicker,{selected:null,onChange(){saved++;return true},onAttributionChange(){}}));});
+  await act(async()=>root.root.findAllByType('button').find(b=>b.children.includes('使用当前位置')).props.onClick());
+  assert.match(JSON.stringify(root.toJSON()),/请允许此网站使用位置权限/);
+  assert.equal(root.root.findByType('dialog').children.length,0);
+  assert.doesNotMatch(JSON.stringify(root.toJSON()),/确认使用/);
+  assert.equal(saved,0);
  }finally{if(root)await act(async()=>root.unmount());if(descriptor)Object.defineProperty(global,'navigator',descriptor);else delete global.navigator;}
 });

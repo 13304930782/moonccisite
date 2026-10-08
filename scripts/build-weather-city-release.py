@@ -9,9 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = {
-    "server/src/lib/weatherGeocoder.js": ROOT / "server/src/lib/weatherGeocoder.js",
-    "server/src/lib/weatherPhoton.js": ROOT / "server/src/lib/weatherPhoton.js",
-    "server/src/lib/weatherReverseGeocode.js": ROOT / "server/src/lib/weatherReverseGeocode.js",
+    "server/src/lib/weatherNetworkCity.js": ROOT / "server/src/lib/weatherNetworkCity.js",
+    "server/src/lib/weatherGlobalIp.js": ROOT / "server/src/lib/weatherGlobalIp.js",
     "server/src/lib/weatherLocation.js": ROOT / "server/src/lib/weatherLocation.js",
     "deploy.sh": ROOT / "scripts/deploy-weather-city.sh",
     "rollback.sh": ROOT / "scripts/rollback-weather-city.sh",
@@ -26,6 +25,14 @@ def main():
     if subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT).strip():
         raise SystemExit("Commit source changes before packaging")
     entries = {}
+    database = ROOT / 'server/data/dbip/dbip-city-lite-2026-10.mmdb'
+    if digest(database.read_bytes()) != '9e250f02722d1ad1780f88192f0e908af285478a33e76b88b349c9181ae9d0f5':
+        raise ValueError('DB-IP official October database checksum mismatch')
+    entries[database.relative_to(ROOT).as_posix()] = database.read_bytes()
+    for directory in ['server/vendor/mmdb-lib', 'server/data/dbip']:
+        for source in sorted((ROOT / directory).rglob('*')):
+            if source.is_file() and source.suffix != '.mmdb':
+                FILES[source.relative_to(ROOT).as_posix()] = source
     for name, source in FILES.items():
         data = source.read_bytes().replace(b"\r\n", b"\n")
         if b"\r" in data:
@@ -51,7 +58,7 @@ def main():
     if not entries.get("dist/index.html"):
         raise ValueError("Frontend build missing")
     entries["REVISION"] = (revision + "\n").encode("ascii")
-    entries["MANIFEST.json"] = (json.dumps({"revision": revision,"scope": ["public-document-runtime", "browser-coordinate-city-geocoder", "photon-reverse-geocoder", "frontend"], "migrations": False, "dependency_install": False, "restart": ["mooncci-api"]}, indent=2) + "\n").encode()
+    entries["MANIFEST.json"] = (json.dumps({"revision": revision,"scope": ["public-document-runtime", "foreign-offline-ip-city-fallback", "domestic-ip-location-permission", "frontend"], "migrations": False, "dependency_install": False, "restart": ["mooncci-api"]}, indent=2) + "\n").encode()
     entries["SHA256SUMS"] = "".join(f"{digest(data)}  {name}\n" for name, data in sorted(entries.items())).encode("ascii")
     output = ROOT / ".cache" / f"mooncci-weather-city-{revision[:12]}.tar.gz"
     output.parent.mkdir(exist_ok=True)

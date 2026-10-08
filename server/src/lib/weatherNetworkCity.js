@@ -1,6 +1,6 @@
 const { isIP } = require('node:net');
 const { createHash } = require('node:crypto');
-const { lookupOfflineIp } = require('./weatherOfflineIp');
+const { lookupGlobalIp, globalIpCity } = require('./weatherGlobalIp');
 function unavailable() {
   return Object.assign(new Error('当前网络暂未识别出城市，请重试或搜索城市。'), { publicCode: 'CITY_NETWORK_UNAVAILABLE' });
 }
@@ -19,7 +19,7 @@ function publicClientIp(value) {
   // Global unicast only; never identify localhost, private or link-local addresses.
   return version === 6 && /^[23]/.test(ip) && !/^2001:db8:/i.test(ip) ? ip : null;
 }
-function createNetworkCity({ searchCities, lookup = lookupOfflineIp, clock = Date.now } = {}) {
+function createNetworkCity({ lookup = lookupGlobalIp, clock = Date.now } = {}) {
   const cache = new Map(), pending = new Map();
   return async function networkCity(clientIp) {
     const ip = publicClientIp(clientIp);
@@ -29,13 +29,13 @@ function createNetworkCity({ searchCities, lookup = lookupOfflineIp, clock = Dat
     if (saved && saved.until > clock()) return saved.location;
     if (pending.has(id)) return pending.get(id);
     const work = (async () => {
-      // Resolve IP entirely locally. Map its actual province/city label to the
-      // existing cached national city index; never reverse-geocode a country center.
+      // Domestic IP localization is intentionally disabled: the visitor grants
+      // browser location or selects a city; inaccurate IP labels are never used.
       const info = await lookup(ip);
-      if (info?.countryCode !== 'CN' || !info.province || !info.city || info.province === '0' || info.city === '0') throw unavailable();
-      const cities = await searchCities(info.province + info.city);
-      const label = value => String(value || '').replace(/省|市|地区|自治州/g, '');
-      const location = cities.find(city => label(city.name) === label(info.city) && label(city.region).includes(label(info.province)));
+      if (info?.country?.iso_code === 'CN') {
+        throw Object.assign(new Error('境内网络不使用 IP 推测城市。请允许此网站使用位置权限，以获取更细致的定位和天气服务；也可手动搜索城市。'), { publicCode: 'CITY_NETWORK_LOCATION_PERMISSION' });
+      }
+      const location = globalIpCity(info);
       if (!location?.name || location.name === '当前位置附近') throw unavailable();
       if (cache.size >= 256) cache.delete(cache.keys().next().value);
       cache.set(id, { location, until: clock() + 600000 });

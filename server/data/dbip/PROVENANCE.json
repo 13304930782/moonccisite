@@ -1,0 +1,14 @@
+{
+  "provider": "DB-IP",
+  "edition": "IP to City Lite",
+  "month": "2026-10",
+  "source": "https://download.db-ip.com/free/dbip-city-lite-2026-10.mmdb.gz",
+  "license": "CC-BY-4.0",
+  "attribution": "https://db-ip.com",
+  "uncompressedBytes": 126998165,
+  "officialMd5": "5966907981d3e82f338e823d1b83e002",
+  "officialSha1": "df17bd24390108ed1d24dcb7718dc60f6b9abd4f",
+  "verifiedSha256": "9e250f02722d1ad1780f88192f0e908af285478a33e76b88b349c9181ae9d0f5",
+  "reader": "mmdb-lib@3.0.3",
+  "readerIntegrity": "sha512-xQPoBXcNjjHiOvOraFBKtA++uNWF6aCVHL9dRKFXEov8eI3QJwtgiw3qApsonFT5SpoqsEVISUTg3HIDs2DiXw=="
+}

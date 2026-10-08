@@ -16,7 +16,7 @@ export function WeatherCityPicker({
 }: {
   selected: WeatherLocation | null;
   onAttributionChange: (
-    provider: 'amap' | 'nominatim' | 'geonames' | 'photon' | null,
+    provider: 'amap' | 'nominatim' | 'geonames' | 'photon' | 'dbip' | null,
   ) => void;
   onChange: (
     location: WeatherLocation | null,
@@ -34,6 +34,7 @@ export function WeatherCityPicker({
     location: WeatherLocation;
     source: WeatherLocationSource;
     approximate?: boolean;
+    networkReason?: 'permission' | 'unavailable' | 'manual';
   } | null>(null);
   const confirmDialog = useRef<HTMLDialogElement>(null);
   const changeButton = useRef<HTMLButtonElement>(null);
@@ -54,11 +55,12 @@ export function WeatherCityPicker({
     location: WeatherLocation,
     source: WeatherLocationSource = 'manual',
     approximate = false,
+    networkReason?: 'permission' | 'unavailable' | 'manual',
   ) {
     generation.current++;
     controller.current?.abort();
     setBusy('');
-    setPendingChoice({ location, source, approximate });
+    setPendingChoice({ location, source, approximate, networkReason });
   }
 
   const generation = useRef(0);
@@ -161,7 +163,7 @@ export function WeatherCityPicker({
       );
     }
   }
-  async function locateNetwork(request = ++generation.current) {
+  async function locateNetwork(request = ++generation.current, reason: 'permission' | 'unavailable' | 'manual' = 'manual') {
     controller.current?.abort();
     const networkController = new AbortController();
     controller.current = networkController;
@@ -173,7 +175,7 @@ export function WeatherCityPicker({
       const location = normalizeWeatherLocation(response.data);
       if (!location || needsWeatherCityName(location)) throw new Error('网络城市识别没有返回有效名称。');
       setMessage('');
-      requestChoice(location, 'network', true);
+      requestChoice(location, 'network', true, reason);
     } catch (error: any) {
       if (generation.current !== request) return;
       setBusy('');
@@ -187,7 +189,7 @@ export function WeatherCityPicker({
     setResults([]);
     setMessage('');
     if (!navigator.geolocation) {
-      await locateNetwork(request);
+      await locateNetwork(request, 'unavailable');
       return;
     }
     setBusy('locate');
@@ -207,12 +209,12 @@ export function WeatherCityPicker({
           await resolveName(location, request,
             !Number.isFinite(position.coords.accuracy) || position.coords.accuracy > 1000);
         } else {
-          await locateNetwork(request);
+          await locateNetwork(request, 'unavailable');
         }
     } catch (error: any) {
         if (generation.current !== request) return;
         if ([1, 2, 3].includes(error.code)) {
-          await locateNetwork(request);
+          await locateNetwork(request, error.code === 1 ? 'permission' : 'unavailable');
           return;
         }
         setBusy('');
@@ -291,7 +293,7 @@ export function WeatherCityPicker({
             {busy === 'locate' ? '正在定位…' : '使用当前位置'}
           </button>
           <small className="weather-city-privacy">
-            按浏览器提供的位置识别城市；取不到坐标时才使用网络 IP，请核对后确认。
+            按浏览器提供的位置识别城市；境外取不到坐标时可按 IP 识别市一级城市，境内请允许位置权限。
           </small>
           <button type="button" className="weather-city-locate" disabled={busy === 'locate'} onClick={() => void locateNetwork()}>
             按网络识别城市
@@ -357,12 +359,15 @@ export function WeatherCityPicker({
               {pendingChoice.location.region}
             </p>
             {pendingChoice.approximate && (
-              <p>{pendingChoice.source === 'network' ? '按网络 IP 识别的大致城市，可能受 VPN、代理或运营商出口影响。' : '设备返回的是大致位置，可能落在邻近城市或区县。'}请核对后确认，不正确时可取消并手动搜索。</p>
+              <p>{pendingChoice.source === 'network'
+                ? `${pendingChoice.networkReason === 'permission' ? '由于未获得位置权限，' : pendingChoice.networkReason === 'unavailable' ? '由于无法取得设备位置，' : ''}已改用网络 IP 识别市一级城市。如需更细致的定位和天气服务，请允许此网站使用位置权限。IP 识别可能受 VPN、代理或运营商出口影响。`
+                : '设备返回的是大致位置，可能落在邻近城市或区县。'}请核对后确认，不正确时可取消并手动搜索。</p>
             )}
             <p>
               已选城市将在此浏览器保存 30
               天，期间不会自动切换。你可以随时更改地区或重新定位。
             </p>
+            {pendingChoice.location.provider === 'dbip' && <p className="weather-companion-credits"><a href="https://db-ip.com" target="_blank" rel="noreferrer">IP 定位：DB-IP</a></p>}
             <div className="weather-city-confirm-actions">
               <button
                 type="button"
