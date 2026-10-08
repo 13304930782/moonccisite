@@ -1759,3 +1759,7 @@ html { scrollbar-gutter: stable; }
  .header-theme,.mobile-login-link span { display:none; }
  .mobile-theme-row { display:flex; align-items:center; justify-content:space-between; margin:0 24px; padding:12px 0; border-top:1px solid var(--border); font-size:14px; }
 }
+
+.article-view-count{display:inline-flex;align-items:center;gap:5px;color:var(--muted-foreground);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.analytics-page{max-width:1200px;margin:auto;min-width:0}

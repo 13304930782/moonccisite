@@ -4,12 +4,12 @@ function load(file, window, document) {
  new Function('exports','module','window','document',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(m.exports,m,window,document);
  return m.exports;
 }
-test('background loading waits for load and grace period, and cancels on unmount',()=>{
- let onload,timer,idle,calls=0;
- const window={addEventListener:(event,fn)=>{onload=fn},removeEventListener:()=>{onload=null},setTimeout:fn=>{timer=fn;return 1},clearTimeout:()=>{timer=null},requestIdleCallback:fn=>{idle=fn;return 2},cancelIdleCallback:()=>{idle=null}};
+test('background loading waits for load without a fixed grace period, and cancels on unmount',()=>{
+ let onload,timer,idle,calls=0,delay;
+ const window={addEventListener:(event,fn)=>{onload=fn},removeEventListener:()=>{onload=null},setTimeout:(fn,ms)=>{timer=fn;delay=ms;return 1},clearTimeout:()=>{timer=null},requestIdleCallback:fn=>{idle=fn;return 2},cancelIdleCallback:()=>{idle=null}};
  const {afterInitialLoad}=load('src/app/lib/afterInitialLoad.ts',window,{readyState:'loading'});
  const cancel=afterInitialLoad(()=>calls++);
- assert.equal(timer,undefined);onload();assert.equal(calls,0);timer();assert.equal(calls,0);idle();assert.equal(calls,1);cancel();assert.equal(idle,null);
+ assert.equal(timer,undefined);onload();assert.equal(delay,0);assert.equal(calls,0);timer();assert.equal(calls,0);idle();assert.equal(calls,1);cancel();assert.equal(idle,null);
  const stop=afterInitialLoad(()=>calls++);onload();timer();const queued=idle;stop();queued();assert.equal(calls,1);
 });
 test('responsive images only transform local raster uploads',()=>{

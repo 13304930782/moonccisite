@@ -32,10 +32,10 @@ async function injectDocument(template, rendered) {
   const pathname=new URL(rendered.data.url||'/','http://local').pathname;
   const routes={'/articles':'ArticlesPage','/article':'ArticlePage','/archives':'ArchivesPage','/about':'BlogInfoPages','/links':'BlogInfoPages','/projects':'ProjectsPage','/updates':'UpdatesPage','/tags':'TagsPage','/tag':'TagPage','/categories':'CategoriesPage','/category':'CategoryPage','/series':'SeriesPage','/early-access':'EarlyAccessPage','/mail-setup':'MailSetupPage','/rss':'RssPage'};
   const name=rendered.data.status===404?'NotFoundPage':routes['/'+pathname.split('/')[1]]||'index';
-  const selected=[assets[name],...(pathname==='/'?[assets.MarkdownContent]:[])].filter(Boolean);
+  const selected=[assets[name],...(pathname==='/' && rendered.data.resources?.['/now']?.content?.trim()?[assets.MarkdownContent]:[])].filter(Boolean);
   const css=[...new Set(selected.flatMap(x=>x.css))].filter(url=>!template.includes(url));
   const js=[...new Set(selected.flatMap(x=>x.js))].filter(url=>!template.includes(url));
-  return (template.slice(0,start)+`<div id="root">${rendered.html}</div>\n<script id="mooncci-document-data" type="application/json">${serialize(rendered.data)}</script>\n`+template.slice(script))
+  return (template.slice(0,start).replace(/<html\b/, '<html data-document-hydrating="true"')+`<div id="root">${rendered.html}</div>\n<script id="mooncci-document-data" type="application/json">${serialize(rendered.data)}</script>\n`+template.slice(script))
     .replace('</head>',css.map(url=>`<link rel="stylesheet" href="${url}">`).join('')+js.map(url=>`<link rel="modulepreload" href="${url}">`).join('')+'</head>');
 }
 module.exports={publicRoutes,privateRoutes,isPublicResource,loadPublicResource,renderDocument,injectDocument,serialize};

@@ -1,10 +1,10 @@
 // Idle CPU alone does not mean the initial network requests have finished.
-export function afterInitialLoad(callback: () => void, delay = 1500) {
+export function afterInitialLoad(callback: () => void, delay = 0) {
   let timer: number | undefined, idle: number | undefined, cancelled = false;
   const run = () => { if (!cancelled) callback(); };
   const schedule = () => {
     timer = window.setTimeout(() => {
-      if ('requestIdleCallback' in window) idle = window.requestIdleCallback(run, { timeout: 3000 });
+      if ('requestIdleCallback' in window) idle = window.requestIdleCallback(run, { timeout: 500 });
       else run();
     }, delay);
   };

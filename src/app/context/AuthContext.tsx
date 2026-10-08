@@ -47,8 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (logoutRequest.current) return null;
     const version = authVersion.current;
     try {
-      const data = await api('/auth/me', { cache: 'no-store' });
+      const data = await api('/auth/session', { cache: 'no-store' });
       if (version !== authVersion.current) return null;
+      if (!data.user) clearAuthCache();
       startTransition(()=>setUser(data.user));
       return data.user;
     } catch (error) {

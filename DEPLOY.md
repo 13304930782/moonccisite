@@ -1041,3 +1041,12 @@ and mail DNS records remain unchanged. Check certificate renewal through the exi
 ## Homepage performance release
 
 Build with `npm run build`, then `python scripts/build-home-performance-release.py` after committing. The scoped package includes the API entry, bounded image variant handler, matching SSR runtime and frontend. It uses existing Sharp dependencies, restarts only mooncci-api, and does not touch uploads, environment or SQL. Run deploy.sh with nohup in a child shell; its output records the backup directory. Roll back using `nohup bash rollback.sh /www/backup/mooncci-home-performance.XXXXXX > rollback.log 2>&1 < /dev/null &`. Image variants are limited to six widths, two concurrent transforms and a 16 MiB process cache. Original images remain available; deletion is checked before serving cached variants. Weather waits for initial load plus 1.5 seconds; automatic login preload waits three seconds while intent-based preload stays immediate.
+
+
+### 首页性能与访客会话探测修复（2026-10-08）
+
+前端会话探测改为 GET /api/auth/session；匿名、过期或失效会话返回 200 和 {"user":null}。GET /api/auth/me 仍要求登录。认证服务异常返回 503，前端保留当前账号状态。两条接口均使用 private, no-store 并按 Cookie/Authorization 区分响应。
+
+本次发布必须同步 dist/、server/runtime/、server/src/lib/publicDocument.js 与 server/src/routes/auth-cookie.js。先更新后端再开放新前端；不能使用纯前端发布器部署此修改。需要单独审查限定文件的后端离线包并重启 API，无新增依赖或数据库迁移。保留 .env、uploads 和历史 SQL。
+
+验收：npm run check；node scripts/test-document.mjs；node --test server/test/sessionProbe.test.js server/test/authLogout.test.js server/test/publicDocument.test.js。上线后以无 Cookie 的请求验证 /api/auth/session 返回 200 和 user:null、/api/auth/me 返回 401，再在相同条件下复测 PageSpeed FCP/LCP。

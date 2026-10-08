@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const db = require('../db');
-const { authRequired, getAuthTokenFromRequest } = require('../middleware/auth');
+const { authRequired, getAuthTokenFromRequest, getUserFromRequest } = require('../middleware/auth');
 const { sendMail, getMailConfig } = require('../lib/mailer');
 const { renderBrandedEmail } = require('../lib/mailTemplate');
 
@@ -176,6 +176,19 @@ router.post('/login', authRateLimit({ name: 'login', windowMs: 15 * 60 * 1000, m
   } catch (err) {
     console.error('[auth/login]', err);
     res.status(500).json({ message: '登录失败，请稍后再试。' });
+  }
+});
+
+// Public session probe: anonymous visitors are a normal state, not an HTTP error.
+router.get('/session', async (req, res) => {
+  try {
+    const user = await getUserFromRequest(req);
+    res.json({ user: user && user.status !== 'disabled' ? publicUser(user) : null });
+  } catch (error) {
+    if (['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(error.name)) {
+      return res.json({ user: null });
+    }
+    res.status(503).json({ message: '认证服务暂时不可用，请稍后重试。' });
   }
 });
 

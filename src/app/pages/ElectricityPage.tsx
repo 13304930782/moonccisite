@@ -1,3 +1,5 @@
+import '../../styles/electricity.css';
+import '../../styles/electricity.css';
 import { reducedMotion } from '../lib/motionPreference';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useAuth } from '../context/AuthContext';

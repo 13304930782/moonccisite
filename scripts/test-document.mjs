@@ -22,3 +22,19 @@ assert.equal(a.data.resources['/posts/7'].title,'甲');assert.equal(b.data.resou
 const missing=await renderDocument('/articles?page=999',load,404);
 assert.match(missing.html,/这个页面没有找到/);assert.ok(!missing.html.includes('公开文章'));
 console.log('SSR acceptance: Markdown, rich text sanitization, pagination, request isolation and 404 passed.');
+
+// Check the HTML sent before client JavaScript runs, including optional NOW content.
+const {createRequire}=await import('node:module');
+const {readFile}=await import('node:fs/promises');
+const {injectDocument}=createRequire(import.meta.url)('../server/src/lib/publicDocument.js');
+const template=await readFile('dist/index.html','utf8');
+const styles=JSON.parse(await readFile('server/runtime/styles.json','utf8'));
+for(const content of ['', '# 当前进展']) {
+ const homepage=await renderDocument('/',p=>p==='/now'?Promise.resolve({content}):p==='/posts?pageSize=4'?Promise.resolve([]):load(p));
+ const html=await injectDocument(template,homepage);
+ assert.match(html,/<html data-document-hydrating="true"/);
+ assert.match(html,/首页标题/);
+ for(const css of styles.MarkdownContent.css.filter(css=>!template.includes(css)))
+   assert.equal(html.includes('href="'+css+'"'),Boolean(content),'Markdown CSS should follow actual NOW content');
+}
+console.log('Homepage acceptance: visible SSR bootstrap and conditional Markdown styles passed.');
