@@ -19,7 +19,7 @@ SOURCES = [
     'server/test/electricityRss.integration.test.js',
     'src/app/components/ElectricityRssSubscription.tsx',
     'src/app/pages/ElectricityPage.tsx', 'src/styles/electricity.css',
-    'ELECTRICITY-RSS.md', 'DEPLOY.md',
+    'docs/ELECTRICITY-RSS.md', 'DEPLOY.md',
 ]
 
 def main():

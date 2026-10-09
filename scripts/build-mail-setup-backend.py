@@ -22,7 +22,7 @@ def main():
     entries['BASELINE.json'] = (json.dumps(baseline, indent=2) + '\n').encode()
     entries['MANIFEST.json'] = (json.dumps({'revision': revision, 'baseline': BASE, 'files': FILES, 'frontend': False, 'dependencies': False, 'migrations': False, 'restart': 'verified API only; manual'}, indent=2) + '\n').encode()
     entries['check-backend.cjs'] = (ROOT / 'scripts/check-mail-setup-backend.cjs').read_bytes()
-    entries['MAIL-SETUP-DEPLOY.md'] = (ROOT / 'MAIL-SETUP-DEPLOY.md').read_bytes()
+    entries['docs/MAIL-SETUP-DEPLOY.md'] = (ROOT / 'docs/MAIL-SETUP-DEPLOY.md').read_bytes()
     for file in (ROOT / 'ops/mail-setup').glob('*.template'):
         entries['nginx/' + file.name] = file.read_bytes()
     assert all(b'\r' not in data for data in entries.values()), 'LF-only release files required'

@@ -8,6 +8,7 @@
 <p align="center">
   <a href="https://mooncci.site"><strong>访问网站 · Website</strong></a>
   · <a href="DEPLOY.md">部署指南 · Deployment</a>
+  · <a href="docs/README.md">文档目录 · Documentation</a>
   · <a href="SECURITY.md">安全 · Security</a>
 </p>
 
@@ -135,13 +136,14 @@ server/       Express API、worker、SQL 与服务端测试
 scripts/      构建、浏览器回归与离线发布工具
 test/         前端与构建工具测试
 public/       静态资源
+docs/         部署专题、维护说明与历史记录
 ```
 
-- [审计记录](AUDIT-2026-09-09.md)
-- [近况、加载与图表体验](UPDATES-UX-2026-09-09.md)
-- [后台容量改进](CAPACITY-2026-09-09.md)
-- [质量门槛](QUALITY-GATES.md)
-- [内容平台配置](CONTENT-DEPLOY.md)
+- [审计记录](docs/AUDIT-2026-09-09.md)
+- [近况、加载与图表体验](docs/UPDATES-UX-2026-09-09.md)
+- [后台容量改进](docs/CAPACITY-2026-09-09.md)
+- [质量门槛](docs/QUALITY-GATES.md)
+- [内容平台配置](docs/CONTENT-DEPLOY.md)
 
 </details>
 
@@ -246,7 +248,8 @@ The uploader validates the archive and LF checksum file and prints server deploy
 - `server/`: API, worker, SQL migrations, and backend tests.
 - `scripts/`: build, browser regression, and offline deployment tools.
 - `test/`: frontend and build-tool tests.
-- [Quality gates](QUALITY-GATES.md), [capacity improvements](CAPACITY-2026-09-09.md), and [audit record](AUDIT-2026-09-09.md).
+- `docs/`: [documentation index](docs/README.md), deployment guides and maintenance records.
+- [Quality gates](docs/QUALITY-GATES.md), [capacity improvements](docs/CAPACITY-2026-09-09.md), and [audit record](docs/AUDIT-2026-09-09.md).
 
 Changes should preserve the existing design, use relative API paths, add new migrations instead of rewriting old ones, and verify authorization, failure recovery, and data compatibility. Bundle-budget increases need an explicit explanation of the cost.
 

@@ -1,6 +1,6 @@
 # 内容平台上线与运维
 
-本次包含统一视觉、短动态、作品/GitHub Releases、RSS 与邮件周报。前端与 API 应配套发布；本地实现和验收不代表生产已部署。Nginx、PM2、Google 登录、电费监控、内测安装包的原有配置见 [DEPLOY.md](DEPLOY.md)。
+本次包含统一视觉、短动态、作品/GitHub Releases、RSS 与邮件周报。前端与 API 应配套发布；本地实现和验收不代表生产已部署。Nginx、PM2、Google 登录、电费监控、内测安装包的原有配置见 [DEPLOY.md](../DEPLOY.md)。
 
 ## 本地启动
 

@@ -11,7 +11,7 @@ assert (ROOT / 'dist/index.html').is_file(), 'Build the frontend first'
 for file in sorted((ROOT / 'dist').rglob('*')):
  if file.is_file(): entries[file.relative_to(ROOT).as_posix()] = file.read_bytes()
 entries['deploy-electricity-history-sync.sh'] = (ROOT / 'scripts/deploy-electricity-history-sync.sh').read_bytes().replace(b'\r\n', b'\n')
-entries['ELECTRICITY-HISTORY-SYNC.md'] = (ROOT / 'ELECTRICITY-HISTORY-SYNC.md').read_bytes()
+entries['docs/ELECTRICITY-HISTORY-SYNC.md'] = (ROOT / 'docs/ELECTRICITY-HISTORY-SYNC.md').read_bytes()
 entries['SOURCE-FILES.txt'] = ('\n'.join(SOURCES)+'\n').encode()
 entries['SHA256SUMS'] = ''.join(f'{hashlib.sha256(data).hexdigest()}  {name}\n' for name,data in sorted(entries.items())).encode()
 output = ROOT / '.cache/mooncci-electricity-history-sync-20260909-v5.tar.gz'
