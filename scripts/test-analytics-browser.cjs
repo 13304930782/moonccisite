@@ -8,7 +8,7 @@ const {chromium}=require('playwright');
   let role='owner',fail=false,tracked=[];
   await page.route('**/api/**',async route=>{
    const url=new URL(route.request().url());let data={};
-   if(url.pathname==='/api/auth/me')data={user:{id:1,username:'tester',email:'test@example.test',role,status:'active'}};
+   if(url.pathname==='/api/auth/session')data={user:{id:1,username:'tester',email:'test@example.test',role,status:'active'}};
    else if(url.pathname==='/api/admin/analytics'){
     if(fail)return route.fulfill({status:503,json:{message:'统计暂时不可用'}});
     const days=Number(url.searchParams.get('days'));data={days,start:'2026-09-01',end:'2026-09-07',startedAt:'2026-09-01T00:00:00Z',summary:{views:420,visitors:100,totalViews:500,activeMembers:10},users:{active:20,disabled:2,deleted:1},trend:Array.from({length:days},(_,i)=>({day:'2026-09-'+String(i+1).padStart(2,'0'),views:i*10,visitors:i*2,registrations:i%2})),popular:[{path:'/article/123',views:42},{path:'/projects/'+ 'long'.repeat(30),views:20}],sources:[{label:'example.test',views:50}],devices:[{label:'mobile',views:40}],roles:[{label:'user',count:20}],identities:[{label:'microsoft',count:2}]};

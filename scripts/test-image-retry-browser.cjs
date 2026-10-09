@@ -10,7 +10,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium}=requ
   await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
   await page.route('**/fixture-*.svg',r=>{const key=r.request().url().includes('fixture-a')?'a':'b';requests[key]++;return ready[key]?r.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320"><rect width="640" height="320" fill="#ddd"/></svg>'}):r.fulfill({status:404,body:'missing'});});
   await page.route('**/api/**',r=>{const p=new URL(r.request().url()).pathname,m=r.request().method();let json={};
-   if(p==='/api/auth/me')json={user:{id:1,role:'owner',username:'fixture'}};
+   if(p==='/api/auth/session')json={user:{id:1,role:'owner',username:'fixture'}};
    else if(p==='/api/publishing/config')json={enabled:true};
    else if(p.endsWith('/publish')){publishes++;json=draft;}
    else if(p.startsWith('/api/article-drafts')){if(m==='PUT')draft={...draft,version:draft.version+1,payload:r.request().postDataJSON().payload};json=draft;}

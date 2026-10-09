@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium}=requ
 try{const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
 let prefs={history_enabled:true,comment_email:false,reply_email:false,email_verified:true},folders=[{id:0,name:'默认收藏夹',total:1}],folderId=0,history=[{post_id:1,title:'一段可以继续的阅读',progress:.48,updated_at:Date.now()}],read=false;
 await page.route('**/api/**',async route=>{const req=route.request(),u=new URL(req.url()),p=u.pathname,m=req.method();let body={};
-if(p==='/api/auth/me')body={user:{id:1,username:'mooncci',role:'user'}};
+if(p==='/api/auth/session')body={user:{id:1,username:'mooncci',role:'user'}};
 else if(p==='/api/engagement/config'||p==='/api/publishing/config')body={enabled:true};
 else if(p==='/api/engagement/preferences'){if(m==='PUT')prefs={...prefs,...req.postDataJSON()};body=prefs;}
 else if(p==='/api/engagement/notifications/read'){read=true;body={ok:true};}

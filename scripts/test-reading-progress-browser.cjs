@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
 (async()=>{const {preview}=await import('vite');const server=await preview({build:{outDir:process.env.QA_DIST||'dist'},preview:{host:'127.0.0.1',port:4201,strictPort:true}});const browser=await chromium.launch({channel:'msedge',headless:true});
 try{const page=await browser.newPage({viewport:{width:1280,height:800}});let user=true,writes=[],revision=3,failWrite=false;
 await page.route('**/api/**',async route=>{const req=route.request(),p=new URL(req.url()).pathname;let body={};
-if(p==='/api/auth/me')body={user:user?{id:1,username:'Reader',role:'user'}:null};
+if(p==='/api/auth/session')body={user:user?{id:1,username:'Reader',role:'user'}:null};
 else if(p==='/api/engagement/config'||p==='/api/publishing/config')body={enabled:true};
 else if(p==='/api/engagement/history/1'){if(req.method()==='PUT'){writes.push(req.postDataJSON());if(failWrite)return route.fulfill({status:503,json:{message:'temporarily unavailable'}});body={revision:++revision};}else body={enabled:true,epoch:1,item:{revision,anchor:'heading-0',progress:.4}};}
 else if(p==='/api/posts/1')body={id:1,title:'阅读进度验收',content:'## 第一节\n\n'+Array(80).fill('这是一段用于检查阅读定位的正文。\n\n').join(''),tags:[],author_name:'Writer'};

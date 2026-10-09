@@ -14,7 +14,7 @@ async function main() {
     await page.route('**/api/**', async route => {
       const path = new URL(route.request().url()).pathname;
       let body = {};
-      if (path === '/api/auth/me') body = { user: loggedIn ? { ...user, id: 1, role: 'owner' } : null };
+      if (path === '/api/auth/session') body = { user: loggedIn ? { ...user, id: 1, role: 'owner' } : null };
       else if (path === '/api/auth/logout') { loggedIn = false; body = { message: '退出成功' }; }
       else if (path === '/api/account/security-code') body = { challenge_id: 'local-fixture-only' };
       else if (path === '/api/admin/updates') body = {items:[],total:0,page:1,pageSize:20};

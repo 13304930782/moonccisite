@@ -7,7 +7,7 @@ for(const width of [375,768,1440])for(const theme of ['light','dark']){
  const user={id:1,username:'Reader',role:'user'};
  const post={id:1,title:'这是一个很长的收藏文章标题'.repeat(8),content:'## 收藏与继续阅读\n\n正文内容。',tags:[],published_at:'2026-09-01T00:00:00Z',author_name:'mooncci',category:'开发记录'};
  await p.route('**/api/**',async r=>{const u=new URL(r.request().url()),m=r.request().method();let data={};
- if(u.pathname==='/api/auth/me')data={user:logged?user:null};
+ if(u.pathname==='/api/auth/session')data={user:logged?user:null};
  else if(u.pathname==='/api/auth/providers')data={providers:[]};
  else if(u.pathname==='/api/auth/login'){logged=true;data={user};}
  else if(u.pathname==='/api/posts/1')data=post;

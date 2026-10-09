@@ -12,7 +12,7 @@ async function main() {
     await page.addInitScript(() => localStorage.setItem('mooncci-theme', 'dark'));
     await page.route('**/api/**', route => {
       const path = new URL(route.request().url()).pathname;
-      if (path === '/api/auth/me') return route.fulfill({ status: 401, json: {} });
+      if (path === '/api/auth/session') return route.fulfill({ status: 401, json: {} });
       return route.fulfill({ json: path === '/api/auth/providers' ? { providers: [
         { provider: 'google', name: 'Google', client_id: 'fixture-client' }, { provider: 'qq', name: 'QQ' },
       ] } : {} });

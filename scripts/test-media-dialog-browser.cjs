@@ -11,7 +11,7 @@ const assert=require('node:assert/strict'),{chromium,webkit}=require('playwright
  await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
  await page.route('**/fixture.svg',r=>r.fulfill({contentType:'image/svg+xml',body:`<svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}"><rect width="100%" height="100%" fill="#888"/></svg>`}));
  await page.route('**/api/**',async r=>{const u=new URL(r.request().url());let json={};
- if(u.pathname==='/api/auth/me')json={user:{id:1,role:'owner',username:'fixture'}};
+ if(u.pathname==='/api/auth/session')json={user:{id:1,role:'owner',username:'fixture'}};
  else if(u.pathname==='/api/upload/media')json={items:[item],total:1,page:1,pageSize:50};
  else if(u.pathname==='/api/upload/media/fixture.png'&&r.request().method()==='PUT'){saves++;if(fail)return r.fulfill({status:503,json:{message:'测试保存失败，请重试'}});item={...item,...r.request().postDataJSON()};json=item;}
  await r.fulfill({json});});

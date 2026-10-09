@@ -14,7 +14,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   const u=new URL(r.request().url());
   if(u.pathname.startsWith('/api/uploads/')){await gate;const size=image_dimensions[u.pathname];return r.fulfill({contentType:'image/svg+xml',body:`<svg xmlns="http://www.w3.org/2000/svg" width="${size.width}" height="${size.height}"><rect width="100%" height="100%" fill="#888"/></svg>`});}
   let json={};
-  if(u.pathname==='/api/auth/me')return r.fulfill({status:401,json:{message:'未登录'}});
+  if(u.pathname==='/api/auth/session')return r.fulfill({status:401,json:{message:'未登录'}});
   if(u.pathname==='/api/posts/1')json={id:1,title:'图片布局验收',author_name:'测试作者',status:'published',tags:[],cover_image:'/api/uploads/cover.svg',content:'## 正文\n\n![竖图](/api/uploads/portrait.svg)\n\n图片下方的文字应保持位置。',...(sized?{image_dimensions}:{})};
   else if(u.pathname==='/api/posts/1/discovery')json={related:[],previous:null,next:null};
   else if(u.pathname==='/api/series/article/1')json=null;

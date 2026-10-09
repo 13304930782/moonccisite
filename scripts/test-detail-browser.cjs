@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
     const author={author_name:'这是用于检验窄屏排版的很长用户名', author_avatar:'/login-icons/microsoft.svg',published_at:'2026-09-14T00:00:00Z'};
     await page.route('**/api/**', route=>{
       const path=new URL(route.request().url()).pathname; let json={};
-      if(path==='/api/auth/me')json={user:null};
+      if(path==='/api/auth/session')json={user:null};
       if(path.includes('/comments'))json=[];
       if(path==='/api/posts/1')json={id:1,title:'博客前端视觉重构与阅读体验',content,summary:'同一套布局，适配不同类型的内容。',...author,category:'开发记录与前端设计',tags:['React','移动端适配','长标签测试'.repeat(12)]};
       if(path.startsWith('/api/projects/'))json={id:1,name:'PromptDock',content,stage:'active',summary:'原生 macOS 提示词管理工具',...author,tech_stack:'SwiftUI · SwiftData · AppKit',demo_url:'https://example.com',repo:'example/project',releases:{items:[],page:1,total:0,pageSize:20}};

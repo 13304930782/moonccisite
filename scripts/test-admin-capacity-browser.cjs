@@ -14,7 +14,7 @@ async function main() {
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url()); requests.push(url.pathname + url.search);
       let body = {};
-      if (url.pathname === '/api/auth/me') body = { user: { id: 1, username: 'capacity-owner', role: 'owner' } };
+      if (url.pathname === '/api/auth/session') body = { user: { id: 1, username: 'capacity-owner', role: 'owner' } };
       else if (url.pathname === '/api/admin/stats') body = { posts: 125, users: 7, comments: 1001, bannedWords: 3 };
       else if (url.pathname === '/api/admin/users') {
         const keyword = url.searchParams.get('keyword') || '';

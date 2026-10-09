@@ -11,7 +11,7 @@ const {chromium,webkit}=require('playwright');
  let failProfile=false;
  await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
  await page.route('**/api/**',async r=>{const p=new URL(r.request().url()).pathname;let json={};
- if(p==='/api/auth/me')json={user};
+ if(p==='/api/auth/session')json={user};
  else if(p==='/api/site-settings')json={brand:{},weather:{enabled:false}};
  else if(p==='/api/account'){if(r.request().method()!=='GET'&&failProfile)return r.fulfill({status:503,json:{message:'internal detail'}});json={user,message:'资料已保存'};}
  else if(p==='/api/auth/connections')json={providers:[]};

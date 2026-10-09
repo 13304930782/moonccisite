@@ -4,7 +4,7 @@ const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
 page.on('pageerror',e=>errors.push(e.message));fs.mkdirSync('.cache/guidance-complete-qa',{recursive:true});
 const profile=()=>({id:1,username:'mooncci',email:'reader@example.test',role,status:'active',can_comment:1,version:1});
 await page.route('**/api/**',async route=>{const q=route.request(),u=new URL(q.url()),p=u.pathname;let data={};
-if(p==='/api/auth/me')data={user:role?profile():null};
+if(p==='/api/auth/session')data={user:role?profile():null};
 else if(p.endsWith('/config')||p==='/api/account/security-config')data={enabled:true};
 else if(p==='/api/site-settings')data={brand:{},weather:{enabled:false}};
 else if(p==='/api/account')data={user:profile()};

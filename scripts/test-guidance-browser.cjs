@@ -3,7 +3,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
 const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];let logged=false,state='submitted',failApprove=true,cancelled=false,mailSaved=false,searchCalls=0;
 page.on('pageerror',e=>errors.push(e.message));
 await page.route('**/api/**',async route=>{const q=route.request(),u=new URL(q.url()),p=u.pathname;let data={};
-if(p==='/api/auth/me')data={user:logged?{id:1,role:'owner',username:'mooncci'}:null};
+if(p==='/api/auth/session')data={user:logged?{id:1,role:'owner',username:'mooncci'}:null};
 else if(p==='/api/auth/login'){logged=true;data={user:{id:1,role:'owner',username:'mooncci'}};}
 else if(p==='/api/auth/providers')data={providers:[]};
 else if(p.endsWith('/config')||p==='/api/account/security-config')data={enabled:true};

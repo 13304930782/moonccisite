@@ -10,7 +10,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
    if(p==='/api/mailboxes/sent'){await historyGate;return route.fulfill({json:{messages:[]}});}
    if(p==='/api/mailboxes/folders/inbox'&&failInbox)return route.fulfill({status:503,json:{}});
    let body={};
-   if(p==='/api/auth/me')body={user:{id:2,username:'reader',role:'user',status:'active'}};
+   if(p==='/api/auth/session')body={user:{id:2,username:'reader',role:'user',status:'active'}};
    if(p==='/api/mailboxes/me')body={access:{status:'active',mailbox_address:'reader@mooncci.site',daily_limit:10}};
    if(/^\/api\/mailboxes\/folders\/(inbox|sent)$/.test(p)){
     const n=Number(url.searchParams.get('page')||1),sent=p.endsWith('sent');

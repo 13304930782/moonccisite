@@ -15,7 +15,7 @@ const { chromium, webkit } = require('playwright');
     const q=r.request(), u=new URL(q.url()), p=u.pathname;
     if(q.method() !== 'GET') mutations.push(p);
     let json={};
-    if(p==='/api/auth/me') json={user:{id:1,username:'mooncci',role:'owner',email:'owner@example.test'}};
+    if(p==='/api/auth/session') json={user:{id:1,username:'mooncci',role:'owner',email:'owner@example.test'}};
     else if(p==='/api/settings/site') json={brand:{},hero:{title:'mooncci'},footer:{},weather:{enabled:false}};
     else if(p.endsWith('/config')) json={enabled:true};
     else if(p==='/api/admin/projects') json={items:[{id:1,name:'写作手记',slug:'writing',status:'published',stage:'building',sync_enabled:true}],total:1,page:1,pageSize:20};

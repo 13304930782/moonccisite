@@ -14,7 +14,7 @@ const { chromium } = require('playwright');
       await page.route('**/api/**', async route => {
         const request = route.request(), path = new URL(request.url()).pathname;
         requests.push({ path, diagnostic: request.headers()['x-mooncci-diagnostic'] });
-        const body = path === '/api/auth/me' ? { user: null }
+        const body = path === '/api/auth/session' ? { user: null }
           : path === '/api/site-settings' ? { brand: {}, weather: { enabled: false } }
           : path === '/api/posts' ? { items: [], total: 0, page: 1, pageSize: 12 }
           : path === '/api/categories' || path === '/api/tags' ? [] : {};
