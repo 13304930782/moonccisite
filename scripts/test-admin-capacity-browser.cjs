@@ -80,9 +80,8 @@ async function main() {
     assert.equal(await confirmation.getByRole('button', { name: '取消', exact: true }).evaluate(el => el === document.activeElement), true);
     await confirmation.getByRole('button', { name: '确认继续', exact: true }).click();
     await page.getByText('comment-page-1', { exact: true }).waitFor();
-    await page.getByRole('combobox', { name: '筛选评论来源' }).click();
     const requestUpdate = page.waitForRequest(r => new URL(r.url()).searchParams.get('target') === 'update');
-    await page.getByRole('option', { name: '近况评论', exact: true }).click();
+    await page.getByRole('radiogroup', { name: '筛选评论来源' }).getByRole('radio', { name: '近况评论', exact: true }).click();
     await requestUpdate;
     assert.deepEqual(errors, []);
     console.log('PASS: dashboard counts, media/post pagination, debounced search and stale response isolation.');
