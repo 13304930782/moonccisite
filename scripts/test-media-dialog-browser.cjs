@@ -5,7 +5,7 @@ const assert=require('node:assert/strict'),{chromium,webkit}=require('playwright
  try{
  browser=process.env.PLAYWRIGHT_BROWSER==='webkit'?await webkit.launch():await chromium.launch({...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:process.platform==='win32'?{channel:'msedge'}:{})});
  for(const width of [320,390,768,1440])for(const theme of ['light','dark'])for(const [imageWidth,imageHeight] of [[611,129],[240,960],[400,400]]){
- const page=await browser.newPage({viewport:{width,height:950},reducedMotion:'reduce'});await page.addInitScript(t=>localStorage.setItem('mooncci-theme',t),theme);
+ const page=await browser.newPage({viewport:{width,height:950},reducedMotion:'reduce'});await page.addInitScript(t=>{if(location.origin==='http://127.0.0.1:4276')localStorage.setItem('mooncci-theme',t);},theme);
  let fail=true,saves=0;const errors=[];page.on('pageerror',e=>errors.push(e.message));
  let item={filename:'fixture.png',display_name:'媒体验收图片',alt_text:'',url:'/fixture.svg',size:100,size_text:'100 B',uploaded_at:'2026-10-01',status:'active',ext:'.png'};
  await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
