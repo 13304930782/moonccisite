@@ -18,7 +18,7 @@ def main():
             entries[file.relative_to(ROOT).as_posix()] = file.read_bytes()
     # Do not normalize source or SQL bytes: applied migration checksums must be stable.
     entries['deploy-admin-notifications.sh'] = (ROOT / 'scripts/deploy-admin-notifications.sh').read_bytes().replace(b'\r\n', b'\n')
-    entries['ADMIN-NOTIFICATIONS.md'] = (ROOT / 'ADMIN-NOTIFICATIONS.md').read_bytes()
+    entries['docs/ADMIN-NOTIFICATIONS.md'] = (ROOT / 'docs/ADMIN-NOTIFICATIONS.md').read_bytes()
     entries['SOURCE-FILES.txt'] = ('\n'.join(SOURCES) + '\n').encode('utf-8')
     entries['SHA256SUMS'] = ''.join(
         f'{hashlib.sha256(data).hexdigest()}  {name}\n'

@@ -36,7 +36,7 @@ def main():
     entries['deploy-weather-companion.sh'] = (ROOT / 'scripts/deploy-weather-companion.sh').read_bytes().replace(b'\r\n', b'\n')
     for name in ['configure-weather-amap.sh', 'configure-weather-amap.cjs', 'check-weather-source.cjs']:
         entries[name] = (ROOT / 'scripts' / name).read_bytes().replace(b'\r\n', b'\n')
-    entries['WEATHER-COMPANION.md'] = (ROOT / 'WEATHER-COMPANION.md').read_bytes()
+    entries['docs/WEATHER-COMPANION.md'] = (ROOT / 'docs/WEATHER-COMPANION.md').read_bytes()
     entries['SOURCE-FILES.txt'] = ('\n'.join(SOURCES) + '\n').encode()
     entries['SHA256SUMS'] = ''.join(f'{hashlib.sha256(data).hexdigest()}  {name}\n' for name, data in sorted(entries.items())).encode()
     output = ROOT / '.cache' / f'{NAME}.tar.gz'

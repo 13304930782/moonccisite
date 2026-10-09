@@ -26,7 +26,7 @@
 
 ## 数据和部署
 
-仅新增 `202609050001_create_content_platform.sql`，旧迁移文件保持原样；同步更新完整结构与 `.env.example`。新增空库初始化器，避免完整结构和旧迁移重复执行。详细操作见 [CONTENT-DEPLOY.md](CONTENT-DEPLOY.md) 与 [DEPLOY.md](DEPLOY.md)。
+仅新增 `202609050001_create_content_platform.sql`，旧迁移文件保持原样；同步更新完整结构与 `.env.example`。新增空库初始化器，避免完整结构和旧迁移重复执行。详细操作见 [CONTENT-DEPLOY.md](CONTENT-DEPLOY.md) 与 [DEPLOY.md](../DEPLOY.md)。
 
 ## 本轮验证
 
@@ -90,14 +90,14 @@ GitHub 和 SMTP 使用受控响应测试；生产网络、真实仓库授权、�
 
 | 页面 | 桌面浅色 | 手机浅色 | 桌面深色 | 手机深色 |
 |---|---|---|---|---|
-| 首页 | [查看](.cache/revision-1440-light--.png) | [查看](.cache/revision-390-light--.png) | [查看](.cache/revision-1440-dark--.png) | [查看](.cache/revision-390-dark--.png) |
-| 长文章 | [查看](.cache/revision-1440-light--article-6.png) | [查看](.cache/revision-390-light--article-6.png) | [查看](.cache/revision-1440-dark--article-6.png) | [查看](.cache/revision-390-dark--article-6.png) |
-| 内测申请 | [查看](.cache/revision-1440-light--early-access.png) | [查看](.cache/revision-390-light--early-access.png) | [查看](.cache/revision-1440-dark--early-access.png) | [查看](.cache/revision-390-dark--early-access.png) |
-| 登录 | [查看](.cache/revision-1440-light--login.png) | [查看](.cache/revision-390-light--login.png) | [查看](.cache/revision-1440-dark--login.png) | [查看](.cache/revision-390-dark--login.png) |
-| 后台表格 | [查看](.cache/revision-1440-light--admin-posts.png) | [查看](.cache/revision-390-light--admin-posts.png) | [查看](.cache/revision-1440-dark--admin-posts.png) | [查看](.cache/revision-390-dark--admin-posts.png) |
-| 后台表单 | [查看](.cache/revision-1440-light--admin-write.png) | [查看](.cache/revision-390-light--admin-write.png) | [查看](.cache/revision-1440-dark--admin-write.png) | [查看](.cache/revision-390-dark--admin-write.png) |
+| 首页 | [查看](../.cache/revision-1440-light--.png) | [查看](../.cache/revision-390-light--.png) | [查看](../.cache/revision-1440-dark--.png) | [查看](../.cache/revision-390-dark--.png) |
+| 长文章 | [查看](../.cache/revision-1440-light--article-6.png) | [查看](../.cache/revision-390-light--article-6.png) | [查看](../.cache/revision-1440-dark--article-6.png) | [查看](../.cache/revision-390-dark--article-6.png) |
+| 内测申请 | [查看](../.cache/revision-1440-light--early-access.png) | [查看](../.cache/revision-390-light--early-access.png) | [查看](../.cache/revision-1440-dark--early-access.png) | [查看](../.cache/revision-390-dark--early-access.png) |
+| 登录 | [查看](../.cache/revision-1440-light--login.png) | [查看](../.cache/revision-390-light--login.png) | [查看](../.cache/revision-1440-dark--login.png) | [查看](../.cache/revision-390-dark--login.png) |
+| 后台表格 | [查看](../.cache/revision-1440-light--admin-posts.png) | [查看](../.cache/revision-390-light--admin-posts.png) | [查看](../.cache/revision-1440-dark--admin-posts.png) | [查看](../.cache/revision-390-dark--admin-posts.png) |
+| 后台表单 | [查看](../.cache/revision-1440-light--admin-write.png) | [查看](../.cache/revision-390-light--admin-write.png) | [查看](../.cache/revision-1440-dark--admin-write.png) | [查看](../.cache/revision-390-dark--admin-write.png) |
 
-交互验收结果：`.cache/revision-actions.json`。有数据的电费图表截图使用仅浏览器内的测试响应，未写入站点数据库：[查看](.cache/revision-electricity-populated-fixture.png)。
+交互验收结果：`.cache/revision-actions.json`。有数据的电费图表截图使用仅浏览器内的测试响应，未写入站点数据库：[查看](../.cache/revision-electricity-populated-fixture.png)。
 
 最终补充在真实 Express 中间件下复核 16 组视图，长文使用十节、长代码行的仅浏览器测试响应，目录跳转与横向滚动检查通过；记录为 `.cache/final-review.json`。初始 HTML / sitemap 的响应证据为 `.cache/seo-audit.json`。
 

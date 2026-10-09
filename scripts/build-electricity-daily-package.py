@@ -16,7 +16,7 @@ SOURCES = [
     'server/database/migrations/202609070001_create_electricity_daily_usage.sql',
     'server/database/schema.sql', 'server/test/electricityDailyUsage.test.js',
     'server/test/electricityRss.test.js', 'server/test/electricityRss.integration.test.js',
-    'server/test/electricitySchedule.test.js', 'ELECTRICITY-DAILY-USAGE.md', 'DEPLOY.md',
+    'server/test/electricitySchedule.test.js', 'docs/ELECTRICITY-DAILY-USAGE.md', 'DEPLOY.md',
 ] + [p.relative_to(ROOT).as_posix() for p in sorted((ROOT / 'src').rglob('*')) if p.is_file()]
 
 

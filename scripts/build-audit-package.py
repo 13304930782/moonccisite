@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 NAME = 'mooncci-audit-20260909'
 ROOT_FILES = {'package.json', 'package-lock.json', 'index.html', 'vite.config.ts',
               'postcss.config.mjs', 'pnpm-workspace.yaml', 'README.md', 'DEPLOY.md',
-              'AUDIT-2026-09-09.md', 'AUDIT-DEPLOY.md', 'ATTRIBUTIONS.md'}
+              'docs/AUDIT-2026-09-09.md', 'docs/AUDIT-DEPLOY.md', 'ATTRIBUTIONS.md'}
 
 def main():
     tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
