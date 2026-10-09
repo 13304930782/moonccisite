@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { JSDOM } from 'jsdom';
 import {renderDocument} from '../server/runtime/document.mjs';
 const post={id:7,status:'published',title:'公开文章',summary:'摘要',content:'# 标题\n\n正文测试\n\n```js\nconst a=1\n```',tags:'["React"]',author_name:'作者',published_at:'2026-01-01',updated_at:'2026-01-01'};
 const settings={brand:{site_title:'mooncci'},hero:{title:'首页标题'},footer:{}};
@@ -11,7 +12,7 @@ async function load(path) {
  return {items:[post],total:13,page:1,pageSize:12};
 }
 const article=await renderDocument('/article/7',load);
-assert.match(article.html,/正文测试/);assert.match(article.html.replace(/<[^>]+>/g,''),/const a=1/);assert.match(article.html,/detail-title/);
+assert.match(article.html,/正文测试/);assert.match(JSDOM.fragment(article.html).textContent,/const a=1/);assert.match(article.html,/detail-title/);
 assert.ok(!article.html.includes('startup-shell'));
 const list=await renderDocument('/articles',load);
 assert.match(list.html,/href="\/articles\?page=2"/);

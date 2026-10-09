@@ -11,7 +11,9 @@ module.exports = function imageVariants(uploadDir) {
     if (![48, 96, 144, 180, 360, 540].includes(width) || !/^[\w.-]+\.(png|jpe?g|webp)$/i.test(name)) return res.sendStatus(404);
     try {
       const root = await fs.realpath(uploadDir);
-      const file = await fs.realpath(path.join(root, name));
+      const candidate = path.resolve(root, name);
+      if (!candidate.startsWith(root + path.sep)) return res.sendStatus(404);
+      const file = await fs.realpath(candidate);
       if (path.dirname(file) !== root) return res.sendStatus(404);
       const stat = await fs.stat(file);
       if (!stat.isFile()) return res.sendStatus(404);

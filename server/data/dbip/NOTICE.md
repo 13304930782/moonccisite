@@ -10,5 +10,10 @@ It is not used to infer Chinese cities because the validation sample failed.
 The binary is kept outside Git; the offline release verifies and bundles it.
 Pages displaying results link to DB-IP.com.
 
+After a fresh checkout, run `python scripts/prepare-ip-database.py` from the
+repository root before running the server tests or packaging weather services.
+The script uses the pinned source and SHA-256 in PROVENANCE.json and refuses
+changed bytes. CI runs the same preparation; it does not skip database tests.
+
 Reader: mmdb-lib 3.0.3, https://www.npmjs.com/package/mmdb-lib, MIT.
 Pinned package integrity: sha512-xQPoBXcNjjHiOvOraFBKtA++uNWF6aCVHL9dRKFXEov8eI3QJwtgiw3qApsonFT5SpoqsEVISUTg3HIDs2DiXw==
