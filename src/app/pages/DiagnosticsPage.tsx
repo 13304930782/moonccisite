@@ -1,3 +1,4 @@
+import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SitePage } from '../components/ContentUI';
@@ -19,9 +20,9 @@ export default function DiagnosticsPage() {
     <header><p className="eyebrow">mooncci / 访问诊断</p><h1>记录一次慢访问</h1><p className="muted">主动开启后，记录当前标签页的加载耗时。20 分钟后自动停止，不会自动上传诊断报告。</p></header>
     <div className="diagnostics-panel">
       <label htmlFor="diagnostic-mode">这次访问的网络设置</label>
-      <select id="diagnostic-mode" value={mode} disabled={session?.active} onChange={event => setMode(event.target.value as typeof mode)}>
+      <ThemeSelect aria-label="这次访问的网络设置" id="diagnostic-mode" value={mode} disabled={session?.active} onValueChange={value => setMode(value as typeof mode)}>
         <option value="relay-on">已开启 iCloud 私密转送</option><option value="relay-off">已关闭 iCloud 私密转送（对照）</option><option value="unknown">其他网络 / 不确定</option>
-      </select>
+      </ThemeSelect>
       <p className="muted">网站无法读取 Safari 的私密转送开关，请按实际设置选择。不会记录邮件正文、密码、验证码或完整访问网址。</p>
       <div className="diagnostics-actions">
         <button className="quiet-button" disabled={session?.active} onClick={() => { startDiagnostics(mode); setNotice('记录已开始，请在当前标签页打开下面的页面。'); }}>开始新记录</button>

@@ -5,11 +5,12 @@
   --ease-enter:cubic-bezier(.2,.8,.2,1); --ease-exit:ease-in; --ease-feedback:ease-out;
 }
 @keyframes mooncci-fade { from { opacity:0; } to { opacity:1; } }
-@keyframes mooncci-panel-in { from { opacity:0; translate:0 8px; } to { opacity:1; translate:0 0; } }
-@keyframes mooncci-panel-out { from { opacity:1; translate:0 0; } to { opacity:0; translate:0 8px; } }
+/* Keep positioning translate (for example, dialog centering) independent of motion. */
+@keyframes mooncci-panel-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes mooncci-panel-out { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(8px); } }
 html[data-navigation-type="PUSH"] :is(.page-content,.home-main,.auth-form-panel) { animation:mooncci-fade var(--motion-page) var(--ease-feedback); }
 html[data-navigation-type="POP"] :is(.page-content,.home-main,.auth-form-panel,.resource-content) { animation:none; }
-.resource-content { animation:mooncci-fade var(--motion-content) var(--ease-feedback); }
+html[data-navigation-type="PUSH"] html[data-navigation-type="PUSH"] .resource-content { animation:mooncci-fade var(--motion-content) var(--ease-feedback); }
 :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button) {
   transition:background-color var(--motion-control) ease-out,border-color var(--motion-control) ease-out,color var(--motion-control) ease-out,opacity var(--motion-control) ease-out,scale var(--motion-control) ease-out;
 }
@@ -32,7 +33,11 @@ html[data-reduced-motion="true"] :is(.neo-button,.quiet-button,.article-button,.
   :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button):active { scale:1; }
 }
 
-.auth-route-skeleton { width:min(100%,480px); margin-inline:auto; min-height:540px; }
+.auth-route-skeleton { width:min(100%,440px);margin-inline:auto; min-height:540px; }
 .search-filters { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:24px; }
 .search-filters label { display:grid; gap:8px; flex:1; min-width:min(200px,100%); }
 .search-filters select { width:100%; min-height:44px; }
+
+/* Server content is already visible; hydration must not replay its entrance. */
+html[data-document-hydrating] :is(.page-content,.home-main,.resource-content) { animation:none; }
+.pagination [aria-disabled="true"] { opacity:.45; cursor:default; }

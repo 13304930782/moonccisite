@@ -14,6 +14,7 @@ test('request timeout, cancellation, response classification, credentials and no
   await assert.rejects(api('/slow',{timeoutMs:5}),e=>e.kind==='timeout'&&!e.uncertain);
   const before=calls;
   await assert.rejects(api('/write',{method:'POST',timeoutMs:5}),e=>e.uncertain&&e.kind==='timeout');assert.equal(calls,before+1);
+  await assert.rejects(api('/weather-mood/locate',{method:'POST',readOnly:true,timeoutMs:5}),e=>!e.uncertain&&e.kind==='timeout'&&!e.message.includes('操作结果'));
   const c=new AbortController();c.abort();await assert.rejects(api('/cancel',{signal:c.signal}),e=>e.kind==='cancelled');
   global.fetch=async()=>new Response('<html>nginx</html>',{status:504});
   await assert.rejects(api('/read'),e=>e.status===504&&!e.message.includes('Nginx'));
@@ -22,5 +23,10 @@ test('request timeout, cancellation, response classification, credentials and no
   await assert.rejects(api('/read'),e=>e.kind==='format');
   global.fetch=async()=>new Response(JSON.stringify({message:'邮箱格式错误'}),{status:400,headers:{'Content-Type':'application/json'}});
   await assert.rejects(api('/write',{method:'POST'}),e=>e.message==='邮箱格式错误'&&!e.uncertain);
+  global.fetch=async (_url,options)=>{assert.equal('readOnly' in options,false);throw new Error('offline');};
+  await assert.rejects(api('/weather-mood/cities',{method:'POST',readOnly:true}),e=>e.kind==='network'&&!e.uncertain);
+  global.fetch=async()=>Response.json({message:'该位置暂未识别到城市，可手动选择。',code:'AMAP_NO_CITY'},{status:502});
+  await assert.rejects(api('/weather-mood/locate',{method:'POST',readOnly:true}),e=>e.message==='该位置暂未识别到城市，可手动选择。'&&!e.uncertain);
+  await assert.rejects(api('/other',{readOnly:true}),e=>e.message==='服务暂时不可用，请稍后重试。');
  } finally {global.fetch=original;}
 });

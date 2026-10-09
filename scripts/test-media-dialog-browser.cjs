@@ -5,13 +5,13 @@ const assert=require('node:assert/strict'),{chromium,webkit}=require('playwright
  try{
  browser=process.env.PLAYWRIGHT_BROWSER==='webkit'?await webkit.launch():await chromium.launch({...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:process.platform==='win32'?{channel:'msedge'}:{})});
  for(const width of [320,390,768,1440])for(const theme of ['light','dark'])for(const [imageWidth,imageHeight] of [[611,129],[240,960],[400,400]]){
- const page=await browser.newPage({viewport:{width,height:950},reducedMotion:'reduce'});await page.addInitScript(t=>localStorage.setItem('mooncci-theme',t),theme);
+ const page=await browser.newPage({viewport:{width,height:950},reducedMotion:'reduce'});await page.addInitScript(t=>{if(location.origin==='http://127.0.0.1:4276')localStorage.setItem('mooncci-theme',t);},theme);
  let fail=true,saves=0;const errors=[];page.on('pageerror',e=>errors.push(e.message));
  let item={filename:'fixture.png',display_name:'媒体验收图片',alt_text:'',url:'/fixture.svg',size:100,size_text:'100 B',uploaded_at:'2026-10-01',status:'active',ext:'.png'};
  await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
  await page.route('**/fixture.svg',r=>r.fulfill({contentType:'image/svg+xml',body:`<svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}"><rect width="100%" height="100%" fill="#888"/></svg>`}));
  await page.route('**/api/**',async r=>{const u=new URL(r.request().url());let json={};
- if(u.pathname==='/api/auth/me')json={user:{id:1,role:'owner',username:'fixture'}};
+ if(u.pathname==='/api/auth/session')json={user:{id:1,role:'owner',username:'fixture'}};
  else if(u.pathname==='/api/upload/media')json={items:[item],total:1,page:1,pageSize:50};
  else if(u.pathname==='/api/upload/media/fixture.png'&&r.request().method()==='PUT'){saves++;if(fail)return r.fulfill({status:503,json:{message:'测试保存失败，请重试'}});item={...item,...r.request().postDataJSON()};json=item;}
  await r.fulfill({json});});

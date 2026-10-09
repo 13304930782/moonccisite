@@ -67,13 +67,13 @@ export default function AdminEarlyAccessPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[180px_1fr]">
+        <div className="grid gap-6">
           <label className="font-medium">
             状态
-            <ThemeSelect
+            <ThemeSelect aria-label="筛选申请状态"
               value={status}
               onValueChange={(nextValue) => { setStatus(nextValue); setPage(1); }}
-              className="neo-input mt-2 w-full px-4 py-3 outline-none"
+
             >
               <option value="pending">待审核</option>
               <option value="approved">已通过</option>

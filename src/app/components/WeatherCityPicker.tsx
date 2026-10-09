@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { LocateFixed, Search } from 'lucide-react';
-import { api } from '../lib/api';
+import { LocateFixed, Search, X } from 'lucide-react';
+import { api, ApiError } from '../lib/api';
+import { locateWeatherDevice } from '../lib/weatherGeolocation';
 import {
   normalizeWeatherLocation,
   geocodingLocation,
@@ -15,30 +16,50 @@ export function WeatherCityPicker({
 }: {
   selected: WeatherLocation | null;
   onAttributionChange: (
-    provider: 'amap' | 'nominatim' | 'geonames' | null,
+    provider: 'amap' | 'nominatim' | 'geonames' | 'photon' | 'dbip' | null,
   ) => void;
   onChange: (
     location: WeatherLocation | null,
     source: WeatherLocationSource,
   ) => boolean;
 }) {
-  const [editing, setEditing] = useState(!selected);
+  const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<(WeatherLocation & { id: string })[]>(
     [],
   );
-  const [busy, setBusy] = useState<'search' | 'locate' | ''>('');
-  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState<'search' | 'locate' | 'network' | ''>('');
+  const [notice, setNotice] = useState<{ title: string; body: string; search?: boolean } | null>(null);
+  const noticeDialog = useRef<HTMLDialogElement>(null);
   const [pendingChoice, setPendingChoice] = useState<{
     location: WeatherLocation;
     source: WeatherLocationSource;
+    approximate?: boolean;
+    networkReason?: 'permission' | 'unavailable' | 'manual';
   } | null>(null);
   const confirmDialog = useRef<HTMLDialogElement>(null);
+  const editorDialog = useRef<HTMLDialogElement>(null);
+  const queryInput = useRef<HTMLInputElement>(null);
   const changeButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const dialog = editorDialog.current;
+    if (editing && !pendingChoice && !notice) {
+      if (dialog && !dialog.open) {
+        dialog.showModal();
+        queryInput.current?.focus();
+      }
+    } else if (dialog?.open) dialog.close();
+  }, [editing, pendingChoice, notice]);
   useEffect(() => {
     if (pendingChoice && !confirmDialog.current?.open)
       confirmDialog.current?.showModal();
   }, [pendingChoice]);
+  useEffect(() => {
+    if (notice && !noticeDialog.current?.open) noticeDialog.current?.showModal();
+  }, [notice]);
+  function showNotice(title: string, body: string, search = false) {
+    setNotice({ title, body, search });
+  }
   useEffect(() => {
     const visible =
       (selected && !needsWeatherCityName(selected)) || results.length > 0;
@@ -51,19 +72,28 @@ export function WeatherCityPicker({
   function requestChoice(
     location: WeatherLocation,
     source: WeatherLocationSource = 'manual',
+    approximate = false,
+    networkReason?: 'permission' | 'unavailable' | 'manual',
   ) {
     generation.current++;
     controller.current?.abort();
     setBusy('');
-    setPendingChoice({ location, source });
+    setPendingChoice({ location, source, approximate, networkReason });
   }
 
   const generation = useRef(0);
   const controller = useRef<AbortController | null>(null);
+  function closeEditor() {
+    generation.current++;
+    controller.current?.abort();
+    setBusy('');
+    setResults([]);
+    setEditing(false);
+    editorDialog.current?.close();
+  }
   useEffect(
     () => () => {
       generation.current++;
-      autoAttempted.current = '';
       controller.current?.abort();
     },
     [],
@@ -76,12 +106,9 @@ export function WeatherCityPicker({
     controller.current?.abort();
     setBusy('');
     setResults([]);
-    setMessage('');
-    setEditing(!location);
+    setEditing(false);
     if (!onChange(location, source)) {
-      setMessage(
-        '浏览器未能保存城市选择，本次仍可使用，刷新后可能恢复。请允许此网站保存数据后重试。',
-      );
+      showNotice('城市未保存', '本次选择仍可使用。请允许浏览器保存网站数据，避免刷新后丢失。');
     }
   }
   async function search(event: FormEvent) {
@@ -91,12 +118,12 @@ export function WeatherCityPicker({
     const searchController = new AbortController();
     controller.current = searchController;
     setBusy('search');
-    setMessage('');
     setResults([]);
-    const timeout = setTimeout(() => searchController.abort(), 10000);
     try {
       const response = await api('/weather-mood/cities', {
         method: 'POST',
+        readOnly: true,
+        timeoutMs: 15000,
         body: JSON.stringify({ query: query.trim() }),
         signal: searchController.signal,
       });
@@ -108,45 +135,32 @@ export function WeatherCityPicker({
           })
         : [];
       setResults(cities);
-      if (!cities.length)
-        setMessage('没有找到城市，试试城市简称或拼音；同名城市可加省份。');
+      if (!cities.length) showNotice('未找到城市', '请检查城市名称，或加上省份重新搜索。');
     } catch (error: any) {
       if (generation.current === request)
-        setMessage(
-          error.name === 'AbortError'
+        showNotice('搜索失败',
+          error instanceof ApiError && error.kind === 'timeout'
             ? '搜索超时，请重试。'
-            : error.message || '搜索失败，请重试。',
+            : '城市搜索暂不可用，请稍后重试。',
         );
     } finally {
-      clearTimeout(timeout);
       if (generation.current === request) setBusy('');
     }
   }
-  const autoAttempted = useRef('');
-  useEffect(() => {
-    if (!needsWeatherCityName(selected)) return;
-    const key = `${selected!.latitude},${selected!.longitude}`;
-    if (autoAttempted.current === key) return;
-    autoAttempted.current = key;
-    const request = ++generation.current;
-    void resolveName(selected!, request, false);
-    // A saved approximate location needs a name lookup, not a fresh device permission request.
-  }, [selected]);
   async function resolveName(
     location: WeatherLocation,
     request: number,
-    saveFallback: boolean,
+    approximate = false,
   ) {
-    autoAttempted.current = `${location.latitude},${location.longitude}`;
     controller.current?.abort();
     const locateController = new AbortController();
     controller.current = locateController;
     setBusy('locate');
-    setMessage('正在识别城市名称…');
-    const timeout = setTimeout(() => locateController.abort(), 12000);
     try {
       const response = await api('/weather-mood/locate', {
         method: 'POST',
+        readOnly: true,
+        timeoutMs: 20000,
         body: JSON.stringify({ location }),
         signal: locateController.signal,
       });
@@ -154,46 +168,55 @@ export function WeatherCityPicker({
       const resolved = normalizeWeatherLocation(response.data);
       if (!resolved || needsWeatherCityName(resolved))
         throw new Error('城市识别没有返回有效名称。');
-      if (saveFallback) requestChoice(resolved, 'device');
-      else choose(resolved, 'device');
+      requestChoice(resolved, 'device', approximate);
     } catch (error: any) {
       if (generation.current !== request) return;
-      if (saveFallback) choose(location, 'device');
+      // Only a confirmed, named city is saved; a failed lookup preserves selection.
       setBusy('');
-      setMessage(
-        error.name === 'AbortError'
-          ? '城市识别超时；附近天气仍可用，可以重试识别或手动选择城市。'
-          : `${error.message || '城市识别暂不可用'} 附近天气仍可用。`,
+      setEditing(true);
+      showNotice('无法识别城市',
+        error instanceof ApiError && error.kind === 'timeout'
+          ? '城市识别超时，请重试或手动选择城市。'
+          : '暂时无法识别城市名称，请重试或搜索城市。',
       );
-    } finally {
-      clearTimeout(timeout);
     }
   }
-  function locate() {
+  async function locateNetwork(request = ++generation.current, reason: 'permission' | 'unavailable' | 'manual' = 'manual') {
+    controller.current?.abort();
+    const networkController = new AbortController();
+    controller.current = networkController;
+    setBusy('network');
+    try {
+      const response = await api('/weather-mood/locate-network', { method: 'POST', readOnly: true, timeoutMs: 15000, body: '{}', signal: networkController.signal });
+      if (generation.current !== request) return;
+      const location = normalizeWeatherLocation(response.data);
+      if (!location || needsWeatherCityName(location)) throw new Error('网络城市识别没有返回有效名称。');
+      requestChoice(location, 'network', true, reason);
+    } catch (error: any) {
+      if (generation.current !== request) return;
+      setBusy('');
+      setEditing(true);
+      if (error.code === 'CITY_NETWORK_LOCATION_PERMISSION') {
+        showNotice('需要位置权限', '请在浏览器中允许位置权限，以获取更准确的天气。也可以手动搜索城市。', true);
+      } else {
+        showNotice('无法识别城市', 'IP 定位暂不可用，请重试或手动搜索城市。', true);
+      }
+    }
+  }
+  async function locate() {
     const request = ++generation.current;
     controller.current?.abort();
     setResults([]);
-    setMessage('');
     if (!navigator.geolocation) {
-      setBusy('');
-      setMessage('当前浏览器不支持定位，请手动搜索城市。');
+      await locateNetwork(request, 'unavailable');
       return;
     }
     setBusy('locate');
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
+    const deviceController = new AbortController();
+    controller.current = deviceController;
+    try {
+        const position = await locateWeatherDevice(navigator.geolocation, deviceController.signal);
         if (generation.current !== request) return;
-        // A low-accuracy fix cannot reliably distinguish adjacent districts.
-        if (
-          !Number.isFinite(position.coords.accuracy) ||
-          position.coords.accuracy > 1000
-        ) {
-          setBusy('');
-          setMessage(
-            '定位精度不足，可能落在相邻区。请手动选择城市，或开启精确定位后重试。',
-          );
-          return;
-        }
         const location = geocodingLocation({
           name: '当前位置附近',
           region: '',
@@ -201,59 +224,69 @@ export function WeatherCityPicker({
           longitude: position.coords.longitude,
         });
         if (location) {
-          void resolveName(location, request, true);
+          await resolveName(location, request,
+            !Number.isFinite(position.coords.accuracy) || position.coords.accuracy > 1000);
         } else {
-          setBusy('');
-          setMessage('无法读取有效位置，请手动选择城市。');
+          await locateNetwork(request, 'unavailable');
         }
-      },
-      (error) => {
+    } catch (error: any) {
         if (generation.current !== request) return;
+        if ([1, 2, 3].includes(error.code)) {
+          await locateNetwork(request, error.code === 1 ? 'permission' : 'unavailable');
+          return;
+        }
         setBusy('');
-        setMessage(
+        setEditing(true);
+        showNotice('无法获取位置',
           error.code === 1
             ? '定位未获授权，你仍可手动搜索城市。'
             : error.code === 3
               ? '定位超时，请重试或手动选择城市。'
               : '暂时无法取得位置，请手动选择城市。',
         );
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    );
+    }
   }
   return (
     <div className="weather-city-picker">
       <div className="weather-city-current">
         <span>
-          {selected?.name || '选择天气城市'}
+          {selected?.name || '未选择城市'}
           {selected?.region && (
             <small className="weather-city-privacy">{selected.region}</small>
           )}
         </span>
-        {selected && (
-          <button
-            ref={changeButton}
-            type="button"
-            onClick={() => {
-              generation.current++;
-              controller.current?.abort();
-              setBusy('');
-              setEditing((value) => !value);
-            }}
-          >
-            {' '}
-            {editing ? '取消' : '切换城市'}{' '}
-          </button>
-        )}
+        <button
+          ref={changeButton}
+          type="button"
+          onClick={() => {
+            generation.current++;
+            controller.current?.abort();
+            setBusy('');
+            setEditing(true);
+          }}
+        >
+          {selected ? '切换城市' : '选择城市'}
+        </button>
       </div>
-      {editing && (
+      <dialog
+        ref={editorDialog}
+        className="weather-city-confirm weather-city-editor"
+        aria-labelledby="weather-city-editor-title"
+        onCancel={closeEditor}
+      >
+        {editing && (
         <>
+          <div className="weather-companion-heading">
+            <h3 id="weather-city-editor-title">选择城市</h3>
+            <button type="button" aria-label="关闭城市选择" onClick={closeEditor}><X size={16} /></button>
+          </div>
           <form className="weather-city-search" onSubmit={search}>
             <label className="sr-only" htmlFor="weather-city-query">
               城市名称
             </label>
             <input
               id="weather-city-query"
+              ref={queryInput}
               value={query}
               minLength={2}
               maxLength={80}
@@ -264,35 +297,31 @@ export function WeatherCityPicker({
                 controller.current?.abort();
                 setBusy('');
                 setResults([]);
-                setMessage('');
                 setQuery(event.target.value);
               }}
             />
             <button
               type="submit"
-              aria-label="搜索城市"
-              disabled={query.trim().length < 2 || busy === 'search'}
+              aria-label={busy === 'search' ? '正在搜索城市' : '搜索城市'}
+              disabled={query.trim().length < 2 || !!busy}
             >
               <Search size={16} />
             </button>
           </form>
-          <button
-            type="button"
-            className="weather-city-locate"
-            onClick={locate}
-            disabled={busy === 'locate'}
-          >
-            <LocateFixed size={15} />
-            {busy === 'locate' ? '正在定位…' : '使用当前位置'}
-          </button>
-          <small className="weather-city-privacy">
-            仅在你授权后获取位置，用于识别所在区县。
-          </small>
-          {busy === 'search' && (
-            <p className="weather-city-message" role="status">
-              正在搜索城市…
-            </p>
-          )}
+          <div className="weather-city-editor-actions">
+            <button
+              type="button"
+              className="weather-city-locate"
+              onClick={locate}
+              disabled={!!busy}
+            >
+              <LocateFixed size={15} />
+              {busy === 'locate' ? '正在定位…' : '使用当前位置'}
+            </button>
+            <button type="button" className="weather-city-locate" disabled={!!busy} onClick={() => void locateNetwork()}>
+              {busy === 'network' ? '正在识别…' : '按 IP 定位'}
+            </button>
+          </div>
           {results.length > 0 && (
             <ul className="weather-city-results" aria-label="城市搜索结果">
               {results.map((result) => (
@@ -316,25 +345,8 @@ export function WeatherCityPicker({
             </button>
           )}
         </>
-      )}
-      {message && (
-        <p className="weather-city-message" role="status">
-          {message}
-        </p>
-      )}
-      {needsWeatherCityName(selected) && (
-        <button
-          type="button"
-          className="weather-city-locate"
-          disabled={busy === 'locate'}
-          onClick={() => {
-            const request = ++generation.current;
-            void resolveName(selected!, request, false);
-          }}
-        >
-          {busy === 'locate' ? '正在识别城市…' : '重试识别城市'}
-        </button>
-      )}
+        )}
+      </dialog>
       <dialog
         ref={confirmDialog}
         className="weather-city-confirm"
@@ -351,10 +363,12 @@ export function WeatherCityPicker({
             <p className="weather-city-confirm-region">
               {pendingChoice.location.region}
             </p>
-            <p>
-              已选城市将在此浏览器保存 30
-              天，期间不会自动切换。你可以随时更改地区或重新定位。
-            </p>
+            {pendingChoice.approximate && (
+              <p>{pendingChoice.source === 'network'
+                ? `${pendingChoice.networkReason === 'permission' ? '未获得位置权限，' : pendingChoice.networkReason === 'unavailable' ? '无法获取设备位置，' : ''}已通过 IP 识别市一级城市，请确认是否正确。如需更细致的定位和天气，请允许位置权限。`
+                : '设备仅提供了大致位置，请确认城市是否正确。'}</p>
+            )}
+            {pendingChoice.location.provider === 'dbip' && <p className="weather-companion-credits"><a href="https://db-ip.com" target="_blank" rel="noreferrer">IP 定位：DB-IP</a></p>}
             <div className="weather-city-confirm-actions">
               <button
                 type="button"
@@ -374,6 +388,27 @@ export function WeatherCityPicker({
               >
                 确认使用
               </button>
+            </div>
+          </>
+        )}
+      </dialog>
+      <dialog
+        ref={noticeDialog}
+        className="weather-city-confirm"
+        aria-labelledby="weather-city-notice-title"
+        aria-describedby="weather-city-notice-body"
+        onCancel={() => setNotice(null)}
+        onClose={() => setNotice(null)}
+      >
+        {notice && (
+          <>
+            <h3 id="weather-city-notice-title">{notice.title}</h3>
+            <p id="weather-city-notice-body">{notice.body}</p>
+            <div className="weather-city-confirm-actions">
+              <button type="button" autoFocus onClick={() => {
+                noticeDialog.current?.close();
+                if (notice.search) setEditing(true);
+              }}>{notice.search ? '搜索城市' : '知道了'}</button>
             </div>
           </>
         )}

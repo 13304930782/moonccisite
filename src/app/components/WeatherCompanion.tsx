@@ -103,7 +103,7 @@ export default function WeatherCompanion() {
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
   const [cityAttribution, setCityAttribution] = useState<
-    'amap' | 'nominatim' | 'geonames' | null
+    'amap' | 'nominatim' | 'geonames' | 'photon' | 'dbip' | null
   >(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpPosition, setHelpPosition] = useState({ left: 12, top: 12 });
@@ -702,7 +702,9 @@ export default function WeatherCompanion() {
                 {cityAttribution && (
                   <a
                     href={
-                      cityAttribution === 'amap'
+                      cityAttribution === 'dbip'
+                        ? 'https://db-ip.com'
+                        : cityAttribution === 'amap'
                         ? 'https://lbs.amap.com/'
                         : cityAttribution === 'geonames'
                           ? 'https://www.geonames.org/'
@@ -711,8 +713,10 @@ export default function WeatherCompanion() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    地图：
-                    {cityAttribution === 'amap'
+                    {cityAttribution === 'dbip' ? 'IP 定位：' : '地图：'}
+                    {cityAttribution === 'dbip'
+                      ? 'DB-IP'
+                      : cityAttribution === 'amap'
                       ? '高德地图'
                       : cityAttribution === 'geonames'
                         ? 'GeoNames'

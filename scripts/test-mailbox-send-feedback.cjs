@@ -21,7 +21,7 @@ const { chromium } = require('playwright');
         if (pathname === '/api/mailboxes/folders/inbox') { inboxes++; if (holdInbox) { await inboxGate; return route.fulfill({ json: { messages: [{ uid: 1, subject: 'Stale inbox fixture', from: 'fixture', unread: false }], total: 1, page: 1, pageSize: 25, folderAvailable: true } }).catch(() => {}); } }
         if (pathname === '/api/mailboxes/send' && rejectSend) { sends++; return route.fulfill({ status: 502, json: { message: 'Uncertain fixture' } }); }
         if (pathname === '/api/mailboxes/folders/sent') { sentLists++; return route.fulfill({ status: 503, json: { message: 'Sent refresh failed fixture' } }); }
-        const body = pathname === '/api/auth/me' ? { user: { id: 2, username: 'reader', email: 'reader@example.invalid', role: 'user', status: 'active' } }
+        const body = pathname === '/api/auth/session' ? { user: { id: 2, username: 'reader', email: 'reader@example.invalid', role: 'user', status: 'active' } }
           : pathname === '/api/mailboxes/me' ? { access: { status: 'active', mailbox_address: 'reader@mooncci.site', daily_limit: 10 } }
           : pathname === '/api/mailboxes/sent' ? { messages: [] }
           : pathname.startsWith('/api/mailboxes/folders/') ? { messages: [], total: 0, page: 1, pageSize: 25, folderAvailable: true }

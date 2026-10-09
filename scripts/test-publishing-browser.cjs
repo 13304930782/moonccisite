@@ -10,7 +10,7 @@ const {chromium}=require('playwright');
   await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
   await page.route('**/api/**',async route=>{
    const url=new URL(route.request().url()),p=url.pathname,m=route.request().method();let body={};
-   if(p==='/api/auth/me')body={user:{id:1,username:'创作者',role}};
+   if(p==='/api/auth/session')body={user:{id:1,username:'创作者',role}};
    else if(p==='/api/publishing/config')body={enabled:true};
    else if(p==='/api/article-drafts'&&m==='GET')body={items:[draft],total:1,page:1,pageSize:20};
    else if(p.startsWith('/api/article-drafts/')&&p.endsWith('/revisions'))body={items:[],total:0};

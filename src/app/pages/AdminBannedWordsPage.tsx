@@ -67,7 +67,7 @@ export default function AdminBannedWordsPage() {
         <form onSubmit={addWord} className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-3">
           <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="违禁词" className="rounded-[6px] border px-4 py-2 bg-card" />
 
-          <ThemeSelect value={action} onValueChange={(nextValue) => setAction(nextValue)} className="rounded-[6px] border px-4 py-2 bg-card">
+          <ThemeSelect aria-label="命中处理方式" value={action} onValueChange={(nextValue) => setAction(nextValue)} >
             <option value="block">拦截</option>
             <option value="replace">替换</option>
           </ThemeSelect>

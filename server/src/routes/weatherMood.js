@@ -14,6 +14,7 @@ const reverseGeocode = createWeatherGeocoder({
   fetchImpl: guardedFetch,
 });
 const searchCities = createCitySearch(guardedFetch, reverseGeocode.search);
+const networkCity = require('../lib/weatherNetworkCity').createNetworkCity({ searchCities: reverseGeocode.search });
 const cityLimiter = createClientLimiter(10);
 const weatherLimiter = createClientLimiter(30);
 router.use(createClientIdentity());
@@ -85,6 +86,14 @@ router.post('/locate', cityLimiter, async (req, res) => {
           : '暂时无法识别城市，可重试或手动选择。',
       code: error.publicCode,
     });
+  }
+});
+router.post('/locate-network', cityLimiter, async (req, res) => {
+  try {
+    res.json({ data: await networkCity(req.ip) });
+  } catch (error) {
+    if (error.status === 429) res.set('Retry-After', String(error.retryAfter || 60));
+    res.status(error.status === 429 ? 429 : 502).json({ message: error.publicCode ? error.message : '当前网络暂未识别出城市，请重试或搜索城市。', code: error.publicCode || 'CITY_NETWORK_UNAVAILABLE' });
   }
 });
 async function publicMood(req, res, next) {

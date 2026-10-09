@@ -27,15 +27,17 @@ export function EmptyState({ children }: { children: ReactNode }) {
 }
 
 function DetailAside({ title, children, className = '' }: { title: string; children: ReactNode; className?: string }) {
-  const [open, setOpen] = useState(() => window.matchMedia('(min-width: 1100px)').matches);
+  const [open, setOpen] = useState(true);
+  const [ready,setReady]=useState(false);
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1100px)');
     const change = () => setOpen(media.matches);
+    change();setReady(true);
     media.addEventListener('change', change);
     return () => media.removeEventListener('change', change);
   }, []);
   return <aside className="detail-aside" data-reading-ignore>
-    <details className={`detail-panel ${className}`} open={open} onToggle={event => setOpen(event.currentTarget.open)}>
+    <details data-initial={!ready ? true : undefined} className={`detail-panel ${className}`} open={open} onToggle={event => setOpen(event.currentTarget.open)}>
       <summary>{title}</summary><div className="detail-panel-content">{children}</div>
     </details>
   </aside>;
@@ -47,8 +49,8 @@ export function DetailPage({ className = '', backTo, backLabel, label, title, me
 }) {
   return <article className={`detail-page ${className}`} data-reading-content={preview ? undefined : true}>
     <header className="detail-header">
-      <nav className="detail-breadcrumb" aria-label="面包屑导航" data-reading-ignore><Link className="text-link" to={backTo}>← {backLabel}</Link></nav>
-      <div className="detail-label"><span className="detail-category">{label}</span></div>
+      <div className="detail-intro"><nav className="detail-breadcrumb" aria-label="面包屑导航" data-reading-ignore><Link className="text-link" to={backTo}>← {backLabel}</Link></nav>
+      <div className="detail-label"><span className="detail-category">{label}</span></div></div>
       <h1 className="detail-title">{title}</h1>
       {meta}
     </header>

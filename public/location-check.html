@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>设备定位检查 · mooncci</title>
+<style>body{font:16px/1.7 system-ui,sans-serif;max-width:720px;margin:60px auto;padding:0 24px;color:#222}button{padding:10px 16px;margin:12px 8px 12px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f5f5;padding:20px;border-radius:8px}small{color:#666}</style>
+<h1>浏览器设备定位检查</h1><p>用于对比同一电脑上的 Chrome 和 Edge。本页只显示浏览器返回值，不上传坐标、不保存定位、不进行 IP 定位。</p>
+<button id="locate">检查设备定位</button><button id="clear">清除结果</button><pre id="result" role="status">点击按钮后开始检查。</pre><small>结果是浏览器定位接口返回的坐标；接口不会说明它来自 GPS、Wi-Fi 还是系统默认位置。</small>
+<script>
+const result=document.querySelector('#result'),button=document.querySelector('#locate');let version=0;
+document.querySelector('#clear').onclick=()=>{version++;button.disabled=false;result.textContent='结果已清除。'};
+button.onclick=async()=>{
+ const request=++version,started=performance.now();button.disabled=true;
+ let permission='浏览器未提供权限状态';
+ try{permission=(await navigator.permissions.query({name:'geolocation'})).state}catch{}
+ const base={浏览器:navigator.userAgent.includes('Edg/')?'Edge':navigator.userAgent.includes('Chrome/')?'Chrome':'其他浏览器',安全连接:window.isSecureContext,定位权限:permission};
+ result.textContent=JSON.stringify({...base,状态:'正在请求新的设备位置，请留意浏览器定位提示…'},null,2);
+ const finish=value=>{if(request!==version)return;button.disabled=false;result.textContent=JSON.stringify({...base,...value,耗时毫秒:Math.round(performance.now()-started)},null,2)};
+ if(!navigator.geolocation){finish({状态:'浏览器没有提供定位接口'});return}
+ const watchdog=setTimeout(()=>finish({状态:'浏览器在 15 秒内没有回调'}),15000);
+ navigator.geolocation.getCurrentPosition(position=>{clearTimeout(watchdog);finish({状态:'已取得设备坐标',纬度:Number(position.coords.latitude.toFixed(3)),经度:Number(position.coords.longitude.toFixed(3)),精度米:position.coords.accuracy,位置时间:new Date(position.timestamp).toISOString()})},error=>{clearTimeout(watchdog);finish({状态:'设备定位失败',错误码:error.code,错误详情:error.message})},{enableHighAccuracy:true,maximumAge:0,timeout:12000});
+};
+</script></html>

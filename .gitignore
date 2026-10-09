@@ -25,3 +25,4 @@ __pycache__/
 *.pyc
 
 /server/runtime/
+server/data/dbip/*.mmdb

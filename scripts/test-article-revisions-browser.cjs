@@ -5,7 +5,7 @@ for(const width of [375,768,1440])for(const theme of ['light','dark']){
  const p=await browser.newPage({viewport:{width,height:950}});await p.addInitScript(t=>localStorage.setItem('mooncci-theme',t),theme);const errors=[];p.on('pageerror',e=>errors.push(e.message));
  let draft={id:'fixture',post_id:1,post_status:'published',version:1,base_version:1,payload:{title:'目前标题',content:'alpha\nnew line',slug:'fixture',summary:'',cover_image:'',category:'',tags:[]},updated_at:new Date().toISOString()},restoreCount=0;const saves=[];
  await p.route('**/api/**',async r=>{const u=new URL(r.request().url()),method=r.request().method();let data={};
- if(u.pathname==='/api/auth/me')data={user:{id:1,username:'Writer',role:'owner'}};
+ if(u.pathname==='/api/auth/session')data={user:{id:1,username:'Writer',role:'owner'}};
  else if(u.pathname.endsWith('/restore')){assert.equal(r.request().postDataJSON().version,draft.version);restoreCount++;draft={...draft,version:draft.version+1,payload:{...draft.payload,title:'历史标题',content:'alpha\nold line'}};data=draft;}
  else if(u.pathname.endsWith('/revisions/1'))data={id:1,payload:{...draft.payload,title:'历史标题',content:'alpha\nold line'}};
  else if(u.pathname.endsWith('/revisions'))data={items:[{id:1,kind:'publish',actor_name:'Writer',updated_at:new Date().toISOString()}],total:1};

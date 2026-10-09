@@ -1,3 +1,4 @@
+import '../../styles/admin-settings-layout.css';
 import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
 import {useUnsavedLeave} from '../lib/useUnsavedLeave';
@@ -190,7 +191,7 @@ export function AdminUpdatesPage() {
         />
         <label>
           发布状态
-          <ThemeSelect
+          <ThemeSelect aria-label="发布状态"
             value={form.status}
             onValueChange={(nextValue) =>
               setForm({ ...form, status: nextValue })
@@ -363,7 +364,7 @@ export function AdminProjectsPage() {
         <div className="form-grid">
           <label>
             开发状态
-            <ThemeSelect
+            <ThemeSelect aria-label="开发状态"
               value={form.stage}
               onValueChange={(nextValue) =>
                 setForm({ ...form, stage: nextValue })
@@ -378,7 +379,7 @@ export function AdminProjectsPage() {
           </label>
           <label>
             发布状态
-            <ThemeSelect
+            <ThemeSelect aria-label="发布状态"
               value={form.status}
               onValueChange={(nextValue) =>
                 setForm({ ...form, status: nextValue })
@@ -540,14 +541,14 @@ export function AdminNewsletterPage() {
     }
   }
   return (
-    <div className="content-admin">
+    <div className="content-admin newsletter-admin">
       <PageHeading eyebrow="NEWSLETTER" title="订阅与周报" />
-      <p role="status">{message}</p>
+      {message&&<p role="alert">{message}</p>}
       <ResourceState resource={r}>
         {r.data && (
           <>
-            <section className="editor-panel">
-              <h2>每周一 09:00 · Asia/Shanghai</h2>
+            <section className="editor-panel newsletter-overview">
+              <h2>周报投递</h2><p className="newsletter-schedule">每周一 09:00 · Asia/Shanghai</p>
               <p>无更新不发送。公开订阅需要用户自行确认邮箱。</p>
               <p>
                 服务端邮件投递：
@@ -564,7 +565,7 @@ export function AdminNewsletterPage() {
               >
                 {r.data.enabled ? '暂停周报' : '开启周报'}
               </button>
-              <div className="inline-actions">
+              <div className="newsletter-counts">
                 {r.data.counts.map((c: any) => (
                   <p key={c.status}>
                     {c.status === 'active' ? '有效订阅' : labels[c.status]}：
@@ -594,19 +595,20 @@ export function AdminNewsletterPage() {
                 )}
               </ResourceState>
             </details>
-            <h2>投递记录</h2>
+            <section className="newsletter-section" aria-labelledby="delivery-title"><header><h2 id="delivery-title">投递记录</h2><p>查看每期周报的发送状态。</p></header>
             <div className="table-scroll">
-              <table>
+              <table><caption className="sr-only">周报投递记录</caption>
                 <thead>
                   <tr>
-                    <th>邮箱</th>
-                    <th>周次</th>
-                    <th>状态</th>
-                    <th>尝试</th>
-                    <th>处理</th>
+                    <th scope="col">邮箱</th>
+                    <th scope="col">周次</th>
+                    <th scope="col">状态</th>
+                    <th scope="col">尝试</th>
+                    <th scope="col">处理</th>
                   </tr>
                 </thead>
                 <tbody>
+                  {!r.data.deliveries.items.length&&<tr><td colSpan={5}>暂无投递记录。</td></tr>}
                   {r.data.deliveries.items.map((d: any) => (
                     <tr key={d.id}>
                       <td>{d.email}</td>
@@ -647,15 +649,16 @@ export function AdminNewsletterPage() {
                 </tbody>
               </table>
             </div>
-            <Pagination data={r.data.deliveries} onPage={setPage} />
+            <Pagination data={r.data.deliveries} onPage={setPage} /></section>
           </>
         )}
       </ResourceState>
-      <h2>订阅者</h2>
+      <section className="newsletter-section" aria-labelledby="subscriber-title"><header><h2 id="subscriber-title">订阅者</h2><p>管理已确认和等待确认的订阅。</p></header>
       <ResourceState resource={sub}>
         {sub.data && (
           <>
             <div className="admin-records">
+              {!sub.data.items.length&&<p className="settings-empty">暂无订阅者。</p>}
               {sub.data.items.map((s: any) => (
                 <article key={s.id}>
                   <p>
@@ -679,6 +682,7 @@ export function AdminNewsletterPage() {
           </>
         )}
       </ResourceState>
+      </section>
     </div>
   );
 }

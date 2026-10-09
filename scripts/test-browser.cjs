@@ -32,10 +32,10 @@ async function main() {
     await page.getByRole('button', { name: 'Login', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.textContent === 'browser-fixture');
     assert.ok((await context.cookies()).some(cookie => cookie.name === 'mooncci_token' && cookie.httpOnly));
-    await page.locator('.toastui-editor-ww-container .ProseMirror').waitFor();
+    await page.locator('.mooncci-tiptap-editor .ProseMirror').waitFor();
     assert.equal(await page.evaluate(() => window.__xss), undefined);
-    assert.equal(await page.locator('.toastui-editor-ww-container script, .toastui-editor-ww-container [onerror]').count(), 0);
-    await page.locator('.toastui-editor-ww-container .ProseMirror').click();
+    assert.equal(await page.locator('.mooncci-tiptap-editor script, .mooncci-tiptap-editor [onerror]').count(), 0);
+    await page.locator('.mooncci-tiptap-editor .ProseMirror').click();
     await page.keyboard.press('ControlOrMeta+End');
     await page.keyboard.type(' editor round trip');
     await page.waitForFunction(() => document.querySelector('[data-testid=markdown]')?.textContent?.includes('editor round trip'));

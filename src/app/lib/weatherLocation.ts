@@ -1,5 +1,5 @@
 export type WeatherLocation = {
-  provider?: 'amap' | 'nominatim' | 'geonames';
+  provider?: 'amap' | 'nominatim' | 'geonames' | 'photon' | 'dbip';
   countryCode?: string;
   adcode?: string;
   name: string;
@@ -10,7 +10,7 @@ export type WeatherLocation = {
 export const WEATHER_LOCATION_KEY = 'mooncci-weather-location-v2';
 export const LEGACY_WEATHER_LOCATION_KEY = 'mooncci-weather-location-v1';
 export const WEATHER_LOCATION_TTL = 30 * 24 * 60 * 60 * 1000;
-export type WeatherLocationSource = 'manual' | 'device' | 'legacy';
+export type WeatherLocationSource = 'manual' | 'device' | 'network' | 'legacy';
 type LocationStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 export type SavedWeatherLocation = {
   version: 2;
@@ -42,7 +42,7 @@ export function normalizeWeatherLocation(
     ...(typeof value.adcode === 'string' && /^\d{6}$/.test(value.adcode)
       ? { adcode: value.adcode }
       : {}),
-    ...(['amap', 'nominatim', 'geonames'].includes(value.provider || '')
+    ...(['amap', 'nominatim', 'geonames', 'photon', 'dbip'].includes(value.provider || '')
       ? { provider: value.provider }
       : {}),
     name:
@@ -100,7 +100,7 @@ export function readWeatherLocation(
       if (
         !record ||
         record.version !== 2 ||
-        !['manual', 'device', 'legacy'].includes(record.source) ||
+        !['manual', 'device', 'network', 'legacy'].includes(record.source) ||
         !Number.isFinite(record.selectedAt) ||
         !Number.isFinite(record.expiresAt) ||
         record.selectedAt > now ||

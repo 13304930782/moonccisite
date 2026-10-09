@@ -32,7 +32,7 @@ function parseLocation(value, precision = 1) {
     ...(typeof value.adcode === 'string' && /^\d{6}$/.test(value.adcode)
       ? { adcode: value.adcode }
       : {}),
-    ...(['amap', 'nominatim', 'geonames'].includes(value.provider)
+    ...(['amap', 'nominatim', 'geonames', 'photon', 'dbip'].includes(value.provider)
       ? { provider: value.provider }
       : {}),
     name: text(value.name, '当前位置附近', 80),

@@ -1,3 +1,4 @@
+import { ThemeSelect } from '../components/ThemeSelect';
 import { FormEvent, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeading, SitePage, useResource } from "../components/ContentUI";
@@ -39,8 +40,8 @@ export default function SearchPage() {
         <button className="quiet-button">搜索</button>
       </form>
       <div className="search-filters">
-        <label>分类<select className="neo-input" value={category} onChange={e=>filter('category',e.target.value)}><option value="">全部分类</option>{(categories.data||[]).map((item:any)=><option key={item.category} value={item.category}>{item.category}</option>)}</select></label>
-        <label>标签<select className="neo-input" value={tag} onChange={e=>filter('tag',e.target.value)}><option value="">全部标签</option>{(tags.data||[]).map((item:any)=><option key={item.tag} value={item.tag}>{item.tag}</option>)}</select></label>
+        <label>分类<ThemeSelect aria-label="分类" allowEmpty value={category} onValueChange={value=>filter('category',value)}><option value="">全部分类</option>{(categories.data||[]).map((item:any)=><option key={item.category} value={item.category}>{item.category}</option>)}</ThemeSelect></label>
+        <label>标签<ThemeSelect aria-label="标签" allowEmpty value={tag} onValueChange={value=>filter('tag',value)}><option value="">全部标签</option>{(tags.data||[]).map((item:any)=><option key={item.tag} value={item.tag}>{item.tag}</option>)}</ThemeSelect></label>
         {(categories.error || tags.error) && <p role="status">筛选项暂时无法更新。<button type="button" className="text-link" onClick={()=>{categories.reload();tags.reload();}}>重试</button></p>}
       </div>
       {q || category || tag ? (

@@ -1,3 +1,4 @@
+import { responsiveImage } from '../lib/responsiveImage';
 import { formatDate } from "./ContentUI";
 import { Link } from "react-router-dom";
 import { safeImageSrc } from "../lib/safeUrl";
@@ -27,7 +28,7 @@ export function BlogCard({
   const src = safeImageSrc(image);
   const content = (
     <article className="blog-card">
-      {src && <img src={src} alt="" loading="lazy" />}
+      {src && <img {...responsiveImage(src)} alt="" loading="lazy" decoding="async" />}
       <small>{category || tags.slice(0, 3).join(" / ")}</small>
       <h3>{title}</h3>
       {excerpt && <p>{excerpt}</p>}

@@ -25,7 +25,7 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
  const completion=useRef<HTMLHeadingElement>(null);
  useEffect(()=>{if(published)completion.current?.focus();},[published]);
  const [preview,setPreview]=useState(false),[picker,setPicker]=useState<'cover'|'body'|null>(null); const insert=useRef<(url:string,alt:string)=>void>(()=>{});
- const d=useArticleDraft(userId,postId);const [uploads,setUploads]=useState(0),[uploadError,setUploadError]=useState(''),[quality,setQuality]=useState('medium');
+ const d=useArticleDraft(userId,postId);const [uploadCount,setUploads]=useState(0),[editorPending,setEditorPending]=useState(false),[uploadError,setUploadError]=useState(''),[quality,setQuality]=useState('medium');const uploads=uploadCount+(editorPending?1:0);
  const locked=publishing&&['submitted','approved','scheduled'].includes(d.draft?.workflow?.state);
  const submissionPanel=useRef<HTMLDivElement>(null);
  useEffect(()=>{const shortcut=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&!event.altKey&&event.key.toLowerCase()==='s'){event.preventDefault();if(!event.repeat&&d.ready&&!locked&&!d.busy&&!d.blocked&&!d.isRestoring)void d.save('manual');}};window.addEventListener('keydown',shortcut);return()=>window.removeEventListener('keydown',shortcut);},[d.save,d.ready,d.busy,d.blocked,d.isRestoring,locked]);
@@ -53,7 +53,7 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
  {locked&&<article className="submission-document"><header><span className="account-eyebrow">稿件详情</span><h1>{d.form.title||'未命名稿件'}</h1><p className="submission-document-meta">提交的审核版本 · 仅作者与审核人员可见</p></header><div className="submission-document-body">{safeImageSrc(d.form.cover_image)&&<img className="content-image" src={safeImageSrc(d.form.cover_image)} alt=""/>}<MarkdownContent content={d.form.content||''} headingPrefix="submission-heading"/></div></article>}
  <fieldset hidden={preview||locked||showComparison} disabled={!d.ready||locked||!!d.recovery||d.isRestoring} className="article-writing-fields"><label>标题<input id="article-title" value={d.form.title} maxLength={255} onChange={e=>change('title',e.target.value)} placeholder="未命名草稿"/></label>
  <button type="button" onClick={()=>setPicker('body')}>从媒体库插入正文图片</button>
- {d.ready&&<ArticleEditor registerImageInsert={fn=>{insert.current=fn;}} value={d.form.content} onChange={value=>change('content',value)} existing={!!postId||!!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={()=>{}}/>}
+ {d.ready&&<ArticleEditor registerImageInsert={fn=>{insert.current=fn;}} value={d.form.content} onChange={value=>change('content',value)} existing={!!postId||!!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={setEditorPending}/>}
  <details className="article-settings"><summary>文章设置</summary>
  <div className="article-settings-body">
   <section className="article-settings-section"><h2>摘要</h2><label>文章简介<textarea id="article-summary" rows={4} value={d.form.summary} onChange={e=>change('summary',e.target.value)} placeholder="简要介绍文章内容"/></label></section>
@@ -61,7 +61,7 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
    <label className="article-field-wide">封面地址<input value={d.form.cover_image} onChange={e=>change('cover_image',e.target.value)} placeholder="输入图片地址，或从媒体库选择"/></label>
    <div className="inline-actions article-field-wide"><button type="button" onClick={()=>setPicker('cover')}>从媒体库选择封面</button><button type="button" disabled={!d.form.cover_image} onClick={()=>change('cover_image','')}>移除封面</button></div>
    <label>上传封面<input type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f)void upload(f).then(url=>change('cover_image',url)).catch(e=>setUploadError(e.message));e.target.value='';}}/></label>
-   <label>图片质量<ThemeSelect value={quality} onValueChange={setQuality}><option value="low">较小</option><option value="medium">标准</option><option value="high">高清</option></ThemeSelect></label>
+   <label>图片质量<ThemeSelect aria-label="图片质量" value={quality} onValueChange={setQuality}><option value="low">较小</option><option value="medium">标准</option><option value="high">高清</option></ThemeSelect></label>
   </div></section>
   {d.form.source_url&&<section className="article-settings-section"><h2>旧站来源</h2><p>{d.form.source_url}</p><p>原发布时间：{d.form.published_at}（首次发布时保留）</p></section>}
   <section className="article-settings-section"><h2>分类与链接</h2><div className="article-settings-grid">

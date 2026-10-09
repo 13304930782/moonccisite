@@ -12,7 +12,7 @@ async function main() {
     await page.addInitScript(() => localStorage.setItem('mooncci-theme', 'dark'));
     await page.route('**/api/**', route => {
       const path = new URL(route.request().url()).pathname;
-      if (path === '/api/auth/me') return route.fulfill({ status: 401, json: {} });
+      if (path === '/api/auth/session') return route.fulfill({ json: { user: null } });
       return route.fulfill({ json: path === '/api/auth/providers' ? { providers: [
         { provider: 'google', name: 'Google', client_id: 'fixture-client' }, { provider: 'qq', name: 'QQ' },
       ] } : {} });
@@ -35,7 +35,9 @@ async function main() {
       assert.equal(await page.locator('iframe:not(.footer-status iframe)').count(), 0);
       assert.equal(await page.locator('script[src*="accounts.google.com"]').count(), 0);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      await page.getByRole('button', { name: '打开菜单', exact: true }).click();
       await page.getByRole('button', { name: '切换浅色主题' }).click();
+      await page.getByRole('button', { name: '关闭菜单', exact: true }).click();
       await page.waitForFunction(() => getComputedStyle(document.querySelector('.auth-google-local')).backgroundColor === 'rgb(255, 255, 255)');
       await local.click();
       await page.waitForURL('https://accounts.google.com/**');

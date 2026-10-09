@@ -1,3 +1,4 @@
+import {useDocumentResource} from './DocumentData';
 import {
   createContext,
   ReactNode,
@@ -32,10 +33,12 @@ function readSnapshot(): SiteSettings | null {
 }
 
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SettingsState>(() => { const data = readSnapshot(); return { data, loading: !data, error: '' }; });
+  const initial = useDocumentResource('/settings/site');
+  const [state, setState] = useState<SettingsState>(() => { const data = initial.data || readSnapshot(); return { data, loading: !data, error: '' }; });
   const [version, setVersion] = useState(0);
   const reload = useCallback(() => setVersion((value) => value + 1), []);
   useEffect(() => {
+    if(initial.data && version===0)return;
     const controller = new AbortController();
     setState((current) => ({ ...current, loading: !current.data, error: '' }));
     api('/settings/site', { signal: controller.signal, cache: 'no-store' })

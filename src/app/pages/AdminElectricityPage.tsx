@@ -1,3 +1,5 @@
+import '../../styles/electricity.css';
+import '../../styles/electricity.css';
 import { ThemeSelect } from '../components/ThemeSelect';
 import {
   AdminElectricityRooms,

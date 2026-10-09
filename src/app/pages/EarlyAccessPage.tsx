@@ -185,11 +185,11 @@ export default function EarlyAccessPage() {
                 </label>
                 <label className="font-medium">
                   职业身份
-                  <ThemeSelect
+                  <ThemeSelect aria-label="职业"
                     required
                     value={form.occupation}
                     onValueChange={(nextValue) => update('occupation', nextValue)}
-                    className={fieldClass}
+
                   >
                     <option value="">请选择</option>
                     {occupations.map(([value, label]) => (
@@ -201,11 +201,11 @@ export default function EarlyAccessPage() {
                 </label>
                 <label className="font-medium">
                   当前设备
-                  <ThemeSelect
+                  <ThemeSelect aria-label="使用设备"
                     required
                     value={form.device}
                     onValueChange={(nextValue) => update('device', nextValue)}
-                    className={fieldClass}
+
                   >
                     <option value="">请选择</option>
                     {devices.map(([value, label]) => (

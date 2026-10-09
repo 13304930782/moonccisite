@@ -15,7 +15,7 @@ test('auth UI preserves failed logout, rejects HTML success, ignores stale me an
   const window = new EventTarget();
   window.setTimeout = setTimeout; window.clearTimeout = clearTimeout;
   const fetch = async (url) => {
-    if (url.endsWith('/auth/me')) {
+    if (url.endsWith('/auth/session')) {
       if (mode === 'delayed') return new Promise(resolve => { meRelease = () => resolve(Response.json({ user })); });
       if (mode === 'unavailable') return Response.json({ message: 'offline' }, { status: 503 });
       return Response.json({ user });

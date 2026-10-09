@@ -46,7 +46,9 @@ export function safeHref(input: unknown, fallback = '') {
 }
 
 export function safeImageSrc(input: unknown, fallback = '') {
-  return safeUrl(input, SAFE_IMAGE_PROTOCOLS, fallback);
+  const value = safeUrl(input, SAFE_IMAGE_PROTOCOLS);
+  // Explicit image scheme boundary also applies to data read from SSR bootstrap DOM.
+  return /^(?:https?:\/\/|\/(?!\/)|\.\.?\/|#)/i.test(value) ? value : fallback;
 }
 
 export function safeRoutePath(input: unknown, fallback = '/') {

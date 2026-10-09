@@ -1,3 +1,5 @@
+import '../../styles/analytics.css';
+import '../../styles/analytics.css';
 import {useEffect,useState} from 'react';
 import {api} from '../lib/api';
 const number=(x:any)=>Number(x||0).toLocaleString('zh-CN');

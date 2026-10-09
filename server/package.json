@@ -19,6 +19,7 @@
     "geoip-lite": "^2.0.3",
     "helmet": "^8.1.0",
     "imapflow": "^2.2.1",
+    "jsdom": "26.1.0",
     "jsonwebtoken": "^9.0.2",
     "mailparser": "^3.9.33",
     "multer": "^2.4.0",

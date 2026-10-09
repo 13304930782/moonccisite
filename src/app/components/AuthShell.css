@@ -1,17 +1,17 @@
 .auth-layout {
   max-width: 440px;
-  margin: 0 auto;
+  margin:0 auto;
 }
 .auth-layout .page-heading {
-  margin-bottom: 36px;
+  margin-bottom:var(--page-heading-gap);
 }
 .auth-layout .page-heading h1 {
-  font-size: 36px;
+  font-size:var(--page-title-size);
 }
 .auth-layout .eyebrow {
   margin-bottom: 16px;
 }
-.auth-layout .page-heading p {
+.auth-layout .page-heading p:not(.eyebrow) {
   font-size: 15px;
   line-height: 1.7;
 }
@@ -150,11 +150,8 @@
   padding-block: 24px;
 }
 @media (max-width: 760px) {
-  .auth-layout {
-    max-width: 100%;
-  }
   .auth-layout .page-heading h1 {
-    font-size: 32px;
+    font-size:var(--page-title-size);
   }
 }
 

@@ -37,6 +37,6 @@ test('SEO Nginx proxy locations forward client addresses',()=>{
  const fs=require('node:fs'),path=require('node:path');
  const config=fs.readFileSync(path.join(__dirname,'../../scripts/nginx-blog-seo.conf'),'utf8');
  const blocks=[...config.matchAll(/location\s+[^\{]+\{([^}]+)\}/g)].map(match=>match[1]).filter(body=>body.includes('proxy_pass'));
- assert.equal(blocks.length,4);
+ assert.equal(blocks.length,5);
  for(const block of blocks)assert.match(block,/proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;/);
 });

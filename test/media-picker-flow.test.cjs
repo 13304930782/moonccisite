@@ -4,10 +4,10 @@ test('picker preserves selection on upload failure, retries once and selects the
  const module={exports:{}},picked=[];let fail=true,calls=0,root;
  const code=ts.transpileModule(fs.readFileSync('src/app/components/ArticleMediaPicker.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const dialog=Object.fromEntries(['Root','Portal','Overlay','Content','Title','Description','Close'].map(k=>[k,k==='Close'?'button':'div']));
- const requireMock=n=>n==='react'?React:n==='react/jsx-runtime'?require(n):n.includes('react-dialog')?dialog:n.endsWith('/api')?{api:async()=>({items:[{filename:'old.png',url:'/old.png',display_name:'Existing'}],total:1})}:{safeImageSrc:x=>x||''};
+ const requireMock=n=>n==='lucide-react'?{Check:'svg'}:n==='react'?React:n==='react/jsx-runtime'?require(n):n.includes('react-dialog')?dialog:n.endsWith('/api')?{api:async()=>({items:[{filename:'old.png',url:'/old.png',display_name:'Existing'}],total:1})}:{safeImageSrc:x=>x||''};
  new Function('exports','require','AbortController',code)(module.exports,requireMock,AbortController);
  await act(async()=>{root=create(React.createElement(module.exports.ArticleMediaPicker,{onSelect:(...v)=>picked.push(v),onClose(){},uploadImage:async()=>{calls++;if(fail)throw Error('Offline');return '/new.png';}}));});
- const button=text=>root.root.findAllByType('button').find(b=>b.children.includes(text));
+ const button=text=>root.root.findAllByType('button').find(b=>b.children.includes(text)||b.props['aria-label']===text);
  await act(async()=>root.root.findAllByType('button').find(b=>b.props['aria-pressed']===false).props.onClick());
  const input=root.root.findByProps({'aria-label':'上传图片'});
  await act(async()=>input.props.onChange({target:{files:[{name:'new.png'}],value:'new.png'}}));

@@ -5,7 +5,7 @@ const browser=await chromium.launch({channel:'msedge',headless:true});
 try{const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
 let user={id:1,username:'mooncci',email:'writer@example.com',role:'user',status:'active',version:1,can_comment:1};
 await page.route('**/api/**',async route=>{const p=new URL(route.request().url()).pathname;let body={};
-if(p==='/api/auth/me')body={user};
+if(p==='/api/auth/session')body={user};
 if(p==='/api/account'){if(route.request().method()==='PUT')user={...user,...route.request().postDataJSON(),version:2};body={user,message:'资料已保存'};}
 if(p==='/api/auth/connections')body={providers:[{provider:'google',name:'Google',enabled:true,bound:true}]};
 if(p==='/api/publishing/config')body={enabled:true};

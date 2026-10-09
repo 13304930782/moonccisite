@@ -1,0 +1,6 @@
+.rich-text-body ul[data-type="taskList"] {list-style:none;padding-left:0}
+.rich-text-body li[data-type="taskItem"] {display:flex;align-items:baseline;gap:.6rem}
+.rich-text-body li[data-type="taskItem"]>div {min-width:0;flex:1}
+.rich-text-body li[data-type="taskItem"]>label {flex:none}
+.rich-text-body mark {border-radius:3px;padding:0 .1em;color:inherit}
+.rich-text-body pre,.rich-text-body table {max-width:100%}

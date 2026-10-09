@@ -21,7 +21,7 @@ const { chromium } = require('playwright');
     await page.route('**/api/**', async route => {
       const path = new URL(route.request().url()).pathname;
       calls.push(path);
-      const body = path === '/api/auth/me' ? { user: { id: 2, username: 'reader', email: 'reader@example.com', role: 'user', status: 'active' } }
+      const body = path === '/api/auth/session' ? { user: { id: 2, username: 'reader', email: 'reader@example.com', role: 'user', status: 'active' } }
         : path === '/api/mailboxes/me' ? { access: { status: 'active', mailbox_address: 'reader@mooncci.site', daily_limit: 10, password_change_status: status } }
         : path === '/api/mailboxes/sent' ? { messages: [] }
         : path === '/api/mailboxes/folders/inbox' ? { messages: [], total: 0, page: 1, pageSize: 20, folderAvailable: true }

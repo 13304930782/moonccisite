@@ -7,7 +7,7 @@ const {chromium}=require('playwright');
   const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));let fail=false;
   await page.route('**/api/**',async route=>{
    const url=new URL(route.request().url());let data={};
-   if(url.pathname==='/api/auth/me')data={user:{id:1,username:'tester',email:'test@example.test',role:'owner',status:'active'}};
+   if(url.pathname==='/api/auth/session')data={user:{id:1,username:'tester',email:'test@example.test',role:'owner',status:'active'}};
    else if(url.pathname==='/api/admin/runtime'){
     if(fail)return route.fulfill({status:503,json:{message:'运行信息暂时不可用'}});
     data={checkedAt:new Date().toISOString(),api:{startedAt:'2026-09-19T00:00:00Z',node:'v24.20.0'},worker:{state:'unknown',startedAt:null,checkedAt:null},deployment:{revision:'a'.repeat(40),completedAt:null,result:'unknown'},disk:{freeBytes:10,totalBytes:100},migrations:[{filename:'202609190001_'+ 'very_long_migration_'.repeat(12)+'.sql',executedAt:'2026-09-19T00:00:00Z'}]};

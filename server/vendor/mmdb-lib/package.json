@@ -1,0 +1,60 @@
+{
+  "name": "mmdb-lib",
+  "version": "3.0.3",
+  "homepage": "https://github.com/runk/mmdb-lib",
+  "description": "Maxmind DB (MMDB) Library",
+  "keywords": [
+    "maxmind",
+    "mmdb",
+    "geo",
+    "geoip",
+    "geoip2"
+  ],
+  "author": "Dmitry Shirokov <deadrunk@gmail.com>",
+  "contributors": [
+    "William Storey @horgh",
+    "Uman Shahzad @UmanShahzad",
+    "Gregory Oschwald @oschwald"
+  ],
+  "devDependencies": {
+    "@types/ip-address": "7.0.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "24.13.2",
+    "@types/sinon": "22.0.0",
+    "ip-address": "10.2.0",
+    "mocha": "^11.0.0",
+    "prettier": "^3.5.3",
+    "semantic-release": "^25.0.0",
+    "sinon": "22.1.0",
+    "ts-node": "^10.4.0",
+    "typescript": "6.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/runk/mmdb-lib.git"
+  },
+  "bugs": {
+    "mail": "deadrunk@gmail.com",
+    "url": "http://github.com/runk/mmdb-lib/issues"
+  },
+  "files": [
+    "lib"
+  ],
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "engines": {
+    "node": ">=10",
+    "npm": ">=6"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "rm -rf lib/* && tsc",
+    "benchmark": "npm run build && node scripts/benchmark.js",
+    "typecheck": "tsc --noEmit",
+    "test": "mocha",
+    "test:imports": "node test/imports/commonjs.js && node test/imports/esm.mjs && ts-node test/imports/typescript.ts",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "semantic-release": "semantic-release"
+  }
+}

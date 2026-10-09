@@ -2,14 +2,15 @@ import { clearPublicSnapshots } from './publicSnapshots';
 import { beginApiDiagnostic } from './browserDiagnostics';
 export type ApiErrorKind = 'http' | 'network' | 'timeout' | 'cancelled' | 'format';
 export class ApiError extends Error {
-  constructor(message: string, public status: number, public kind: ApiErrorKind = 'http', public uncertain = false) {
+  constructor(message: string, public status: number, public kind: ApiErrorKind = 'http', public uncertain = false, public code?: string) {
     super(message); this.name = 'ApiError';
   }
 }
-export type ApiOptions = RequestInit & { timeoutMs?: number };
+// Some privacy-preserving queries use POST without changing stored data.
+export type ApiOptions = RequestInit & { timeoutMs?: number; readOnly?: boolean };
 export async function api(path: string, options: ApiOptions = {}) {
-  const { timeoutMs, signal: callerSignal, ...request } = options;
-  const writing = !['GET', 'HEAD'].includes((request.method || 'GET').toUpperCase());
+  const { timeoutMs, readOnly = false, signal: callerSignal, ...request } = options;
+  const writing = !readOnly && !['GET', 'HEAD'].includes((request.method || 'GET').toUpperCase());
   const controller = new AbortController();
   let timedOut = false;
   const cancel = () => controller.abort(callerSignal?.reason);
@@ -38,8 +39,10 @@ export async function api(path: string, options: ApiOptions = {}) {
     }
     if (!res.ok) {
       const uncertain = writing && res.status >= 500;
-      const message = uncertain ? uncertainMessage : res.status >= 500 ? '服务暂时不可用，请稍后重试。' : data?.message || (res.status === 401 ? '登录已过期，请重新登录后继续。' : res.status === 403 ? '当前账号没有此操作权限。' : '操作未完成，请检查后重试。');
-      throw new ApiError(message, res.status, 'http', uncertain);
+      // These routes deliberately return safe provider errors, not exception text.
+      const cityMessage = readOnly && /^\/weather-mood\/(cities|locate|locate-network)$/.test(path) && typeof data?.code === 'string' && /^(AMAP_|CITY_|WEATHER_UPSTREAM_LIMIT)/.test(data.code) && typeof data?.message === 'string' ? data.message : '';
+      const message = uncertain ? uncertainMessage : cityMessage || (res.status >= 500 ? '服务暂时不可用，请稍后重试。' : data?.message || (res.status === 401 ? '登录已过期，请重新登录后继续。' : res.status === 403 ? '当前账号没有此操作权限。' : '操作未完成，请检查后重试。'));
+      throw new ApiError(message, res.status, 'http', uncertain, cityMessage ? data.code : undefined);
     }
     if (writing && /^\/(?:admin\/posts|article-drafts|publishing)(?:\/|$)/.test(path)) clearPublicSnapshots();
     return data;

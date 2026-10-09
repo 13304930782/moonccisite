@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('fs'),{chromium}=require('
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));let signed=false,failComment=true,activityFail=false;const user={id:1,username:'读者',role:'user',can_comment:1};
  await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
  await page.route('**/api/**',async r=>{const u=new URL(r.request().url()),p=u.pathname;let json={};
- if(p==='/api/auth/me')json={user:signed?user:null};
+ if(p==='/api/auth/session')json={user:signed?user:null};
  else if(p==='/api/auth/login'){signed=true;json={user};}
  else if(p==='/api/site-settings')json={brand:{},weather:{enabled:false}};
  else if(p==='/api/auth/providers')json={providers:[]};

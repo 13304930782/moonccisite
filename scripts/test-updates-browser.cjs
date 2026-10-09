@@ -19,7 +19,7 @@ async function main() {
       if (url.pathname === '/api/settings/site') {
         if (holdSettings) await new Promise(r => { releaseSettings = r; });
         body = { brand: { nav_title: 'mooncci' }, hero: { title: '真实配置测试标题', subtitle: '测试配置副标题' }, footer: {} };
-      } else if (url.pathname === '/api/auth/me') body = { user: { id: 1, username: 'fixture', role: 'owner' } };
+      } else if (url.pathname === '/api/auth/session') body = { user: { id: 1, username: 'fixture', role: 'owner' } };
       else if (url.pathname === '/api/now') body = { content: nowContent, updated_at: '2026-09-09' };
       else if (url.pathname === '/api/activity') {
         const update = { activity_id: 'u1', type: 'update', path: '/updates/1', title: '测试近况入口', excerpt: '一则记录', published_at: '2026-09-09' };
@@ -77,7 +77,7 @@ async function main() {
     await page.locator('.subscribe-section').waitFor();
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto('http://127.0.0.1:4193/electricity');
-    await page.locator('.recharts-surface').waitFor();
+    await page.locator('.electricity-chart-canvas svg').waitFor();
     for (const days of [7,30]) {
       await page.getByRole('button', { name: `${days} 天`, exact: true }).click();
       await page.waitForFunction(days => document.querySelector('.electricity-chart')?.getAttribute('data-days') === String(days), days);

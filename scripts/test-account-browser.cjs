@@ -14,7 +14,7 @@ async function main() {
     await page.route('**/api/**', async route => {
       const path = new URL(route.request().url()).pathname;
       let body = {};
-      if (path === '/api/auth/me') body = { user: loggedIn ? { ...user, id: 1, role: 'owner' } : null };
+      if (path === '/api/auth/session') body = { user: loggedIn ? { ...user, id: 1, role: 'owner' } : null };
       else if (path === '/api/auth/logout') { loggedIn = false; body = { message: '退出成功' }; }
       else if (path === '/api/account/security-code') body = { challenge_id: 'local-fixture-only' };
       else if (path === '/api/admin/updates') body = {items:[],total:0,page:1,pageSize:20};
@@ -38,10 +38,10 @@ async function main() {
           for (const dark of [false, true]) {
             await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark);
             for (const label of labels) {
-              await page.getByRole('combobox', {name: label, exact: true}).click();
-              await page.locator('.theme-select-menu').waitFor();
-              assert.ok(await page.getByRole('option').count() > 0);
-              await page.keyboard.press('Escape');
+              const choices = page.getByRole('radiogroup', {name: label, exact: true});
+              await choices.waitFor();
+              assert.ok(await choices.getByRole('radio').count() > 0);
+              assert.equal(await choices.getByRole('radio', {checked: true}).count(), 1);
             }
           }
           await page.evaluate(() => document.documentElement.classList.remove('dark'));
@@ -56,13 +56,14 @@ async function main() {
       }
     }
     await page.goto('http://127.0.0.1:4196/admin/updates');
-    const statusSelect = page.getByRole('combobox', {name:'发布状态',exact:true});
+    const statusSelect = page.getByRole('radiogroup', {name:'发布状态',exact:true});
     await statusSelect.waitFor();
     const alignment = await statusSelect.evaluate(el => {
-      const box=el.getBoundingClientRect(), icon=el.querySelector('svg').getBoundingClientRect();
-      return {right:box.right-icon.right, middle:Math.abs((box.top+box.bottom-icon.top-icon.bottom)/2)};
+      const choice=el.querySelector('[role="radio"][aria-checked="false"]');
+      const box=choice.getBoundingClientRect(), caption=choice.querySelector('.choice-caption').getBoundingClientRect();
+      return {height:box.height, middle:Math.abs((box.left+box.right-caption.left-caption.right)/2)};
     });
-    assert.ok(alignment.right < 24 && alignment.middle < 2, JSON.stringify(alignment));
+    assert.ok(alignment.height >= 44 && alignment.middle < 2, JSON.stringify(alignment));
     await page.goto('http://127.0.0.1:4196/account/settings');
     await page.getByLabel('用户名', { exact: true }).fill('修改后的名字');
     await page.getByRole('button', { name: '保存资料', exact: true }).click();

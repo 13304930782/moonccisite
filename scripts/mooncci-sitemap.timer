@@ -1,0 +1,10 @@
+[Unit]
+Description=Keep mooncci static sitemap synchronized with public content
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=5min
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

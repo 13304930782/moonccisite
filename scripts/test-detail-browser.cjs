@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
     const author={author_name:'这是用于检验窄屏排版的很长用户名', author_avatar:'/login-icons/microsoft.svg',published_at:'2026-09-14T00:00:00Z'};
     await page.route('**/api/**', route=>{
       const path=new URL(route.request().url()).pathname; let json={};
-      if(path==='/api/auth/me')json={user:null};
+      if(path==='/api/auth/session')json={user:null};
       if(path.includes('/comments'))json=[];
       if(path==='/api/posts/1')json={id:1,title:'博客前端视觉重构与阅读体验',content,summary:'同一套布局，适配不同类型的内容。',...author,category:'开发记录与前端设计',tags:['React','移动端适配','长标签测试'.repeat(12)]};
       if(path.startsWith('/api/projects/'))json={id:1,name:'PromptDock',content,stage:'active',summary:'原生 macOS 提示词管理工具',...author,tech_stack:'SwiftUI · SwiftData · AppKit',demo_url:'https://example.com',repo:'example/project',releases:{items:[],page:1,total:0,pageSize:20}};
@@ -33,7 +33,7 @@ const { chromium } = require('playwright');
         const outer=await page.locator('main.detail-container').evaluate(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return {left:r.left,right:el.parentElement.getBoundingClientRect().right-r.right,width:r.width,paddingLeft:s.paddingLeft,paddingRight:s.paddingRight};});
         assert.ok(Math.abs(outer.left-outer.right)<1, `${name} ${width}: equal outer gutters ${JSON.stringify(outer)}`);
         assert.equal(outer.paddingLeft,'0px');assert.equal(outer.paddingRight,'0px');
-        if(width>=1440){assert.equal(outer.width,920);measurements.push({name,viewport:width,...outer});}
+        if(width>=1440){assert.equal(outer.width,1200);measurements.push({name,viewport:width,...outer});}
         const pill=await page.locator('.detail-category').evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,radius:s.borderRadius};});
         assert.notEqual(pill.background,'rgba(0, 0, 0, 0)');assert.equal(pill.radius,'999px');
         const body=await page.locator('.detail-body').boundingBox();
@@ -46,12 +46,14 @@ const { chromium } = require('playwright');
         for(const c of metrics.children){assert.equal(c.shrink,'0');assert.equal(c.white,'nowrap');assert.ok(Math.abs(c.center-metrics.children[0].center)<1);}
         const aside=page.locator('.detail-aside');
         if(await aside.count()){
+          await page.locator('.detail-panel:not([data-initial])').waitFor();
+          await page.waitForFunction(expected => document.querySelector('.detail-panel').open === expected, width >= 1100);
           if(width<1100){assert.ok((await aside.boundingBox()).y>=body.y+body.height-1);assert.equal(await page.locator('.detail-panel').getAttribute('open'),null);await page.locator('.detail-panel summary').click();await page.locator('.detail-panel-content').waitFor({state:'visible'});await page.locator('.detail-panel summary').click();}
           else {
             const box=await aside.boundingBox();
             assert.equal(box.width,220, 'sidebar must not absorb unused container width');
-            const container=await page.locator('.page-content').boundingBox();
-            assert.ok(Math.abs(box.x+box.width-container.x-container.width)<1, 'sidebar reaches container right edge');
+            const container=await page.locator('.detail-page').boundingBox();
+            assert.ok(Math.abs(box.x+box.width-container.x-container.width)<1, 'sidebar reaches reading group right edge');
             assert.ok(box.x-body.x-body.width>=16 && box.x-body.x-body.width<=24, 'body to divider gap');
             const style=await aside.evaluate(el=>({left:getComputedStyle(el).borderLeftWidth,padding:getComputedStyle(el).paddingLeft}));
             assert.equal(style.left,'1px');assert.ok(parseFloat(style.padding)>=16 && parseFloat(style.padding)<=24);
@@ -60,7 +62,7 @@ const { chromium } = require('playwright');
           assert.deepEqual(panel.borders,['0px','0px','0px','0px']);assert.equal(panel.background,'rgba(0, 0, 0, 0)');assert.equal(panel.radius,'0px');
           assert.equal(await page.locator('.detail-panel-content').evaluate(el=>getComputedStyle(el).paddingRight),'0px');
         }
-        if(width<=375){assert.equal(await page.locator('.detail-title').evaluate(el=>getComputedStyle(el).fontSize),'24px');await page.getByRole('button',{name:'打开菜单',exact:true}).click();await page.getByRole('navigation',{name:'手机导航'}).waitFor();await page.keyboard.press('Escape');}
+        if(width<=375){assert.equal(await page.locator('.detail-title').evaluate(el=>getComputedStyle(el).fontSize),'28px');await page.getByRole('button',{name:'打开菜单',exact:true}).click();await page.getByRole('navigation',{name:'手机导航'}).waitFor();await page.keyboard.press('Escape');}
         await page.screenshot({path:`.cache/detail-${name}-${width}.png`,fullPage:true});
         if(width===375){await page.evaluate(()=>document.documentElement.classList.add('dark'));await page.screenshot({path:`.cache/detail-${name}-dark.png`,fullPage:true});}
       }

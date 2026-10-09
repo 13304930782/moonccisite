@@ -4,7 +4,7 @@ try{
 const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];let fail=false,loggedIn=true,lastQuery='',items=[{id:'a',browser:'Chrome',os:'Windows',current:true,first_seen:Date.now()-86400000,last_seen:Date.now(),expires_at:Date.now()+86400000,legacy:0},{id:'b',browser:'Safari',os:'iOS / iPadOS',current:false,first_seen:Date.now()-86400000,last_seen:Date.now()-400000,expires_at:Date.now()+86400000,legacy:1}];
 page.on('pageerror',e=>errors.push(e.message));
 await page.route('**/api/**',async route=>{const q=route.request(),u=new URL(q.url()),p=u.pathname;let data={};
-if(p==='/api/auth/me')data={user:loggedIn?{id:1,role:'owner',username:'mooncci'}:null};
+if(p==='/api/auth/session')data={user:loggedIn?{id:1,role:'owner',username:'mooncci'}:null};
 else if(p.endsWith('/config')||p==='/api/account/security-config')data={enabled:true};
 else if(p==='/api/site-settings')data={brand:{},weather:{enabled:false}};
 else if(p==='/api/account/sessions'&&q.method()==='GET')data={items};

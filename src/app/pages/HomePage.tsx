@@ -36,7 +36,7 @@ function LatestNote({ latest }: { latest: ReturnType<typeof useResource> }) {
     {note ? <>
       <p>{note.excerpt}</p>
       <time className="muted">发布于 {formatDate(note.published_at)}</time>
-      <div><Link className="text-link" to={safeRoutePath(note.path)}>查看这条近况 ↗</Link></div>
+      <div className="hero-note-actions"><Link className="text-link" to={safeRoutePath(note.path)}>查看这条近况 ↗</Link></div>
     </> : <p className="muted">还没有发布近况。</p>}
   </ResourceState>;
 }
@@ -55,7 +55,7 @@ export default function HomePage() {
       <Header />
       <main className="site-container home-main">
         <section className="home-hero">
-          <div>
+          <div className="hero-copy">
             <ResourceState resource={settings}>
               <p className="eyebrow">
                 {hero.eyebrow ?? 'mooncci / 个人技术手记'}

@@ -52,6 +52,7 @@ app.use('/api/mail-setup', require('./routes/mailSetup').privateResponse);
 
 // Body 大小限制
 app.use(express.json({ limit: '1mb' }));
+app.get('/api/image-variants/:width/:name', rateLimit({ windowMs: 60000, max: 240, standardHeaders: true, legacyHeaders: false }), require('./lib/imageVariants')(uploadRoutes.uploadDir));
 app.use('/api/uploads', express.static(uploadRoutes.uploadDir, {
   setHeaders: require('./lib/publicImageHeaders'),
 }));

@@ -455,6 +455,20 @@
   margin-bottom: 16px;
   font-size: 12px;
 }
+.weather-city-editor .weather-companion-heading h3 {
+  margin: 0;
+  color: var(--foreground);
+}
+.weather-city-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+.weather-city-editor-actions > button {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  justify-content: center;
+}
 .weather-city-confirm-actions {
   display: flex;
   justify-content: flex-end;

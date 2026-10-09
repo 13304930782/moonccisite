@@ -247,7 +247,7 @@ bash /root/mooncci-electricity-charts-20260908/deploy-electricity-charts.sh
 
 ### 电量后台运行计划与页面整理（2026-09-09 v5）
 
-后台“水电监控设置”支持逐行添加整点计划、修改任务和删除非零点行，00:00 日统计固定保留。计划保存在现有 site_settings，worker 每 30 秒读取更新；早报、晚报各最多一次，保存不补发。首次部署需同时更新 API、worker 与前端，无新增迁移或依赖；原手动历史同步、冷却与零点预测逻辑保持。上传和发布命令见 [ELECTRICITY-HISTORY-SYNC.md](./ELECTRICITY-HISTORY-SYNC.md)。
+后台“水电监控设置”支持逐行添加整点计划、修改任务和删除非零点行，00:00 日统计固定保留。计划保存在现有 site_settings，worker 每 5 分钟读取更新；早报、晚报各最多一次，保存不补发。首次部署需同时更新 API、worker 与前端，无新增迁移或依赖；原手动历史同步、冷却与零点预测逻辑保持。上传和发布命令见 [ELECTRICITY-HISTORY-SYNC.md](./ELECTRICITY-HISTORY-SYNC.md)。
 
 ### 多宿舍电量管理（2026-09-09）
 
@@ -976,3 +976,86 @@ python3 /root/mooncci-us-http2.py rollback /www/backup/mooncci-us-http2.RETURNED
 ```
 
 手动回滚也有 SHA 漂移检查；如配置已被另一个发布修改，拒绝覆盖，须审查差异。实际用户体验需重新导出设备记录确认，HTTP/2 握手通过本身不是性能达标证据。调查记录见 `docs/real-device-diagnostics-20261005.md`。
+
+
+## Tiptap frontend release (2026-10-06)
+
+This release replaces the visual editor with Tiptap. Native rich text is stored in the existing content field with `<!--mooncci-richtext:v1-->`; legacy Markdown is preserved until edited in visual mode. No database migration or backend dependency change is required. The frontend renders both formats and sanitizes rich HTML before rendering/importing.
+
+The mobile toolbar sits below the bounded editor and scrolls horizontally. Legacy Markdown conversion and the search panel load on demand. Existing Radix dependencies are reused. Entry budgets remain unchanged.
+
+Release exception: the user explicitly requested immediate deployment after reviewing the aggregate bundle-budget failure. `bundle-budget.json` and CI checks remain unchanged. Type checking, unit tests and production build must pass; record the measured aggregate failure separately instead of claiming `npm run check` passed. Build the scoped frontend archive locally using `make_bundle` only after those checks and a clean committed tree, preserving its LF/checksum verification. Upload and run the packaged deploy script in a child shell with nohup; do not restart PM2.
+
+Rollback: the deploy script saves the previous index and retains hashed resources. Restoring that index reverts the UI, but the previous renderer does not support newly saved native rich text. After users save native content, keep the new dual-format reader in any rollback release; do not convert or discard saved content. An immediate rollback before native content is created may restore the saved index atomically.
+
+
+## Public document rendering (SEO)
+
+`npm run build` builds the browser into `dist/` and the isolated Node renderer into
+`server/runtime/`. Install server dependencies for local rendering with `npm ci --prefix server`.
+The Express document route reads the same frontend `index.html` and renders the existing React
+pages using anonymous, allowlisted loopback reads. It never forwards session cookies or credentials.
+Only published content enters public HTML; private tools remain noindex and client rendered.
+Set `SEO_HTML_TEMPLATE` when the frontend root differs from `/www/wwwroot/mooncci.site/index.html`.
+Retain the existing `PUBLISHING_ENABLED` setting; disabled series are omitted from indexing.
+
+Validate with `npm run typecheck`, `npm test`, `npm test --prefix server`,
+`npm run build`, `node scripts/test-document.mjs`, and `npm run check:bundle`.
+MySQL integration cases require the existing test database setup; skipped cases are not passes.
+
+The scoped offline package uses `scripts/build-document-release.py` and `scripts/deploy-document.sh`.
+Before packaging, copy `scripts/document-runtime/package*.json` into `.cache/document-deps/`
+and run `npm ci --prefix .cache/document-deps --omit=dev --ignore-scripts`.
+Commit source, build, then run `python scripts/build-document-release.py`.
+The bundle includes pure-JavaScript jsdom dependencies under `server/runtime/node_modules`,
+not Windows native modules and not the live backend node_modules directory.
+It replaces only three SEO source files, the renderer, frontend assets and the SEO Nginx snippet.
+No migrations, environment replacement, upload deletion, mail changes or worker restart occur.
+The API restart is required for the new Node renderer. This is not a frontend-only package.
+
+Upload the archive and its `.sha256` with PowerShell `scp -i <existing-key> <archive> <sidecar> root@182.92.179.81:/www/backup/`.
+On the server, verify `sha256sum -c <archive>.sha256`, unpack to a new named directory,
+and run `nohup bash <unpacked-directory>/deploy.sh > <release-log> 2>&1 < /dev/null &`.
+The script records a unique backup directory and automatically restores source, index and Nginx
+on failure. Retain hashed frontend assets so open tabs and rollback remain functional.
+For manual rollback, restore `src/routes/seo.js` and `src/lib/seo.js` from that backup,
+restore `index.html`, `vhost.conf` and `nginx-before.inc` to their original paths;
+restore the prior `runtime` directory when present, run `nginx -t`, reload Nginx and restart
+`mooncci-api` as user `mooncci`. Use a child shell, never `set -e` or `exit` in an interactive SSH shell.
+
+The independent `www.mooncci.site` virtual host uses a separate certificate and returns 301 to
+`https://mooncci.site$request_uri`. Its HTTP ACME challenge path must remain accessible for renewal.
+DNS defaults to the existing Beijing server solely for this redirect; root-domain regional records
+and mail DNS records remain unchanged. Check certificate renewal through the existing BaoTa ACME job.
+
+### 自动静态 sitemap（2026-10-07）
+`/sitemap-pages.xml` 是运行时生成的完整公开地图，不放入前端 public 目录。
+`mooncci-sitemap.timer` 每 5 分钟调用本机已有的 `/sitemap.xml` 公开查询，校验后原子替换；失败保留上一份并记录 systemd 错误。发布/撤回/删除最多约 5 分钟同步。数据库不可用期间会保留上次地图，恢复后自动更新。
+打包：`python scripts/build-sitemap-release.py`。上传包与 SHA256 后在子 shell 执行 `nohup bash deploy.sh > deploy.log 2>&1 < /dev/null &`。无需重启 PM2 或迁移数据库。
+检查：`systemctl status mooncci-sitemap.timer`、`journalctl -u mooncci-sitemap.service -n 20`。
+回滚：`nohup bash rollback.sh /www/backup/mooncci-sitemap.XXXXXX > rollback.log 2>&1 < /dev/null &`（用部署日志实际备份目录替换）。
+
+### 依赖监控瞬时故障处理（2026-10-07）
+成功探测缓存仍为 60 秒，失败缓存缩短至 5 秒。只读 GET 发生连接重置、临时 DNS 错误或超时时最多重试一次，每次 4 秒，整次探测仍受 10 秒上限约束。HTTP 错误和证书内容错误不重试；持续失败返回 503。重试恢复记录 retry_succeeded 和次数。OAuth token 交换与真实登录流程保持不变。
+
+## Homepage performance release
+
+Build with `npm run build`, then `python scripts/build-home-performance-release.py` after committing. The scoped package includes the API entry, bounded image variant handler, matching SSR runtime and frontend. It uses existing Sharp dependencies, restarts only mooncci-api, and does not touch uploads, environment or SQL. Run deploy.sh with nohup in a child shell; its output records the backup directory. Roll back using `nohup bash rollback.sh /www/backup/mooncci-home-performance.XXXXXX > rollback.log 2>&1 < /dev/null &`. Image variants are limited to six widths, two concurrent transforms and a 16 MiB process cache. Original images remain available; deletion is checked before serving cached variants. Weather waits for initial load plus 1.5 seconds; automatic login preload waits three seconds while intent-based preload stays immediate.
+
+
+### 首页性能与访客会话探测修复（2026-10-08）
+
+前端会话探测改为 GET /api/auth/session；匿名、过期或失效会话返回 200 和 {"user":null}。GET /api/auth/me 仍要求登录。认证服务异常返回 503，前端保留当前账号状态。两条接口均使用 private, no-store 并按 Cookie/Authorization 区分响应。
+
+本次发布必须同步 dist/、server/runtime/、server/src/lib/publicDocument.js 与 server/src/routes/auth-cookie.js。先更新后端再开放新前端；不能使用纯前端发布器部署此修改。需要单独审查限定文件的后端离线包并重启 API，无新增依赖或数据库迁移。保留 .env、uploads 和历史 SQL。
+
+验收：npm run check；node scripts/test-document.mjs；node --test server/test/sessionProbe.test.js server/test/authLogout.test.js server/test/publicDocument.test.js。上线后以无 Cookie 的请求验证 /api/auth/session 返回 200 和 user:null、/api/auth/me 返回 401，再在相同条件下复测 PageSpeed FCP/LCP。
+# 天气城市定位修复发布
+
+`scripts/build-weather-city-release.py` 打包本地构建的前端及匹配的 SSR 页面运行时。
+先运行 `npm run check` 和 `node scripts/test-document.mjs`，提交源代码后再打包。
+归档、校验文件及部署脚本使用 LF；上传后校验归档及包内 `SHA256SUMS`。
+在子 shell 中使用 `nohup bash deploy.sh` 发布，日志应包含 `EXIT_CODE=0`。
+此包会更新 SSR 运行时和 `server/src/lib/weatherGeocoder.js`，并重启 `mooncci-api`，不安装依赖、不执行迁移，也不修改 `.env` 或 uploads。部署前检查 geocoder 的线上基线校验值；高德无城市结果时才调用现有的缓存、节流全球城市识别服务。
+回滚使用包内 `rollback.sh`，参数为部署日志中的 `/www/backup/mooncci-weather-city.*` 备份目录。
+

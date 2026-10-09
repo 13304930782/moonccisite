@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium}=requ
 (async()=>{const server=await(await import('vite')).preview({preview:{host:'127.0.0.1',port:4204,strictPort:true}}),browser=await chromium.launch({channel:'msedge',headless:true});try{
 const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];let verified=false,sendFail=true,confirmFail=true,category='';
 page.on('pageerror',e=>errors.push(e.message));await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());await page.route('**/api/**',async route=>{const q=route.request(),u=new URL(q.url()),p=u.pathname;let body={};
-if(p==='/api/auth/me')body={user:{id:1,username:'mooncci',role:'owner'}};
+if(p==='/api/auth/session')body={user:{id:1,username:'mooncci',role:'owner'}};
 else if(p==='/api/engagement/config'||p==='/api/publishing/config')body={enabled:true};
 else if(p==='/api/engagement/preferences')body={email_verified:verified,comment_email:false,reply_email:false};
 else if(p==='/api/engagement/notifications'){category=u.searchParams.get('kind');body={items:[],unread:0};}
