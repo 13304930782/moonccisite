@@ -46,6 +46,8 @@ const { chromium } = require('playwright');
         for(const c of metrics.children){assert.equal(c.shrink,'0');assert.equal(c.white,'nowrap');assert.ok(Math.abs(c.center-metrics.children[0].center)<1);}
         const aside=page.locator('.detail-aside');
         if(await aside.count()){
+          await page.locator('.detail-panel:not([data-initial])').waitFor();
+          await page.waitForFunction(expected => document.querySelector('.detail-panel').open === expected, width >= 1100);
           if(width<1100){assert.ok((await aside.boundingBox()).y>=body.y+body.height-1);assert.equal(await page.locator('.detail-panel').getAttribute('open'),null);await page.locator('.detail-panel summary').click();await page.locator('.detail-panel-content').waitFor({state:'visible'});await page.locator('.detail-panel summary').click();}
           else {
             const box=await aside.boundingBox();
