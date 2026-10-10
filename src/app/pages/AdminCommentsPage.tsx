@@ -109,7 +109,7 @@ export default function AdminCommentsPage() {
           </button>
         </fieldset>
         <AdminPagination label="评论管理分页" page={list.page} total={list.total} disabled={list.loading || busy} onPage={list.setPage} />
-        {list.error && <p role="alert">{list.error}</p>}
+        {list.error && <p role="alert">{list.error}<button type="button" className="text-link" disabled={list.loading || busy} onClick={list.reload}>重试</button></p>}
         {list.loading && <p role="status">正在加载评论…</p>}
         <div className="space-y-4">
           {!list.loading && !list.error && comments.length === 0 && (

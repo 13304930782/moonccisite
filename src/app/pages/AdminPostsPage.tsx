@@ -23,11 +23,11 @@ export default function AdminPostsPage() {
   const requestVersion = useRef(0);
   const loadPosts = async () => {
     const version = ++requestVersion.current;
-    setLoading(true);
+    setLoading(true); setMessage('');
     try {
       const [data, working] = await Promise.all([api(`/admin/posts?page=${page}&pageSize=50&status=${filter}`),api(`/article-drafts?page=${draftPage}`)]);
-      setDraftTotal(working.total||0);setDrafts(prev=>draftPage===1?(working.items||[]):[...new Map([...prev,...(working.items||[])].map(d=>[d.id,d])).values()]);
       if (version !== requestVersion.current) return;
+      setDraftTotal(working.total||0);setDrafts(prev=>draftPage===1?(working.items||[]):[...new Map([...prev,...(working.items||[])].map(d=>[d.id,d])).values()]);
       setPosts(data.items); setTotal(data.total);
       if (data.page !== page) setPage(data.page);
     } catch (err: any) { if (version === requestVersion.current) setMessage(err.message || '文章加载失败'); }
@@ -65,11 +65,11 @@ export default function AdminPostsPage() {
         </div>
 
         {['owner','admin'].includes(user?.role||'')&&<ArticleImport/>}
-        {message && <div className="mb-4 rounded-[6px] bg-muted px-4 py-3 text-foreground">{message}</div>}
+        {message && <div role="alert" className="mb-4 rounded-[6px] bg-muted px-4 py-3 text-foreground">{message}<button type="button" className="text-link" disabled={loading} onClick={() => void loadPosts()}>重新加载列表</button></div>}
 
         <ThemeSelect aria-label="筛选文章状态" value={filter} onValueChange={v=>{setFilter(v);setPage(1);}}><option value="all">全部</option><option value="published">已发布</option><option value="draft">草稿</option></ThemeSelect>
         {filter!=='published' && drafts.filter(d=>!d.post_id).map(d=><div className="admin-list-row" key={d.id}><h2>{d.payload.title||'未命名草稿'}</h2><p>草稿 · {new Date(d.updated_at).toLocaleString()}</p><Link to={`/admin/write?draft=${d.id}`}>继续编辑 / 预览</Link><button onClick={async()=>{if((await confirmAction('删除这份未发布草稿？'))){try{await api(`/article-drafts/${d.id}`,{method:'DELETE',body:JSON.stringify({version:d.version})});setDrafts(prev=>prev.filter(item=>item.id!==d.id));void loadPosts();}catch(e:any){setMessage(e.message); notify.error(e.message);}}}}>删除草稿</button></div>)}
-        {draftPage*20<draftTotal&&<button onClick={()=>setDraftPage(n=>n+1)}>加载更多草稿</button>}
+        {filter!=='published'&&draftPage*20<draftTotal&&<button disabled={loading} onClick={()=>setDraftPage(n=>n+1)}>加载更多草稿</button>}
         <AdminPagination label="文章管理分页" page={page} total={total} disabled={loading} onPage={setPage} />
         {loading && <p role="status">正在加载文章…</p>}
         <div className="space-y-4">

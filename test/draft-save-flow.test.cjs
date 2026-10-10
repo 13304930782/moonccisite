@@ -6,6 +6,7 @@ async function fixture(){
  let hook,root,mode='normal',pending=[];const writes=[],notifications=[];
  let draft={id:'fixture',version:1,payload:{title:'Original',content:'Body',tags:[]},updated_at:new Date().toISOString()};
  const api=async(path,options={})=>{
+  if(options.method==='DELETE'){if(typeof mode==='number')throw new ApiError(mode);if(mode==='uncertain'){const e=new ApiError(0);e.uncertain=true;throw e;}return {};}
   if(path.endsWith('/submit'))return {state:'submitted'};
   if(options.method==='PUT'){
    const value=JSON.parse(options.body);writes.push(value);
@@ -36,4 +37,21 @@ test('offline, 401 and 409 retain current writing and do not claim server save',
 });
 test('accepted submission remains accepted and locked when follow-up refresh fails',async()=>{
  const f=await fixture();f.setMode('refresh-failed');let accepted;await act(async()=>{accepted=await f.hook.action('submit');});assert.equal(accepted,true);assert.equal(f.hook.draft.workflow.state,'submitted');assert.equal(f.hook.status,'已提交审核');assert(f.notifications.some(x=>x.includes('状态刷新失败')));f.close();
+});
+
+
+test('rejected discard keeps writing editable and manual saving available',async()=>{
+ const f=await fixture();f.setMode(400);
+ await act(async()=>{f.hook.update({...f.hook.form,title:'Keep writing'});await f.hook.discard();});
+ assert.equal(f.hook.blocked,false);assert.equal(f.hook.busy,false);assert.equal(f.hook.form.title,'Keep writing');assert.equal(f.hook.dirty,true);
+ f.setMode('normal');await act(async()=>{await f.hook.save('manual');});assert.equal(f.hook.dirty,false);f.close();
+});
+
+test('uncertain discard and permission/version failures still require reconciliation',async()=>{
+ for(const mode of ['uncertain',401,403,409]){const f=await fixture();f.setMode(mode);await act(async()=>{f.hook.update({...f.hook.form,title:'Keep me'});await f.hook.discard();});assert.equal(f.hook.blocked,true);assert.equal(f.hook.form.title,'Keep me');f.close();}
+});
+
+test('explicit submission retries a failed save and submits the current accepted version',async()=>{
+ const f=await fixture();f.setMode('offline');await act(async()=>{f.hook.update({...f.hook.form,title:'Retry me'});await f.hook.save('manual');});
+ f.setMode('normal');let result;await act(async()=>{result=await f.hook.action('submit');});assert.equal(result,true);assert.equal(f.writes.at(-1).payload.title,'Retry me');assert.equal(f.hook.dirty,false);f.close();
 });
