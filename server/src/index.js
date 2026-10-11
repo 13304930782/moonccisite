@@ -160,6 +160,7 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/mailboxes/agent', require('./routes/mailboxes').agentRouter);
 app.use('/api/mailboxes', require('./routes/mailboxes').router);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/node-monitor', require('./routes/nodeMonitor').createRouter());
 app.use('/api/admin/early-access', earlyAccessRoutes.adminRouter);
 app.use('/api/admin/electricity/rooms', require('./routes/adminElectricityRooms'));
 app.use('/api/admin/electricity', adminElectricityRoutes);

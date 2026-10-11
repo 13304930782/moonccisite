@@ -70,7 +70,7 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
  router.get('*',(req,res,next)=>{
   if(req.path.startsWith('/api/')||req.path.startsWith('/assets/')||req.path.startsWith('/uploads/')||/\.[a-z0-9]+$/i.test(req.path))return next('route');
   return limiter(req,res,next);
- },async(req,res,next)=>{
+ },require('../lib/anonymousHomeCache').createAnonymousHomeCache(),async(req,res,next)=>{
   const pathname=req.path.replace(/\/$/,'')||'/';
   let html;
   try {
@@ -94,6 +94,7 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
    rendered.data.status=result.status;
    if(result.status!==200)res.set('X-Robots-Tag','noindex, nofollow');
    html=await injectDocument(html,{...rendered,data:{...rendered.data,seo:result.meta}});
+   res.locals.publicHomeComplete=result.status===200 && Object.keys(rendered.data.errors||{}).length===0;
    res.status(result.status).type('html').send(seo.renderHtml(html,result.meta));
   } catch(error) {
    console.error('[seo/document]',error.message);

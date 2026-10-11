@@ -1,3 +1,5 @@
+const NodeMonitorPage=lazy(()=>import('./pages/NodeMonitorPage'));
+const AdminNodeMonitorPage=lazy(()=>import('./pages/AdminNodeMonitorPage'));
 import { feedbackStore } from './lib/feedback';
 import { confirmationStore } from './lib/confirmAction';
 import { afterInitialLoad } from './lib/afterInitialLoad';
@@ -130,6 +132,8 @@ function Guard({
 
 
 export default function RoutePages(){return <Routes>
+<Route path="/account/node-monitor" element={<Guard><AccountWorkspace><NodeMonitorPage/></AccountWorkspace></Guard>}/>
+<Route path="/admin/node-monitor" element={<Guard ownerOnly><AdminShell><AdminNodeMonitorPage/></AdminShell></Guard>}/>
           <Route path="/" element={<HomePage />} />
           <Route path="/updates" element={<UpdatesPage/>}/>
           <Route path="/updates/:id" element={<UpdateDetailPage/>}/>

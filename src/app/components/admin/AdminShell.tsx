@@ -138,6 +138,7 @@ export function AdminShell({ children }: AdminShellProps) {
   }, []);
 
   const menus: MenuItem[] = [
+{title:"节点监控",to:"/admin/node-monitor",icon:Gauge,show:owner},
 {title:'运营概览',to:'/admin/operations',icon:Gauge,show:manager&&operations},
 {title:'投稿审核',to:'/admin/reviews',icon:Inbox,show:manager&&publishing},
 {title:'发布计划',to:'/admin/schedules',icon:Send,show:manager&&publishing},
@@ -283,7 +284,7 @@ export function AdminShell({ children }: AdminShellProps) {
           {label:'内容与发布',paths:['/admin/posts','/admin/write','/admin/reviews','/admin/schedules','/admin/series','/admin/media','/admin/updates','/admin/projects']},
           {label:'用户与互动',paths:['/admin/comments','/admin/users','/admin/editor-applications','/admin/editor-apply','/admin/early-access','/admin/banned-words']},
           {label:'邮件与订阅',paths:['/admin/mailbox','/admin/mailbox-requests','/admin/newsletter','/admin/mail-settings','/admin/send-mail']},
-          {label:'站点与系统',paths:['/admin/blog-pages','/admin/site-settings','/admin/login-settings','/admin/electricity','/admin/runtime']},
+          {label:'站点与系统',paths:['/admin/node-monitor','/admin/blog-pages','/admin/site-settings','/admin/login-settings','/admin/electricity','/admin/runtime']},
         ].map(group=>{const items=group.paths.map(path=>menus.find(item=>item.to===path)).filter((item):item is MenuItem=>!!item);if(!items.length)return null;return <details className="admin-menu-group" key={group.label+location.pathname} open={group.label==='工作台'||items.some(item=>item.to==='/admin'?location.pathname==='/admin':location.pathname.startsWith(item.to))}><summary>{group.label}</summary>{items.map(item=><NavLink key={item.to} to={item.to} end={item.to==='/admin'} onClick={closeMobile}><item.icon/><span>{item.title}</span></NavLink>)}</details>;})}
         <div className="admin-menu-footer">
         <Link to="/account/settings" onClick={closeMobile}><Settings /><span>个人设置</span></Link>
