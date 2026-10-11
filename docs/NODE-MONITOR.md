@@ -9,3 +9,6 @@
 - 发布范围：前端独立离线包；后端仅新增监控路由、入口注册、SEO 缓存模块与构建好的 SSR runtime；海外 reader 单独备份更新。无需依赖安装或数据库迁移，仅重启 mooncci-api 和 mooncci-reader。
 - 验证：`node --test server/test/nodeMonitor.test.js server/test/anonymousHomeCache.test.js server/test/seo.test.js test/home-reader-cache.test.cjs test/read-router.test.cjs`；`npm run typecheck`、`npm run build`、`npm run check:bundle`。
 - 视觉沿用主题灰阶、圆角、字号及间距；新增操作区使用至少 44 CSS px 控件、可见键盘焦点、关联标签、文字状态、可暂停更新；无新增位移动画。参照 Apple HIG Buttons / Accessibility，Web 侧对应 WCAG 2.2 的键盘操作、焦点可见、非纯色提示、自动更新控制要求。最终验收需真实浏览器桌面、窄屏与深浅主题。
+
+- 匿名专用源站 `origin-cn.mooncci.site` 的精确首页代理使用 `edge/reader/origin-home-cache.conf`，避免宝塔通用代理追加 `no-cache` 而令 reader 无法缓存；其余源站路径不变。
+- Komari 兼容扁平 Record 与 1.5 版嵌套报告（`updated_at`、`cpu.usage`、`ram.used`、`network.down/up`）；缺少有效上报时间显示状态未知。

@@ -56,10 +56,11 @@ function createRouter({db=require('../db'),auth=require('../middleware/auth'),se
      // Bound upstream concurrency and return only the fields displayed by this page.
      for(let i=0;i<nodes.length;i+=4)output.push(...await Promise.all(nodes.slice(i,i+4).map(async node=>{
       if(!/^[a-f0-9-]{36}$/i.test(node.uuid))throw Error('Invalid node');
-      let record=null;try{const records=list(await request('/api/recent/'+node.uuid,key,deadline));record=records.reduce((latest,r)=>!latest||Date.parse(r.time)>Date.parse(latest.time)?r:latest,null);}catch{}
-      const last=record?.time&&Number.isFinite(Date.parse(record.time))?record.time:null;
+      let record=null;try{const records=list(await request('/api/recent/'+node.uuid,key,deadline));record=records.reduce((latest,r)=>!latest||Date.parse(r.time??r.updated_at)>Date.parse(latest.time??latest.updated_at)?r:latest,null);}catch{}
+      const reported=record?.time??record?.updated_at;
+      const last=reported&&Number.isFinite(Date.parse(reported))?reported:null;
       const live=last&&Date.now()-Date.parse(last)<90000&&Date.parse(last)<=Date.now()+30000;
-      return {id:node.uuid,name:cleanText(node.name),region:cleanText(node.region),group:cleanText(node.group),state:!record?'unknown':live?'online':'offline',updatedAt:last,cpu:live?number(record.cpu):null,ram:live?number(record.ram):null,ramTotal:number(record?.ram_total??node.mem_total),disk:live?number(record.disk):null,diskTotal:number(record?.disk_total??node.disk_total),netIn:live?number(record.net_in):null,netOut:live?number(record.net_out):null};
+      return {id:node.uuid,name:cleanText(node.name),region:cleanText(node.region),group:cleanText(node.group),state:!last?'unknown':live?'online':'offline',updatedAt:last,cpu:live?number(record.cpu?.usage??record.cpu):null,ram:live?number(record.ram?.used??record.ram):null,ramTotal:number(record?.ram?.total??record?.ram_total??node.mem_total),disk:live?number(record.disk?.used??record.disk):null,diskTotal:number(record?.disk?.total??record?.disk_total??node.disk_total),netIn:live?number(record.network?.down??record.net_in):null,netOut:live?number(record.network?.up??record.net_out):null};
      })));
      const data={checkedAt:new Date().toISOString(),nodes:output};cached={identity,created:Date.now(),data};return data;
     })();flight={identity,promise};promise.finally(()=>{if(flight?.promise===promise)flight=null;}).catch(()=>{});
