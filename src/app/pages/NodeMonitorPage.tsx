@@ -4,6 +4,7 @@ import {RefreshCw,Settings,Server} from 'lucide-react';
 import {api,ApiError} from '../lib/api';
 import {useAuth} from '../context/AuthContext';
 import '../../styles/node-monitor.css';
+import '../../styles/workspace-polish.css';
 type Node={id:string;name:string;region:string;group:string;state:'online'|'offline'|'unknown';updatedAt:string|null;cpu:number|null;ram:number|null;ramTotal:number|null;disk:number|null;diskTotal:number|null;netIn:number|null;netOut:number|null};
 type Snapshot={checkedAt:string;nodes:Node[]};
 const bytes=(n:number|null)=>{if(n===null)return '—';const units=['B','KiB','MiB','GiB','TiB'];let i=0;while(n>=1024&&i<4){n/=1024;i++;}return `${n.toFixed(i?1:0)} ${units[i]}`;};

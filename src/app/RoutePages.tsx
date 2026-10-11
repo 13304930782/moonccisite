@@ -132,7 +132,8 @@ function Guard({
 
 
 export default function RoutePages(){return <Routes>
-<Route path="/account/node-monitor" element={<Guard><AccountWorkspace><NodeMonitorPage/></AccountWorkspace></Guard>}/>
+<Route path="/node-monitor" element={<Guard><SitePage><NodeMonitorPage/></SitePage></Guard>}/>
+<Route path="/account/node-monitor" element={<Navigate to="/node-monitor" replace/>}/>
 <Route path="/admin/node-monitor" element={<Guard ownerOnly><AdminShell><AdminNodeMonitorPage/></AdminShell></Guard>}/>
           <Route path="/" element={<HomePage />} />
           <Route path="/updates" element={<UpdatesPage/>}/>

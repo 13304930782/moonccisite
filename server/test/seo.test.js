@@ -7,6 +7,7 @@ test('HTTP without JavaScript returns metadata, private/missing posts 404 and pu
  let r=await fetch(base+'/article/7');assert.equal(r.status,200);const html=await r.text();assert.match(html,/property="og:title"/);assert.match(html,/article:modified_time/);assert.match(html,/rel="canonical"/);
  for(const id of ['8','999','invalid']){r=await fetch(base+'/article/'+id);assert.equal(r.status,404);const body=await r.text();assert.ok(!body.includes('A &quot;summary&quot;'));assert.ok(!body.includes('BlogPosting'));assert.match(r.headers.get('x-robots-tag'),/noindex/);}
  r=await fetch(base+'/api/seo?path=/account/settings');const meta=await r.json();assert.match(meta.robots,/noindex/);assert.equal(meta.jsonLd,null);
+ r=await fetch(base+'/node-monitor');assert.equal(r.status,200);assert.match(r.headers.get('cache-control'),/private/);assert.match(r.headers.get('x-robots-tag'),/noindex/);assert.doesNotMatch(await r.text(),/公开内容/);
  const xml=await(await fetch(base+'/sitemap.xml')).text();assert.match(xml,/article\/7/);assert.match(xml,/updates\/2/);assert.match(xml,/projects\/project-a/);assert.ok(!xml.includes('/admin'));assert.match(xml,/lastmod/);
  assert.match(xml,/category\/%E9%83%BD%E5%B8%82%E5%A4%A9%E9%99%85%E7%BA%BF2/);
  assert.match(await(await fetch(base+'/robots.txt')).text(),/Sitemap: https?:/);

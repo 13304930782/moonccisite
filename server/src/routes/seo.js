@@ -10,6 +10,7 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
   if(/^\/updates\/[1-9]\d*$/.test(pathname)){const [[update]]=await db.query("SELECT id,content,image_url FROM updates WHERE id=? AND status='published'",[pathname.split('/').pop()]);if(update)return {status:200,meta:seo.updateMeta(update,brand)};return {status:404,meta:{...seo.baseMeta(pathname,brand),title:'近况不存在',robots:'noindex, nofollow'}};}
   if(/^\/projects\/[a-zA-Z0-9_-]+$/.test(pathname)){const [[project]]=await db.query("SELECT slug,name,summary,content,cover_image FROM projects WHERE slug=? AND status='published'",[pathname.split('/').pop()]);if(project)return {status:200,meta:seo.projectMeta(project,brand)};return {status:404,meta:{...seo.baseMeta(pathname,brand),title:'作品不存在',robots:'noindex, nofollow'}};}
   if(pathname.startsWith('/category/')){let category;try{category=decodeURIComponent(pathname.slice('/category/'.length));}catch{}if(category&&category.length<=100&&!/[\/#?]/.test(category)){const [[row]]=await db.query("SELECT category FROM posts WHERE status='published' AND category=? LIMIT 1",[category]);if(row)return {status:200,meta:seo.categoryMeta(row.category,brand)};}return {status:404,meta:{...seo.baseMeta(pathname,brand),title:'分类不存在',robots:'noindex, nofollow'}};}
+  if(pathname==='/node-monitor')return {status:200,meta:{...seo.baseMeta(pathname,brand),title:'节点监控 · mooncci',robots:'noindex, nofollow'}};
   return {status:200,meta:seo.baseMeta(pathname,brand)};
  }
  async function metadata(pathname,query={}) {
