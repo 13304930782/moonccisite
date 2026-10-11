@@ -18,16 +18,32 @@ function createRouter({db=require('../db'),auth=require('../middleware/auth'),se
  router.use((_req,res,next)=>{res.setHeader('Cache-Control','private, no-store');res.vary('Cookie');res.vary('Authorization');next();});
  router.use(auth.authRequired);
  router.get('/access',async(req,res)=>res.json({allowed:allowed(req.user,await config()),owner:req.user.role==='owner'}));
- router.get('/settings',auth.ownerOnly,async(req,res)=>{const c=await config();let users=[];if(c.allowedUserIds?.length)[users]=await db.query('SELECT id,username,role,status FROM users WHERE id IN (?)',[c.allowedUserIds]);res.json({origin:ORIGIN,configured:!!c.secret,allowedUsers:users});});
- router.get('/users',auth.ownerOnly,async(req,res)=>{const q=String(req.query.q||'').trim().slice(0,80);if(!q)return res.json([]);const [rows]=await db.query("SELECT id,username,role FROM users WHERE status<>'disabled' AND username LIKE ? ORDER BY id LIMIT 20",['%'+q+'%']);res.json(rows);});
+ // Lock the shared settings row so key changes and per-user grants cannot overwrite each other.
+ async function updateConfig(change){
+  const connection=await db.getConnection();
+  try{await connection.beginTransaction();await connection.query("INSERT INTO site_settings (setting_key,setting_value) VALUES (?,?) ON DUPLICATE KEY UPDATE setting_key=VALUES(setting_key)",[CONFIG_KEY,JSON.stringify({allowedUserIds:[]})]);
+   const [[row]]=await connection.query('SELECT setting_value FROM site_settings WHERE setting_key=? FOR UPDATE',[CONFIG_KEY]);const value=change(JSON.parse(row.setting_value));
+   await connection.query('UPDATE site_settings SET setting_value=? WHERE setting_key=?',[JSON.stringify(value),CONFIG_KEY]);await connection.commit();cached=null;
+  }catch(e){await connection.rollback();throw e;}finally{connection.release();}
+ }
+ router.get('/settings',auth.ownerOnly,async(req,res)=>{const c=await config();res.json({origin:ORIGIN,configured:!!c.secret});});
+ router.get('/users/:id',auth.ownerOnly,async(req,res)=>{
+  const id=Number(req.params.id);if(!Number.isSafeInteger(id)||id<=0)return res.sendStatus(400);
+  const [[user]]=await db.query('SELECT id,role,status FROM users WHERE id=? AND deleted_at IS NULL LIMIT 1',[id]);if(!user)return res.sendStatus(404);
+  res.json({allowed:allowed(user,await config()),owner:user.role==='owner'});
+ });
+ router.put('/users/:id',auth.ownerOnly,async(req,res)=>{
+  const id=Number(req.params.id);if(!Number.isSafeInteger(id)||id<=0||typeof req.body.allowed!=='boolean')return res.status(400).json({message:'权限设置无效。'});
+  const [[user]]=await db.query('SELECT id,role,status FROM users WHERE id=? AND deleted_at IS NULL LIMIT 1',[id]);if(!user)return res.sendStatus(404);
+  if(user.role==='owner')return res.status(400).json({message:'站长始终拥有节点监控权限。'});
+  if(user.status==='disabled'&&req.body.allowed)return res.status(400).json({message:'请先恢复账号，再授予节点监控权限。'});
+  await updateConfig(c=>({...c,allowedUserIds:req.body.allowed?[...new Set([...(c.allowedUserIds||[]),id])]:(c.allowedUserIds||[]).filter(x=>x!==id)}));
+  res.json({allowed:req.body.allowed,message:'节点监控权限已保存。'});
+ });
  router.put('/settings',auth.ownerOnly,async(req,res)=>{
-  const ids=req.body.allowedUserIds;if(!Array.isArray(ids)||ids.length>100||ids.some(id=>!Number.isSafeInteger(id)||id<=0))return res.status(400).json({message:'授权用户无效。'});
-  const key=req.body.apiKey;if(key!==undefined&&(typeof key!=='string'||key.length>512||/[\s\x00-\x1f]/.test(key)))return res.status(400).json({message:'API 密钥格式无效。'});
-  const old=await config();let secret=old.secret;
-  if(key){try{list(await request('/api/nodes',key));}catch{return res.status(400).json({message:'无法连接 Komari，请检查 API 密钥后重试。'});}secret=secrets.seal(key,'komari-monitor:v1');}
-  if(!secret)return res.status(400).json({message:'请先配置 API 密钥。'});
-  if(ids.length){const [valid]=await db.query("SELECT id FROM users WHERE id IN (?) AND status<>'disabled'",[ids]);if(new Set(valid.map(x=>Number(x.id))).size!==new Set(ids).size)return res.status(400).json({message:'授权名单中包含不存在或已停用的用户。'});}
-  await db.query('INSERT INTO site_settings (setting_key,setting_value) VALUES (?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)',[CONFIG_KEY,JSON.stringify({secret,allowedUserIds:[...new Set(ids)]})]);cached=null;res.json({ok:true});
+  const key=req.body.apiKey;if(typeof key!=='string'||!key||key.length>512||/[\s\x00-\x1f]/.test(key))return res.status(400).json({message:'请填写有效的 API 密钥。'});
+  try{list(await request('/api/nodes',key));}catch{return res.status(400).json({message:'无法连接 Komari，请检查 API 密钥后重试。'});}
+  const secret=secrets.seal(key,'komari-monitor:v1');await updateConfig(c=>({...c,secret}));res.json({ok:true});
  });
  router.get('/snapshot',async(req,res)=>{
   const c=await config();if(!allowed(req.user,c))return res.status(403).json({message:'当前账号没有节点监控权限，请联系站长。'});

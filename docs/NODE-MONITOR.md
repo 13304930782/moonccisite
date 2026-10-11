@@ -1,6 +1,6 @@
 # 节点监控与匿名首页缓存
 
-- 监控入口：`/account/node-monitor`；站长设置：`/admin/node-monitor`。
+- 监控入口：`/account/node-monitor`；站长连接设置：`/admin/node-monitor`。用户授权统一在 `/admin/users/:id/settings` 的“节点监控权限”中管理，连接设置页提供用户管理快捷入口。
 - 仅站长与 `site_settings.node_monitor_private_v1` 中显式授权的用户可读取；管理员不继承权限。每次请求重新检查授权，撤销后缓存也不可读取。
 - Komari 服务固定为 `https://komari.mooncci.site:8443`。仅访问节点及最近报告接口，无任意 URL 代理、远程执行或管理操作。
 - API 密钥使用现有 `MAILBOX_SECRET_KEY`（64 位十六进制）进行 AES-256-GCM 加密，使用独立 AAD；接口不返回密钥。设置新密钥前验证节点列表读取权限。备份和恢复数据库时保留该加密主密钥。

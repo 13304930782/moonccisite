@@ -4,9 +4,11 @@ test('monitor enforces owner/allowlist, validates credentials, never returns sec
  let config={secret:'encrypted',allowedUserIds:[3]},calls=0;
  const db={query:async(sql,args)=>{
   if(sql.startsWith('SELECT setting_value'))return [[{setting_value:JSON.stringify(config)}]];
-  if(sql.startsWith('INSERT')){config=JSON.parse(args[1]);return [{}];}
+  if(sql.startsWith('INSERT'))return [{}];
+  if(sql.startsWith('UPDATE site_settings')){config=JSON.parse(args[0]);return [{}];}
   return [[{id:3,username:'reader',role:'user',status:'active'}]];
  }};
+ db.getConnection=async()=>({...db,beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release:()=>{}});
  const auth={authRequired:(req,res,next)=>{const role=req.headers['x-test-role'];if(!role)return res.sendStatus(401);req.user={role,id:role==='owner'?1:role==='admin'?2:3};next();},ownerOnly:(req,res,next)=>req.user.role==='owner'?next():res.sendStatus(403)};
  const fetcher=async(url,options)=>{calls++;if(options.headers.Authorization==='Bearer invalid')return new Response('{}',{status:403});return Response.json({status:'success',data:url.endsWith('/api/nodes')?[{uuid:'11111111-1111-1111-1111-111111111111',name:'node',ipv4:'private',token:'hidden'}]:[{time:new Date().toISOString(),cpu:15,ram:1,ram_total:2,disk:1,disk_total:5,net_in:10,net_out:20}]});};
  const app=express();app.use(express.json());app.use(createRouter({db,auth,fetcher,secrets:{seal:()=> 'encrypted',open:()=> 'secret-key'}}));
@@ -20,6 +22,10 @@ test('monitor enforces owner/allowlist, validates credentials, never returns sec
  config.allowedUserIds=[];assert.equal((await get('/snapshot','user')).status,403);
  const put=(role,body)=>fetch(base+'/settings',{method:'PUT',headers:{'x-test-role':role,'Content-Type':'application/json'},body:JSON.stringify(body)});
  assert.equal((await put('admin',{allowedUserIds:[2]})).status,403);
- assert.equal((await put('owner',{allowedUserIds:[3],apiKey:'invalid'})).status,400);assert.deepEqual(config.allowedUserIds,[]);
- assert.equal((await put('owner',{allowedUserIds:[3]})).status,200);assert.equal(config.secret,'encrypted');assert.equal((await get('/snapshot','user')).status,200);
+ assert.equal((await put('owner',{apiKey:'invalid'})).status,400);assert.deepEqual(config.allowedUserIds,[]);
+ assert.equal((await put('owner',{apiKey:'replacement'})).status,200);assert.equal(config.secret,'encrypted');assert.deepEqual(config.allowedUserIds,[]);
+ const permission=(role,allowed)=>fetch(base+'/users/3',{method:'PUT',headers:{'x-test-role':role,'Content-Type':'application/json'},body:JSON.stringify({allowed})});
+ assert.equal((await permission('admin',true)).status,403);
+ assert.equal((await permission('owner',true)).status,200);assert.equal((await get('/snapshot','user')).status,200);
+ assert.equal((await permission('owner',false)).status,200);assert.equal((await get('/snapshot','user')).status,403);
 });

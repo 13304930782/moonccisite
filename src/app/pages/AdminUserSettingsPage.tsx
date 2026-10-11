@@ -1,3 +1,4 @@
+import {NodeMonitorPermission} from '../components/NodeMonitorPermission';
 import { notify } from '../lib/feedback';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
@@ -27,6 +28,7 @@ export default function AdminUserSettingsPage() {
           <label>状态<ThemeSelect aria-label="状态" disabled={busy} value={user.status} onValueChange={status=>setUser({...user,status})}><option value="active">正常</option><option value="disabled">已停用</option></ThemeSelect></label>
           <label>评论权限<ThemeSelect aria-label="评论权限" disabled={busy} value={String(user.can_comment)} onValueChange={value=>setUser({...user,can_comment:Number(value)})}><option value="1">允许评论</option><option value="0">禁止评论</option></ThemeSelect></label><button className="neo-button" type="submit">保存权限</button>
         </form></section>
+        <NodeMonitorPermission key={user.id} userId={user.id}/>
         <section className="account-section"><div><h2>密码</h2><p>重置链接发给用户，管理员不会获得密码。</p></div><button className="neo-button" onClick={()=>void run(`${base}/password-reset`,'POST')}>发送密码重置链接</button></section>
         <section className="account-section"><div><h2>删除账号</h2><p>保留文章、评论、用户名和头像并标记“已删除”。释放邮箱和第三方绑定，账号无法恢复。</p></div><form className="account-fields" onSubmit={async e=>{e.preventDefault();if(await run(`${base}/account`,'DELETE',{username:confirmation}))navigate('/admin/users');}}><label>输入“{user.username}”确认删除<input value={confirmation} onChange={e=>setConfirmation(e.target.value)} autoComplete="off"/></label><button className="neo-button account-danger" disabled={confirmation!==user.username}>删除账号</button></form></section>
       </fieldset>}
