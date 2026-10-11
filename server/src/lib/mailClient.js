@@ -31,7 +31,7 @@ function mobileconfig(value) {
     IncomingMailServerHostName: config.imap.host, IncomingMailServerPortNumber: config.imap.port,
     IncomingMailServerUseSSL: true, IncomingMailServerAuthentication: 'EmailAuthPassword', IncomingMailServerUsername: email,
     OutgoingMailServerHostName: config.smtp.host, OutgoingMailServerPortNumber: config.smtp.port,
-    // Apple's Mail payload exposes UseSSL + port, not a separate RequireSTARTTLS key.
+    // Port 465 with UseSSL enables implicit TLS for SMTP.
     OutgoingMailServerUseSSL: true, OutgoingMailServerAuthentication: 'EmailAuthPassword', OutgoingMailServerUsername: email,
     OutgoingPasswordSameAsIncomingPassword: true,
   };

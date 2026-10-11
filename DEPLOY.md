@@ -1059,3 +1059,7 @@ Build with `npm run build`, then `python scripts/build-home-performance-release.
 此包会更新 SSR 运行时和 `server/src/lib/weatherGeocoder.js`，并重启 `mooncci-api`，不安装依赖、不执行迁移，也不修改 `.env` 或 uploads。部署前检查 geocoder 的线上基线校验值；高德无城市结果时才调用现有的缓存、节流全球城市识别服务。
 回滚使用包内 `rollback.sh`，参数为部署日志中的 `/www/backup/mooncci-weather-city.*` 备份目录。
 
+
+### 邮件客户端隐式 TLS
+
+客户端发信统一使用 SMTP 465 + SSL/TLS，收信使用 IMAP 993 + SSL/TLS。共享配置为 `server/src/config/mail-client.json`；修改后运行 `node scripts/generate-mail-autoconfig.cjs` 并重新构建前端。Apple 描述文件由后端生成，发布时需同步此配置并重启对应 API 进程。发布前验证邮件主机 465 的 TLS 握手与证书；已有客户端需手动将发件端口改为 465 并启用 SSL/TLS。

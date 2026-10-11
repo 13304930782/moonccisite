@@ -21,7 +21,7 @@ export default function MailSetupPage() {
   useEffect(() => { if (!download) return; const timer = window.setTimeout(() => { setDownload(''); setStatus('下载链接已过期，请重新生成。'); }, 110000); return () => clearTimeout(timer); }, [download]);
   const email = emailAddress(input);
   const invalid = input !== '' && !email;
-  const parameters = `${config.displayName}\n邮箱 / IMAP 与 SMTP 用户名：${email}\nIMAP：${config.imap.host}\n端口：${config.imap.port}\n加密：SSL/TLS（隐式 TLS）\nSMTP：${config.smtp.host}\n端口：${config.smtp.port}\n加密：STARTTLS（必须升级 TLS 后认证）\nSMTP 需要认证：是\n密码：在邮件客户端填写自己的邮箱密码`;
+  const parameters = `${config.displayName}\n邮箱 / IMAP 与 SMTP 用户名：${email}\nIMAP：${config.imap.host}\n端口：${config.imap.port}\n加密：SSL/TLS（隐式 TLS）\nSMTP：${config.smtp.host}\n端口：${config.smtp.port}\n加密：SSL/TLS（隐式 TLS）\nSMTP 需要认证：是\n密码：在邮件客户端填写自己的邮箱密码`;
   async function copy(value: string) {
     setFallback('');
     try { await navigator.clipboard.writeText(value); setStatus('已复制。'); }
@@ -59,7 +59,7 @@ export default function MailSetupPage() {
       <section aria-labelledby="mail-parameters-heading">
         <h2 id="mail-parameters-heading">连接参数</h2>
         <div className="mail-server-grid">
-          {[['IMAP · 收件', config.imap, 'SSL/TLS（隐式 TLS）'], ['SMTP · 发件', config.smtp, 'STARTTLS（必须升级 TLS）']].map(([title, settings, tls]) => {
+          {[['IMAP · 收件', config.imap, 'SSL/TLS（隐式 TLS）'], ['SMTP · 发件', config.smtp, 'SSL/TLS（隐式 TLS）']].map(([title, settings, tls]) => {
             const server = settings as typeof config.imap;
             return <div className="mail-server" key={String(title)}><h3>{String(title)}</h3><dl>
               <dt>服务器</dt><dd>{server.host}</dd><dt>端口</dt><dd>{server.port}</dd><dt>加密</dt><dd>{String(tls)}</dd>
@@ -75,16 +75,16 @@ export default function MailSetupPage() {
       </section>
       <section aria-labelledby="mail-clients-heading">
         <h2 id="mail-clients-heading">按客户端设置</h2>
-        <details open><summary>Thunderbird</summary><ol><li>选择添加已有邮件账户，填写自己的姓名、完整邮箱和密码。</li><li>继续后检查发现的参数是否与上表一致。自动发现尚未可用或失败时，选择手动配置。</li><li>IMAP 选择 SSL/TLS，SMTP 选择 STARTTLS；认证方式选择“普通密码”。普通密码认证必须在 TLS 加密连接内进行。</li></ol></details>
+        <details open><summary>Thunderbird</summary><ol><li>选择添加已有邮件账户，填写自己的姓名、完整邮箱和密码。</li><li>继续后检查发现的参数是否与上表一致。自动发现尚未可用或失败时，选择手动配置。</li><li>IMAP 和 SMTP 均选择 SSL/TLS；认证方式选择“普通密码”。普通密码认证必须在 TLS 加密连接内进行。</li></ol></details>
         <details open><summary>Apple 自带“邮件”</summary>
           <p>可下载未签名的配置描述文件，仅配置 Apple 自带邮件，不会配置 Gmail App。文件不含密码、证书、MDM、VPN 或代理。</p>
-          <ol><li>填写上方邮箱，生成并下载描述文件。iPhone / iPad 请用 Safari 打开本页。</li><li>系统询问时允许下载，再到“设置”中打开“已下载描述文件”（或“通用 → VPN 与设备管理”），查看内容并自行确认安装。</li><li>在系统安装或邮件设置中填写自己的邮箱密码。macOS 在系统设置中确认描述文件安装。</li><li>核对收件 {config.imap.port}、发件 {config.smtp.port} 且启用 SSL；SMTP 应先完成 STARTTLS 再认证。不要接受不安全连接或证书警告。</li></ol>
-          <p className="muted">iPhone 实机安装与 STARTTLS 行为待验收。若系统不接受下载或配置，请按连接参数手动添加“其他”邮件账户。</p>
+          <ol><li>填写上方邮箱，生成并下载描述文件。iPhone / iPad 请用 Safari 打开本页。</li><li>系统询问时允许下载，再到“设置”中打开“已下载描述文件”（或“通用 → VPN 与设备管理”），查看内容并自行确认安装。</li><li>在系统安装或邮件设置中填写自己的邮箱密码。macOS 在系统设置中确认描述文件安装。</li><li>核对收件 {config.imap.port}、发件 {config.smtp.port} 且启用 SSL；连接建立时即启用 TLS。不要接受不安全连接或证书警告。</li></ol>
+          <p className="muted">若系统不接受下载或配置，请按连接参数手动添加“其他”邮件账户。</p>
           <div className="inline-actions"><button className="quiet-button" disabled={!email || busy} onClick={generate}>{busy ? '正在生成…' : '生成 Apple 配置'}</button>
             {download && <a className="quiet-button" href={download} referrerPolicy="no-referrer">下载未签名描述文件</a>}</div>
           {error && <p role="alert">{error}</p>}
         </details>
-        <details open><summary>Gmail · iOS / Android</summary><ol><li>点击头像 → 添加其他账户 → 其他（IMAP）。界面名称可能随版本变化。</li><li>填写完整邮箱及自己的邮箱密码，手动设置收件服务器 {config.imap.host}，端口 {config.imap.port}，SSL/TLS。</li><li>发件服务器填 {config.smtp.host}，端口 {config.smtp.port}，STARTTLS；启用身份验证，用户名填完整邮箱。</li></ol><p>不保证 Gmail 读取 Mozilla Autoconfig。用户已实测上述参数可添加账户，不代表所有版本都已验证。</p></details>
+        <details open><summary>Gmail · iOS / Android</summary><ol><li>点击头像 → 添加其他账户 → 其他（IMAP）。界面名称可能随版本变化。</li><li>填写完整邮箱及自己的邮箱密码，手动设置收件服务器 {config.imap.host}，端口 {config.imap.port}，SSL/TLS。</li><li>发件服务器填 {config.smtp.host}，端口 {config.smtp.port}，SSL/TLS；启用身份验证，用户名填完整邮箱。</li></ol><p>不保证 Gmail 读取 Mozilla Autoconfig。若无法自动识别，请按上方参数手动设置。</p></details>
         <details><summary>Outlook 与其他客户端</summary><p>如果客户端支持普通 IMAP，可按上表手动配置。本功能不提供 Exchange / Autodiscover，不承诺自动发现。</p></details>
       </section>
     </div>

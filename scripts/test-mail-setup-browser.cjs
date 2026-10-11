@@ -33,7 +33,7 @@ const fs = require('node:fs');
       await input.fill(email);
       await page.getByRole('button', { name: '复制用户名', exact: true }).click();
       await page.getByRole('button', { name: '复制整套参数', exact: true }).click();
-      const copies = await page.evaluate(() => window.__copies); assert.equal(copies[0], email); assert(copies[1].includes('587')); assert(copies[1].includes('STARTTLS'));
+      const copies = await page.evaluate(() => window.__copies); assert.equal(copies[0], email); assert(copies[1].includes('465')); assert(copies[1].includes('SSL/TLS')); assert(!copies[1].includes('STARTTLS'));
       assert(!sent.some(x => (x.body || '').includes(email)), 'typing and copying must not transmit email');
       await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw Error('denied'); }; });
       await page.getByRole('button', { name: '复制用户名', exact: true }).click();
