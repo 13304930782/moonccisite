@@ -53,7 +53,8 @@ test('cover framing migration, drafts, revisions, review snapshots and public re
     assert.ok(live.startsWith(cacheRoot + path.sep + 'crop-migration-'));
     fs.rmSync(live, { recursive: true, force: true });
   });
-  fs.writeFileSync(path.join(live, '.env'), '# Isolated local test; connection supplied by test environment.\n');
+  fs.writeFileSync(path.join(live, '.env'), Object.entries({DB_HOST: '127.0.0.1', DB_PORT: process.env.DB_PORT,
+    DB_USER: 'root', DB_PASSWORD: '', DB_NAME: name}).map(([key, value]) => key + '=' + value + '\n').join(''));
   for (const [file, target] of [['dotenv/index.js', 'dotenv'], ['mysql2/promise.js', 'mysql2/promise']]) {
     const destination = path.join(live, 'node_modules', file);
     fs.mkdirSync(path.dirname(destination), { recursive: true });
@@ -61,7 +62,8 @@ test('cover framing migration, drafts, revisions, review snapshots and public re
   }
   const migrationFile = '202610130001_article_cover_crop.sql';
   const runMigration = () => spawnSync(process.execPath, [path.join(__dirname, '../scripts/migrate-article-cover-crop.js'), live],
-    { env: process.env, encoding: 'utf8' });
+    { env: {...process.env, DB_HOST: 'invalid.inherited.test', DB_PORT: '1', DB_USER: 'wrong',
+      DB_PASSWORD: 'wrong', DB_NAME: 'wrong_inherited_database'}, encoding: 'utf8' });
   for (let i = 0; i < 2; i++) { const result = runMigration(); assert.equal(result.status, 0, result.stderr); }
   const [[legacy]] = await setup.query('SELECT * FROM posts WHERE slug="legacy-cover"');
   assert.equal(legacy.cover_crop, null);

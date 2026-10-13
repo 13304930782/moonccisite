@@ -8,14 +8,17 @@ async function run() {
   if (!process.argv[2]) throw new Error('Explicit backend directory required');
   const live = path.resolve(process.argv[2]);
   if (!fs.existsSync(path.join(live, '.env'))) throw new Error('Backend .env not found');
-  require(path.join(live, 'node_modules/dotenv')).config({ path: path.join(live, '.env'), quiet: true });
+  // Bind this one migration to the same live file used by backup/verification.
+  // Inherited DB_* shell variables must never redirect an offline deployment.
+  const env = require(path.join(live, 'node_modules/dotenv')).parse(fs.readFileSync(path.join(live, '.env')));
+  if (!env.DB_NAME || !env.DB_USER) throw new Error('Live database configuration incomplete');
   const mysql = require(path.join(live, 'node_modules/mysql2/promise'));
   const filename = '202610130001_article_cover_crop.sql';
   const sql = fs.readFileSync(path.join(__dirname, '../database/migrations', filename), 'utf8').replace(/\r\n/g, '\n').trim();
   const checksum = crypto.createHash('sha256').update(sql).digest('hex');
   const connection = await mysql.createConnection({
-    host: process.env.DB_HOST || '127.0.0.1', port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER, password: process.env.DB_PASSWORD, database: process.env.DB_NAME,
+    host: env.DB_HOST || '127.0.0.1', port: Number(env.DB_PORT || 3306),
+    user: env.DB_USER, password: env.DB_PASSWORD, database: env.DB_NAME,
     charset: 'utf8mb4',
   });
   let locked = false;
