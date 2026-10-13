@@ -2,7 +2,7 @@ import {isRichText,richTextHasContent} from '../lib/richText';
 import {stripLegacyAgeNotice} from '../lib/articleAge';
 import {CheckCircle2, CircleAlert, CircleDashed} from 'lucide-react';
 import {ThemeSelect} from './ThemeSelect';
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {ArticlePresentation} from './ArticlePresentation';
 import {checkArticleImage} from '../lib/checkArticleImage';
@@ -10,14 +10,22 @@ type ImageIssue = {url:string; index:number; result:'failed'|'timeout'};
 const srcDoc='<!doctype html><html lang="zh-CN"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="preview-root" class="neo-page"></div></body></html>';
 export function ArticleReview({post,onPublish,busy,disabled=false,publishLabel='确认发布',onFix}:{post:any;onPublish:()=>void;busy:boolean;disabled?:boolean;publishLabel?:string;onFix?:(field:string)=>void}){
  const description=stripLegacyAgeNotice(post.summary).trim();
+ const [previewFailed,setPreviewFailed]=useState(false),[previewAttempt,setPreviewAttempt]=useState(0);
  const frame=useRef<HTMLIFrameElement>(null);const [root,setRoot]=useState<HTMLElement|null>(null),[width,setWidth]=useState(375),[checking,setChecking]=useState(false),[report,setReport]=useState<{snapshot:string;errors:string[];warnings:string[];imageIssues:ImageIssue[]}|null>(null);const run=useRef(0);const [retryUrl,setRetryUrl]=useState<string|null>(null);const resultHeading=useRef<HTMLHeadingElement>(null);const snapshot=JSON.stringify(post);const preview=useMemo(()=> <ArticlePresentation preview post={post}/>,[snapshot]);
  useEffect(()=>()=>{run.current++;},[]);
- async function ready(){const doc=frame.current?.contentDocument;if(!doc)return;
- const loads=Array.from(document.querySelectorAll('link[rel="stylesheet"],style')).map(el=>{const copy=el.cloneNode(true) as HTMLElement;if(copy instanceof HTMLLinkElement){copy.href=(el as HTMLLinkElement).href;return new Promise<void>(resolve=>{copy.onload=()=>resolve();copy.onerror=()=>resolve();doc.head.appendChild(copy);});}doc.head.appendChild(copy);return Promise.resolve();});
- doc.documentElement.classList.toggle('dark',document.documentElement.classList.contains('dark'));
- const style=doc.createElement('style');style.textContent='html{scrollbar-gutter:auto}body{margin:0}.detail-preview{max-width:none;margin:auto}';doc.head.appendChild(style);
- await Promise.all(loads);if(frame.current?.contentDocument===doc)setRoot(doc.getElementById('preview-root'));
+ const ready=useCallback(()=>{const doc=frame.current?.contentDocument,element=doc?.getElementById('preview-root');if(!doc||!element)return;
+ // Mount the preview as soon as its document exists. A stalled stylesheet must
+ // never keep the portal empty or disable publication checks indefinitely.
+ if(!doc.head.querySelector('[data-article-preview-styles]')){
+ for(const el of Array.from(document.querySelectorAll('link[rel="stylesheet"],style'))){const copy=el.cloneNode(true) as HTMLElement;if(copy instanceof HTMLLinkElement)copy.href=(el as HTMLLinkElement).href;doc.head.appendChild(copy);}
+ const style=doc.createElement('style');style.dataset.articlePreviewStyles='';style.textContent='html{scrollbar-gutter:auto}body{margin:0}.detail-preview{max-width:none;margin:auto}';doc.head.appendChild(style);
  }
+ doc.documentElement.classList.toggle('dark',document.documentElement.classList.contains('dark'));
+ setRoot(element);
+ },[]);
+ // onLoad can race React attaching its handler when srcDoc is already cached.
+ // Also observe document readiness without waiting for all subresources to load.
+ useEffect(()=>{if(root)return;ready();const timer=window.setInterval(ready,100);const timeout=window.setTimeout(()=>{window.clearInterval(timer);setPreviewFailed(true);},10000);return()=>{window.clearInterval(timer);window.clearTimeout(timeout);};},[ready,root,previewAttempt]);
  async function check(){if(!root)return;const id=++run.current;setChecking(true);const errors:string[]=[],warnings:string[]=[],imageIssues:ImageIssue[]=[];
   if(!post.title?.trim())errors.push('请填写文章标题。');if(!richTextHasContent(post.content || ''))errors.push('请填写正文。');
   const rendered=Array.from(root.querySelectorAll('img'));
@@ -47,12 +55,13 @@ export function ArticleReview({post,onPublish,busy,disabled=false,publishLabel='
  const StatusIcon=passed?CheckCircle2:current&&(report.errors.length||report.imageIssues.length)?CircleAlert:CircleDashed;
  return <section className="article-review">
   <section className="article-review-result"><div><h2>搜索描述预览</h2><strong>{post.title} · mooncci</strong><p>{description||'尚未填写简介；页面会从正文提取描述。'}</p><small>{Array.from(description).length} 字 · {post.summary_mode==='ai'?'DeepSeek 自动简介':'手写或正文摘录'} · 搜索引擎可能另选摘要。</small></div></section>
-  <div className="article-review-toolbar"><label>预览设备<ThemeSelect aria-label="预览设备" value={String(width)} onValueChange={v=>setWidth(Number(v))}><option value="375">手机 · 375px</option><option value="768">平板 · 768px</option><option value="1024">桌面 · 1024px</option></ThemeSelect></label><button className={passed?'article-button':'article-button article-button-primary'} onClick={()=>void check()} disabled={checking||!root||busy}>{checking?'正在检查图片…':report?'重新检查':'运行发布前检查'}</button></div>
+  <div className="article-review-toolbar"><label>预览设备<ThemeSelect aria-label="预览设备" value={String(width)} onValueChange={v=>setWidth(Number(v))}><option value="375">手机 · 375px</option><option value="768">平板 · 768px</option><option value="1024">桌面 · 1024px</option></ThemeSelect></label><button className={passed?'article-button':'article-button article-button-primary'} onClick={()=>void check()} disabled={checking||!root||busy}>{checking?'正在检查图片…':!root?'正在准备预览…':report?'重新检查':'运行发布前检查'}</button></div>
   <div role="status" className="article-review-result" aria-live="polite"><StatusIcon size={20} aria-hidden="true"/><div><h2 ref={resultHeading} tabIndex={-1}>{checking?'正在检查':!current?report?'内容已修改，请重新检查':'尚未检查':passed?'检查通过，可以继续':'检查尚未通过'}</h2>
    {checking?<p>{retryUrl?'仅重试选中的图片，其他检查结果保留。':'正在确认标题、正文和图片是否可用。'}</p>:!current?<p>先运行检查，再核对下方的文章排版。</p>:<>{report.errors.length>0&&<><h3>需要修正</h3><ul>{report.errors.map((x,i)=><li key={i}>{x}{onFix&&<button className="text-link" onClick={()=>onFix(x.includes('标题')?'title':'content')}>返回修正</button>}</li>)}</ul></>}{report.imageIssues.length>0&&<ul className="article-image-issues">{report.imageIssues.map(issue=><li key={issue.url}><strong>图片 {issue.index} {issue.result==='timeout'?'加载超时':'加载失败'}</strong><p>{issue.result==='timeout'?'等待超过 20 秒，可单独重试。':'请打开图片确认是否可访问，再重试或返回编辑更换图片。'}</p><div className="inline-actions"><button className="article-button" disabled={checking||busy} onClick={()=>void retryImage(issue)}>重试图片 {issue.index}</button><a className="article-button" href={issue.url} target="_blank" rel="noopener noreferrer">打开图片 {issue.index}</a></div></li>)}</ul>}{report.warnings.length>0&&<details><summary>建议完善 · {report.warnings.length} 项</summary><ul>{report.warnings.map((x,i)=><li key={i}>{x}{onFix&&<button className="text-link" onClick={()=>onFix(x.includes('分类')?'category':x.includes('摘要')?'summary':'content')}>前往编辑</button>}</li>)}</ul></details>}{passed&&<p>标题、正文和图片已检查。请确认预览效果后{publishLabel.includes('审核')?'提交审核':'发布'}。</p>}</>}
   </div></div>
   <div className="article-preview-label"><h2>文章预览</h2><p>独立设备视口 · 窄屏可横向查看大尺寸预览</p></div>
-  <div className="article-review-scroll"><iframe title="文章设备预览" ref={frame} srcDoc={srcDoc} sandbox="allow-same-origin" onLoad={()=>void ready()} style={{width,height:620}}/>{root&&createPortal(preview,root)}</div>
+  {previewFailed&&!root&&<div role="alert" className="article-review-result"><div><p>文章预览未能加载，请重新加载后再检查。</p><button className="article-button" onClick={()=>{setPreviewFailed(false);setPreviewAttempt(value=>value+1);}}>重新加载预览</button></div></div>}
+  <div className="article-review-scroll"><iframe key={previewAttempt} title="文章设备预览" ref={frame} srcDoc={srcDoc} sandbox="allow-same-origin" onLoad={ready} style={{width,height:620}}/>{root&&createPortal(preview,root)}</div>
   <div className="article-review-footer"><p>{checking?'检查完成后即可继续。':!current?'请先完成发布前检查。':!passed?'加载超时可重新检查；内容问题请返回编辑修正。':publishLabel.includes('审核')?'提交后由管理员审核。':'确认后，文章将更新到网站。'}</p><button className="article-review-publish article-button article-button-primary" disabled={disabled||busy||checking||!passed} onClick={onPublish}>{busy?'正在保存…':publishLabel}</button></div>
  </section>;
 }

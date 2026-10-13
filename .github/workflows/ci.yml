@@ -30,6 +30,10 @@ jobs:
       - run: python3 scripts/test-offline-release.py
       - run: python3 -m py_compile scripts/build-cover-framing-release.py
       - run: bash -n scripts/deploy-cover-framing.sh scripts/rollback-cover-framing.sh
+      - run: python3 scripts/article-preview/test_source_release.py
+      - run: bash -n scripts/deploy-article-preview-source.sh scripts/article-preview/deploy.sh scripts/article-preview/rollback.sh
+      - run: node --check scripts/article-preview/accept.cjs
+      - run: node --test scripts/article-preview/test_accept.cjs
       - run: python3 scripts/test-us-http2.py
       - run: python3 ops/geo-gateway-preview/test_install_image_cache.py
       - run: bash -n scripts/deploy-social-login.sh
@@ -40,7 +44,7 @@ jobs:
       - run: bash -n scripts/deploy-offline-frontend.sh
       - run: bash -n scripts/deploy-audit.sh
       - run: bash -n scripts/deploy-media-capacity.sh
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: node scripts/test-browser.cjs
       - run: node scripts/test-updates-browser.cjs
       - run: node scripts/test-google-button-browser.cjs
@@ -55,6 +59,7 @@ jobs:
       - run: node scripts/test-analytics-browser.cjs
       - run: node scripts/test-ux-unification.cjs
       - run: node scripts/test-image-retry-browser.cjs
+      - run: node scripts/test-article-preview-cards-browser.cjs
       - run: node scripts/test-mail-setup-browser.cjs
       - run: node scripts/test-mailbox-send-feedback.cjs
       - run: node scripts/test-mailbox-navigation.cjs

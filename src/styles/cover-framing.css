@@ -63,6 +63,8 @@ img.cover-image--framed[style] {
 .cover-framing-preview img { display:block; width:100%; height:100%; max-width:none; margin:0; border:0; border-radius:0; }
 .cover-framing-preview-card { grid-column:1 / -1; }
 .cover-framing-preview-card .cover-framing-preview { width:180px; max-width:100%; }
+.cover-card-full img { height:auto; max-height:240px; object-fit:contain; }
+.cover-settings-card > img:not(.cover-image--framed) { object-fit:contain; }
 .cover-framing-preview-phone { max-width:220px; }
 .cover-framing-footer { flex:none; border-top:1px solid var(--border); padding-top:12px; }
 .cover-framing-footer p { margin:0; font-size:12px; line-height:1.6; color:var(--muted-foreground); }

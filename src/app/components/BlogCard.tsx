@@ -33,7 +33,7 @@ export function BlogCard({
   const frame = coverFrame(coverCrop, 'card');
   const content = (
     <article className="blog-card">
-      {src && (frame ? <span className="blog-card-cover"><CoverImage {...responsiveImage(src)} frame={frame} alt="" loading="lazy" decoding="async" /></span> : <img {...responsiveImage(src)} alt="" loading="lazy" decoding="async" />)}
+      {src && (frame ? <span className="blog-card-cover"><CoverImage {...responsiveImage(src,false,frame.zoom)} frame={frame} alt="" loading="lazy" decoding="async" /></span> : <img {...responsiveImage(src)} alt="" loading="lazy" decoding="async" />)}
       <small>{category || tags.slice(0, 3).join(" / ")}</small>
       <h3>{title}</h3>
       {excerpt && <p>{excerpt}</p>}
