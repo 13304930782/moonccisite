@@ -1085,13 +1085,22 @@ SSR asset reference, LF script/manifest/checksum and archive sidecar. It emits
 separate `mooncci-article-ui-main-<commit>.tar.gz` and
 `mooncci-article-ui-reader-<commit>.tar.gz` packages and `.cache/article-ui-release.json`.
 
-The main package replaces only `dist/`, `server/runtime/` and `server/src/index.js`, reuses the existing
-server dependencies, and restarts **mooncci-api only** to clear its cached renderer
+The main package replaces only `dist/`, `server/runtime/` and `server/src/index.js`, bundles the existing
+isolated jsdom requirement, and restarts **mooncci-api only** to clear its cached renderer
 and anonymous documents. The reader package replaces only static assets and
 restarts nothing. The API entry adds a 300-per-minute image transformation budget per IP; excess requests redirect to the original image rather than return 429. Both refuse baseline drift and preserve old hashed chunks;
 rollback restores every overwritten existing asset, the previous entry and SSR
-runtime. No other backend source, worker, Nginx configuration, dependencies, `.env`,
+runtime. No other backend source, worker, Nginx configuration, server dependency installation, `.env`,
 uploads, database migrations or historical SQL are modified.
+
+Prepare the already-declared renderer dependency locally by copying
+`scripts/document-runtime/package.json` and `package-lock.json` into
+`.cache/document-deps/`, then running
+`npm ci --prefix .cache/document-deps --omit=dev --ignore-scripts`.
+The main archive includes these pure-JavaScript files under `server/runtime/node_modules`;
+native binaries and symlinks are rejected. The deployer renders the real public
+article using the staged renderer before switching; importing the entry alone
+does not validate lazy Markdown chunks. Production does not run npm.
 
 PowerShell upload (replace `<commit>` with the first 12 revision characters):
 

@@ -66,8 +66,18 @@ if [ "$mode" = main ]; then
  rsync -ac server/runtime/ "$stage/"
  chown -R mooncci:mooncci "$stage"
  chmod -R u=rwX,go=rX "$stage"
- # Resolve existing dependencies from the live server; no dependency installation.
- node --input-type=module -e 'await import(process.argv[1])' "$stage/document.mjs"
+ # Import alone misses lazy Markdown chunks. Render a real public article before
+ # switching, using the packaged isolated jsdom and the existing read-only loader.
+ node --input-type=module - "$stage/document.mjs" "$live/src/lib/publicDocument.js" <<'NODE'
+import {createRequire} from 'node:module';
+import {pathToFileURL} from 'node:url';
+const require=createRequire(import.meta.url);
+const renderer=await import(pathToFileURL(process.argv[2]).href);
+const {loadPublicResource}=require(process.argv[3]);
+const result=await renderer.renderDocument('/article/17',loadPublicResource);
+for(const value of ['hero-band','hero-meta','循环的语法'])if(!result.html.includes(value))throw Error('SSR preflight missing '+value);
+console.log('PRECHECK: staged renderer and lazy Markdown dependencies render the real article successfully.');
+NODE
 fi
 changed=1
 # Keep old hashed chunks available for already-open pages and rollback.

@@ -32,12 +32,33 @@ def tree(folder):
     return entries
 
 
+def renderer_dependencies(folder):
+    if not (folder / "jsdom/package.json").is_file():
+        raise ValueError("Prepare scripts/document-runtime locked dependencies in .cache/document-deps first")
+    entries = {}
+    for file in sorted(folder.rglob("*")):
+        relative = file.relative_to(folder)
+        if any(part.startswith(".") for part in relative.parts):
+            continue
+        if file.is_symlink():
+            raise ValueError(f"Renderer dependency symlink: {file}")
+        if file.is_file():
+            if file.suffix == ".node":
+                raise ValueError("Native renderer dependency cannot be deployed from Windows")
+            name = "server/runtime/node_modules/" + relative.as_posix()
+            if any(c.isspace() for c in name):
+                raise ValueError(f"Unsafe dependency path: {name}")
+            entries[name] = file.read_bytes()
+    return entries
+
+
 def bundle(mode, revision, baseline):
     entries = tree("dist")
     if not entries.get("dist/index.html"):
         raise ValueError("Frontend build missing")
     if mode == "main":
         entries.update(tree("server/runtime"))
+        entries.update(renderer_dependencies(ROOT / ".cache/document-deps/node_modules"))
         entries["server/src/index.js"] = (ROOT / "server/src/index.js").read_bytes().replace(b"\r\n", b"\n")
         for name in ["document.mjs", "styles.json", "home.css"]:
             if not entries.get("server/runtime/" + name):
@@ -56,7 +77,8 @@ def bundle(mode, revision, baseline):
         "scope": ["frontend", "public-document-runtime", "image-variant-request-budget"] if mode == "main" else ["frontend"],
         "restarts": ["mooncci-api"] if mode == "main" else [],
         "backend_source": ["src/index.js"] if mode == "main" else [], "configuration_changes": False,
-        "dependency_install": False, "migrations": []}, indent=2) + "\n").encode()
+        "dependency_install": False, "runtime_dependencies_bundled": ["jsdom"] if mode == "main" else [],
+        "migrations": []}, indent=2) + "\n").encode()
     entries["SHA256SUMS"] = "".join(f"{sha(data)}  {name}\n" for name, data in sorted(entries.items())).encode()
     for name in ["deploy.sh", "rollback.sh", "TARGET", "REVISION", "BASELINE.json", "MANIFEST.json", "SHA256SUMS"]:
         if b"\r" in entries[name]:
