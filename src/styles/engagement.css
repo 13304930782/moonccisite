@@ -19,7 +19,16 @@
 .engagement-folder-tools{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}.engagement-folder-tools input{min-width:0}
 @media(max-width:760px){.account-workspace .account-sidebar nav{flex-wrap:wrap}.account-workspace .account-sidebar nav a{flex:1 1 30%}.notification-row,.history-row{padding:20px;gap:12px}.history-row{align-items:flex-start;flex-direction:column}.engagement-preferences{padding:20px}.engagement-toolbar label{flex-wrap:wrap}}
 
-.reading-resume{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:14px 20px;margin-bottom:24px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--card)}.reading-resume button{font-weight:600}
+.resume-toast { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom,0px) + 24px); z-index:40; display:flex; align-items:center; gap:12px; max-width:calc(100% - 32px); box-sizing:border-box; padding:10px 16px; border-radius:999px; font-size:13px; line-height:1.4; white-space:nowrap; background:var(--popover); color:var(--text-primary); box-shadow:0 8px 24px rgb(0 0 0 / .12); border:0; opacity:1; }
+.resume-toast button { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; min-width:44px; min-height:44px; padding:0; border:0; border-radius:999px; background:transparent; color:inherit; font-size:13px; font-weight:400; text-decoration:none; box-shadow:none; transform:none; }
+.resume-toast-close { font-size:20px; }
+.resume-toast button:focus-visible { outline:2px solid var(--article-accent); outline-offset:2px; }
+.resume-toast[data-leaving=true] { opacity:0; pointer-events:none; }
+.resume-toast--error { max-width:min(480px,calc(100% - 32px)); white-space:normal; border-radius:14px; }
+.menu-open .resume-toast,.rs-visible .resume-toast,body:has(:is([role=dialog],[role=alertdialog])[aria-modal=true],.site-header .nav-disclosure[open],.site-header .header-search) .resume-toast { visibility:hidden; pointer-events:none; }
+@media(max-width:900px) { .resume-toast { bottom:calc(env(safe-area-inset-bottom,0px) + 72px); } }
+@media(prefers-reduced-motion:no-preference) { html:not([data-reduced-motion=true]) .resume-toast { animation:resume-toast-in .16s ease; transition:opacity .16s ease; } }
+@keyframes resume-toast-in { from { opacity:0; } to { opacity:1; } }
 
 .bookmark-move{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted-foreground)}.bookmark-move select{min-width:0;max-width:65%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--foreground)}
 

@@ -104,7 +104,7 @@ export function ResourceState({
     {children}
   </div>;
 }
-export function SitePage({ children, narrow = false, detail = false,className='' }: { children: ReactNode; narrow?: boolean; detail?: boolean;className?:string }) {
+export function SitePage({ children, narrow = false, detail = false,className='',footerContent }: { children: ReactNode; narrow?: boolean; detail?: boolean;className?:string;footerContent?:ReactNode }) {
   const location=useLocation();
   useLayoutEffect(() => { visibleDiagnostic(location.pathname, 'code-ready'); }, [location.key]);
   return (
@@ -113,6 +113,7 @@ export function SitePage({ children, narrow = false, detail = false,className=''
       <main onAnimationEnd={event=>{if(event.target===event.currentTarget) visibleDiagnostic(location.pathname,'motion-complete');}} className={`site-container page-content ${narrow ? 'reading-page' : ''} ${detail ? 'detail-container' : ''}`}>
         {narrow ? <div className="page-reading-column">{children}</div> : children}
       </main>
+      {footerContent}
       <SiteFooter />
     </div>
   );

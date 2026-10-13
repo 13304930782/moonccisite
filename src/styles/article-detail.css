@@ -23,9 +23,21 @@
 .article-presentation .hero-band .article-view-count svg { color:inherit; stroke:currentColor; }
 .hero-card { position:relative; height:400px; margin-top:32px; margin-bottom:-160px; border:1px solid var(--hero-hair); border-radius:14px; overflow:hidden; box-shadow:var(--hero-shadow); }
 .hero-card .content-image { display:block; width:100%; height:100%; object-fit:cover; object-position:top; margin:0; }
-.article-no-cover .hero-band { padding-bottom:32px; }
+.hero-heading { display:flow-root; padding:48px 0 32px; color:var(--text-primary); background:var(--background); --heading-pill-hover:color-mix(in srgb,var(--text-primary) 7%,transparent); }
+.hero-heading .hero-inner { width:min(900px,calc(100% - 48px)); }
+.article-presentation .hero-heading .detail-intro { width:100%; max-width:var(--col); margin:0 auto; }
+.neo-page .article-presentation .hero-heading .detail-title { max-width:900px; margin:24px auto 0; color:var(--text-primary); }
+.neo-page .article-presentation .hero-heading .hero-meta { color:var(--muted-foreground); }
+.article-presentation .hero-heading .article-view-count { color:var(--muted-foreground); }
+.article-presentation .hero-heading .article-view-count svg { stroke:currentColor; }
+.article-presentation .hero-heading .hero-pill--light { position:relative; display:inline-flex; align-items:center; font-size:13px; line-height:1.4; padding:6px 14px; border-radius:999px; color:var(--text-primary); background:var(--fill); border:0; box-shadow:none; text-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; filter:none; transform:none; text-decoration:none; -webkit-font-smoothing:antialiased; transition:none; }
+.article-presentation .hero-heading .hero-pill--light::before { content:''; position:absolute; inset:calc((100% - 44px) / 2) 0; }
+.article-presentation .hero-heading .hero-pill--light:hover { background-color:var(--heading-pill-hover); }
+.article-presentation .hero-heading .hero-pill--light:focus-visible { outline:2px solid var(--article-accent); outline-offset:2px; }
+.dark .hero-heading,html[data-reading-color=dark] .hero-heading,html[data-reading-color=contrast] .hero-heading { --heading-pill-hover:color-mix(in srgb,var(--text-primary) 12%,transparent); }
+@media(prefers-reduced-motion:no-preference) { html:not([data-reduced-motion=true]) .article-presentation .hero-heading .hero-pill--light { transition:background-color .18s ease; } }
 .article-after { width:min(var(--container),calc(100% - 48px)); margin:0 auto; padding-top:208px; }
-.article-no-cover .article-after { padding-top:48px; }
+.article-no-cover .article-after { padding-top:32px; }
 .article-reading-wrap { position:relative; width:100%; max-width:var(--col); margin:0 auto; }
 .neo-page .article-presentation .detail-body { padding:0; min-width:0; border:0; }
 .neo-page .article-presentation .markdown-body,.neo-page .article-presentation .article-summary { font-size:var(--reading-size,17px); line-height:1.85; color:var(--text-body); overflow-wrap:anywhere; }
@@ -55,13 +67,12 @@
 .article-rail nav a.on { color:var(--text-primary); }
 .toc-in nav a.on::before { content:''; position:absolute; left:-17px; top:6px; bottom:6px; width:2px; background:var(--article-accent); }
 .article-rail nav a:hover { color:var(--text-primary); }
+@media(min-width:1280px) { .toc-in nav a .toc-entry-title { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-width:0; } }
 .toc-reading-trigger { display:inline-flex; align-items:center; gap:10px; min-height:44px; margin-top:16px; padding:0 12px; border:0; border-radius:8px; background:transparent; color:var(--muted-foreground); font-size:13.5px; }
 .toc-reading-trigger:hover,.toc-reading-trigger[aria-expanded=true] { background:var(--fill); }
 .article-rail-settings-only .toc-in { border-left:0; }
 .article-rail-settings-only .toc-reading-trigger { margin-top:0; }
 .article-reading-toolbar,.toc-narrow { display:none; }
-.article-presentation .reading-resume { margin:0 0 16px; padding:0; border:0; border-radius:0; background:transparent; font-size:13px; color:var(--hero-meta); gap:8px; }
-.article-presentation .reading-resume button { min-height:44px; font-size:13px; font-weight:400; background:transparent; border:0; color:var(--hero-text); }
 .article-route :is(.article-discovery,.article-layout>.publishing-card,.article-layout>.comment-section) { width:min(var(--col),calc(100% - 48px)); max-width:var(--col); margin-inline:auto; }
 .article-route .article-layout>.publishing-card { margin-top:48px; padding:20px; border:0; background:var(--fill); }
 .article-route .article-discovery { margin-top:56px; margin-bottom:0; padding:0; border:0; }
@@ -76,7 +87,6 @@
 .article-related ul { margin:0; padding:0; list-style:none; }
 .article-related li { margin:0 0 12px; }
 .article-route .subscribe-section { margin-top:96px; padding-inline:0; }
-.article-route .subscribe-inner { width:min(var(--site-width),calc(100% - 2 * var(--site-gutter))); max-width:var(--site-width); gap:48px; }
 .neo-page.article-route .comment-section:not(.comment-section--compact) { margin-top:64px; padding-top:0; border:0; }
 .neo-page.article-route .comment-section:not(.comment-section--compact) .comment-sort button { min-height:44px; border:0; background:transparent; color:var(--muted-foreground); }
 .neo-page.article-route .comment-section:not(.comment-section--compact) .comment-sort button[aria-pressed=true] { background:transparent; color:var(--foreground); }
@@ -121,12 +131,12 @@
  .neo-page .article-presentation .detail-title { font-size:28px; }
  .hero-card { height:240px; margin-bottom:-100px; }
  .article-after { padding-top:148px; }
- .article-no-cover .article-after { padding-top:48px; }
  .comment-compose-bottom { align-items:flex-start; flex-wrap:wrap; }
  .comment-compose-bottom .comment-submit { margin-left:auto; }
 }
 @media(max-width:600px) {
  .hero-inner,.article-after,.article-route :is(.article-discovery,.article-layout>.publishing-card,.article-layout>.comment-section) { width:calc(100% - 32px); }
+ .hero-heading .hero-inner { width:calc(100% - 32px); }
  .hero-band { padding-top:24px; }
  .neo-page .article-presentation .hero-meta { font-size:13px; }
  .article-neighbors a { padding:14px; font-size:14px; }

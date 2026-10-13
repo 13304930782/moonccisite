@@ -18,7 +18,7 @@ export default function ArticlePage() {
   const post = resource.data;
   const views=usePageView(post?.id?`/article/${post.id}`:null,post?.id);
   return (
-    <SitePage detail className="article-route">
+    <SitePage detail className="article-route" footerContent={post&&<SubscribeForm />}>
       <ResourceState resource={resource}>
         {post && (
           <>
@@ -26,7 +26,6 @@ export default function ArticlePage() {
               <ArticlePresentation post={post} views={views} progress={<ReadingProgress key={post.id} postId={post.id}/>}/>
               <ArticleSeries id={post.id}/><ArticleDiscovery key={post.id} id={post.id} title={post.title}/><CommentSection postId={post.id} />
             </div>
-            <SubscribeForm />
           </>
         )}
       </ResourceState>

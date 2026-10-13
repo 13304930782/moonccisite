@@ -165,8 +165,8 @@ export default function HomePage() {
             )}
           </ResourceState>
         </section>
-        <SubscribeForm />
       </main>
+      <SubscribeForm />
       <SiteFooter />
     </div>
   );
