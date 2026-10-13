@@ -9,7 +9,7 @@ sha=lambda data:hashlib.sha256(data).hexdigest()
 
 def prepare(root,target,helpers=HELPERS,revision=None):
     if target not in ('main','reader'):raise ValueError('Target must be main or reader')
-    revision=revision or subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+    revision=revision or subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,universal_newlines=True).strip()
     if not re.fullmatch('[a-f0-9]{40}',revision):raise ValueError('Invalid source revision')
     entries={name:(helpers/name).read_bytes() for name in ['deploy.py','deploy.sh','rollback.sh','accept.cjs']}
     folders=[(root/'dist','dist')]
@@ -43,5 +43,5 @@ def prepare(root,target,helpers=HELPERS,revision=None):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--target',choices=['main','reader'],required=True);args=parser.parse_args()
-    if subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip():raise SystemExit('Commit source changes before building a deployment')
+    if subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,universal_newlines=True).strip():raise SystemExit('Commit source changes before building a deployment')
     print(prepare(ROOT,args.target))

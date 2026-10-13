@@ -1,4 +1,6 @@
 import importlib.util,json,tempfile,unittest
+from unittest import mock
+from types import SimpleNamespace
 from pathlib import Path
 
 HERE=Path(__file__).resolve().parent
@@ -62,5 +64,25 @@ class SourceRelease(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'dependency missing'):p.prepare(source,'main',revision='b'*40)
         self.put(source,'.cache/preview-ssr-deps/node_modules/jsdom/package.json',b'{}');(source/'dist/assets/app.css').unlink()
         with self.assertRaisesRegex(ValueError,'Missing referenced resource'):p.prepare(source,'main',revision='b'*40)
+    def test_python36_subprocess_arguments(self):
+        source,pkg,web,live,backups=self.fixture()
+        def check_output(*args,**kwargs):
+            self.assertNotIn('text',kwargs);self.assertTrue(kwargs.get('universal_newlines'));return 'c'*40+'\n'
+        with mock.patch.object(p.subprocess,'check_output',side_effect=check_output):
+            self.assertEqual(d.verify_package(p.prepare(source,'main'))['revision'],'c'*40)
+        def run(*args,**kwargs):
+            self.assertNotIn('text',kwargs);self.assertTrue(kwargs.get('universal_newlines'));return SimpleNamespace(returncode=0,stdout='[]')
+        with mock.patch.object(d.subprocess,'run',side_effect=run):self.assertEqual(d.pm('jlist'),'[]')
+    def test_runtime_stage_empty_and_legacy_unlink(self):
+        source,pkg,web,live,backups=self.fixture();stage=backups/'stage';stage.mkdir()
+        d.copy_to_empty(pkg/'server/runtime',stage)
+        self.assertEqual(d.files(stage),d.files(pkg/'server/runtime'))
+        with self.assertRaisesRegex(ValueError,'must be empty'):d.copy_to_empty(pkg/'server/runtime',stage)
+        absent=backups/'missing';d.unlink_if_present(absent);absent.write_bytes(b'new');d.unlink_if_present(absent);self.assertFalse(absent.exists())
+    def test_no_python37_or_newer_runtime_apis(self):
+        for file in ['prepare.py','deploy.py']:
+            content=(HERE/file).read_text()
+            for modern in ['text=True','missing_ok=True','time_ns(']:self.assertNotIn(modern,content)
+        self.assertNotIn('dirs_exist_ok=True',(HERE/'deploy.py').read_text())
 
 if __name__=='__main__':unittest.main()

@@ -11,7 +11,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-import time
+import uuid
 
 LIVE = Path('/www/wwwroot/mooncci-source/server')
 MAIN = Path('/www/wwwroot/mooncci.site')
@@ -49,6 +49,18 @@ def readable_parents(target, root):
     missing=[];parent=target.parent
     while parent!=root and not parent.exists():missing.append(parent);parent=parent.parent
     for directory in reversed(missing):directory.mkdir();directory.chmod(0o755)
+
+def copy_to_empty(source, destination):
+    # Python 3.6 has no copytree(dirs_exist_ok=...). This stage must be empty.
+    if any(destination.iterdir()):raise ValueError('Runtime stage must be empty')
+    for item in source.iterdir():
+        target=destination/item.name
+        if item.is_dir():shutil.copytree(str(item),str(target))
+        else:shutil.copy2(str(item),str(target))
+
+def unlink_if_present(file):
+    try:file.unlink()
+    except FileNotFoundError:pass
 
 def verify_package(root):
     manifest=json.loads((root/'MANIFEST.json').read_text())
@@ -109,7 +121,7 @@ def restore_tar(file, root, expected, defer_index=False):
 
 def pm(args):
     result=subprocess.run(['su','-s','/bin/bash','mooncci','-c','export PATH=/opt/mooncci-node-v24.20.0/bin:$PATH; pm2 '+args],
-                          stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=60)
+                          stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,timeout=60)
     if result.returncode: raise RuntimeError('PM2 command failed; inspect PM2 directly')
     return result.stdout
 
@@ -144,7 +156,7 @@ def rollback(backup, restart=True):
     # Assets first, original index last. Retain every unrelated/old hash asset.
     index=restore_tar(backup/'frontend-before.tar',web,before['frontend'],defer_index=True)
     for name,value in before['frontend'].items():
-        if value is None: plain(web,name).unlink(missing_ok=True)
+        if value is None: unlink_if_present(plain(web,name))
     if before['target']=='main':
         stage=Path(tempfile.mkdtemp(prefix='.runtime-preview-restore.',dir=live))
         restore_tar(backup/'runtime-before.tar',stage,before['runtime'])
@@ -152,7 +164,7 @@ def rollback(backup, restart=True):
             subprocess.run(['chown','-R','mooncci:mooncci',str(stage)],check=True)
             subprocess.run(['chmod','-R','u=rwX,go=rX',str(stage)],check=True)
         current=live/'runtime'
-        if current.exists(): current.rename(live/('.runtime-preview-failed.'+str(time.time_ns())))
+        if current.exists(): current.rename(live/('.runtime-preview-failed.'+uuid.uuid4().hex))
         stage.rename(current)
     if index is not None:
         temporary=web/'.index-preview-rollback';temporary.write_bytes(index);temporary.chmod(0o644);temporary.replace(web/'index.html')
@@ -183,7 +195,7 @@ def deploy(root,web,live,backup_base,callbacks=None):
     try:
         if main:
             stage=Path(tempfile.mkdtemp(prefix='.runtime-preview-stage.',dir=live))
-            shutil.copytree(root/'server/runtime',stage,dirs_exist_ok=True)
+            copy_to_empty(root/'server/runtime',stage)
             if files(stage)!=files(root/'server/runtime'): raise ValueError('Staged SSR bytes differ')
             if callbacks: callbacks['stage'](stage)
             else:
@@ -199,7 +211,7 @@ def deploy(root,web,live,backup_base,callbacks=None):
             target=plain(web,name);readable_parents(target,web)
             shutil.copyfile(root/'dist'/name,target);target.chmod(0o644)
         if main:
-            (live/'runtime').rename(live/('.runtime-preview-prior.'+str(time.time_ns())))
+            (live/'runtime').rename(live/('.runtime-preview-prior.'+uuid.uuid4().hex))
             stage.rename(live/'runtime');stage=None
         temporary=web/'.index-preview-new';shutil.copyfile(root/'dist/index.html',temporary);temporary.chmod(0o644);temporary.replace(web/'index.html')
         if hashes(web,names)!=files(root/'dist') or main and files(live/'runtime')!=files(root/'server/runtime'):
