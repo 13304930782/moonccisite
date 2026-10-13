@@ -13,12 +13,14 @@ async function fixture(){
    if(typeof mode==='number')throw new ApiError(mode);
    if(mode==='offline')throw Error('offline');
    if(mode==='hold')await new Promise(resolve=>pending.push(resolve));
-   draft={...draft,payload:value.payload,version:draft.version+1};return draft;
+   let accepted=value.payload;
+   if(mode==='normalize'){accepted=Object.fromEntries(Object.keys(accepted).reverse().map(key=>[key,accepted[key]]));accepted.tags=accepted.tags.filter(Boolean);}
+   draft={...draft,payload:accepted,version:draft.version+1};return draft;
   }
   if(mode==='refresh-failed')throw Error('refresh failed');
   return draft;
  };
- const module={exports:{}};const requireMock=name=>name==='react'?React:name==='./api'?{api,ApiError}:name==='./articleAge'?require('./helpers/article-age.cjs'):name==='./feedback'?{notify:{success:x=>notifications.push(x),error:x=>notifications.push(x)}}:name==='./draftStorage'?{readBackup:async()=>null,writeBackup:async()=>{}}:{useUnsavedLeave:()=>{}};
+ const module={exports:{}};const requireMock=name=>name==='react'?React:name==='./api'?{api,ApiError}:name==='./articleDraftState'?require('./helpers/article-draft-state.cjs'):name==='./articleAge'?require('./helpers/article-age.cjs'):name==='./feedback'?{notify:{success:x=>notifications.push(x),error:x=>notifications.push(x)}}:name==='./draftStorage'?{readBackup:async()=>null,writeBackup:async()=>{}}:{useUnsavedLeave:()=>{}};
  new Function('exports','require','location','history','sessionStorage',code)(module.exports,requireMock,{search:'?draft=fixture',href:'https://example.test/admin/write?draft=fixture',pathname:'/admin/write'},{replaceState(){}},{removeItem(){}});
  function Probe(){hook=module.exports.useArticleDraft(1);return null;}
  await act(async()=>{root=create(React.createElement(Probe));});
@@ -34,6 +36,12 @@ test('manual saves serialize and only confirm the version accepted by the server
 });
 test('offline, 401 and 409 retain current writing and do not claim server save',async()=>{
  for(const mode of ['offline',401,409]){const f=await fixture();f.setMode(mode);await act(async()=>{f.hook.update({...f.hook.form,title:'Keep me'});await f.hook.save('manual');});assert.equal(f.hook.form.title,'Keep me');assert.doesNotMatch(f.hook.status,/已保存到服务器/);assert.equal(f.hook.blocked,mode!== 'offline');f.close();}
+});
+test('database key reordering and tag cleanup acknowledge the stored draft without a repeated auto-save',async()=>{
+ const f=await fixture();f.setMode('normalize');
+ await act(async()=>{f.hook.update({...f.hook.form,tags:['数组',''],summary_mode:'ai',summary_receipt:'a'.repeat(64)});await f.hook.save('manual');});
+ assert.match(f.hook.status,/已保存到服务器/);assert.equal(f.hook.dirty,false);assert.deepEqual(f.hook.form.tags,['数组']);assert.equal(f.writes.length,1);
+ await act(async()=>{await f.hook.save('auto');});assert.equal(f.writes.length,1);f.close();
 });
 test('accepted submission remains accepted and locked when follow-up refresh fails',async()=>{
  const f=await fixture();f.setMode('refresh-failed');let accepted;await act(async()=>{accepted=await f.hook.action('submit');});assert.equal(accepted,true);assert.equal(f.hook.draft.workflow.state,'submitted');assert.equal(f.hook.status,'已提交审核');assert(f.notifications.some(x=>x.includes('状态刷新失败')));f.close();
