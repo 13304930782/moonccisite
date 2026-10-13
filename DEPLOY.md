@@ -1199,3 +1199,26 @@ This restores the exact previous source, complete SSR runtime and overwritten
 static bytes, and removes only newly introduced allowlisted files. It keeps the
 nullable column and all framing data. The five-table SQL is an emergency data
 backup; restoring it to production is a separate operation, not routine code rollback.
+
+## Explicitly requested direct-source deployment for PR 93
+
+Use this alternative only when the user explicitly wants the server to fetch and
+build GitHub source. No downloaded deployment archive or Release asset is needed.
+Clone into a fresh `/tmp/mooncci-source-pr93.XXXXXX/repo`, pin the reviewed commit,
+and run `nohup bash scripts/deploy-article-preview-source.sh main` in that clone.
+Never build or run `git pull` in either live web or backend directory.
+
+The runner requires Node 24 and at least 1024 MiB available RAM plus free swap.
+It installs locked build dependencies only in the isolated clone, runs typecheck,
+unit tests and the frontend/SSR build, and prepares existing locked isolated jsdom
+dependencies. It verifies the source revision is unchanged and the tree is clean.
+The checked stage updates only `dist` and matching SSR, restarting only the main
+API with its existing PM2 configuration; `reader` updates static files only.
+Business source, database, migrations, `.env`, uploads and worker are not replaced.
+The 11 backend prerequisites must still match deployed PR 92. Backup tar bytes,
+concurrent drift, installed hashes, real public SSR/assets and rollback are checked.
+
+The log prints `BACKUP`, `PASS`, and `EXIT_CODE=0` on success. For manual rollback,
+run `nohup bash BACKUP/rollback.sh BACKUP` in a child shell. Failed installation
+automatically restores the full captured frontend/SSR snapshot. This direct-source
+runner does not publish or require a GitHub Release.
