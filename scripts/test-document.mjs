@@ -62,6 +62,11 @@ assert.match(heroImage.getAttribute('style'),/--cover-x:50%;--cover-y:75%;--cove
 const framedList=await renderDocument('/articles',coverLoad);
 const cardImage=JSDOM.fragment(framedList.html).querySelector('.blog-card-cover img');
 assert.match(cardImage.getAttribute('style'),/--cover-x:25%;--cover-y:85%;--cover-zoom:1.5/);
+assert.match(cardImage.getAttribute('sizes'),/168px, 270px/);
+const fullList=await renderDocument('/articles',p=>p.startsWith('/posts?')?Promise.resolve({items:[{...framedPost,cover_crop:null}],total:1,page:1,pageSize:12}):load(p));
+const fullCard=JSDOM.fragment(fullList.html).querySelector('.blog-card > img');
+assert.ok(fullCard);assert.equal(fullCard.getAttribute('style'),null);
+assert.match(fullCard.getAttribute('sizes'),/112px, 180px/);
 const oldArticle=await renderDocument('/article/7',p=>p==='/posts/7'?Promise.resolve({...framedPost,cover_crop:null}):load(p));
 const oldImage=JSDOM.fragment(oldArticle.html).querySelector('.hero-card img');
 assert.equal(oldImage.className,'content-image');assert.equal(oldImage.getAttribute('style'),null);

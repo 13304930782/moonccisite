@@ -783,12 +783,13 @@ input[type='checkbox'] {
   grid-column: 2;
   grid-row: 1 / span 4;
   width: 180px;
-  aspect-ratio: 16/10;
-  object-fit: cover;
+  height: auto;
+  max-height: 240px;
+  object-fit: contain;
   border-radius: 6px;
   align-self: center;
 }
-.blog-card > .blog-card-cover { display:block; overflow:hidden; }
+.blog-card > .blog-card-cover { display:block; overflow:hidden; aspect-ratio:16/10; }
 .blog-card > .blog-card-cover > img { display:block; width:100%; height:100%; object-fit:cover; }
 .blog-card > :not(img):not(.blog-card-cover) {
   grid-column: 1;
@@ -1332,7 +1333,8 @@ input[type='checkbox'] {
     gap: 0 16px;
   }
   .blog-card > img,.blog-card > .blog-card-cover {
-    width: 88px;
+    width: 112px;
+    max-height: 160px;
   }
   .blog-card h3 {
     font-size: 20px;
