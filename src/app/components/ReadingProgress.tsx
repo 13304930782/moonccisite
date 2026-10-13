@@ -18,7 +18,8 @@ export function ReadingProgress({postId}:{postId:number}){
   if(reducedMotion()){setSaved(null);return;}
   setLeaving(true);exitTimer.current=setTimeout(()=>{setSaved(null);setLeaving(false);},160);
  },[]);
- const progress=Number(saved?.progress),visible=Boolean(saved)&&Number.isFinite(progress)&&progress>=0.05&&progress<=0.95;
+ const progress=Number(saved?.progress),visible=!error&&Boolean(saved)&&Number.isFinite(progress)&&progress>=0.05&&progress<=0.95;
+ useEffect(()=>{if(!visible){setHovered(false);setFocused(false);}},[visible]);
  useEffect(()=>{
   if(!visible||hovered||focused||leaving)return;
   const started=Date.now(),timer=setTimeout(dismiss,remaining.current);
