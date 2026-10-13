@@ -137,7 +137,7 @@ jobs:
           REVISION_INTEGRATION: "true"
           TEST_DB_PORT: "3306"
 
-      - run: node --test server/test/articleCoverCrop.integration.test.js
+      - run: node --test server/test/articleCoverCrop.integration.test.js server/test/articleCoverCropInit.integration.test.js
         env:
           COVER_CROP_INTEGRATION: "true"
           TEST_DB_PORT: "3306"
