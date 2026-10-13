@@ -33,6 +33,7 @@ jobs:
       - run: python3 scripts/article-preview/test_source_release.py
       - run: bash -n scripts/deploy-article-preview-source.sh scripts/article-preview/deploy.sh scripts/article-preview/rollback.sh
       - run: node --check scripts/article-preview/accept.cjs
+      - run: node --test scripts/article-preview/test_accept.cjs
       - run: python3 scripts/test-us-http2.py
       - run: python3 ops/geo-gateway-preview/test_install_image_cache.py
       - run: bash -n scripts/deploy-social-login.sh

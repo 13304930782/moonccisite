@@ -29,9 +29,28 @@ function request(url){return new Promise((resolve,reject)=>{
  const req=https.get({hostname:'mooncci.site',servername:'mooncci.site',family:4,port:443,path:url,
   lookup:(_host,options,callback)=>options.all?callback(null,[{address:'127.0.0.1',family:4}]):callback(null,'127.0.0.1',4)},response=>{
    const chunks=[];response.on('data',chunk=>chunks.push(chunk));response.on('error',reject);
-   response.on('end',()=>response.statusCode===200?resolve(Buffer.concat(chunks)):reject(Error('HTTP status '+response.statusCode)));
+   response.on('end',()=>{
+    const bytes=Buffer.concat(chunks);bytes.responseHeaders=response.headers;
+    response.statusCode===200?resolve(bytes):reject(Error('HTTP status '+response.statusCode+'; route='+url));
+   });
   });req.setTimeout(20000,()=>req.destroy(Error('HTTPS timeout')));req.on('error',reject);
 });}
+async function waitForDocument(url,js,read=request,wait=pause,report=console.error){
+ const attempts=url==='/'?6:1;
+ let details;
+ for(let attempt=1;attempt<=attempts;attempt++){
+  const bytes=await read(url),html=bytes.toString(),headers=bytes.responseHeaders||{};
+  const actual=[...html.matchAll(/<script\b[^>]*\bsrc\s*=\s*(["'])(.*?)\1/g)].map(match=>match[2]);
+  const bootstrap=html.includes('mooncci-document-data');
+  if(bootstrap&&js.every(src=>actual.includes(src)))return html;
+  const selected={};
+  for(const key of ['age','cache-control','x-home-cache','x-mooncci-node','x-mooncci-route'])if(headers[key]!==undefined)selected[key]=headers[key];
+  details={route:url,attempt,bootstrap,expected:js,actual,headers:selected};
+  report('SSR entry mismatch: '+JSON.stringify(details));
+  if(attempt<attempts)await wait(4000);
+ }
+ throw Error('New SSR/frontend did not reach public page after bounded checks: '+JSON.stringify(details));
+}
 async function main(){
  const [mode,root,live]=process.argv.slice(2);
  if(mode==='health'){await health();console.log('PASS: restored API health');return;}
@@ -60,8 +79,7 @@ async function main(){
  const js=refs(entry).filter(ref=>ref.endsWith('.js'));
  if(!js.length)throw Error('Missing new entry script');
  for(const url of ['/article/17','/articles','/']){
-  const html=(await request(url)).toString();
-  if(!html.includes('mooncci-document-data')||!js.every(src=>html.includes(src)))throw Error('New SSR/frontend did not reach public page: '+url);
+  const html=await waitForDocument(url,js);
   const bootstrap=html.match(/<script id="mooncci-document-data" type="application\/json">([\s\S]*?)<\/script>/)?.[1];
   if(!bootstrap)throw Error('Public SSR bootstrap missing: '+url);
   validateDocument(url,{html,data:JSON.parse(bootstrap)});
@@ -79,5 +97,5 @@ async function main(){
  }
  console.log('PASS: public SSR, matching new resources, health; revision='+manifest.revision);
 }
-module.exports={validateDocument};
+module.exports={validateDocument,waitForDocument};
 if(require.main===module)main().catch(error=>{console.error(error.stack||error.message);process.exitCode=1;});
