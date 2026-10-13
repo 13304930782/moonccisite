@@ -2,7 +2,7 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const {pathToFileURL} = require('node:url');
 const publicRoutes = /^\/(?:|articles|archives|about|links|projects|updates|tags|categories|rss|series|early-access|mail-setup|article\/[^/]+|updates\/[^/]+|projects\/[^/]+|category\/[^/]+|tag\/[^/]+|series\/[^/]+)$/;
-const privateRoutes = /^\/(?:admin(?:\/.*)?|account(?:\/.*)?|login|admin-login|register|forgot-password|reset-password|complete-registration|subscription\/[^/]+|search|diagnostics|electricity)$/;
+const privateRoutes = /^\/(?:admin(?:\/.*)?|account(?:\/.*)?|login|admin-login|register|forgot-password|reset-password|complete-registration|subscription\/[^/]+|search|diagnostics|electricity|node-monitor)$/;
 const endpoints = /^\/(?:settings\/(?:site|blog-pages)|publishing\/config|subscriptions\/status|now|activity|projects(?:\/[A-Za-z0-9_-]+)?|updates\/[1-9]\d*|posts(?:\/(?:[1-9]\d*(?:\/discovery)?|archives|meta\/(?:categories|tags)))?|series(?:\/[^/?]+)?)$/;
 const allowedQuery = new Set(['page','pageSize','format','category','tag','type','featured','release']);
 function isPublicResource(value) {

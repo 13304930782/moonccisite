@@ -6,6 +6,7 @@ import {usePublishing} from '../lib/usePublishing';
 import {ArticleRevisionHistory} from '../components/ArticleRevisionHistory';
 import {ArticleConflict} from '../components/ArticleConflict';
 import {ArticleReview} from '../components/ArticleReview';
+import {ArticleSummaryFields} from '../components/ArticleSummaryFields';
 import {MarkdownContent} from '../components/MarkdownContent';
 import {safeImageSrc} from '../lib/safeUrl';
 import {ArticleMediaPicker} from '../components/ArticleMediaPicker';
@@ -26,16 +27,19 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
  useEffect(()=>{if(published)completion.current?.focus();},[published]);
  const [preview,setPreview]=useState(false),[picker,setPicker]=useState<'cover'|'body'|null>(null); const insert=useRef<(url:string,alt:string)=>void>(()=>{});
  const d=useArticleDraft(userId,postId);const [uploadCount,setUploads]=useState(0),[editorPending,setEditorPending]=useState(false),[uploadError,setUploadError]=useState(''),[quality,setQuality]=useState('medium');const uploads=uploadCount+(editorPending?1:0);
+ const [ai,setAi]=useState<any>(null);useEffect(()=>{api('/article-seo/status').then(setAi).catch(()=>setAi({unavailable:true}));},[]);
+ const openPreview=async()=>{if(await d.generateSummary())setPreview(true);};
  const locked=publishing&&['submitted','approved','scheduled'].includes(d.draft?.workflow?.state);
  const submissionPanel=useRef<HTMLDivElement>(null);
  useEffect(()=>{const shortcut=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&!event.altKey&&event.key.toLowerCase()==='s'){event.preventDefault();if(!event.repeat&&d.ready&&!locked&&!d.busy&&!d.blocked&&!d.isRestoring)void d.save('manual');}};window.addEventListener('keydown',shortcut);return()=>window.removeEventListener('keydown',shortcut);},[d.save,d.ready,d.busy,d.blocked,d.isRestoring,locked]);
  const fixField=(field:string)=>{setPreview(false);requestAnimationFrame(()=>{const target=document.getElementById('article-'+field)||document.querySelector<HTMLElement>('[aria-label="Markdown 正文"], .article-editor [contenteditable="true"], .article-editor button');const details=target?.closest('details');if(details)details.open=true;target?.focus();});};
+ useEffect(()=>{if(d.summaryError)fixField('summary');},[d.summaryError]);
  const reviewState=d.draft?.workflow?.state;
  const submit=async()=>{if(await d.action('submit')){setPreview(false);notify.success('稿件已提交审核');}};
  const publish=async()=>{if(await (conflictMode==='review'&&d.serverCopy?d.resolveConflict('publish-current'):d.action('publish'))){setPreview(false);setConflictMode('edit');setPublished(true);}};
  const lockedTitle=reviewState==='scheduled'?'已安排定时发布':reviewState==='approved'?'审核已通过，等待发布':'待管理员审核';
  const backTo=location.pathname.startsWith('/account')?'/account/submissions':'/admin/posts';
- const change=(key:string,value:any)=>d.update((previous:any)=>({...previous,[key]:value}));
+ const change=(key:string,value:any)=>d.update((previous:any)=>({...previous,[key]:value,...(key==='summary'?{summary_mode:'manual',summary_receipt:''}:['title','content','category','tags'].includes(key)?{summary_receipt:''}:{})}));
  const showComparison=!!d.serverCopy&&conflictMode==='compare';
  const inspect=async()=>{setConflictMode('compare');await d.inspect();};
  const resolveConflict=async(choice:'publish-current'|'keep-current'|'adopt-post'|'adopt-draft')=>{if(await d.resolveConflict(choice)){setPreview(false);setConflictMode('edit');}};
@@ -51,12 +55,13 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
  {picker&&<ArticleMediaPicker uploadImage={upload} restoreFocus={picker!=='body'} onClose={()=>setPicker(null)} onSelect={(url,alt)=>{if(picker==='cover')change('cover_image',url);else insert.current(url,alt);}}/>}
  {preview&&!locked&&!showComparison&&<section className="article-full-preview"><button className="article-button article-return-edit" disabled={d.busy} onClick={()=>setPreview(false)}><ArrowLeft size={16} aria-hidden="true"/>返回编辑</button><ArticleReview onFix={fixField} post={{...d.form,author_name:'当前作者'}} busy={d.busy||d.isRestoring||uploads>0} disabled={d.blocked&&!(conflictMode==='review'&&d.serverCopy)} publishLabel={conflictMode==='review'?'确认覆盖发布':contributor?'确认提交审核':d.draft?.post_status==='published'?'确认更新':'确认发布'} onPublish={()=>void (contributor?submit():publish())}/></section>}
  {locked&&<article className="submission-document"><header><span className="account-eyebrow">稿件详情</span><h1>{d.form.title||'未命名稿件'}</h1><p className="submission-document-meta">提交的审核版本 · 仅作者与审核人员可见</p></header><div className="submission-document-body">{safeImageSrc(d.form.cover_image)&&<img className="content-image" src={safeImageSrc(d.form.cover_image)} alt=""/>}<MarkdownContent content={d.form.content||''} headingPrefix="submission-heading"/></div></article>}
- <fieldset hidden={preview||locked||showComparison} disabled={!d.ready||locked||!!d.recovery||d.isRestoring} className="article-writing-fields"><label>标题<input id="article-title" value={d.form.title} maxLength={255} onChange={e=>change('title',e.target.value)} placeholder="未命名草稿"/></label>
+ {d.summaryBusy&&<p role="status">正在根据正文生成 DeepSeek 简介…</p>}
+ <fieldset hidden={preview||locked||showComparison} disabled={!d.ready||locked||!!d.recovery||d.isRestoring||d.summaryBusy} className="article-writing-fields"><label>标题<input id="article-title" value={d.form.title} maxLength={255} onChange={e=>change('title',e.target.value)} placeholder="未命名草稿"/></label>
  <button type="button" onClick={()=>setPicker('body')}>从媒体库插入正文图片</button>
  {d.ready&&<ArticleEditor registerImageInsert={fn=>{insert.current=fn;}} value={d.form.content} onChange={value=>change('content',value)} existing={!!postId||!!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={setEditorPending}/>}
  <details className="article-settings"><summary>文章设置</summary>
  <div className="article-settings-body">
-  <section className="article-settings-section"><h2>摘要</h2><label>文章简介<textarea id="article-summary" rows={4} value={d.form.summary} onChange={e=>change('summary',e.target.value)} placeholder="简要介绍文章内容"/></label></section>
+  <ArticleSummaryFields form={d.form} ai={ai} owner={user?.role==='owner'} busy={d.busy} blocked={d.blocked} onChange={change} onUpdate={d.update} onGenerate={()=>void d.generateSummary(true)} error={d.summaryError}/>
   <section className="article-settings-section"><h2>封面</h2><div className="article-settings-grid">
    <label className="article-field-wide">封面地址<input value={d.form.cover_image} onChange={e=>change('cover_image',e.target.value)} placeholder="输入图片地址，或从媒体库选择"/></label>
    <div className="inline-actions article-field-wide"><button type="button" onClick={()=>setPicker('cover')}>从媒体库选择封面</button><button type="button" disabled={!d.form.cover_image} onClick={()=>change('cover_image','')}>移除封面</button></div>
@@ -73,7 +78,7 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
  {uploadError&&<p role="alert">{uploadError}</p>}{uploads>0&&<p role="status">正在上传图片…</p>}
  {!locked&&!preview&&!showComparison&&<div className="article-save-bar"><div className="article-save-bar-inner">
  <button disabled={locked||!d.ready||d.busy||d.blocked||d.isRestoring} onClick={()=>void d.save('manual')}>{d.busy?'保存中…':'保存草稿'}</button>
- <button className="article-action-publish" disabled={!d.ready||locked||d.busy||d.isRestoring||d.blocked||uploads>0} onClick={()=>setPreview(true)}>{contributor?'预览并提交审核':d.draft?.post_status==='published'?'预览并更新':'预览并发布'}</button>
+ <button className="article-action-publish" disabled={!d.ready||locked||d.busy||d.isRestoring||d.blocked||uploads>0} onClick={()=>void openPreview()}>{contributor?'预览并提交审核':d.draft?.post_status==='published'?'预览并更新':'预览并发布'}</button>
  <SecondaryActions>
  {publishing&&!contributor&&<button disabled={!d.ready||locked||d.busy||d.blocked||uploads>0} onClick={()=>void submit()}>提交到审核 / 发布计划</button>}
  {!contributor&&d.draft?.post_status==='published'&&<button disabled={locked||d.busy||d.isRestoring||d.blocked} onClick={async ()=>{if(await confirmAction('撤回后读者将无法访问这篇文章，确定撤回？'))void d.action('withdraw');}}>撤回为草稿</button>}

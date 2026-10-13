@@ -33,17 +33,25 @@ const { chromium } = require('playwright');
         const outer=await page.locator('main.detail-container').evaluate(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return {left:r.left,right:el.parentElement.getBoundingClientRect().right-r.right,width:r.width,paddingLeft:s.paddingLeft,paddingRight:s.paddingRight};});
         assert.ok(Math.abs(outer.left-outer.right)<1, `${name} ${width}: equal outer gutters ${JSON.stringify(outer)}`);
         assert.equal(outer.paddingLeft,'0px');assert.equal(outer.paddingRight,'0px');
-        if(width>=1440){assert.equal(outer.width,1200);measurements.push({name,viewport:width,...outer});}
-        const pill=await page.locator('.detail-category').evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,radius:s.borderRadius};});
+        const usableWidth=await page.locator('main.detail-container').evaluate(el=>el.parentElement.getBoundingClientRect().width);
+        if(width>=1440){assert.equal(outer.width,name==='article'?usableWidth:1200);measurements.push({name,viewport:width,...outer});}
+        const pill=await page.locator(name==='article'?'.detail-label .hero-pill':'.detail-category').evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,radius:s.borderRadius};});
         assert.notEqual(pill.background,'rgba(0, 0, 0, 0)');assert.equal(pill.radius,'999px');
         const body=await page.locator('.detail-body').boundingBox();
-        if(expected){assert.ok(Math.abs(body.x-expected.x)<1);assert.ok(Math.abs(body.width-expected.width)<1);}
-        expected=body;
+        if(name==='article'){
+          if(width>=1100)assert.equal(body.width,720);
+          assert.ok(Math.abs(body.x+body.width/2-(outer.left+outer.width/2))<1,'article reading column centered');
+          const groups=await page.locator('.hero-meta .g').evaluateAll(es=>es.map(e=>({y:e.getBoundingClientRect().y,white:getComputedStyle(e).whiteSpace})));
+          assert.ok(groups.length>=1);groups.forEach(g=>assert.equal(g.white,'nowrap'));
+          if(width>=1440){const footer=await page.locator('.site-footer .site-container').boundingBox();const subscribe=await page.locator('.subscribe-inner').boundingBox();assert.equal(footer.width,1200);assert.equal(subscribe.width,1200);}
+        }
+        if(name==='project'){
         if(width>=1100)assert.ok(body.width>=640 && body.width<=680);
         const row=page.locator('.detail-meta');
         const metrics=await row.evaluate(el=>({height:el.getBoundingClientRect().height,children:Array.from(el.children).map(c=>({center:c.getBoundingClientRect().y+c.getBoundingClientRect().height/2,shrink:getComputedStyle(c).flexShrink,white:getComputedStyle(c).whiteSpace})),overflow:getComputedStyle(el).overflowX}));
         assert.ok(metrics.height<=32);assert.equal(metrics.overflow,'auto');
         for(const c of metrics.children){assert.equal(c.shrink,'0');assert.equal(c.white,'nowrap');assert.ok(Math.abs(c.center-metrics.children[0].center)<1);}
+        }
         const aside=page.locator('.detail-aside');
         if(await aside.count()){
           await page.locator('.detail-panel:not([data-initial])').waitFor();
@@ -67,6 +75,20 @@ const { chromium } = require('playwright');
         if(width===375){await page.evaluate(()=>document.documentElement.classList.add('dark'));await page.screenshot({path:`.cache/detail-${name}-dark.png`,fullPage:true});}
       }
     }
+    // A single mounted sidebar follows breakpoint changes and native summary keyboard activation.
+    await page.setViewportSize({width:1100,height:900});
+    await page.goto('http://127.0.0.1:4202/projects/promptdock');
+    await page.locator('.detail-panel:not([data-initial])').waitFor();
+    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===true);
+    await page.setViewportSize({width:1099,height:900});
+    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===false);
+    await page.locator('.detail-panel summary').focus();
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===true);
+    await page.keyboard.press('Space');
+    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===false);
+    await page.setViewportSize({width:1100,height:900});
+    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===true);
     // Updates use their own journal layout rather than the article sidebar grid.
     for (const width of [1440, 390, 320]) {
       await page.setViewportSize({width,height:900});

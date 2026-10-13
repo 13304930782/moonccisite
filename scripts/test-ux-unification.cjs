@@ -2,8 +2,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { chromium, webkit } = require('playwright');
 (async () => {
-  const vite = await (await import('vite')).createServer({ ...(process.env.UX_BASELINE ? {root:'.cache/ux-before'} : {}), server: { host:'127.0.0.1', port:4252, strictPort:true, hmr:false, watch:{ignored:['**/.cache/**','**/outputs/**']} } });
-  await vite.listen();
+  const viteApi=await import('vite');
+  const vite = process.env.UX_BASELINE
+    ? await viteApi.createServer({root:'.cache/ux-before',server:{host:'127.0.0.1',port:4252,strictPort:true,hmr:false,watch:{ignored:['**/.cache/**','**/outputs/**']}}})
+    : await viteApi.preview({preview:{host:'127.0.0.1',port:4252,strictPort:true}});
+  if(process.env.UX_BASELINE)await vite.listen();
   const browser = await (process.env.QA_BROWSER === 'webkit' ? webkit.launch() : chromium.launch({...(process.env.PLAYWRIGHT_CHANNEL ? {channel:process.env.PLAYWRIGHT_CHANNEL} : process.platform === 'win32' ? {channel:'msedge'} : {})}));
   const output = 'outputs/ux-unification'; fs.mkdirSync(output, {recursive:true});
   const page = await browser.newPage({viewport:{width:1440,height:1000}});
@@ -113,5 +116,8 @@ const { chromium, webkit } = require('playwright');
     assert.deepEqual(mutations.filter(p=>!['/api/weather-mood','/api/analytics/view'].includes(p)),['/api/subscriptions','/api/subscriptions']);
     fs.writeFileSync(output+'/result-'+(process.env.QA_BROWSER||process.env.PLAYWRIGHT_CHANNEL||'msedge')+'.json',JSON.stringify({passed:true,browser:await browser.version(),widths:[320,390,768,1440],externalRequests:'blocked',realEmailSent:false,errors},null,2));
     console.log('PASS: retained media, recoverable failures, filter reset, no single-page pagination, persistent subscription feedback and input preservation; four widths.');
-  } finally {await browser.close();await vite.close();}
+  } catch(error) {
+    console.error(JSON.stringify({url:page.url(),pageErrors:errors,visibleText:(await page.locator('body').innerText().catch(()=>'' )).slice(0,4000)}));
+    throw error;
+  } finally {await browser.close();if(process.env.UX_BASELINE)await vite.close();else await new Promise(resolve=>vite.httpServer.close(resolve));}
 })().catch(e=>{console.error(e);process.exitCode=1;});

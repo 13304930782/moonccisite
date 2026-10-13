@@ -23,6 +23,20 @@
   --input-background: #fff;
   --ring: #666;
   --radius: 10px;
+  --fill: var(--muted);
+  --hair: var(--border);
+  --text-body: var(--foreground);
+  --text-primary: var(--foreground);
+  --article-accent: var(--primary);
+  --col: 720px;
+  --container: 1000px;
+  --nav-h: 76px;
+  --hero-fallback: linear-gradient(to bottom,#2b2d30,#1e1f22);
+  --hero-text: #fff;
+  --hero-meta: rgb(255 255 255 / .75);
+  --hero-pill: rgb(255 255 255 / .16);
+  --hero-hair: rgb(255 255 255 / .12);
+  --hero-shadow: 0 16px 40px rgb(0 0 0 / .28);
 }
 .dark {
   --background: #171717;
@@ -280,8 +294,10 @@ input[type='checkbox'] {
   top: 0;
   z-index: 50;
   background: var(--background);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 0;
 }
+.site-header.is-scrolled { box-shadow:0 1px 0 var(--hair); }
+@media(prefers-reduced-motion:no-preference) { .site-header { transition:box-shadow 200ms; } }
 .header-inner {
   min-height: 76px;
   display: flex;
@@ -385,7 +401,8 @@ input[type='checkbox'] {
   padding: 12px 0;
 }
 .site-footer {
-  border-top: 1px solid var(--border);
+  border-top: 0;
+  background: var(--fill);
   padding: 48px 0;
   color: var(--muted-foreground);
   font-size: 12px;
@@ -890,13 +907,19 @@ input[type='checkbox'] {
   font-size: 10px;
 }
 .subscribe-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 48px;
-  padding: 64px 0;
-  border-top: 1px solid var(--border);
+  display: block;
+  padding: 64px 24px;
+  border-top: 0;
+  background: var(--fill);
   margin-top: 48px;
 }
+.subscribe-inner { max-width:var(--col); margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:32px; align-items:start; }
+.subscribe-inner h2 { font-size:26px; font-weight:600; }
+.subscribe-inner > div > p:not(.eyebrow) { font-size:13px; line-height:1.7; }
+.subscribe-inner .subscribe-form input { border:0; background:var(--card); border-radius:8px; min-height:44px; }
+.subscribe-inner .subscribe-form input:focus-visible { outline:2px solid var(--article-accent); outline-offset:2px; }
+.subscribe-inner .subscribe-form button { border:0; border-radius:8px; min-height:44px; }
+@media(max-width:900px) { .subscribe-inner { grid-template-columns:1fr; } }
 .subscribe-section h2 {
   margin-bottom: 16px;
 }

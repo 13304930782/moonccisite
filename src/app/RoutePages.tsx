@@ -1,3 +1,5 @@
+const NodeMonitorPage=lazy(()=>import('./pages/NodeMonitorPage'));
+const AdminNodeMonitorPage=lazy(()=>import('./pages/AdminNodeMonitorPage'));
 import { feedbackStore } from './lib/feedback';
 import { confirmationStore } from './lib/confirmAction';
 import { afterInitialLoad } from './lib/afterInitialLoad';
@@ -54,6 +56,7 @@ const AdminBannedWordsPage = lazy(() => import('./pages/AdminBannedWordsPage'));
 const EditorApplyPage = lazy(() => import('./pages/EditorApplyPage'));
 const AdminEditorApplicationsPage = lazy(() => import('./pages/AdminEditorApplicationsPage'));
 const AdminSiteSettingsPage = lazy(() => import('./pages/AdminSiteSettingsPage'));
+const AdminAiSettingsPage = lazy(() => import('./pages/AdminAiSettingsPage'));
 const AdminLoginSettingsPage = lazy(() => import('./pages/AdminLoginSettingsPage'));
 const BookmarksPage = lazy(() => import('./pages/BookmarksPage'));
 const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'));
@@ -130,6 +133,10 @@ function Guard({
 
 
 export default function RoutePages(){return <Routes>
+          <Route path="/admin/ai-settings" element={<Guard ownerOnly><AdminShell><AdminAiSettingsPage /></AdminShell></Guard>} />
+<Route path="/node-monitor" element={<Guard><SitePage><NodeMonitorPage/></SitePage></Guard>}/>
+<Route path="/account/node-monitor" element={<Navigate to="/node-monitor" replace/>}/>
+<Route path="/admin/node-monitor" element={<Guard ownerOnly><AdminShell><AdminNodeMonitorPage/></AdminShell></Guard>}/>
           <Route path="/" element={<HomePage />} />
           <Route path="/updates" element={<UpdatesPage/>}/>
           <Route path="/updates/:id" element={<UpdateDetailPage/>}/>

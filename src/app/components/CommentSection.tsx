@@ -45,21 +45,21 @@ function getRoleName(role?: string) {
 function getRoleBadge(role?: string) {
   if (role === 'owner') {
     return (
-      <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground shadow-none">
+      <span className="comment-role-badge rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground shadow-none">
         站长
       </span>
     );
   }
   if (role === 'admin') {
     return (
-      <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground shadow-none">
+      <span className="comment-role-badge rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground shadow-none">
         管理员
       </span>
     );
   }
   if (role === 'editor') {
     return (
-      <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground shadow-none">
+      <span className="comment-role-badge rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground shadow-none">
         编辑
       </span>
     );
@@ -240,10 +240,10 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
 
   const renderCommentItem = (item: Comment, isReply: boolean = false) => {
     return (
-      <div key={item.id} className={isReply ? 'ml-5 md:ml-10 mt-3' : ''}>
+      <div key={item.id} className={`comment-thread${isReply?' comment-reply ml-5 md:ml-10 mt-3':''}`}>
         <div className={`comment-item comment-item--${item.status}`}>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground flex items-center gap-2">{item.author_avatar && <img src={item.author_avatar} alt="" width="28" height="28" className="rounded-full object-cover"/>}
+          <div className="comment-meta flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground flex items-center gap-2">{item.author_avatar?<img src={item.author_avatar} alt="" width="28" height="28" className="rounded-full object-cover"/>:<span className="comment-avatar-fallback" aria-hidden="true">{item.author_name.slice(0,1)}</span>}
               {item.author_name}{item.author_deleted && <small className="deleted-account-label">已删除</small>}
             </span>
 
@@ -288,12 +288,13 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
             </p>
           )}
 
-          <div className="mt-3 flex items-center gap-3">
+          <div className="comment-item-actions mt-3 flex items-center gap-3">
             <button
               onClick={() => toggleLike(item)}
+              aria-pressed={item.liked_by_me}
               disabled={item.status !== 'visible'}
               className={
-                'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition ' +
+                'comment-like inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition ' +
                 (item.liked_by_me
                   ? 'bg-red-50 text-red-600'
                   : 'bg-muted text-muted-foreground hover:text-red-600') +
@@ -324,7 +325,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
             {canDelete(user, item) && (
               <button
                 onClick={() => deleteComment(item)}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:text-red-600 hover:bg-red-50 transition"
+                className="comment-delete inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:text-red-600 hover:bg-red-50 transition"
               >
                 <Trash2 className="w-4 h-4" />
                 删除
@@ -336,7 +337,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
         {replyingTo?.id === item.id && (
           <form
             onSubmit={submitReply}
-            className={'mt-3 ' + (isReply ? 'ml-5 md:ml-10' : '')}
+            className={'comment-reply-compose mt-3 '+(compact&&isReply?'ml-5 md:ml-10':'')}
           >
             <div className="rounded-[10px] border border-border bg-muted p-4">
               <div className="flex items-center justify-between mb-2">
@@ -356,6 +357,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
               </div>
 
               <textarea
+                aria-label={'回复 @'+item.author_name}
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
                 rows={3}
@@ -378,7 +380,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
         )}
 
         {item.replies && item.replies.length > 0 && (
-          <div className="border-l border-border  ml-2 md:ml-4">
+          <div className="comment-replies border-l border-border ml-2 md:ml-4">
             {compact && <button type="button" className="comment-expand" aria-expanded={openReplies.has(item.id)} aria-controls={`${threadId}-replies-${item.id}`} onClick={() => toggleSet(setOpenReplies, item.id)}>{openReplies.has(item.id) ? '收起回复' : `展开 ${item.replies.length} 条回复`}</button>}
             <div id={`${threadId}-replies-${item.id}`} hidden={compact && !openReplies.has(item.id)}>{(!compact || openReplies.has(item.id)) && item.replies.map((reply) => renderCommentItem(reply, true))}</div>
           </div>
@@ -411,7 +413,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
           ))}
         </div>}
       </div>
-      {(!compact || user) && <div className="comment-account">
+      {(compact || !user) && (!compact || user) && <div className="comment-account">
         {user ? (
           <>
             <p>
@@ -435,6 +437,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
 
       {(!compact || user) && <form onSubmit={submit} className="comment-compose">
         <textarea
+          aria-label="写下你的评论"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={3}
@@ -448,7 +451,8 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
           className="w-full rounded-[10px] border border-border  bg-card  px-4 py-3 outline-none focus:ring-2 focus:ring-ring text-foreground "
         />
 
-        <div className="mt-3 flex justify-end">
+        <div className="comment-compose-bottom mt-3 flex justify-end">
+          {!compact&&user&&<p className="comment-posting-rule">以 {user.username} {getRoleName(user.role)} 发布 · {getCommentRule(user.role)}</p>}
           <button
             disabled={loading || !user}
             className="comment-submit"

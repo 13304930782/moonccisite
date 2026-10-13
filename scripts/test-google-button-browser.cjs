@@ -35,9 +35,7 @@ async function main() {
       assert.equal(await page.locator('iframe:not(.footer-status iframe)').count(), 0);
       assert.equal(await page.locator('script[src*="accounts.google.com"]').count(), 0);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-      await page.getByRole('button', { name: '打开菜单', exact: true }).click();
-      await page.getByRole('button', { name: '切换浅色主题' }).click();
-      await page.getByRole('button', { name: '关闭菜单', exact: true }).click();
+      await page.getByRole('button', { name: '切换外观', exact: true }).click();
       await page.waitForFunction(() => getComputedStyle(document.querySelector('.auth-google-local')).backgroundColor === 'rgb(255, 255, 255)');
       await local.click();
       await page.waitForURL('https://accounts.google.com/**');

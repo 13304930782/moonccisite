@@ -1,5 +1,5 @@
 const crypto = require('node:crypto');
-const fields = ['title','slug','summary','content','cover_image','category','source_url'];
+const fields = ['title','slug','summary','content','cover_image','category','source_url','summary_mode','summary_receipt'];
 function snapshot(input = {}) {
   const out = Object.fromEntries(fields.map(k => [k,String(input[k] ?? '')]));
   let tags = input.tags; if (typeof tags === 'string') { try { tags = JSON.parse(tags); } catch { tags = []; } }

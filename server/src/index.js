@@ -52,7 +52,18 @@ app.use('/api/mail-setup', require('./routes/mailSetup').privateResponse);
 
 // Body 大小限制
 app.use(express.json({ limit: '1mb' }));
-app.get('/api/image-variants/:width/:name', rateLimit({ windowMs: 60000, max: 240, standardHeaders: true, legacyHeaders: false }), require('./lib/imageVariants')(uploadRoutes.uploadDir));
+// Public images bypass the JSON API limiter, but transformations still have a
+// per-IP budget. Excess requests fall back to the original image without a 429.
+const imageVariantLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => /^[\w.-]+\.(png|jpe?g|webp)$/i.test(req.params.name || '')
+    ? res.redirect(302, `/api/uploads/${encodeURIComponent(req.params.name)}`)
+    : res.sendStatus(404),
+});
+app.get('/api/image-variants/:width/:name', imageVariantLimiter, require('./lib/imageVariants')(uploadRoutes.uploadDir));
 app.use('/api/uploads', express.static(uploadRoutes.uploadDir, {
   setHeaders: require('./lib/publicImageHeaders'),
 }));
@@ -149,6 +160,7 @@ app.use('/api', require('./routes/analytics'));
 app.use('/api/series', require('./routes/series'));
 app.use('/api/publishing', require('./routes/publishing'));
 app.use('/api/article-drafts', require('./routes/articleDrafts'));
+app.use('/api/article-seo', require('./routes/articleSeo'));
 app.use('/api/comments', commentRoutes);
 app.use('/api/early-access', earlyAccessLimiter, earlyAccessRoutes.publicRouter);
 app.use('/api/electricity/rss', require('./routes/electricityRss'));
@@ -160,6 +172,7 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/mailboxes/agent', require('./routes/mailboxes').agentRouter);
 app.use('/api/mailboxes', require('./routes/mailboxes').router);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/node-monitor', require('./routes/nodeMonitor').createRouter());
 app.use('/api/admin/early-access', earlyAccessRoutes.adminRouter);
 app.use('/api/admin/electricity/rooms', require('./routes/adminElectricityRooms'));
 app.use('/api/admin/electricity', adminElectricityRoutes);

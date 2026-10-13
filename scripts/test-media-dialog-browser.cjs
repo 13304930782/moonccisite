@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),{chromium,webkit}=require('playwright');
 (async()=>{
- const server=await(await import('vite')).createServer({server:{host:'127.0.0.1',port:4276,strictPort:true,hmr:false,watch:{ignored:['**/.cache/**','**/outputs/**']}}});await server.listen();
+ const server=await(await import('vite')).preview({preview:{host:'127.0.0.1',port:4276,strictPort:true}});
  let browser;
  try{
  browser=process.env.PLAYWRIGHT_BROWSER==='webkit'?await webkit.launch():await chromium.launch({...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:process.platform==='win32'?{channel:'msedge'}:{})});
@@ -29,5 +29,5 @@ const assert=require('node:assert/strict'),{chromium,webkit}=require('playwright
  await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await page.waitForFunction(e=>e===document.activeElement,await trigger.elementHandle());assert(await trigger.evaluate(e=>e===document.activeElement));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);await page.close();console.log('PASS media dialog',width,theme);
  }
  console.log('PASS media dialog: compact preview, aspect ratio, keyboard containment, Escape, focus return, 44px close, failed save preserves input, retry; 24 viewport/theme/image combinations');
- }finally{await browser?.close();await server.close();}
+ }finally{await browser?.close();await new Promise(resolve=>server.httpServer.close(resolve));}
 })().catch(e=>{console.error(e);process.exitCode=1;});

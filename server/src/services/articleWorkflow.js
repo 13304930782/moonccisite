@@ -13,6 +13,16 @@ function schedule(value){
  const at=Date.parse(value);if(!Number.isFinite(at)||at<=Date.now())throw error('请选择未来的发布时间。');return at;
 }
 async function change(id,actor,action,input){
+ let before,prepared;
+ if(action==='submit'){
+  const [[user]]=await db.query('SELECT id,role,status FROM users WHERE id=?',[actor.id]);
+  const [[row]]=await db.query('SELECT * FROM article_drafts WHERE id=?',[id]);
+  if(!user||user.status!=='active'||!row||(!isAdminLike(user)&&Number(row.author_id)!==Number(user.id)))throw error('草稿不存在或无权限。',404);
+  if(row.version!==input.version)throw error('草稿已变化，请刷新。',409);
+  await assertEditable(db,row);
+  before=typeof row.payload==='string'?JSON.parse(row.payload):row.payload;
+  prepared=await require('./articleSummary').prepare(db,before,user.id);
+ }
  return transaction(async c=>{
   const [[user]]=await c.query('SELECT id,role,status FROM users WHERE id=? FOR UPDATE',[actor.id]);
   if(!user||user.status!=='active')throw error('账号不可用。',403);
@@ -20,7 +30,13 @@ async function change(id,actor,action,input){
   if(!d||(!isAdminLike(user)&&Number(d.author_id)!==Number(user.id)))throw error('草稿不存在。',404);
   if(d.version!==input.version)throw error('草稿已变化，请刷新。',409);
   const [[w]]=await c.query('SELECT * FROM article_workflows WHERE draft_id=? FOR UPDATE',[id]);
-  const data=typeof d.payload==='string'?JSON.parse(d.payload):d.payload;
+  let data=typeof d.payload==='string'?JSON.parse(d.payload):d.payload;
+  if(prepared){
+   const revisions=require('../lib/articleRevisions');
+   if(revisions.hash(before)!==revisions.hash(data))throw error('生成简介期间草稿已变化，请重新预览。',409);
+   if(revisions.hash(data)!==revisions.hash(prepared)){await c.query('UPDATE article_drafts SET payload=?,dirty=1 WHERE id=?',[JSON.stringify(prepared),id]);await revisions.record(c,d,prepared,'manual',user.id);}
+   data=prepared;
+  }
   if(['approve','reject','schedule','publish'].includes(action)&&!isAdminLike(user))throw error('仅管理员可以审核或发布。',403);
   let state=w?.state||'draft',reason='',at=null,reviewer=w?.reviewer_id||null;
   if(action==='submit'){
