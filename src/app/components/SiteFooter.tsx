@@ -20,6 +20,7 @@ export function SiteFooter() {
             <Link to="/archives">文章归档</Link>
             <Link to="/rss">RSS 订阅</Link>
             <Link to="/mail-setup">邮箱设置</Link>
+            <Link to="/node-monitor">节点监控</Link>
             <a href="https://status.mooncci.site" target="_blank" rel="noopener noreferrer">服务状态</a>
           </nav>
         </div>

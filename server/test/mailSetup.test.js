@@ -16,7 +16,7 @@ uuid.UUID(p['PayloadUUID']);assert len(p['PayloadContent'])==1
 m=p['PayloadContent'][0];assert m['PayloadType']=='com.apple.mail.managed'
 assert m['EmailAccountType']=='EmailTypeIMAP'
 uuid.UUID(m['PayloadUUID']);assert m['PayloadUUID']!=p['PayloadUUID']
-for prefix,port in [('Incoming',993),('Outgoing',587)]:
+for prefix,port in [('Incoming',993),('Outgoing',465)]:
  assert m[prefix+'MailServerUsername']=="Ada.O'Neil&work+tag@mooncci.site"
  assert m[prefix+'MailServerPortNumber']==port and type(m[prefix+'MailServerPortNumber']) is int
  assert m[prefix+'MailServerHostName']=='mail.cuegroveapp.com'

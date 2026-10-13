@@ -12,7 +12,7 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
   if (['mooncci.site','www.mooncci.site'].includes(new URL(origin).hostname)) throw new Error('Use a direct primary origin, never the routed public domain');
   if (!key || key.length < 32 || /REPLACE|EXAMPLE/i.test(key)) throw new Error('Reader key must contain at least 32 characters');
   dist = path.resolve(dist);
-  let active=0;
+  let active=0, home;
   return http.createServer(async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-Content-Type-Options','nosniff');
@@ -27,6 +27,11 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
       const url=new URL(req.url,'https://mooncci.site');
       const request=new Request(url,{method:req.method,headers:req.headers});
       if(!publicRead(request)) return stop(403,'Not a public read');
+      const homeRequest=req.url==='/' && !req.headers['x-mooncci-diagnostic'];
+      if(homeRequest && home && Date.now()<home.expires) {
+        res.writeHead(200,{...home.headers,Age:String(Math.floor((Date.now()-home.created)/1000)+home.age),'X-Home-Cache':'EDGE-HIT'});
+        return res.end(req.method==='HEAD'?undefined:home.body);
+      }
       if(url.pathname.startsWith('/assets/')) {
         const file=path.join(dist,url.pathname.slice(1));
         let info;try{info=await stat(file);}catch{return stop(404,'Not found');}
@@ -37,7 +42,7 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
         res.writeHead(200,{'Content-Type':types[path.extname(file).slice(1)]||'application/octet-stream','Cache-Control':'public, max-age=31536000, immutable','Content-Length':body.length});
         return res.end(req.method==='HEAD'?undefined:body);
       }
-      // Current origin responses are no-store. Never override that with a shared cache.
+      // Cache only the exact anonymous homepage when the origin explicitly permits it.
       // Resolve only an already approved path against the configured origin. Never
       // hand a client-supplied absolute URL (or network-path reference) to fetch.
       const upstream=new URL(origin);
@@ -69,6 +74,12 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
         if(/^[a-f0-9-]{36}$/i.test(id||''))outgoing['X-Diagnostic-Request-ID']=id;
         if(/^app;dur=\d+(?:\.\d+)?$/.test(timing||''))outgoing['Server-Timing']=timing;
         outgoing['X-Diagnostic-Ingress']='US_PROXY';
+      }
+      const age=Number(response.headers.get('age')||0);
+      if(homeRequest && req.method==='GET' && response.status===200 && response.headers.get('cache-control')==='public, max-age=0, s-maxage=15, must-revalidate' && Number.isFinite(age) && age>=0 && age<15 && size<=1024*1024 && /text\/html/i.test(response.headers.get('content-type')||'')) {
+        outgoing['Cache-Control']='public, max-age=0, s-maxage=15, must-revalidate';
+        outgoing.Age=String(age); outgoing.Vary='Cookie, Authorization, Proxy-Authorization, Range, X-Mooncci-Diagnostic'; outgoing['X-Home-Cache']='EDGE-MISS';
+        home={body,headers:{...outgoing},age,created:Date.now(),expires:Date.now()+(15-age)*1000};
       }
       res.writeHead(response.status,outgoing);res.end(req.method==='HEAD'?undefined:body);
     } catch { if(!res.headersSent)stop(502,'Reader upstream unavailable');else res.destroy(); }
