@@ -55,3 +55,5 @@ tail -n 30 /tmp/mooncci-article-summary.log
 备份目录在日志中输出。部署失败时自动恢复对应后端、SSR runtime 和旧入口，保留用户数据库、密钥配置与上传文件；人工回退使用备份目录中的 `rollback.sh`。
 
 真实 DeepSeek 联通与摘要质量验收需要站长在后台输入有效密钥后，用一篇实际稿件生成并预览。测试响应不能替代这一步。
+
+读取节点资源：运行 `scripts/build-summary-reader-assets.py`，把生成的前端包及校验文件上传至 `root@107.174.123.42:/tmp/`，校验、解包后同样在 `nohup bash deploy.sh` 子 shell 中执行。该包只同步 `/opt/mooncci-reader/current/dist`，保留旧资源，不改读取节点配置，不重启服务。
