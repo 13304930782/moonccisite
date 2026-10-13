@@ -40,6 +40,13 @@ router.get('/:id/conflict',run(async(req,res)=>{
   res.json(await transaction(req,async(c,user)=>require('../lib/articleConflict').inspect(c,await get(c,req.params.id,user,true),user)));
 }));
 router.post('/:id/resolve-conflict',run(async(req,res)=>{
+  if(req.body.choice==='publish-current'){
+    const before=await get(db,req.params.id,req.user);
+    if(!isAdminLike(req.user)&&(workflow.enabled()||req.user.role!=='editor'))throw error('无直接发布权限。',403);
+    if(before.version!==req.body.draft_version)throw error('草稿已变化，请重新对比。',409);
+    if(workflow.enabled())await workflow.assertEditable(db,before);
+    req.body.payload=await require('../services/articleSummary').prepare(db,payload(req.body.payload),req.user.id);
+  }
   res.json(await transaction(req,async(c,user)=>{
     const d=await get(c,req.params.id,user,true);
     await require('../lib/articleConflict').resolve(c,d,user,req.body);
@@ -58,10 +65,17 @@ router.put('/:id',run(async(req,res)=>{
     await revisions.trimAutos(c,d);return get(c,d.id,user);}));
 }));
 router.post('/:id/publish',(req,res,next)=>workflow.enabled()?adminOnly(req,res,next):next(),run(async(req,res)=>{
+  const before=await get(db,req.params.id,req.user);
+  if(before.version!==req.body.version)throw error('草稿已经变化，请先保存最新内容。',409);
+  if(workflow.enabled())await workflow.assertEditable(db,before);
+  const prepared=before.published_version===req.body.version&&!before.dirty?before.payload:await require('../services/articleSummary').prepare(db,before.payload,req.user.id);
   res.json(await transaction(req,async(c,user)=>{
     const d=await get(c,req.params.id,user,true);if(workflow.enabled())await workflow.assertEditable(c,d);
     if(d.published_version===req.body.version&&!d.dirty)return {...d,replayed:true};
     if(d.version!==req.body.version)throw error('草稿已经变化，请先保存最新内容。',409);
+    if(revisions.hash(d.payload)!==revisions.hash(before.payload))throw error('生成简介期间草稿已变化，请重新预览。',409);
+    if(revisions.hash(prepared)!==revisions.hash(d.payload))await c.query('UPDATE article_drafts SET payload=? WHERE id=?',[JSON.stringify(prepared),d.id]);
+    d.payload=prepared;
     await require('../lib/articlePublishing').publish(c,d,user);if(workflow.enabled())await c.query("UPDATE article_workflows SET state='published',reason='',scheduled_at=NULL WHERE draft_id=?",[d.id]);return get(c,d.id,user);
   }));
 }));

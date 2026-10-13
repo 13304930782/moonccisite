@@ -228,6 +228,7 @@ export function AdminShell({ children }: AdminShellProps) {
       icon: Settings,
       show: user?.role === 'owner',
     },
+    {title:'AI 文章简介',to:'/admin/ai-settings',icon:Settings,show:user?.role==='owner'},
     {
       title: '邮件设置',
       to: '/admin/mail-settings',

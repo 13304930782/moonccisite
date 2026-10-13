@@ -202,14 +202,21 @@ const writeError=(message,status)=>Object.assign(new Error(message),{status});
 async function writeTransaction(work){const c=await db.getConnection();try{await c.beginTransaction();const result=await work(c);await c.commit();return result;}catch(e){await c.rollback();throw e;}finally{c.release();}}
 const writeHandler=work=>async(req,res)=>{try{res.json(await writeTransaction(c=>work(c,req)));}catch(e){if(e.status)return res.status(e.status).json({message:e.message});if(e.code==='ER_DUP_ENTRY')return res.status(409).json({message:'链接别名已存在。'});console.error('[posts/write]',e.code||'failed');res.status(500).json({message:'文章保存失败'});}};
 const publishGuard=(req,res,next)=>require('../services/articleWorkflow').enabled()&&!isAdminLike(req.user)?res.status(403).json({message:'请通过我的投稿提交审核。'}):next();
-router.post('/',authRequired,editorOrAdmin,publishGuard,writeHandler(async(c,req)=>{
+const prepareSummary=async(req,res,next)=>{try{
+ let old=null;if(req.params.id){const [[row]]=await db.query('SELECT * FROM posts WHERE id=?',[req.params.id]);if(!row||!canManagePost(req.user,row))throw writeError('文章不存在或无权限。',404);if(req.body.version!==row.version)throw writeError('文章已变化，请刷新。',409);old=row;}
+ const normalized=normalizePostInput(req.body,old);if(normalized.error)throw writeError(normalized.error,400);
+ const p=normalized.value;
+ if(p.status==='published'){const prepared=await require('../services/articleSummary').prepare(db,{...p,summary_mode:req.body.summary_mode||'',summary_receipt:req.body.summary_receipt||''},req.user.id);require('../lib/articleSummaryProof').assertReady(prepared);req.body={...req.body,summary:prepared.summary};}
+ next();
+}catch(e){if(e.status)return res.status(e.status).json({message:e.message});next(e);}};
+router.post('/',authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHandler(async(c,req)=>{
  const normalized=normalizePostInput(req.body);if(normalized.error)throw writeError(normalized.error,400);
  const p=normalized.value;
  const [r]=await c.query('INSERT INTO posts (title,slug,summary,content,cover_image,category,tags,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,?,?,?)',[p.title,p.slug,p.summary,p.content,p.cover_image,p.category,JSON.stringify(p.tags),p.status,req.user.id,p.status==='published'?new Date():null]);
  await revisions.record(c,{post_id:r.insertId},p,p.status==='published'?'publish':'manual',req.user.id,p.status==='published'?1:null);
  return {message:'创建成功'};
 }));
-router.put('/:id',authRequired,editorOrAdmin,publishGuard,writeHandler(async(c,req)=>{
+router.put('/:id',authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHandler(async(c,req)=>{
  const [[old]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[req.params.id]);
  if(!old)throw writeError('文章不存在',404);
  if(!canManagePost(req.user,old))throw writeError('无权限编辑这篇文章',403);

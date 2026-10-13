@@ -38,10 +38,11 @@ export async function api(path: string, options: ApiOptions = {}) {
       throw new ApiError(writing ? uncertainMessage : '内容暂时无法读取，请重试。', res.status, 'format', writing);
     }
     if (!res.ok) {
-      const uncertain = writing && res.status >= 500;
+      const summaryMessage = /^\/article-seo\/(generate|settings)$/.test(path) && typeof data?.message === 'string' ? data.message : '';
+      const uncertain = writing && res.status >= 500 && !summaryMessage;
       // These routes deliberately return safe provider errors, not exception text.
       const cityMessage = readOnly && /^\/weather-mood\/(cities|locate|locate-network)$/.test(path) && typeof data?.code === 'string' && /^(AMAP_|CITY_|WEATHER_UPSTREAM_LIMIT)/.test(data.code) && typeof data?.message === 'string' ? data.message : '';
-      const message = uncertain ? uncertainMessage : cityMessage || (res.status >= 500 ? '服务暂时不可用，请稍后重试。' : data?.message || (res.status === 401 ? '登录已过期，请重新登录后继续。' : res.status === 403 ? '当前账号没有此操作权限。' : '操作未完成，请检查后重试。'));
+      const message = uncertain ? uncertainMessage : summaryMessage || cityMessage || (res.status >= 500 ? '服务暂时不可用，请稍后重试。' : data?.message || (res.status === 401 ? '登录已过期，请重新登录后继续。' : res.status === 403 ? '当前账号没有此操作权限。' : '操作未完成，请检查后重试。'));
       throw new ApiError(message, res.status, 'http', uncertain, cityMessage ? data.code : undefined);
     }
     if (writing && /^\/(?:admin\/posts|article-drafts|publishing)(?:\/|$)/.test(path)) clearPublicSnapshots();

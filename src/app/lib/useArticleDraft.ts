@@ -5,6 +5,7 @@ import {readBackup,writeBackup,DraftBackup} from './draftStorage';
 import {useUnsavedLeave} from './useUnsavedLeave';
 export const emptyArticle={title:'',content:'',slug:'',summary:'',cover_image:'',category:'',tags:[] as string[]};
 export function useArticleDraft(userId:number,postId?:string){
+ const [summaryBusy,setSummaryBusy]=useState(false),[summaryError,setSummaryError]=useState('');const summaryPending=useRef(false);
  const [draft,setDraft]=useState<any>(null),[form,setForm]=useState<any>(emptyArticle),[status,setStatus]=useState('正在加载…'),[error,setError]=useState(''),[recovery,setRecovery]=useState<DraftBackup|null>(null),[busy,setBusy]=useState(false),[localAvailable,setLocalAvailable]=useState(true),[serverCopy,setServerCopy]=useState<any>(null);
  const [errorStatus,setErrorStatus]=useState(0);
  const current=useRef(form),saved=useRef(''),doc=useRef<any>(null),loading=useRef(true),blocked=useRef(false),pending=useRef<Promise<any>|null>(null),timer=useRef<ReturnType<typeof setTimeout>>(),changedAt=useRef(0),alive=useRef(true);
@@ -31,11 +32,19 @@ export function useArticleDraft(userId:number,postId?:string){
 
  const dirty=!!draft&&JSON.stringify(form)!==saved.current;useUnsavedLeave(dirty);
  const resolve=(restore:boolean)=>{if(restore&&recovery)update(recovery.payload);else{current.current=doc.current.payload;setForm(doc.current.payload);void backup(doc.current.payload,doc.current.version);}setRecovery(null);blocked.current=false;setError('');setErrorStatus(0);};
- const action=async(kind:'publish'|'withdraw'|'submit')=>{const d=await save();if(!d)return;setBusy(true);try{const result=await api(kind==='submit'?'/publishing/'+d.id+'/submit':`/article-drafts/${d.id}/${kind}`,{method:'POST',body:JSON.stringify({version:d.version})});if(kind==='submit'){apply({...d,workflow:{...d.workflow,...result}});try{apply(await api('/article-drafts/'+d.id));}catch{notify.error('稿件已提交审核，状态刷新失败；可返回稿件列表查看。');}}else apply(result);setStatus(kind==='submit'?'已提交审核':kind==='publish'?'发布成功':'已撤回为草稿');setError('');setErrorStatus(0);return true;}catch(e:any){setError(e.message);setErrorStatus(e.status||0);if(e.status===409){blocked.current=true;autoPaused.current=true;setStatus('版本冲突，尚未发布');}return false;}finally{setBusy(false);}};
+ const generateSummary=async(force=false)=>{
+  if(summaryPending.current)return false;
+  if(!force&&current.current.summary?.trim()&&current.current.summary_mode!=='ai')return true;
+  if(!force&&current.current.summary_mode==='manual')return true;
+  summaryPending.current=true;setSummaryBusy(true);setSummaryError('');const value=structuredClone(current.current),snapshot=JSON.stringify(value);
+  try{const result=await api('/article-seo/generate',{method:'POST',body:JSON.stringify({payload:value,force}),timeoutMs:35000});if(!alive.current)return false;if(JSON.stringify(current.current)!==snapshot)throw new Error('生成期间文章已修改，请重新生成简介。');if(result.summary_receipt)update({...value,...result});return true;}catch(e:any){if(alive.current)setSummaryError(e.message);return false;}finally{summaryPending.current=false;if(alive.current)setSummaryBusy(false);}
+ };
+ const action=async(kind:'publish'|'withdraw'|'submit')=>{if(kind!=='withdraw'&&!await generateSummary())return false;const d=await save();if(!d)return;setBusy(true);try{const result=await api(kind==='submit'?'/publishing/'+d.id+'/submit':`/article-drafts/${d.id}/${kind}`,{method:'POST',body:JSON.stringify({version:d.version})});if(kind==='submit'){apply({...d,workflow:{...d.workflow,...result}});try{const fresh=await api('/article-drafts/'+d.id);apply(fresh);current.current=fresh.payload;setForm(fresh.payload);}catch{notify.error('稿件已提交审核，状态刷新失败；可返回稿件列表查看。');}}else{apply(result);current.current=result.payload;setForm(result.payload);}setStatus(kind==='submit'?'已提交审核':kind==='publish'?'发布成功':'已撤回为草稿');setError('');setErrorStatus(0);return true;}catch(e:any){setError(e.message);setErrorStatus(e.status||0);if(e.status===409){blocked.current=true;autoPaused.current=true;setStatus('版本冲突，尚未发布');}return false;}finally{setBusy(false);}};
  const discard=async()=>{if(!doc.current)return;blocked.current=true;clearTimeout(timer.current);setBusy(true);try{if(pending.current)await pending.current;await api(`/article-drafts/${doc.current.id}`,{method:'DELETE',body:JSON.stringify({version:doc.current.version})});saved.current=JSON.stringify(current.current);setForm({...current.current});setStatus('已放弃未发布修改');setTimeout(()=>{if(location.pathname.startsWith('/account')){location.replace('/account/submissions');return;}if(!doc.current.post_id){location.replace(location.pathname.startsWith('/account')?'/account/submissions':'/admin/posts');return;}const url=new URL(location.href);url.searchParams.delete('draft');location.replace(url);},0);}catch(e:any){setError(e.message);setErrorStatus(e.status||0);setBusy(false);}};
  const inspect=async()=>{blocked.current=true;autoPaused.current=true;clearTimeout(timer.current);setBusy(true);try{if(pending.current)await pending.current;const comparison=await api(`/article-drafts/${doc.current.id}/conflict`);if(!alive.current)return false;setServerCopy(comparison);return true;}catch(e:any){setError(e.message);setErrorStatus(e.status||0);return false;}finally{if(alive.current)setBusy(false);}};
  const resolveConflict=async(choice:'publish-current'|'keep-current'|'adopt-post'|'adopt-draft')=>{
   if(!serverCopy||busy)return false;
+  if(choice==='publish-current'&&!await generateSummary())return false;
   setBusy(true);clearTimeout(timer.current);
   const value=structuredClone(current.current);
   try{
@@ -58,5 +67,5 @@ export function useArticleDraft(userId:number,postId?:string){
   }catch(e:any){setError(e.message);setErrorStatus(e.status||0);if(e instanceof ApiError&&[401,403,409].includes(e.status))blocked.current=true;return false;}
   finally{restoring.current=false;setIsRestoring(false);}
  };
- return {restore,isRestoring,discard,serverCopy,inspect,resolveConflict,errorStatus,draft,form,update,status,error,recovery,resolve,busy,localAvailable,save,action,dirty,ready:!loading.current,blocked:blocked.current};
+ return {summaryBusy,summaryError,generateSummary,restore,isRestoring,discard,serverCopy,inspect,resolveConflict,errorStatus,draft,form,update,status,error,recovery,resolve,busy:busy||summaryBusy,localAvailable,save,action,dirty,ready:!loading.current,blocked:blocked.current};
 }

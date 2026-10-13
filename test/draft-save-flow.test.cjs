@@ -6,6 +6,7 @@ async function fixture(){
  let hook,root,mode='normal',pending=[];const writes=[],notifications=[];
  let draft={id:'fixture',version:1,payload:{title:'Original',content:'Body',tags:[]},updated_at:new Date().toISOString()};
  const api=async(path,options={})=>{
+  if(path==='/article-seo/generate')return {};
   if(path.endsWith('/submit'))return {state:'submitted'};
   if(options.method==='PUT'){
    const value=JSON.parse(options.body);writes.push(value);
