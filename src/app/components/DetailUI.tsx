@@ -36,9 +36,11 @@ function DetailAside({ title, children, className = '' }: { title: string; child
     media.addEventListener('change', change);
     return () => media.removeEventListener('change', change);
   }, []);
+  // A delayed native toggle event must not overwrite the responsive state.
+  // Summary click also covers Enter/Space activation; React owns the open value.
   return <aside className="detail-aside" data-reading-ignore>
-    <details data-initial={!ready ? true : undefined} className={`detail-panel ${className}`} open={open} onToggle={event => setOpen(event.currentTarget.open)}>
-      <summary>{title}</summary><div className="detail-panel-content">{children}</div>
+    <details data-initial={!ready ? true : undefined} className={`detail-panel ${className}`} open={open}>
+      <summary onClick={event => { event.preventDefault(); setOpen(value => !value); }}>{title}</summary><div className="detail-panel-content">{children}</div>
     </details>
   </aside>;
 }

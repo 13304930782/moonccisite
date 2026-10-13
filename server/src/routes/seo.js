@@ -25,11 +25,11 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
    if(pathname.startsWith('/tag/')) {
     const [rows]=await db.query("SELECT tags FROM posts WHERE status='published' AND tags IS NOT NULL");
     if(!rows.some(row=>{try{return (Array.isArray(row.tags)?row.tags:JSON.parse(row.tags||'[]')).includes(name);}catch{return false;}}))return notFound();
-    result.meta={...result.meta,title:`${name} · 标签 · ${result.meta.siteName}`,description:`阅读「${name}」标签下的文章。`,robots:'index, follow'};
+    result.meta={...result.meta,title:`${name} · 标签 · ${result.meta.siteName}`,description:`浏览 ${result.meta.siteName} 中带有「${name}」标签的文章，阅读相关技术实践与经验记录。进入文章查看完整正文，或结合分类与归档继续查找感兴趣的内容。`,robots:'index, follow'};
    } else {
     const [[series]]=await db.query("SELECT s.* FROM article_series s JOIN article_series_posts sp ON sp.series_id=s.id JOIN posts p ON p.id=sp.post_id AND p.status='published' WHERE s.slug=? LIMIT 1",[name]);
     if(!series)return notFound();
-    result.meta={...result.meta,title:`${series.title} · 专栏 · ${result.meta.siteName}`,description:seo.plain(series.description)||`连续阅读「${series.title}」专栏的文章。`,robots:'index, follow'};
+    result.meta={...result.meta,title:`${series.title} · 专栏 · ${result.meta.siteName}`,description:seo.plain(series.description).slice(0,160)||`连续阅读 ${result.meta.siteName} 的「${series.title}」文章专栏，浏览这一主题的文章目录与相关实践记录。按专栏顺序进入文章，查看完整正文与主题进展。`,robots:'index, follow'};
    }
   }
   const paged=/^\/(articles|archives|updates|projects|category\/[^/]+|tag\/[^/]+)$/.test(pathname);
@@ -44,7 +44,13 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
    else resource=`/projects?page=${page}`;
    const data=await loadResource(resource);if(page>Math.max(1,Math.ceil(data.total/data.pageSize)))return notFound();
   }
-  if(page>1){result.meta.canonical+='?page='+page;result.meta.title=`${result.meta.title} · 第 ${page} 页`;}
+  if(pathname==='/updates'&&query.type){
+   const label={post:'文章',update:'日常近况',release:'作品版本'}[query.type];
+   if(!label)return notFound();
+   result.meta.title=`${label}更新 · ${result.meta.siteName}`;
+   result.meta.description=`浏览 ${result.meta.siteName} 最近的${label}更新，查看这一类型的动态与发布时间。进入相关内容阅读详情，也可以切换到全部近况，跟进博客文章、日常记录和作品进展。`;
+  }
+  if(page>1){result.meta.canonical+='?page='+page;result.meta.title=`${result.meta.title} · 第 ${page} 页`;result.meta.description=`第 ${page} 页：${result.meta.description}`;}
   if(query.type && pathname==='/updates') {if(!['post','update','release'].includes(query.type))return notFound();result.meta.canonical+=(page>1?'&':'?')+'type='+query.type;}
   if(result.status===200&&result.meta.robots==='index, follow') {
    const graph=[];
@@ -56,7 +62,7 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
   return result;
  }
  router.get('/api/seo',limiter,async(req,res)=>{const pathname=String(req.query.path||'/');if(!/^\/[a-zA-Z0-9/_%.-]*$/.test(pathname)||pathname.length>512)return res.status(400).json({message:'无效页面地址'});const result=await metadata(pathname,req.query);res.set('Cache-Control','no-store');res.status(result.status).json(result.meta);});
- router.get('/robots.txt',limiter,(_req,res)=>{res.type('text/plain').send(`User-agent: *\nDisallow: /api/\nAllow: /api/posts\nAllow: /api/projects\nAllow: /api/updates/\nAllow: /api/activity\nAllow: /api/now$\nAllow: /api/settings/site$\nAllow: /api/settings/blog-pages$\nAllow: /api/publishing/config$\nAllow: /api/subscriptions/status$\nAllow: /api/series\nAllow: /api/seo?\nSitemap: ${seo.origin()}/sitemap.xml\n`);});
+ router.get('/robots.txt',limiter,(_req,res)=>{res.type('text/plain').send(`User-agent: *\nDisallow: /api/\nDisallow: /api/uploads/releases/\nAllow: /api/uploads/*.jpg$\nAllow: /api/uploads/*.jpeg$\nAllow: /api/uploads/*.png$\nAllow: /api/uploads/*.gif$\nAllow: /api/uploads/*.webp$\nAllow: /api/uploads/*.ico$\nAllow: /api/image-variants/\nAllow: /api/posts\nAllow: /api/projects\nAllow: /api/updates/\nAllow: /api/activity\nAllow: /api/now$\nAllow: /api/settings/site$\nAllow: /api/settings/blog-pages$\nAllow: /api/publishing/config$\nAllow: /api/subscriptions/status$\nAllow: /api/series\nAllow: /api/seo?\nSitemap: ${seo.origin()}/sitemap.xml\n`);});
  router.get('/sitemap.xml',limiter,async(_req,res)=>{
   const [posts]=await db.query("SELECT id,COALESCE(updated_at,published_at,created_at) AS updated_at FROM posts WHERE status='published' ORDER BY id");
   const [updates]=await db.query("SELECT id,updated_at FROM updates WHERE status='published' ORDER BY id");
