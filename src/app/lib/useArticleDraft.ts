@@ -5,7 +5,7 @@ import {api,ApiError} from './api';
 import {readBackup,writeBackup,DraftBackup} from './draftStorage';
 import {useUnsavedLeave} from './useUnsavedLeave';
 import {draftSnapshot,settleDraftSave} from './articleDraftState';
-export const emptyArticle={title:'',content:'',slug:'',summary:'',cover_image:'',category:'',tags:[] as string[]};
+export const emptyArticle={title:'',content:'',slug:'',summary:'',cover_image:'',cover_crop:null,category:'',tags:[] as string[]};
 export function useArticleDraft(userId:number,postId?:string){
  const [summaryBusy,setSummaryBusy]=useState(false),[summaryError,setSummaryError]=useState('');const summaryPending=useRef(false);
  const [draft,setDraft]=useState<any>(null),[form,setForm]=useState<any>(emptyArticle),[status,setStatus]=useState('正在加载…'),[error,setError]=useState(''),[recovery,setRecovery]=useState<DraftBackup|null>(null),[busy,setBusy]=useState(false),[localAvailable,setLocalAvailable]=useState(true),[serverCopy,setServerCopy]=useState<any>(null);

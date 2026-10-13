@@ -3,6 +3,7 @@ const routeLimiter = require('express-rate-limit')({windowMs:60000,limit:200,sta
 const db=require('../db');
 const {authRequired,adminOnly}=require('../middleware/auth');
 const {error}=require('../lib/articlePublishing');
+const {withCoverCrop}=require('../lib/articleCoverCrop');
 const router=require('../lib/asyncRouter')();
 router.use((req,res,next)=>require('../services/articleWorkflow').enabled()?next():res.status(404).json({message:'专栏功能尚未开启。'}));
 router.use((_req,res,next)=>{res.set('Cache-Control','no-store');res.vary('Cookie');res.vary('Authorization');next();});
@@ -28,9 +29,9 @@ router.get('/manage/:id/articles',routeLimiter,authRequired,adminOnly,guarded(as
 router.get('/:slug',routeLimiter,guarded(async(req,res)=>{
  const [[series]]=await db.query('SELECT * FROM article_series WHERE slug=?',[req.params.slug]);
  if(!series)throw error('专栏不存在。',404);
- const [items]=await db.query("SELECT p.id,p.title,p.summary,p.cover_image,p.published_at FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? AND p.status='published' ORDER BY sp.position,p.id",[series.id]);
+ const [items]=await db.query("SELECT p.id,p.title,p.summary,p.cover_image,p.cover_crop,p.published_at FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? AND p.status='published' ORDER BY sp.position,p.id",[series.id]);
  if(!items.length)throw error('专栏暂未公开。',404);
- res.json({series,items});
+ res.json({series,items:items.map(withCoverCrop)});
 }));
 router.use(authRequired,adminOnly,(_req,res,next)=>{res.set('Cache-Control','private, no-store');next();});
 function values(body){

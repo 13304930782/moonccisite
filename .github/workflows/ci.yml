@@ -25,8 +25,11 @@ jobs:
       - run: npm test
       - run: npm test --prefix server
       - run: npm run build
+      - run: node scripts/test-document.mjs
       - run: npm run check:bundle
       - run: python3 scripts/test-offline-release.py
+      - run: python3 -m py_compile scripts/build-cover-framing-release.py
+      - run: bash -n scripts/deploy-cover-framing.sh scripts/rollback-cover-framing.sh
       - run: python3 scripts/test-us-http2.py
       - run: python3 ops/geo-gateway-preview/test_install_image_cache.py
       - run: bash -n scripts/deploy-social-login.sh
@@ -134,6 +137,11 @@ jobs:
       - run: node --test server/test/articleRevisions.integration.test.js
         env:
           REVISION_INTEGRATION: "true"
+          TEST_DB_PORT: "3306"
+
+      - run: node --test server/test/articleCoverCrop.integration.test.js server/test/articleCoverCropInit.integration.test.js
+        env:
+          COVER_CROP_INTEGRATION: "true"
           TEST_DB_PORT: "3306"
 
       - run: node --test server/test/articleBookmarks.integration.test.js

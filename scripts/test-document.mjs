@@ -49,3 +49,20 @@ console.log('Homepage acceptance: visible SSR bootstrap and conditional Markdown
 const listing=await injectDocument(template,list);
 assert.ok(!listing.includes('mooncci-home-css'));
 assert.ok(listing.includes(styles.index.css[0]));
+
+// Cover metadata must reach both SSR card and detail without client measurement.
+const crop={card:{x:.25,y:.85,zoom:1.5},detail:{x:.5,y:.75,zoom:1.2}};
+const framedPost={...post,cover_image:'/api/uploads/cover.png',cover_crop:crop};
+const coverLoad=p=>p==='/posts/7'?Promise.resolve(framedPost):p.startsWith('/posts?')?Promise.resolve({items:[framedPost],total:1,page:1,pageSize:12}):load(p);
+const framedArticle=await renderDocument('/article/7',coverLoad);
+assert.deepEqual(framedArticle.data.resources['/posts/7'].cover_crop,crop);
+const heroImage=JSDOM.fragment(framedArticle.html).querySelector('.hero-card img');
+assert.match(heroImage.className,/cover-image--framed/);
+assert.match(heroImage.getAttribute('style'),/--cover-x:50%;--cover-y:75%;--cover-zoom:1.2/);
+const framedList=await renderDocument('/articles',coverLoad);
+const cardImage=JSDOM.fragment(framedList.html).querySelector('.blog-card-cover img');
+assert.match(cardImage.getAttribute('style'),/--cover-x:25%;--cover-y:85%;--cover-zoom:1.5/);
+const oldArticle=await renderDocument('/article/7',p=>p==='/posts/7'?Promise.resolve({...framedPost,cover_crop:null}):load(p));
+const oldImage=JSDOM.fragment(oldArticle.html).querySelector('.hero-card img');
+assert.equal(oldImage.className,'content-image');assert.equal(oldImage.getAttribute('style'),null);
+console.log('Cover SSR acceptance: independent card/detail frames and legacy image markup passed.');

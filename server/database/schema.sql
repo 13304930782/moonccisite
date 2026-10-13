@@ -206,6 +206,7 @@ CREATE TABLE `posts` (
   `summary` text,
   `content` longtext NOT NULL,
   `cover_image` varchar(500) DEFAULT NULL,
+  `cover_crop` json DEFAULT NULL,
   `category` varchar(100) DEFAULT NULL,
   `tags` json DEFAULT NULL,
   `status` enum('draft','published') NOT NULL DEFAULT 'draft',

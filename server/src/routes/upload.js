@@ -257,6 +257,8 @@ async function updateReferences(oldUrl, newUrl, actorId) {
     const [posts]=await c.query('SELECT * FROM posts WHERE content LIKE ? OR cover_image=? ORDER BY id FOR UPDATE',[`%${oldUrl}%`,oldUrl]);
     for(const post of posts){
       await revisions.baseline(c,post,actorId);
+      // Renaming/recompressing the same asset preserves its normalized framing.
+      // The revision snapshot includes cover_crop alongside the synchronized URL.
       const next={...post,content:post.content.split(oldUrl).join(newUrl),cover_image:post.cover_image===oldUrl?newUrl:post.cover_image};
       await c.query('UPDATE posts SET content=?,cover_image=?,version=version+1,updated_at=NOW() WHERE id=?',[next.content,next.cover_image,post.id]);
       await revisions.record(c,{post_id:post.id},next,post.status==='published'?'publish':'manual',actorId,post.status==='published'?post.version+1:null);

@@ -2,6 +2,8 @@ import { responsiveImage } from '../lib/responsiveImage';
 import { formatDate } from "./ContentUI";
 import { Link } from "react-router-dom";
 import { safeImageSrc } from "../lib/safeUrl";
+import { CoverImage } from './CoverImage';
+import { coverFrame, type CoverCrop } from '../lib/coverCrop';
 interface BlogCardProps {
   id?: number | string;
   title: string;
@@ -11,6 +13,7 @@ interface BlogCardProps {
   readTime?: string;
   tags: string[];
   image: string;
+  coverCrop?: CoverCrop;
   index?: number;
   category?: string;
 }
@@ -23,12 +26,14 @@ export function BlogCard({
   readTime,
   tags,
   image,
+  coverCrop,
   category,
 }: BlogCardProps) {
   const src = safeImageSrc(image);
+  const frame = coverFrame(coverCrop, 'card');
   const content = (
     <article className="blog-card">
-      {src && <img {...responsiveImage(src)} alt="" loading="lazy" decoding="async" />}
+      {src && (frame ? <span className="blog-card-cover"><CoverImage {...responsiveImage(src)} frame={frame} alt="" loading="lazy" decoding="async" /></span> : <img {...responsiveImage(src)} alt="" loading="lazy" decoding="async" />)}
       <small>{category || tags.slice(0, 3).join(" / ")}</small>
       <h3>{title}</h3>
       {excerpt && <p>{excerpt}</p>}

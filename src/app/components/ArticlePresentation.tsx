@@ -10,6 +10,8 @@ import {ArticleTableOfContents} from './ArticleTableOfContents';
 import {loadCoverGradient} from '../lib/coverPalette';
 import { safeImageSrc } from '../lib/safeUrl';
 import { dimensionsFor } from '../lib/imageDimensions';
+import {CoverImage} from './CoverImage';
+import {coverFrame} from '../lib/coverCrop';
 import '../../styles/article-detail.css';
 export function ArticlePresentation({ post, preview = false, views = null,progress }: { post: any; preview?: boolean; views?: number | null;progress?:ReactNode }) {
   const content=stripLegacyAgeNotice(post?.content);
@@ -44,7 +46,7 @@ export function ArticlePresentation({ post, preview = false, views = null,progre
           {showViews&&<span className="article-view-count" aria-label={`${views} 次阅读`} title="阅读量"><Eye size={15} aria-hidden="true"/><span>{(views??0).toLocaleString('zh-CN')}</span></span>}
         </span>}
       </SingleLine>
-      {cover&&<div className="hero-card"><img className="content-image" src={cover} alt={post.title||'文章封面'} {...dimensionsFor(cover,post.image_dimensions)} fetchPriority="high"/></div>}
+      {cover&&<div className="hero-card"><CoverImage className="content-image" src={cover} frame={coverFrame(post.cover_crop,'detail')} alt={post.title||'文章封面'} {...dimensionsFor(cover,post.image_dimensions)} fetchPriority="high"/></div>}
     </div></header>
     <div className="article-after"><div className="article-reading-wrap">
       <div className="detail-body">

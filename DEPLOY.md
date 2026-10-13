@@ -1138,3 +1138,64 @@ ceiling and unchanged worker PID/restart count. Do not run npm or SQL migrations
 To roll back, restore the saved configuration and reload only the API in the same
 way. Observe RSS and restart count over multiple PM2 memory-check intervals;
 450M is a restart ceiling, not a reservation or a change to the V8 heap limit.
+
+
+## Article cover framing scoped offline release
+
+Cover framing stores two independent normalized `{x,y,zoom}` tuples in the nullable
+`posts.cover_crop` JSON column. Original uploads are unchanged. New drafts,
+publication/review snapshots and revision hashes carry this metadata; old articles
+with null metadata retain centered cards and top-aligned detail covers.
+
+An existing production database needs only the additive migration
+`server/database/migrations/202610130001_article_cover_crop.sql`. Do not replay
+historical SQL. This release uses a separately reviewed package
+containing the changed backend allowlist, this migration/runner, built `dist/` and
+`server/runtime/`; the frontend-only packer cannot deploy this feature.
+
+The scoped runner uses the live server's installed dependencies and `.env` and
+checks the migration ledger/checksum and existing column shape. It resumes a DDL
+that completed before its ledger write. Run it in the approved offline deployment
+child shell, with the explicit live backend directory:
+
+```bash
+node /path/to/scoped-package/server/scripts/migrate-article-cover-crop.js /www/wwwroot/mooncci-source/server
+```
+
+Back up affected source/runtime and database before release. Preserve
+uploads, `.env`, all historical migrations and source SQL. Roll back source/runtime
+if needed and keep the additive nullable column; do not drop framing data.
+No new npm dependencies are required. Existing CI is retained, with the new real
+MySQL cover-framing integration enabled in `ci.yml` and SSR/Portal regression tests.
+
+From a clean, pushed/merged commit, capture the current production file hashes,
+sanitized API/worker configuration, published cover/no-cover IDs and original image
+hashes. Run `python scripts/build-cover-framing-release.py --baseline PATH.json`.
+It builds locally and produces separate main and reader archives plus LF SHA256
+sidecars and `.cache/cover-framing-release.json`. The main allowlist is nine backend
+files, the single migration and runner, `dist`, matching SSR runtime and its existing
+locked isolated dependency closure. The reader archive contains static assets only.
+No production npm, GitHub downloads, frontend builds or dependency install occurs.
+
+Verify the archive checksum, extract to a private release directory, then run
+`nohup bash /path/to/package/deploy.sh > /path/to/package/deploy.log 2>&1 < /dev/null &`.
+Never source deployment scripts. The main deployment takes a consistent five-table
+schema/data dump, byte-verifies complete source/runtime/overwritten static backups,
+and rechecks their captured hashes before and after DDL to reject concurrent drift.
+The dedicated runner ignores inherited DB variables and reads the explicit live
+`.env`. API and worker restart because both cache changed publishing modules;
+their inspected memory budgets, Node arguments and environment are preserved.
+Reader deployment neither migrates nor restarts any process.
+
+The deployment log prints `BACKUP` and `EXIT_CODE`. Inspect `acceptance.json`,
+`installed.log` and `live-crop-ssr-proof.log` in that backup directory. New crop
+SSR checks use existing public payloads altered only in memory; no test article or
+notification is published. Before applying DDL, separately exercise recovery of a
+verified dump in an isolated database and compare schema/row counts.
+
+Failure after code installation automatically runs the verified rollback. Manual
+rollback: `nohup bash BACKUP/rollback.sh BACKUP > BACKUP/manual-rollback.log 2>&1 < /dev/null &`.
+This restores the exact previous source, complete SSR runtime and overwritten
+static bytes, and removes only newly introduced allowlisted files. It keeps the
+nullable column and all framing data. The five-table SQL is an emergency data
+backup; restoring it to production is a separate operation, not routine code rollback.

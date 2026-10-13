@@ -230,3 +230,7 @@
 .media-upload-control:focus-within { outline:2px solid var(--ring); outline-offset:3px; }
 .article-media-dialog .media-upload-control:has(input:disabled) { opacity:.5; cursor:wait; }
 @media(min-width:601px){.article-media-grid { grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); }}
+.cover-settings-preview { display:flex; align-items:center; gap:16px; }
+.cover-settings-card { flex-shrink:0; width:160px; aspect-ratio:16/10; border-radius:8px; overflow:hidden; background:var(--fill); }
+.cover-settings-card > img { display:block; width:100%; height:100%; object-fit:cover; }
+.cover-settings-preview p { margin:0; }

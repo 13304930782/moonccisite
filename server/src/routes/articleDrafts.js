@@ -8,7 +8,8 @@ router.use(authRequired,(req,res,next)=>workflow.enabled()?next():editorOrAdmin(
 const error=(message,status=400)=>Object.assign(new Error(message),{status});
 const allowed=(user,row)=>isAdminLike(user)||Number(user.id)===Number(row.author_id);
 const {payload}=require('../lib/articlePublishing');
-function present(row){return {...row,payload:typeof row.payload==='string'?JSON.parse(row.payload):row.payload};}
+const {withCoverCrop}=require('../lib/articleCoverCrop');
+function present(row){return {...row,payload:withCoverCrop(typeof row.payload==='string'?JSON.parse(row.payload):row.payload)};}
 const run=fn=>async(req,res,next)=>{try{await fn(req,res);}catch(e){if(e.code==='ER_DUP_ENTRY')return res.status(409).json({message:'链接别名或草稿已存在，请重新加载后重试。'});if(e.status)return res.status(e.status).json({message:e.message});next(e);}};
 async function transaction(req,fn){const c=await db.getConnection();try{await c.beginTransaction();const user=await getUserFromRequest(req);if(!user||user.status!=='active'||(!workflow.enabled()&&!['owner','admin','editor'].includes(user.role)))throw error('请重新登录。',401);const r=await fn(c,user);await c.commit();return r;}catch(e){await c.rollback();throw e;}finally{c.release();}}
 async function get(c,id,user,lock=false){const [[row]]=await c.query(`SELECT d.*,p.status AS post_status FROM article_drafts d LEFT JOIN posts p ON p.id=d.post_id WHERE d.id=?${lock?' FOR UPDATE':''}`,[id]);if(!row||!allowed(user,row))throw error('草稿不存在或无权限。',404);const result=present(row);if(workflow.enabled()){const [[w]]=await c.query('SELECT state,reason,scheduled_at,draft_version FROM article_workflows WHERE draft_id=?',[id]);result.workflow=w||{state:'draft'};}return result;}
@@ -32,7 +33,7 @@ router.post('/',run(async(req,res)=>{
     let post=null;
     if(req.body.post_id){const [[p]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[req.body.post_id]);if(!p||!allowed(user,p))throw error('文章不存在或无权限。',404);post=p;await revisions.baseline(c,p,user.id);const [[d]]=await c.query('SELECT id FROM article_drafts WHERE post_id=?',[p.id]);if(d)return get(c,d.id,user);}
     let tags=[];try{tags=post?(Array.isArray(post.tags)?post.tags:JSON.parse(post.tags||'[]')):[];}catch{}
-    await c.query('INSERT INTO article_drafts(id,author_id,post_id,base_version,payload,dirty) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id',[id,post?.author_id||user.id,post?.id||null,post?.version||null,JSON.stringify(payload(post?{...post,tags}:req.body.payload)),post?.status==='published'?0:1]);return get(c,id,user);
+    await c.query('INSERT INTO article_drafts(id,author_id,post_id,base_version,payload,dirty) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id',[id,post?.author_id||user.id,post?.id||null,post?.version||null,JSON.stringify(payload(post?{...withCoverCrop(post),tags}:req.body.payload)),post?.status==='published'?0:1]);return get(c,id,user);
   });res.json(result);
 }));
 router.get('/:id',run(async(req,res)=>res.json(await get(db,req.params.id,req.user))));
@@ -87,7 +88,7 @@ router.delete('/:id',run(async(req,res)=>{
  const [[post]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[d.post_id]);
  if(!post)throw error('文章不存在。',404);
  let tags=[];try{tags=Array.isArray(post.tags)?post.tags:JSON.parse(post.tags||'[]');}catch{}
- await c.query('UPDATE article_drafts SET payload=?,base_version=?,version=version+1,dirty=?,published_version=? WHERE id=?',[JSON.stringify(payload({...post,tags})),post.version,post.status==='published'?0:1,post.status==='published'?d.version+1:null,d.id]);
+ await c.query('UPDATE article_drafts SET payload=?,base_version=?,version=version+1,dirty=?,published_version=? WHERE id=?',[JSON.stringify(payload({...withCoverCrop(post),tags})),post.version,post.status==='published'?0:1,post.status==='published'?d.version+1:null,d.id]);
  await c.query("UPDATE article_workflows SET state=?,reason='',scheduled_at=NULL WHERE draft_id=?",[post.status==='published'?'published':'draft',d.id]);return;
  }if(!d.post_id)await c.query('DELETE FROM article_revisions WHERE draft_id=? AND post_id IS NULL',[d.id]);if(workflow.enabled())await c.query('DELETE FROM article_workflows WHERE draft_id=?',[d.id]);await c.query('DELETE FROM article_drafts WHERE id=?',[d.id]);});res.json({message:'未发布修改已丢弃，已有文章保持不变。'});
 }));
@@ -103,7 +104,7 @@ async function revision(c,d,id) {
  const [where,args]=revisions.scope(d);
  const [[row]]=await c.query(`SELECT * FROM article_revisions WHERE id=? AND ${where}`,[id,...args]);
  if(!row)throw error('历史版本不存在。',404);
- return {...row,payload:typeof row.payload==='string'?JSON.parse(row.payload):row.payload};
+ return {...row,payload:withCoverCrop(typeof row.payload==='string'?JSON.parse(row.payload):row.payload)};
 }
 router.get('/:id/revisions/:revision',run(async(req,res)=>{
  const d=await get(db,req.params.id,req.user);res.json(await revision(db,d,req.params.revision));

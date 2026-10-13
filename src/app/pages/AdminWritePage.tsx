@@ -10,6 +10,10 @@ import {ArticleSummaryFields} from '../components/ArticleSummaryFields';
 import {MarkdownContent} from '../components/MarkdownContent';
 import {safeImageSrc} from '../lib/safeUrl';
 import {ArticleMediaPicker} from '../components/ArticleMediaPicker';
+import {CoverFramingDialog} from '../components/CoverFramingDialog';
+import {CoverImage} from '../components/CoverImage';
+import {CoverDisplayPreviews} from '../components/CoverDisplayPreviews';
+import {coverFrame} from '../lib/coverCrop';
 import {useState,useRef,useEffect} from 'react';
 import {ArrowLeft, CheckCircle2, FileText} from 'lucide-react';
 import {Link,useParams} from 'react-router-dom';
@@ -25,7 +29,7 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
  const [conflictMode,setConflictMode]=useState<'compare'|'review'|'edit'>('compare');
  const completion=useRef<HTMLHeadingElement>(null);
  useEffect(()=>{if(published)completion.current?.focus();},[published]);
- const [preview,setPreview]=useState(false),[picker,setPicker]=useState<'cover'|'body'|null>(null); const insert=useRef<(url:string,alt:string)=>void>(()=>{});
+ const [preview,setPreview]=useState(false),[picker,setPicker]=useState<'cover'|'body'|null>(null),[framing,setFraming]=useState<string|null>(null); const insert=useRef<(url:string,alt:string)=>void>(()=>{});
  const d=useArticleDraft(userId,postId);const [uploadCount,setUploads]=useState(0),[editorPending,setEditorPending]=useState(false),[uploadError,setUploadError]=useState(''),[quality,setQuality]=useState('medium');const uploads=uploadCount+(editorPending?1:0);
  const [ai,setAi]=useState<any>(null);useEffect(()=>{api('/article-seo/status').then(setAi).catch(()=>setAi({unavailable:true}));},[]);
  const openPreview=async()=>{if(await d.generateSummary())setPreview(true);};
@@ -39,7 +43,7 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
  const publish=async()=>{if(await (conflictMode==='review'&&d.serverCopy?d.resolveConflict('publish-current'):d.action('publish'))){setPreview(false);setConflictMode('edit');setPublished(true);}};
  const lockedTitle=reviewState==='scheduled'?'已安排定时发布':reviewState==='approved'?'审核已通过，等待发布':'待管理员审核';
  const backTo=location.pathname.startsWith('/account')?'/account/submissions':'/admin/posts';
- const change=(key:string,value:any)=>d.update((previous:any)=>({...previous,[key]:value,...(key==='summary'?{summary_mode:'manual',summary_receipt:''}:['title','content','category','tags'].includes(key)?{summary_receipt:''}:{})}));
+ const change=(key:string,value:any)=>d.update((previous:any)=>({...previous,[key]:value,...(key==='cover_image'&&value!==previous.cover_image?{cover_crop:null}:{}),...(key==='summary'?{summary_mode:'manual',summary_receipt:''}:['title','content','category','tags'].includes(key)?{summary_receipt:''}:{})}));
  const showComparison=!!d.serverCopy&&conflictMode==='compare';
  const inspect=async()=>{setConflictMode('compare');await d.inspect();};
  const resolveConflict=async(choice:'publish-current'|'keep-current'|'adopt-post'|'adopt-draft')=>{if(await d.resolveConflict(choice)){setPreview(false);setConflictMode('edit');}};
@@ -53,8 +57,9 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
  {conflictMode==='review'&&d.serverCopy&&<div className="article-workspace-notice"><h2>将使用当前内容覆盖发布</h2><p>已选择的网站版本会保存到修订历史。请检查下方内容，再确认覆盖。</p><button className="article-button" disabled={d.busy} onClick={()=>setConflictMode('compare')}>返回版本对比</button>{d.errorStatus!==409&&d.error&&<p role="alert">{d.error}</p>}</div>}
  {!locked&&d.recovery&&<div className="article-workspace-notice" role="alert">发现未同步的本地内容。<button onClick={()=>d.resolve(true)}>恢复本地内容</button><button onClick={()=>d.resolve(false)}>使用服务器内容</button></div>}
  {picker&&<ArticleMediaPicker uploadImage={upload} restoreFocus={picker!=='body'} onClose={()=>setPicker(null)} onSelect={(url,alt)=>{if(picker==='cover')change('cover_image',url);else insert.current(url,alt);}}/>}
+ {framing&&<CoverFramingDialog src={framing} value={d.form.cover_crop||null} onClose={()=>setFraming(null)} onConfirm={value=>{d.update((previous:any)=>previous.cover_image===framing?{...previous,cover_crop:value}:previous);setFraming(null);}}/>}
  {preview&&!locked&&!showComparison&&<section className="article-full-preview"><button className="article-button article-return-edit" disabled={d.busy} onClick={()=>setPreview(false)}><ArrowLeft size={16} aria-hidden="true"/>返回编辑</button><ArticleReview onFix={fixField} post={{...d.form,author_name:'当前作者'}} busy={d.busy||d.isRestoring||uploads>0} disabled={d.blocked&&!(conflictMode==='review'&&d.serverCopy)} publishLabel={conflictMode==='review'?'确认覆盖发布':contributor?'确认提交审核':d.draft?.post_status==='published'?'确认更新':'确认发布'} onPublish={()=>void (contributor?submit():publish())}/></section>}
- {locked&&<article className="submission-document"><header><span className="account-eyebrow">稿件详情</span><h1>{d.form.title||'未命名稿件'}</h1><p className="submission-document-meta">提交的审核版本 · 仅作者与审核人员可见</p></header><div className="submission-document-body">{safeImageSrc(d.form.cover_image)&&<img className="content-image" src={safeImageSrc(d.form.cover_image)} alt=""/>}<MarkdownContent content={d.form.content||''} headingPrefix="submission-heading"/></div></article>}
+ {locked&&<article className="submission-document"><header><span className="account-eyebrow">稿件详情</span><h1>{d.form.title||'未命名稿件'}</h1><p className="submission-document-meta">提交的审核版本 · 仅作者与审核人员可见</p></header><div className="submission-document-body">{safeImageSrc(d.form.cover_image)&&(d.form.cover_crop?<CoverDisplayPreviews src={safeImageSrc(d.form.cover_image)} crop={d.form.cover_crop}/>:<img className="content-image" src={safeImageSrc(d.form.cover_image)} alt=""/>)}<MarkdownContent content={d.form.content||''} headingPrefix="submission-heading"/></div></article>}
  {d.summaryBusy&&<p role="status">正在根据正文生成 DeepSeek 简介…</p>}
  <fieldset hidden={preview||locked||showComparison} disabled={!d.ready||locked||!!d.recovery||d.isRestoring||d.summaryBusy} className="article-writing-fields"><label>标题<input id="article-title" value={d.form.title} maxLength={255} onChange={e=>change('title',e.target.value)} placeholder="未命名草稿"/></label>
  <button type="button" onClick={()=>setPicker('body')}>从媒体库插入正文图片</button>
@@ -64,7 +69,8 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
   <ArticleSummaryFields form={d.form} ai={ai} owner={user?.role==='owner'} busy={d.busy} blocked={d.blocked} onChange={change} onUpdate={d.update} onGenerate={()=>void d.generateSummary(true)} error={d.summaryError}/>
   <section className="article-settings-section"><h2>封面</h2><div className="article-settings-grid">
    <label className="article-field-wide">封面地址<input value={d.form.cover_image} onChange={e=>change('cover_image',e.target.value)} placeholder="输入图片地址，或从媒体库选择"/></label>
-   <div className="inline-actions article-field-wide"><button type="button" onClick={()=>setPicker('cover')}>从媒体库选择封面</button><button type="button" disabled={!d.form.cover_image} onClick={()=>change('cover_image','')}>移除封面</button></div>
+   <div className="inline-actions article-field-wide"><button type="button" onClick={()=>setPicker('cover')}>从媒体库选择封面</button><button type="button" className="article-button" disabled={!safeImageSrc(d.form.cover_image)||uploads>0||d.busy||d.isRestoring} onClick={()=>setFraming(d.form.cover_image)}>调整显示范围</button><button type="button" disabled={!d.form.cover_image} onClick={()=>change('cover_image','')}>移除封面</button></div>
+   {safeImageSrc(d.form.cover_image)&&<div className="article-field-wide cover-settings-preview"><div className="cover-settings-card"><CoverImage src={safeImageSrc(d.form.cover_image)} frame={coverFrame(d.form.cover_crop,'card')} alt="封面显示范围预览"/></div><p className="article-workspace-caption">{d.form.cover_crop?'已设置文章卡片和详情头图的显示范围。':'使用默认显示范围，可分别调整文章卡片和详情头图。'}</p></div>}
    <label>上传封面<input type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f)void upload(f).then(url=>change('cover_image',url)).catch(e=>setUploadError(e.message));e.target.value='';}}/></label>
    <label>图片质量<ThemeSelect aria-label="图片质量" value={quality} onValueChange={setQuality}><option value="low">较小</option><option value="medium">标准</option><option value="high">高清</option></ThemeSelect></label>
   </div></section>
