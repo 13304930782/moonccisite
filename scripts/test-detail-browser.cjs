@@ -33,14 +33,14 @@ const { chromium } = require('playwright');
         const outer=await page.locator('main.detail-container').evaluate(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return {left:r.left,right:el.parentElement.getBoundingClientRect().right-r.right,width:r.width,paddingLeft:s.paddingLeft,paddingRight:s.paddingRight};});
         assert.ok(Math.abs(outer.left-outer.right)<1, `${name} ${width}: equal outer gutters ${JSON.stringify(outer)}`);
         assert.equal(outer.paddingLeft,'0px');assert.equal(outer.paddingRight,'0px');
-        const usableWidth=await page.evaluate(()=>document.documentElement.clientWidth);
+        const usableWidth=await page.locator('main.detail-container').evaluate(el=>el.parentElement.getBoundingClientRect().width);
         if(width>=1440){assert.equal(outer.width,name==='article'?usableWidth:1200);measurements.push({name,viewport:width,...outer});}
         const pill=await page.locator(name==='article'?'.detail-label .hero-pill':'.detail-category').evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,radius:s.borderRadius};});
         assert.notEqual(pill.background,'rgba(0, 0, 0, 0)');assert.equal(pill.radius,'999px');
         const body=await page.locator('.detail-body').boundingBox();
         if(name==='article'){
           if(width>=1100)assert.equal(body.width,720);
-          assert.ok(Math.abs(body.x+body.width/2-usableWidth/2)<1,'article reading column centered');
+          assert.ok(Math.abs(body.x+body.width/2-(outer.left+outer.width/2))<1,'article reading column centered');
           const groups=await page.locator('.hero-meta .g').evaluateAll(es=>es.map(e=>({y:e.getBoundingClientRect().y,white:getComputedStyle(e).whiteSpace})));
           assert.ok(groups.length>=1);groups.forEach(g=>assert.equal(g.white,'nowrap'));
           if(width>=1440){const footer=await page.locator('.site-footer .site-container').boundingBox();const subscribe=await page.locator('.subscribe-inner').boundingBox();assert.equal(footer.width,1200);assert.equal(subscribe.width,1200);}
