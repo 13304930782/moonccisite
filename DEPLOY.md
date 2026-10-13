@@ -1121,3 +1121,20 @@ For the reader use `reader` in place of `main`. `EXIT_CODE=0` and `PASS` confirm
 successful installation. The log supplies `BACKUP=/www/backup/mooncci-article-ui-...`.
 For rollback run `nohup bash BACKUP/rollback.sh BACKUP > /tmp/article-ui-rollback.log 2>&1 < /dev/null &`
 in a child shell. API diagnostics: `su -s /bin/bash mooncci -c 'export PATH=/opt/mooncci-node-v24.20.0/bin:$PATH; pm2 logs mooncci-api --lines 40 --nostream'`.
+
+### Approved API RSS ceiling (2026-10-13)
+
+The article SSR runtime uses more than 300 MiB of RSS, including memory outside
+the V8 heap. Its previous PM2 300M ceiling repeatedly restarted the API after
+otherwise successful renders. The explicitly approved API ceiling is now 450M;
+`--max-old-space-size=256` and the worker's 300M ceiling remain unchanged.
+
+Deploy this configuration separately from frontend archives. Back up the live
+`server/ecosystem.config.cjs`, verify that the API ceiling is the only semantic
+change, then run `pm2 startOrReload server/ecosystem.config.cjs --only mooncci-api
+--update-env` as user `mooncci` with the existing Node 24 PATH, followed by
+`pm2 save`. Use a nohup child shell and verify the health response, actual PM2
+ceiling and unchanged worker PID/restart count. Do not run npm or SQL migrations.
+To roll back, restore the saved configuration and reload only the API in the same
+way. Observe RSS and restart count over multiple PM2 memory-check intervals;
+450M is a restart ceiling, not a reservation or a change to the V8 heap limit.
