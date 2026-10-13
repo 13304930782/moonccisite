@@ -14,11 +14,35 @@ test('provider receives code, JSON mode and server-only authorization; generated
 test('manual descriptions never invoke provider or read AI settings',async()=>{const manual={...p,summary:'我的手写简介',summary_mode:'manual'};assert.equal(await service.prepare({query:()=>{throw Error('unexpected')}},manual,'manual'),manual);});
 test('existing generated receipt reuses the approved summary without provider or settings calls',async()=>{const value={...p,summary,summary_mode:'ai'};value.summary_receipt=proof.signature(value);assert.equal(await service.prepare({query:()=>{throw Error('unexpected')}},value,'cache'),value);});
 test('blank summary automatically generates when enabled; disabled feature preserves legacy workflow',async()=>{const db={query:async()=>[[{setting_value:JSON.stringify(config)}]]};const result=await service.prepare(db,p,'auto',{fetcher:async()=>reply(summary)});assert.ok(proof.valid(result));assert.equal(await service.prepare({query:async()=>[[]]},p,'off'),p);await assert.rejects(()=>service.prepare({query:async()=>[[]]},{...p,summary_mode:'ai'},'off'),/尚未启用/);});
-test('invalid JSON, truncated output, short, long, HTML and multiline output all fail without publishing',async()=>{
- const invalid=['过短','字'.repeat(161),summary+'\n另起一行',summary+'<script>','https://example.com '+summary,summary+'**加粗**',summary+'`代码`'];
- for(let i=0;i<invalid.length;i++)await assert.rejects(()=>service.generate(p,config,'invalid'+i,async()=>reply(invalid[i])),/未通过/);
+test('invalid JSON, truncated output, short, extreme length, HTML and links fail with specific reasons without publishing',async()=>{
+ const invalid=[['过短',/不足 25 字/],['字'.repeat(2001),/过长/],[summary+'<script>',/不支持的标记/],['https://example.com '+summary,/链接/],[summary+'**未结束',/不支持的标记/],[summary+'`未结束',/不支持的标记/]];
+ for(let i=0;i<invalid.length;i++)await assert.rejects(()=>service.generate(p,config,'invalid'+i,async()=>reply(invalid[i][0])),invalid[i][1]);
  await assert.rejects(()=>service.generate(p,config,'badjson',async()=>({ok:true,text:async()=>'{'})),/格式无效/);
- await assert.rejects(()=>service.generate(p,config,'truncated',async()=>({ok:true,text:async()=>JSON.stringify({choices:[{finish_reason:'length',message:{content:'{}'}}]})})),/未通过/);
+ await assert.rejects(()=>service.generate(p,config,'truncated',async()=>({ok:true,text:async()=>JSON.stringify({choices:[{finish_reason:'length',message:{content:'{}'}}]})})),/不完整/);
+});
+const choice=value=>({finish_reason:'stop',message:{content:JSON.stringify({summary:value})}});
+test('ordinary whitespace and inline typography become plain descriptions without changing wording',()=>{
+ const value=summary.replace('C 语言','`C 语言`').replace('数组','**数组**').replace('记录','__记录__').replace('并通过','\n\n并通过');
+ assert.equal(service.summaryText(choice(value)),summary.replace('并通过',' 并通过'));
+ assert.throws(()=>service.summaryText(choice(undefined)),/没有返回/);
+ assert.throws(()=>service.summaryText({finish_reason:'stop',message:{content:'```json\n{}\n```'}}),/格式无效/);
+});
+test('long descriptions prefer a complete sentence and keep a valid receipt with exactly one provider call',async()=>{
+ const sentence='本文介绍都市天际线二的公交与列车停站时间设置，说明如何用快速上客模组缓解车辆长时间停站，并记录不同道路的人行天桥架设步骤与注意事项，同时标注天桥模组因游戏更新失效后的替代方案。';
+ assert.ok(Array.from(sentence).length>=80&&Array.from(sentence).length<160);
+ let calls=0;
+ const result=await service.generate(p,config,'normalization',async()=>{calls++;return reply(sentence+'更多补充信息'.repeat(20));});
+ assert.equal(result.summary,sentence);assert.equal(calls,1);assert.ok(proof.valid(result));
+});
+test('overlong clauses preserve Unicode, Latin word boundaries, and the 160-character limit',()=>{
+ const clause='内容'.repeat(45)+'，';
+ assert.equal(service.summaryText(choice(clause+'补充说明'.repeat(40))),clause.slice(0,-1)+'…');
+ const unicode=service.summaryText(choice('知识'.repeat(79)+'😀😀😀'));
+ assert.equal(Array.from(unicode).length,160);assert.ok(unicode.endsWith('😀…'));assert.ok(unicode.isWellFormed());
+ const words=service.summaryText(choice('内容'.repeat(76)+' DeepSeekImportantWord '+'补充'.repeat(50)));
+ assert.equal(words,'内容'.repeat(76)+'…');assert.ok(Array.from(words).length<=160);
+ const closingQuote=service.summaryText(choice('内容'.repeat(78)+'，”'+'补充'.repeat(50)));
+ assert.ok(Array.from(closingQuote).length<=160);
 });
 test('provider failure is safely explained without leaking its response or credentials',async()=>{
  for(const status of [401,402,429,500])await assert.rejects(()=>service.generate(p,config,'status'+status,async()=>({ok:false,status,text:async()=>{throw Error('must not read provider body')}})),e=>e.status===503&&!e.message.includes('sk-'));

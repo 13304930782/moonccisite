@@ -7,6 +7,8 @@
 - 新文章简介留空时，启用 AI 后将在预览、提交审核或直接发布前生成。普通保存和自动保存草稿不会调用模型。
 - 已填写的简介保留。手动编辑简介会切换为手写；勾选自动总结或点击生成按钮可重新启用。
 - AI 根据标题、分类、标签及完整正文（保留代码）总结，目标 80–140 字，服务端检查 25–160 字。正文超过 6 万字或少于 25 字时使用手写简介；不通过虚构内容填充短文章。
+- 英文字母、空格和标点也计入长度。模型提示预留长度余量；返回简介的普通换行、行内代码及加粗标记会整理为纯文本。超长结果优先保留完整句子，其次在分句或单词边界收尾并标注省略号，仍不超过 160 字。整理后的简介再签名，不额外重试付费调用。
+- JSON 损坏、响应截断、简介不足 25 字、超过 2000 字、链接或不支持的标记分别给出具体错误，不再合并成笼统的“未通过长度或格式检查”。
 - 生成结果用 HMAC 与标题、正文、分类、标签和摘要绑定。相关内容变化后，发布前重新生成。生成过程中修改稿件会丢弃旧响应。
 - 手写简介无需模型调用。模型失败会提示密钥、余额、请求限制或连接问题；不静默采用旧 AI 简介。作者可重试或明确切换手写。
 - 审核快照包含已生成简介及签名。定时发布复用该快照，不在后台定时任务中重新生成另一份描述。
@@ -59,3 +61,27 @@ tail -n 30 /tmp/mooncci-article-summary.log
 真实 DeepSeek 联通与摘要质量验收需要站长在后台输入有效密钥后，用一篇实际稿件生成并预览。测试响应不能替代这一步。
 
 读取节点资源：运行 `scripts/build-summary-reader-assets.py`，把生成的前端包及校验文件上传至 `root@107.174.123.42:/tmp/`，校验、解包后同样在 `nohup bash deploy.sh` 子 shell 中执行。该包只同步 `/opt/mooncci-reader/current/dist`，保留旧资源，不改读取节点配置，不重启服务。
+
+## 2026-10-13 简介校验修复
+
+第 18 篇文章的失败提示来自本地输出校验，不是密钥配置检查。只读诊断同一已保存草稿，DeepSeek 返回 HTTP 200、`finish_reason=stop`，159 字结果通过旧校验；原失败返回未保留，具体是哪一项校验失败未知。原实现会拒绝 161 字结果、普通换行、行内代码和加粗，导致模型输出细微差异即可失败。现加入上述纯文本整理、长度处理和具体错误提示。
+
+此修复使用独立后端包，只替换 `src/services/articleSummary.js`，校验线上基线，备份后重启 API 与发布 worker。无需同步读取节点；不包含前端、依赖、迁移、配置或数据库内容。运行 `python scripts/build-summary-validation-release.py` 构建并核验归档。
+
+```powershell
+$validationRelease = Get-Content .cache/summary-validation-release.json -Raw | ConvertFrom-Json
+scp -i C:/Users/Administrator/.ssh/id_ed25519_mooncci_codex $validationRelease.archive ($validationRelease.archive + '.sha256') root@182.92.179.81:/tmp/
+```
+
+服务器命令中将 `<revision>` 替换为清单里的 12 位版本号：
+
+```bash
+cd /tmp
+sha256sum -c mooncci-summary-validation-<revision>.tar.gz.sha256
+mkdir -p /www/backup/mooncci-summary-validation-release-<revision>
+tar -xzf mooncci-summary-validation-<revision>.tar.gz -C /www/backup/mooncci-summary-validation-release-<revision>
+nohup bash /www/backup/mooncci-summary-validation-release-<revision>/deploy.sh > /tmp/mooncci-summary-validation-<revision>.log 2>&1 < /dev/null &
+tail -n 30 /tmp/mooncci-summary-validation-<revision>.log
+```
+
+日志输出实际备份目录。需要回退时，在另一个 `nohup bash` 子 shell 中运行该目录的 `rollback.sh`，参数为同一备份目录。
