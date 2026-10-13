@@ -67,6 +67,20 @@ const { chromium } = require('playwright');
         if(width===375){await page.evaluate(()=>document.documentElement.classList.add('dark'));await page.screenshot({path:`.cache/detail-${name}-dark.png`,fullPage:true});}
       }
     }
+    // A single mounted sidebar follows breakpoint changes and native summary keyboard activation.
+    await page.setViewportSize({width:1100,height:900});
+    await page.goto('http://127.0.0.1:4202/article/1');
+    await page.locator('.detail-panel:not([data-initial])').waitFor();
+    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===true);
+    await page.setViewportSize({width:1099,height:900});
+    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===false);
+    await page.locator('.detail-panel summary').focus();
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===true);
+    await page.keyboard.press('Space');
+    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===false);
+    await page.setViewportSize({width:1100,height:900});
+    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===true);
     // Updates use their own journal layout rather than the article sidebar grid.
     for (const width of [1440, 390, 320]) {
       await page.setViewportSize({width,height:900});

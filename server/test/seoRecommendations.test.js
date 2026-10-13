@@ -28,5 +28,11 @@ test('activity filters and pagination have distinct metadata; public images rema
  assert.equal(new Set([all,post,update,release].map(m=>m.description)).size,4);
  const page=await get('path=/updates&type=post&page=2');assert.equal(page.canonical,'https://mooncci.site/updates?page=2&type=post');assert.notEqual(page.description,post.description);
  assert.equal((await fetch(base+'/api/seo?path=/updates&type=bad')).status,404);
- const robots=await(await fetch(base+'/robots.txt')).text();assert.match(robots,/Disallow: \/api\/\n/);assert.match(robots,/Allow: \/api\/uploads\/\n/);assert.match(robots,/Allow: \/api\/image-variants\/\n/);
+ const robots=await(await fetch(base+'/robots.txt')).text();assert.match(robots,/Disallow: \/api\/\n/);const rules=robots.split('\n').flatMap(line=>{const m=/^(Allow|Disallow): (.+)$/.exec(line);return m?[{allow:m[1]==='Allow',path:m[2]}]:[];});
+ const crawlable=url=>{
+  const matches=rules.filter(r=>new RegExp('^'+r.path.replace(/[.+?^{}()|[\]\\]/g,'\\$&').replace(/\*/g,'.*')).test(url)).sort((a,b)=>b.path.replace(/[\*$]/g,'').length-a.path.replace(/[\*$]/g,'').length||Number(b.allow)-Number(a.allow));
+  return !matches.length||matches[0].allow;
+ };
+ for(const path of ['/api/uploads/photo.jpg','/api/uploads/photo.png','/api/uploads/photo.webp','/api/image-variants/180/photo.png'])assert.ok(crawlable(path),path);
+ for(const path of ['/api/uploads/releases/PromptDock.dmg','/api/uploads/releases/cover.png','/api/uploads/manual.pdf','/api/uploads/unknown.bin','/api/auth/session'])assert.equal(crawlable(path),false,path);assert.match(robots,/Allow: \/api\/image-variants\/\n/);
 });
