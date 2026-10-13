@@ -29,12 +29,12 @@ function createRouter({db=require('../db'),auth=require('../middleware/auth'),se
  router.get('/settings',auth.ownerOnly,async(req,res)=>{const c=await config();res.json({origin:ORIGIN,configured:!!c.secret});});
  router.get('/users/:id',auth.ownerOnly,async(req,res)=>{
   const id=Number(req.params.id);if(!Number.isSafeInteger(id)||id<=0)return res.sendStatus(400);
-  const [[user]]=await db.query('SELECT id,role,status FROM users WHERE id=? AND deleted_at IS NULL LIMIT 1',[id]);if(!user)return res.sendStatus(404);
+  const [[user]]=await db.query('SELECT id,role,status FROM users WHERE id=? AND NOT EXISTS (SELECT 1 FROM account_profiles ap WHERE ap.user_id=users.id AND ap.deleted_at IS NOT NULL) LIMIT 1',[id]);if(!user)return res.sendStatus(404);
   res.json({allowed:allowed(user,await config()),owner:user.role==='owner'});
  });
  router.put('/users/:id',auth.ownerOnly,async(req,res)=>{
   const id=Number(req.params.id);if(!Number.isSafeInteger(id)||id<=0||typeof req.body.allowed!=='boolean')return res.status(400).json({message:'权限设置无效。'});
-  const [[user]]=await db.query('SELECT id,role,status FROM users WHERE id=? AND deleted_at IS NULL LIMIT 1',[id]);if(!user)return res.sendStatus(404);
+  const [[user]]=await db.query('SELECT id,role,status FROM users WHERE id=? AND NOT EXISTS (SELECT 1 FROM account_profiles ap WHERE ap.user_id=users.id AND ap.deleted_at IS NOT NULL) LIMIT 1',[id]);if(!user)return res.sendStatus(404);
   if(user.role==='owner')return res.status(400).json({message:'站长始终拥有节点监控权限。'});
   if(user.status==='disabled'&&req.body.allowed)return res.status(400).json({message:'请先恢复账号，再授予节点监控权限。'});
   await updateConfig(c=>({...c,allowedUserIds:req.body.allowed?[...new Set([...(c.allowedUserIds||[]),id])]:(c.allowedUserIds||[]).filter(x=>x!==id)}));

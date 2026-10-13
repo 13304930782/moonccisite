@@ -15,7 +15,7 @@ test('manual descriptions never invoke provider or read AI settings',async()=>{c
 test('existing generated receipt reuses the approved summary without provider or settings calls',async()=>{const value={...p,summary,summary_mode:'ai'};value.summary_receipt=proof.signature(value);assert.equal(await service.prepare({query:()=>{throw Error('unexpected')}},value,'cache'),value);});
 test('blank summary automatically generates when enabled; disabled feature preserves legacy workflow',async()=>{const db={query:async()=>[[{setting_value:JSON.stringify(config)}]]};const result=await service.prepare(db,p,'auto',{fetcher:async()=>reply(summary)});assert.ok(proof.valid(result));assert.equal(await service.prepare({query:async()=>[[]]},p,'off'),p);await assert.rejects(()=>service.prepare({query:async()=>[[]]},{...p,summary_mode:'ai'},'off'),/尚未启用/);});
 test('invalid JSON, truncated output, short, long, HTML and multiline output all fail without publishing',async()=>{
- const invalid=['过短','字'.repeat(161),summary+'\n另起一行',summary+'<script>','https://example.com '+summary];
+ const invalid=['过短','字'.repeat(161),summary+'\n另起一行',summary+'<script>','https://example.com '+summary,summary+'**加粗**',summary+'`代码`'];
  for(let i=0;i<invalid.length;i++)await assert.rejects(()=>service.generate(p,config,'invalid'+i,async()=>reply(invalid[i])),/未通过/);
  await assert.rejects(()=>service.generate(p,config,'badjson',async()=>({ok:true,text:async()=>'{'})),/格式无效/);
  await assert.rejects(()=>service.generate(p,config,'truncated',async()=>({ok:true,text:async()=>JSON.stringify({choices:[{finish_reason:'length',message:{content:'{}'}}]})})),/未通过/);

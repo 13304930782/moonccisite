@@ -50,7 +50,7 @@ async function generate(p,c,userId,fetcher=fetch){
   if(!response.ok){const messages={401:'DeepSeek 密钥无效，请站长检查配置。',402:'DeepSeek 余额不足，请站长充值。',429:'DeepSeek 请求受限，请稍后重试。'};throw fail(messages[response.status]||'DeepSeek 服务暂时不可用，请重试或填写手写简介。',503);}
   let json;try{const raw=await response.text();if(Buffer.byteLength(raw)>65536)throw Error();json=JSON.parse(raw);}catch{throw fail('DeepSeek 返回格式无效，请重试。',502);}
   const choice=json.choices?.[0];let summary;
-  try{if(choice?.finish_reason!=='stop')throw Error();summary=JSON.parse(choice.message.content).summary;if(typeof summary!=='string')throw Error();summary=summary.trim();const length=Array.from(summary).length;if(length<25||length>160||/[<>\r\n]|https?:\/\/|!\[/.test(summary))throw Error();}catch{throw fail('AI 简介未通过长度或格式检查，请重试或手写。',502);}
+  try{if(choice?.finish_reason!=='stop')throw Error();summary=JSON.parse(choice.message.content).summary;if(typeof summary!=='string')throw Error();summary=summary.trim();const length=Array.from(summary).length;if(length<25||length>160||/[<>\r\n`]|https?:\/\/|!\[|\[[^\]]*\]\(|\*{2}/.test(summary))throw Error();}catch{throw fail('AI 简介未通过长度或格式检查，请重试或手写。',502);}
   const result={...p,summary,summary_mode:'ai'};result.summary_receipt=proof.signature(result);return result;
  })();inflight.set(id,work);try{return await work;}finally{inflight.delete(id);}
 }
