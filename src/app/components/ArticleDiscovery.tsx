@@ -9,6 +9,8 @@ export function ArticleDiscovery({id,title}:{id:number;title:string}){
  const [canShare,setCanShare]=useState(false);
  useEffect(()=>setCanShare(typeof navigator.share==='function'),[]);
  const url=typeof window==='undefined'?`/article/${id}`:new URL(`/article/${id}`,window.location.origin).href;
+ const neighbors=new Set([id,data?.previous?.id,data?.next?.id].filter(v=>v!=null).map(String));
+ const related=(data?.related||[]).filter((post:any)=>!neighbors.has(String(post.id)));
  async function copy(){try{await navigator.clipboard.writeText(url);setFallback(false);notify.success('链接已复制');}catch{setFallback(true);setMessage('请手动复制下面的链接'); notify.error('请手动复制下面的链接');}}
  async function share(){try{await navigator.share({title,url});}catch(e){if((e as Error).name!=='AbortError'){setFallback(true);setMessage('分享失败，请复制链接');}}}
  return <section className="article-discovery" aria-label="继续阅读与分享">
@@ -16,6 +18,6 @@ export function ArticleDiscovery({id,title}:{id:number;title:string}){
  {fallback&&<input className="share-fallback" aria-label="文章链接" readOnly value={url} onFocus={e=>e.target.select()}/>}
  {error&&<button className="text-link" onClick={reload}>文章导航加载失败，重试</button>}
  {data&&<><nav className="article-neighbors" aria-label="相邻文章">{[['previous','上一篇'],['next','下一篇']].map(([key,label])=>data[key]?<Link key={key} to={`/article/${data[key].id}`}><small>{label}</small><span>{data[key].title}</span></Link>:<span key={key}/>)}</nav>
- {!!data.related?.length&&<section><h2>相关文章</h2><ul>{data.related.map((p:any)=><li key={p.id}><Link to={`/article/${p.id}`}>{p.title}</Link></li>)}</ul></section>}</>}
+ {!!related.length&&<section className="article-related"><h2>相关文章</h2><ul>{related.map((p:any)=><li key={p.id}><Link to={`/article/${p.id}`}>{p.title}</Link></li>)}</ul></section>}</>}
  </section>;
 }

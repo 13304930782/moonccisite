@@ -104,11 +104,11 @@ export function ResourceState({
     {children}
   </div>;
 }
-export function SitePage({ children, narrow = false, detail = false }: { children: ReactNode; narrow?: boolean; detail?: boolean }) {
+export function SitePage({ children, narrow = false, detail = false,className='' }: { children: ReactNode; narrow?: boolean; detail?: boolean;className?:string }) {
   const location=useLocation();
   useLayoutEffect(() => { visibleDiagnostic(location.pathname, 'code-ready'); }, [location.key]);
   return (
-    <div className="neo-page">
+    <div className={`neo-page ${className}`}>
       <Header />
       <main onAnimationEnd={event=>{if(event.target===event.currentTarget) visibleDiagnostic(location.pathname,'motion-complete');}} className={`site-container page-content ${narrow ? 'reading-page' : ''} ${detail ? 'detail-container' : ''}`}>
         {narrow ? <div className="page-reading-column">{children}</div> : children}
@@ -226,6 +226,7 @@ export function SubscribeForm() {
   }
   return (
     <section className="subscribe-section" id="subscribe">
+      <div className="subscribe-inner">
       <div>
         <p className="eyebrow">KEEP IN TOUCH</p>
         <h2>有新的记录时，再见。</h2>
@@ -265,6 +266,7 @@ export function SubscribeForm() {
         )}
         {status.error && !submitted && <button type="button" className="quiet-button" onClick={status.reload}>重新检查订阅状态</button>}
         {!submitted && message && <p id="subscribe-message" role="alert" className="form-message">{message}</p>}
+      </div>
       </div>
     </section>
   );

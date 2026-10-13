@@ -47,5 +47,5 @@ export function ReadingProgress({postId}:{postId:number}){
   setSaved(null);
  };
  if(!enabled)return null;
- return <>{saved&&saved.progress>0.01&&<div className="reading-resume" role="status"><span>上次读到 {Math.round(saved.progress*100)}%{!user?' · 仅保存在此浏览器':''}</span><button onClick={resume}>继续阅读</button><button aria-label="关闭阅读进度提示" onClick={()=>setSaved(null)}>×</button></div>}{error&&<p className="reading-resume" role="status">{error} <button onClick={()=>{setError('');setConnection(n=>n+1);}}>重新连接</button></p>}</>;
+ return <>{saved&&saved.progress>=0.05&&saved.progress<=0.95&&<div className="reading-resume" role="status"><span>上次读到 {Math.round(saved.progress*100)}%{!user?' · 仅保存在此浏览器':''}</span><button onClick={resume}>继续阅读</button><button aria-label="关闭阅读进度提示" onClick={()=>setSaved(null)}>×</button></div>}{error&&<p className="reading-resume" role="status">{error} <button onClick={()=>{setError('');setConnection(n=>n+1);}}>重新连接</button></p>}</>;
 }

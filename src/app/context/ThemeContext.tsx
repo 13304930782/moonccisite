@@ -46,14 +46,14 @@ export function useMoonTheme() {
   if (!value) throw Error('Missing theme provider');
   return value;
 }
-export function ThemeToggle() {
+export function ThemeToggle({label}:{label?:string}={}) {
   const { theme, toggleTheme } = useMoonTheme();
   return (
     <button
       className="icon-button"
       type="button"
-      onClick={toggleTheme}
-      aria-label={theme === 'light' ? '切换深色主题' : '切换浅色主题'}
+      onClick={()=>{toggleTheme();window.dispatchEvent(new Event('mooncci:theme-toggle'));}}
+      aria-label={label|| (theme === 'light' ? '切换深色主题' : '切换浅色主题')}
       title={theme === 'light' ? '切换深色主题' : '切换浅色主题'}
     >
       {theme === 'light' ? <Moon /> : <Sun />}

@@ -8,8 +8,11 @@ import { ThemeToggle } from '../context/ThemeContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { safeImageSrc } from '../lib/safeUrl';
 import { preloadPage } from '../lib/preloadPage';
+import {focusableWithin,loopFocus} from '../lib/focusLoop';
+import '../../styles/navigation.css';
 export function Header() {
   const header = useRef<HTMLElement>(null);
+  const menuButton=useRef<HTMLButtonElement>(null),menuPanel=useRef<HTMLDivElement>(null);
   const closeAccount = () => header.current?.querySelectorAll('details[open]').forEach(item => item.removeAttribute('open'));
   const { user, logout, loggingOut, logoutError } = useAuth();
   const publishing=usePublishing();
@@ -18,6 +21,36 @@ export function Header() {
   const [menu, setMenu] = useState(false),
     [search, setSearch] = useState(false),
     [keyword, setKeyword] = useState('');
+  const [scrolled,setScrolled]=useState(false);
+  const [mobile,setMobile]=useState(false);
+  function closeMenu(){setMenu(false);menuButton.current?.focus({preventScroll:true});}
+  useEffect(()=>{
+    const media=window.matchMedia('(max-width:900px)');
+    const update=()=>{setMobile(media.matches);if(!media.matches)setMenu(false);};
+    update();media.addEventListener('change',update);return()=>media.removeEventListener('change',update);
+  },[]);
+  useEffect(()=>{
+    const closeForReading=(event:Event)=>{if((event as CustomEvent).detail?.open)setMenu(false);};
+    window.addEventListener('mooncci:reading-tools-state',closeForReading);
+    return()=>window.removeEventListener('mooncci:reading-tools-state',closeForReading);
+  },[]);
+  useEffect(()=>{
+    document.body.classList.toggle('menu-open',menu);
+    window.dispatchEvent(new CustomEvent('mooncci:menu-state',{detail:{open:menu}}));
+    if(!menu)return;
+    const frame=requestAnimationFrame(()=>{if(menuPanel.current)focusableWithin(menuPanel.current)[0]?.focus({preventScroll:true});});
+    const keys=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'){event.preventDefault();closeMenu();}
+      else if(menuPanel.current)loopFocus(event,menuPanel.current);
+    };
+    window.addEventListener('keydown',keys);
+    return()=>{cancelAnimationFrame(frame);window.removeEventListener('keydown',keys);document.body.classList.remove('menu-open');};
+  },[menu]);
+  useEffect(()=>{
+    const update=()=>setScrolled(window.scrollY>8);
+    update();window.addEventListener('scroll',update,{passive:true});
+    return()=>window.removeEventListener('scroll',update);
+  },[]);
   const navigate = useNavigate(),
     location = useLocation();
   useEffect(() => {
@@ -71,7 +104,7 @@ export function Header() {
               <Link to="/login">登录 / 注册</Link>
             ));
   return (
-    <header className="site-header" ref={header}>
+    <header className={`site-header${scrolled?' is-scrolled':''}`} ref={header}>
       <div className="site-container header-inner">
         <Link className="site-brand" to="/">
           {safeImageSrc(brand.logo_url) && (
@@ -89,23 +122,23 @@ export function Header() {
         <div className="header-actions">
           <button
             className="icon-button"
-            onClick={() => setSearch(!search)}
-            aria-label="搜索文章"
+            onClick={() => {setMenu(false);setSearch(!search);}}
+            aria-label={mobile?'搜索':'搜索文章'}
             aria-expanded={search}
           >
             <Search />
           </button>
-          <div className="header-theme"><ThemeToggle /></div>
+          <div className="header-theme"><ThemeToggle label={mobile?'切换外观':undefined}/></div>
           <div className="header-account">
             {accountMenu}
           </div>
-          {!user && <Link className="mobile-login-link" to="/login" aria-label="登录 / 注册" onPointerEnter={() => preloadPage('/login')} onFocus={() => preloadPage('/login')} onTouchStart={() => preloadPage('/login')}>登录<span> / 注册</span></Link>}
           <button
+            ref={menuButton}
             className="icon-button mobile-menu-button"
             aria-expanded={menu}
             aria-controls="mobile-navigation"
             aria-label={menu ? '关闭菜单' : '打开菜单'}
-            onClick={() => setMenu(!menu)}
+            onClick={() => {if(menu)closeMenu();else{setSearch(false);setMenu(true);}}}
           >
             {menu ? <X /> : <Menu />}
           </button>
@@ -127,22 +160,17 @@ export function Header() {
         </form>
       )}
       {menu && (
-        <div className="mobile-menu-panel">
+        <><div className="m-backdrop" aria-hidden="true" onClick={closeMenu}/><div className="mobile-menu-panel m-panel" ref={menuPanel} tabIndex={-1}>
         <nav
           id="mobile-navigation"
           className="mobile-navigation"
           aria-label="手机导航"
         >
-          {links.map(([to, label]) => (
-            <Link key={to} to={to}>
-              {label}
-            </Link>
-          ))}
-
+          {links.slice(0,3).map(([to,label])=><Link key={to} to={to} className={`m-link${(to==='/articles'?/^\/articles?(\/|$)/.test(location.pathname):location.pathname===to||location.pathname.startsWith(to+'/'))?' is-current':''}`} aria-current={(to==='/articles'?/^\/articles?(\/|$)/.test(location.pathname):location.pathname===to||location.pathname.startsWith(to+'/'))?'page':undefined} onClick={closeMenu}>{label}</Link>)}
+          <div className="m-sub">{links.slice(3).map(([to,label])=><Link key={to} to={to} className={`m-link${location.pathname===to?' is-current':''}`} aria-current={location.pathname===to?'page':undefined} onClick={closeMenu}>{label}</Link>)}</div>
         </nav>
-        {user && <div className="mobile-account-menu"><span>账户</span>{accountMenu}</div>}
-        <div className="mobile-theme-row"><span>外观</span><ThemeToggle /></div>
-        </div>
+        {user?<div className="mobile-account-menu" onClick={event=>{if((event.target as Element).closest('a'))closeMenu();}}>{accountMenu}</div>:<Link className="m-login" to="/login" onClick={closeMenu}>登录</Link>}
+        </div></>
       )}
       {logoutError && (
         <p

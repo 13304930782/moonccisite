@@ -1065,3 +1065,50 @@ Build with `npm run build`, then `python scripts/build-home-performance-release.
 ### 邮件客户端隐式 TLS
 
 客户端发信统一使用 SMTP 465 + SSL/TLS，收信使用 IMAP 993 + SSL/TLS。共享配置为 `server/src/config/mail-client.json`；修改后运行 `node scripts/generate-mail-autoconfig.cjs` 并重新构建前端。Apple 描述文件由后端生成，发布时需同步此配置并重启对应 API 进程。发布前验证邮件主机 465 的 TLS 握手与证书；已有客户端需手动将发件端口改为 465 并启用 SSL/TLS。
+
+
+## Article layout, mobile navigation and reading settings release
+
+This release retains the deployed SEO/DeepSeek changes and updates the article hero,
+centered 720px reading column, grouped author metadata, mobile menu and reading
+settings. The article subscription area and footer keep the live 1200px site width.
+
+After checks and GitHub push/merge, save a fresh read-only production SHA256 snapshot
+as `.cache/article-ui-baseline.json`. Its fields are `index` (CN frontend index),
+`runtime` (CN document.mjs), `reader_index` (US frontend index), and `prerequisites`
+mapping `src/lib/publicDocument.js` and `src/services/articleSummary.js` to their
+current byte hashes. These are version guards, not files to deploy.
+
+Run `python scripts/build-article-ui-release.py --baseline .cache/article-ui-baseline.json`.
+The builder rebuilds locally and verifies every archived byte, file checksum,
+SSR asset reference, LF script/manifest/checksum and archive sidecar. It emits
+separate `mooncci-article-ui-main-<commit>.tar.gz` and
+`mooncci-article-ui-reader-<commit>.tar.gz` packages and `.cache/article-ui-release.json`.
+
+The main package replaces only `dist/` and `server/runtime/`, reuses the existing
+server dependencies, and restarts **mooncci-api only** to clear its cached renderer
+and anonymous documents. The reader package replaces only static assets and
+restarts nothing. Both refuse baseline drift and preserve old hashed chunks;
+rollback restores every overwritten existing asset, the previous entry and SSR
+runtime. No backend source, worker, Nginx configuration, dependencies, `.env`,
+uploads, database migrations or historical SQL are modified.
+
+PowerShell upload (replace `<commit>` with the first 12 revision characters):
+
+```powershell
+$releaseKey = "$env:USERPROFILE/.ssh/id_ed25519_mooncci_codex"
+scp -i $releaseKey .cache/mooncci-article-ui-main-<commit>.tar.gz .cache/mooncci-article-ui-main-<commit>.tar.gz.sha256 root@182.92.179.81:/tmp/
+scp -i $releaseKey .cache/mooncci-article-ui-reader-<commit>.tar.gz .cache/mooncci-article-ui-reader-<commit>.tar.gz.sha256 root@107.174.123.42:/tmp/
+```
+
+On each server, execute the matching package in a **child shell**, not by sourcing:
+
+```bash
+bash -c 'cd /tmp && sha256sum --strict -c mooncci-article-ui-main-<commit>.tar.gz.sha256 && mkdir -p /www/backup/article-ui-main-<commit> && tar -xzf mooncci-article-ui-main-<commit>.tar.gz -C /www/backup/article-ui-main-<commit> && bash -n /www/backup/article-ui-main-<commit>/deploy.sh && nohup bash /www/backup/article-ui-main-<commit>/deploy.sh > /tmp/article-ui-main-<commit>.log 2>&1 < /dev/null &'
+tail -n 60 /tmp/article-ui-main-<commit>.log
+```
+
+For the reader use `reader` in place of `main`. `EXIT_CODE=0` and `PASS` confirm
+successful installation. The log supplies `BACKUP=/www/backup/mooncci-article-ui-...`.
+For rollback run `nohup bash BACKUP/rollback.sh BACKUP > /tmp/article-ui-rollback.log 2>&1 < /dev/null &`
+in a child shell. API diagnostics: `su -s /bin/bash mooncci -c 'export PATH=/opt/mooncci-node-v24.20.0/bin:$PATH; pm2 logs mooncci-api --lines 40 --nostream'`.
