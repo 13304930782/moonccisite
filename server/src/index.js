@@ -52,7 +52,18 @@ app.use('/api/mail-setup', require('./routes/mailSetup').privateResponse);
 
 // Body 大小限制
 app.use(express.json({ limit: '1mb' }));
-app.get('/api/image-variants/:width/:name', require('./lib/imageVariants')(uploadRoutes.uploadDir));
+// Public images bypass the JSON API limiter, but transformations still have a
+// per-IP budget. Excess requests fall back to the original image without a 429.
+const imageVariantLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => /^[\w.-]+\.(png|jpe?g|webp)$/i.test(req.params.name || '')
+    ? res.redirect(302, `/api/uploads/${encodeURIComponent(req.params.name)}`)
+    : res.sendStatus(404),
+});
+app.get('/api/image-variants/:width/:name', imageVariantLimiter, require('./lib/imageVariants')(uploadRoutes.uploadDir));
 app.use('/api/uploads', express.static(uploadRoutes.uploadDir, {
   setHeaders: require('./lib/publicImageHeaders'),
 }));

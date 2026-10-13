@@ -43,8 +43,10 @@ if sha(web+'/index.html') not in [expected,sha('dist/index.html')]: raise System
 if mode=='main':
  if sha(live+'/runtime/document.mjs') not in [baseline['runtime'],sha('server/runtime/document.mjs')]: raise SystemExit('Published SSR drift')
  for name,expected in baseline['prerequisites'].items():
-  if name not in ['src/lib/publicDocument.js','src/services/articleSummary.js']: raise SystemExit('Unexpected prerequisite')
-  if sha(live+'/'+name)!=expected: raise SystemExit('Backend prerequisite drift: '+name)
+  if name not in ['src/index.js','src/lib/publicDocument.js','src/services/articleSummary.js']: raise SystemExit('Unexpected prerequisite')
+  accepted=[expected]
+  if name=='src/index.js': accepted.append(sha('server/src/index.js'))
+  if sha(live+'/'+name) not in accepted: raise SystemExit('Backend prerequisite drift: '+name)
 PY
 cp -p "$web/index.html" "$backup/index.html"
 cp rollback.sh "$backup/rollback.sh"
@@ -58,6 +60,8 @@ done > "$backup/existing-frontend-files"
 tar -cpf "$backup/frontend-before.tar" -C "$web" -T "$backup/existing-frontend-files"
 if [ "$mode" = main ]; then
  test -s "$live/.env"
+ node --check server/src/index.js
+ cp -p "$live/src/index.js" "$backup/api-index.js"
  stage=$(mktemp -d "$live/.runtime-article-ui.XXXXXX")
  rsync -ac server/runtime/ "$stage/"
  chown -R mooncci:mooncci "$stage"
@@ -71,6 +75,8 @@ rsync -ac --exclude=index.html dist/ "$web/"
 if [ "$mode" = main ]; then
  mv "$live/runtime" "$backup/runtime-old"
  mv "$stage" "$live/runtime"
+ install -o mooncci -g mooncci -m 644 server/src/index.js "$live/src/.index-article-ui.new"
+ mv -f "$live/src/.index-article-ui.new" "$live/src/index.js"
 fi
 install -m 644 dist/index.html "$web/.index-article-ui.new"
 mv -f "$web/.index-article-ui.new" "$web/index.html"
@@ -92,4 +98,4 @@ const html=require('fs').readFileSync(process.argv[2],'utf8');
 for(const value of ['hero-band','hero-meta','class="g"','循环的语法','mooncci-document-data','rel="canonical" href="https://mooncci.site/article/17"'])if(!html.includes(value))throw Error('Missing article document: '+value);
 NODE
 fi
-printf 'PASS: %s UI release %s; preserved backend source, configuration, dependencies, uploads and SQL.\n' "$mode" "$(cat REVISION)"
+printf 'PASS: %s UI release %s; preserved configuration, dependencies, uploads and SQL; main API entry has the scoped image request budget.\n' "$mode" "$(cat REVISION)"

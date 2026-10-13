@@ -38,6 +38,7 @@ def bundle(mode, revision, baseline):
         raise ValueError("Frontend build missing")
     if mode == "main":
         entries.update(tree("server/runtime"))
+        entries["server/src/index.js"] = (ROOT / "server/src/index.js").read_bytes().replace(b"\r\n", b"\n")
         for name in ["document.mjs", "styles.json", "home.css"]:
             if not entries.get("server/runtime/" + name):
                 raise ValueError(f"SSR output missing: {name}")
@@ -52,9 +53,9 @@ def bundle(mode, revision, baseline):
     entries["REVISION"] = (revision + "\n").encode()
     entries["BASELINE.json"] = (json.dumps(baseline, indent=2) + "\n").encode()
     entries["MANIFEST.json"] = (json.dumps({"revision": revision, "target": mode,
-        "scope": ["frontend", "public-document-runtime"] if mode == "main" else ["frontend"],
+        "scope": ["frontend", "public-document-runtime", "image-variant-request-budget"] if mode == "main" else ["frontend"],
         "restarts": ["mooncci-api"] if mode == "main" else [],
-        "backend_source": False, "configuration_changes": False,
+        "backend_source": ["src/index.js"] if mode == "main" else [], "configuration_changes": False,
         "dependency_install": False, "migrations": []}, indent=2) + "\n").encode()
     entries["SHA256SUMS"] = "".join(f"{sha(data)}  {name}\n" for name, data in sorted(entries.items())).encode()
     for name in ["deploy.sh", "rollback.sh", "TARGET", "REVISION", "BASELINE.json", "MANIFEST.json", "SHA256SUMS"]:
@@ -95,6 +96,8 @@ def main():
     required = {"index", "runtime", "reader_index", "prerequisites"}
     if set(baseline) != required or not baseline["prerequisites"]:
         raise ValueError("Incomplete production baseline")
+    if set(baseline["prerequisites"]) != {"src/index.js", "src/lib/publicDocument.js", "src/services/articleSummary.js"}:
+        raise ValueError("Unexpected backend baseline scope")
     for value in [baseline[k] for k in required - {"prerequisites"}] + list(baseline["prerequisites"].values()):
         if len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
             raise ValueError("Invalid production checksum")

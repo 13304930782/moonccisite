@@ -13,6 +13,10 @@ if [ "${MOONCCI_DEPLOY_LOCK_HELD:-0}" != 1 ]; then
  flock -w 120 9
 fi
 tar -xpf "$backup/frontend-before.tar" -C "$web"
+if [ "$mode" = main ]; then
+ test -s "$backup/api-index.js"
+ cp -p "$backup/api-index.js" /www/wwwroot/mooncci-source/server/src/index.js
+fi
 if [ "$mode" = main ] && [ -d "$backup/runtime-old" ]; then
  live=/www/wwwroot/mooncci-source/server
  if [ -d "$live/runtime" ]; then mv "$live/runtime" "$backup/runtime-failed-$(date +%s)"; fi

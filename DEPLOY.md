@@ -1076,7 +1076,7 @@ settings. The article subscription area and footer keep the live 1200px site wid
 After checks and GitHub push/merge, save a fresh read-only production SHA256 snapshot
 as `.cache/article-ui-baseline.json`. Its fields are `index` (CN frontend index),
 `runtime` (CN document.mjs), `reader_index` (US frontend index), and `prerequisites`
-mapping `src/lib/publicDocument.js` and `src/services/articleSummary.js` to their
+mapping `src/index.js`, `src/lib/publicDocument.js` and `src/services/articleSummary.js` to their
 current byte hashes. These are version guards, not files to deploy.
 
 Run `python scripts/build-article-ui-release.py --baseline .cache/article-ui-baseline.json`.
@@ -1085,12 +1085,12 @@ SSR asset reference, LF script/manifest/checksum and archive sidecar. It emits
 separate `mooncci-article-ui-main-<commit>.tar.gz` and
 `mooncci-article-ui-reader-<commit>.tar.gz` packages and `.cache/article-ui-release.json`.
 
-The main package replaces only `dist/` and `server/runtime/`, reuses the existing
+The main package replaces only `dist/`, `server/runtime/` and `server/src/index.js`, reuses the existing
 server dependencies, and restarts **mooncci-api only** to clear its cached renderer
 and anonymous documents. The reader package replaces only static assets and
-restarts nothing. Both refuse baseline drift and preserve old hashed chunks;
+restarts nothing. The API entry adds a 300-per-minute image transformation budget per IP; excess requests redirect to the original image rather than return 429. Both refuse baseline drift and preserve old hashed chunks;
 rollback restores every overwritten existing asset, the previous entry and SSR
-runtime. No backend source, worker, Nginx configuration, dependencies, `.env`,
+runtime. No other backend source, worker, Nginx configuration, dependencies, `.env`,
 uploads, database migrations or historical SQL are modified.
 
 PowerShell upload (replace `<commit>` with the first 12 revision characters):
