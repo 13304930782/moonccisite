@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{chromium,webkit}=require('playwright');
 (async()=>{
- const server=await(await import('vite')).createServer({server:{host:'127.0.0.1',port:4278,strictPort:true,hmr:false,watch:{ignored:['**/.cache/**','**/outputs/**']}}});await server.listen();let browser;
+ const server=await(await import('vite')).preview({preview:{host:'127.0.0.1',port:4278,strictPort:true}});let browser;
  const results=[],out=process.env.QA_IMAGE_OUTPUT;
  if(out)fs.mkdirSync(out,{recursive:true});
  try{
@@ -38,5 +38,5 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
  results.push({width,theme,sized,textMovementPx:shift});await page.close();console.log('PASS article image',width,theme,sized?'reserved':'baseline',shift);
  }
  if(out)fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(results,null,2)+'\n');
- }finally{await browser?.close();await server.close();}
+ }finally{await browser?.close();await new Promise(resolve=>server.httpServer.close(resolve));}
 })().catch(e=>{console.error(e);process.exitCode=1;});
