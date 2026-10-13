@@ -30,7 +30,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
  assert.equal((await page.locator('.hero-card').boundingBox()).height,width<=900?240:400,'hero cover reserves its fixed card height');
  if(sized){assert(Math.abs(portraitBefore.width/portraitBefore.height-.5)<.01);}
  if(out&&width===390&&theme==='light')await page.screenshot({path:path.join(out,sized?'reserved.png':'before.png')});
- release();await portrait.scrollIntoViewIfNeeded();await page.waitForFunction(()=>[...document.querySelectorAll('.article-presentation img')].every(i=>i.complete&&i.naturalWidth>0));
+ release();await portrait.waitFor({state:'attached'});await page.evaluate(()=>document.querySelector('.markdown-body img')?.scrollIntoView({block:'center',behavior:'instant'}));await page.waitForFunction(()=>[...document.querySelectorAll('.article-presentation img')].every(i=>i.complete&&i.naturalWidth>0));
  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
  const after=await y(),shift=Math.abs(after-before);
  if(sized)assert(shift<1,`reserved image moved text by ${shift}px`);else assert(shift>100,'baseline must reproduce the jump');
