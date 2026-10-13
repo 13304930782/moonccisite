@@ -908,12 +908,12 @@ input[type='checkbox'] {
 }
 .subscribe-section {
   display: block;
-  padding: 64px 24px;
+  padding: 64px 0;
   border-top: 0;
   background: var(--fill);
   margin-top: 48px;
 }
-.subscribe-inner { max-width:var(--col); margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:32px; align-items:start; }
+.subscribe-inner { width:min(var(--site-width),calc(100% - 2 * var(--site-gutter))); max-width:var(--site-width); margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:start; }
 .subscribe-inner h2 { font-size:26px; font-weight:600; }
 .subscribe-inner > div > p:not(.eyebrow) { font-size:13px; line-height:1.7; }
 .subscribe-inner .subscribe-form input { border:0; background:var(--card); border-radius:8px; min-height:44px; }

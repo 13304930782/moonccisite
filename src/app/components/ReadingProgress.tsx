@@ -1,10 +1,29 @@
 import { reducedMotion } from '../lib/motionPreference';
-import {useEffect,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
+import {createPortal} from 'react-dom';
 import {useAuth} from '../context/AuthContext';
 import {useEngagement} from '../lib/useEngagement';
 import {api} from '../lib/api';
 export function ReadingProgress({postId}:{postId:number}){
  const {user}=useAuth(),enabled=useEngagement(),[saved,setSaved]=useState<any>(null),[error,setError]=useState(''),[connection,setConnection]=useState(0);
+ const [hovered,setHovered]=useState(false),[focused,setFocused]=useState(false),[leaving,setLeaving]=useState(false);
+ const dismissed=useRef(false),remaining=useRef(8000),exitTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+ useEffect(()=>{
+  dismissed.current=false;remaining.current=8000;setSaved(null);setLeaving(false);
+  return()=>{if(exitTimer.current!==null)clearTimeout(exitTimer.current);};
+ },[postId]);
+ const dismiss=useCallback(()=>{
+  if(dismissed.current)return;
+  dismissed.current=true;
+  if(reducedMotion()){setSaved(null);return;}
+  setLeaving(true);exitTimer.current=setTimeout(()=>{setSaved(null);setLeaving(false);},160);
+ },[]);
+ const progress=Number(saved?.progress),visible=Boolean(saved)&&Number.isFinite(progress)&&progress>=0.05&&progress<=0.95;
+ useEffect(()=>{
+  if(!visible||hovered||focused||leaving)return;
+  const started=Date.now(),timer=setTimeout(dismiss,remaining.current);
+  return()=>{clearTimeout(timer);remaining.current=Math.max(0,remaining.current-(Date.now()-started));};
+ },[visible,hovered,focused,leaving,dismiss]);
 
  useEffect(()=>{
   if(!enabled||!postId)return;
@@ -14,7 +33,7 @@ export function ReadingProgress({postId}:{postId:number}){
    if(!user){for(const entry of Object.keys(localStorage)){if(!entry.startsWith('mooncci-reading-'))continue;try{const value=JSON.parse(localStorage.getItem(entry)||'null');if(!value||Date.now()-Number(value.updated_at)>180*86400000)localStorage.removeItem(entry);}catch{localStorage.removeItem(entry);}}}
 
    const r=user?await api('/engagement/history/'+postId):{enabled:true,item:JSON.parse(localStorage.getItem(key)||'null'),epoch:0};
-   if(!alive)return;ready=r.enabled;epoch=r.epoch;revision=Number(r.item?.revision||0);if(!user&&r.item&&Date.now()-Number(r.item.updated_at)>180*86400000){localStorage.removeItem(key);revision=0;setSaved(null);}else setSaved(r.item);
+   if(!alive)return;ready=r.enabled;epoch=r.epoch;revision=Number(r.item?.revision||0);if(!user&&r.item&&Date.now()-Number(r.item.updated_at)>180*86400000){localStorage.removeItem(key);revision=0;setSaved(null);}else if(!dismissed.current)setSaved(r.item);
   }catch{ready=false;}};void initial();
   const save=async()=>{
    if(!alive||!ready||!dirty||writing||stopped)return;
@@ -42,10 +61,16 @@ export function ReadingProgress({postId}:{postId:number}){
  const resume=()=>{
   const behavior=reducedMotion()?'auto':'smooth';
   const anchor=saved?.anchor&&document.getElementById(saved.anchor);
-  if(anchor)anchor.scrollIntoView({behavior,block:'start'});
+  if(anchor)window.scrollTo({top:scrollY+anchor.getBoundingClientRect().top-(document.querySelector('.site-header')?.getBoundingClientRect().height||76)-24,behavior});
   else{const article=document.querySelector('.article-presentation');if(article){const rect=article.getBoundingClientRect();window.scrollTo({top:scrollY+rect.top+saved.progress*Math.max(1,rect.height-innerHeight),behavior});}}
-  setSaved(null);
+  dismiss();
  };
  if(!enabled)return null;
- return <>{saved&&saved.progress>=0.05&&saved.progress<=0.95&&<div className="reading-resume" role="status"><span>上次读到 {Math.round(saved.progress*100)}%{!user?' · 仅保存在此浏览器':''}</span><button onClick={resume}>继续阅读</button><button aria-label="关闭阅读进度提示" onClick={()=>setSaved(null)}>×</button></div>}{error&&<p className="reading-resume" role="status">{error} <button onClick={()=>{setError('');setConnection(n=>n+1);}}>重新连接</button></p>}</>;
+ return createPortal(<>
+  {visible&&<div className="resume-toast" data-leaving={leaving||undefined} data-reading-ignore role="status" aria-live="polite" onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)} onFocusCapture={()=>setFocused(true)} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))setFocused(false);}}>
+   <span>上次读到 {Math.round(progress*100)}%{!user&&<span className="sr-only"> · 仅保存在此浏览器</span>}</span>
+   <span aria-hidden="true">·</span><button type="button" onClick={resume}>继续阅读</button><button type="button" className="resume-toast-close" aria-label="关闭" onClick={dismiss}><span aria-hidden="true">×</span></button>
+  </div>}
+  {error&&<div className="resume-toast resume-toast--error" data-reading-ignore role="status" aria-live="polite"><span>{error}</span><button type="button" onClick={()=>{setError('');setConnection(n=>n+1);}}>重新连接</button></div>}
+ </>,document.body);
 }
