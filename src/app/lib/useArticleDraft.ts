@@ -1,4 +1,5 @@
 import { notify } from './feedback';
+import {stripLegacyAgeNotice} from './articleAge';
 import {useEffect,useRef,useState} from 'react';
 import {api,ApiError} from './api';
 import {readBackup,writeBackup,DraftBackup} from './draftStorage';
@@ -9,7 +10,7 @@ export function useArticleDraft(userId:number,postId?:string){
  const [draft,setDraft]=useState<any>(null),[form,setForm]=useState<any>(emptyArticle),[status,setStatus]=useState('正在加载…'),[error,setError]=useState(''),[recovery,setRecovery]=useState<DraftBackup|null>(null),[busy,setBusy]=useState(false),[localAvailable,setLocalAvailable]=useState(true),[serverCopy,setServerCopy]=useState<any>(null);
  const [errorStatus,setErrorStatus]=useState(0);
  const current=useRef(form),saved=useRef(''),doc=useRef<any>(null),loading=useRef(true),blocked=useRef(false),pending=useRef<Promise<any>|null>(null),timer=useRef<ReturnType<typeof setTimeout>>(),changedAt=useRef(0),alive=useRef(true);
- const update=(input:any)=>{if(restoring.current)return;const value=typeof input==='function'?input(current.current):input;current.current=value;setForm(value);changedAt.current ||= Date.now();setStatus('未保存');};
+ const update=(input:any)=>{if(restoring.current)return;const value=typeof input==='function'?input(current.current):input;if(value.summary_mode==='manual'&&(value.summary!==current.current.summary||value.summary_mode!==current.current.summary_mode))setSummaryError('');current.current=value;setForm(value);changedAt.current ||= Date.now();setStatus('未保存');};
  const backup=async(value:any,version:number)=>{if(!doc.current)return;try{await writeBackup({userId,draftId:doc.current.id,payload:value,version,updatedAt:Date.now()});if(alive.current)setLocalAvailable(true);return true;}catch{if(alive.current)setLocalAvailable(false);return false;}};
  const apply=(d:any)=>{doc.current=d;setDraft(d);saved.current=JSON.stringify(d.payload);};
  const autoPaused=useRef(false);const restoring=useRef(false);const [isRestoring,setIsRestoring]=useState(false);
@@ -34,10 +35,11 @@ export function useArticleDraft(userId:number,postId?:string){
  const resolve=(restore:boolean)=>{if(restore&&recovery)update(recovery.payload);else{current.current=doc.current.payload;setForm(doc.current.payload);void backup(doc.current.payload,doc.current.version);}setRecovery(null);blocked.current=false;setError('');setErrorStatus(0);};
  const generateSummary=async(force=false)=>{
   if(summaryPending.current)return false;
-  if(!force&&current.current.summary?.trim()&&current.current.summary_mode!=='ai')return true;
+  const summary=stripLegacyAgeNotice(current.current.summary);
+  if(!force&&summary.trim()&&current.current.summary_mode!=='ai')return true;
   if(!force&&current.current.summary_mode==='manual')return true;
-  summaryPending.current=true;setSummaryBusy(true);setSummaryError('');const value=structuredClone(current.current),snapshot=JSON.stringify(value);
-  try{const result=await api('/article-seo/generate',{method:'POST',body:JSON.stringify({payload:value,force}),timeoutMs:35000});if(!alive.current)return false;if(JSON.stringify(current.current)!==snapshot)throw new Error('生成期间文章已修改，请重新生成简介。');if(result.summary_receipt)update({...value,...result});return true;}catch(e:any){if(alive.current)setSummaryError(e.message);return false;}finally{summaryPending.current=false;if(alive.current)setSummaryBusy(false);}
+  summaryPending.current=true;setSummaryBusy(true);setSummaryError('');const original=structuredClone(current.current),snapshot=JSON.stringify(original),value={...original,summary};if(summary!==original.summary)value.summary_receipt='';
+  try{const result=await api('/article-seo/generate',{method:'POST',body:JSON.stringify({payload:value,force}),timeoutMs:35000});if(!alive.current)return false;if(JSON.stringify(current.current)!==snapshot)throw new Error('生成期间文章已修改，请重新生成简介。');if(result.summary_receipt)update({...original,...result});return true;}catch(e:any){if(alive.current)setSummaryError(e.message);return false;}finally{summaryPending.current=false;if(alive.current)setSummaryBusy(false);}
  };
  const action=async(kind:'publish'|'withdraw'|'submit')=>{if(kind!=='withdraw'&&!await generateSummary())return false;const d=await save();if(!d)return;setBusy(true);try{const result=await api(kind==='submit'?'/publishing/'+d.id+'/submit':`/article-drafts/${d.id}/${kind}`,{method:'POST',body:JSON.stringify({version:d.version})});if(kind==='submit'){apply({...d,workflow:{...d.workflow,...result}});try{const fresh=await api('/article-drafts/'+d.id);apply(fresh);current.current=fresh.payload;setForm(fresh.payload);}catch{notify.error('稿件已提交审核，状态刷新失败；可返回稿件列表查看。');}}else{apply(result);current.current=result.payload;setForm(result.payload);}setStatus(kind==='submit'?'已提交审核':kind==='publish'?'发布成功':'已撤回为草稿');setError('');setErrorStatus(0);return true;}catch(e:any){setError(e.message);setErrorStatus(e.status||0);if(e.status===409){blocked.current=true;autoPaused.current=true;setStatus('版本冲突，尚未发布');}return false;}finally{setBusy(false);}};
  const discard=async()=>{if(!doc.current)return;blocked.current=true;clearTimeout(timer.current);setBusy(true);try{if(pending.current)await pending.current;await api(`/article-drafts/${doc.current.id}`,{method:'DELETE',body:JSON.stringify({version:doc.current.version})});saved.current=JSON.stringify(current.current);setForm({...current.current});setStatus('已放弃未发布修改');setTimeout(()=>{if(location.pathname.startsWith('/account')){location.replace('/account/submissions');return;}if(!doc.current.post_id){location.replace(location.pathname.startsWith('/account')?'/account/submissions':'/admin/posts');return;}const url=new URL(location.href);url.searchParams.delete('draft');location.replace(url);},0);}catch(e:any){setError(e.message);setErrorStatus(e.status||0);setBusy(false);}};

@@ -18,7 +18,7 @@ async function fixture(){
   if(mode==='refresh-failed')throw Error('refresh failed');
   return draft;
  };
- const module={exports:{}};const requireMock=name=>name==='react'?React:name==='./api'?{api,ApiError}:name==='./feedback'?{notify:{success:x=>notifications.push(x),error:x=>notifications.push(x)}}:name==='./draftStorage'?{readBackup:async()=>null,writeBackup:async()=>{}}:{useUnsavedLeave:()=>{}};
+ const module={exports:{}};const requireMock=name=>name==='react'?React:name==='./api'?{api,ApiError}:name==='./articleAge'?require('./helpers/article-age.cjs'):name==='./feedback'?{notify:{success:x=>notifications.push(x),error:x=>notifications.push(x)}}:name==='./draftStorage'?{readBackup:async()=>null,writeBackup:async()=>{}}:{useUnsavedLeave:()=>{}};
  new Function('exports','require','location','history','sessionStorage',code)(module.exports,requireMock,{search:'?draft=fixture',href:'https://example.test/admin/write?draft=fixture',pathname:'/admin/write'},{replaceState(){}},{removeItem(){}});
  function Probe(){hook=module.exports.useArticleDraft(1);return null;}
  await act(async()=>{root=create(React.createElement(Probe));});
