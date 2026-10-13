@@ -1,9 +1,11 @@
 const crypto = require('node:crypto');
+const {readCoverCrop}=require('./articleCoverCrop');
 const fields = ['title','slug','summary','content','cover_image','category','source_url','summary_mode','summary_receipt'];
 function snapshot(input = {}) {
   const out = Object.fromEntries(fields.map(k => [k,String(input[k] ?? '')]));
   let tags = input.tags; if (typeof tags === 'string') { try { tags = JSON.parse(tags); } catch { tags = []; } }
   out.tags = Array.isArray(tags) ? tags.map(String) : [];
+  out.cover_crop = readCoverCrop(input.cover_crop,input.cover_image);
   return out;
 }
 const hash = p => crypto.createHash('sha256').update(JSON.stringify(snapshot(p))).digest('hex');

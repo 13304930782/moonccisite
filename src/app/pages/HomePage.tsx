@@ -128,6 +128,7 @@ export default function HomePage() {
                   tags={Array.isArray(p.tags) ? p.tags : []}
                   readTime=""
                   image={p.cover_image}
+                  coverCrop={p.cover_crop}
                   index={index}
                 />
               ))}

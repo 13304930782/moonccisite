@@ -42,6 +42,7 @@ export function PostResults({
               dateLabel="更新于"
               tags={tags}
               image={post.cover_image}
+              coverCrop={post.cover_crop}
               category={post.category}
             />
           );

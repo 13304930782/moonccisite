@@ -3,10 +3,12 @@ import {ArrowLeftRight, ChevronDown} from 'lucide-react';
 import {MarkdownContent} from './MarkdownContent';
 import {revisionDiff} from '../lib/revisionDiff';
 import {confirmAction} from '../lib/confirmAction';
+import {describeCoverCrop} from '../lib/coverCrop';
 
 type Choice='publish-current'|'keep-current'|'adopt-post'|'adopt-draft';
-const labels:Record<string,string>={title:'标题',summary:'摘要',category:'分类',tags:'标签',slug:'文章链接',cover_image:'封面'};
+const labels:Record<string,string>={title:'标题',summary:'摘要',category:'分类',tags:'标签',slug:'文章链接',cover_image:'封面',cover_crop:'封面显示范围'};
 const display=(value:any)=>Array.isArray(value)?value.join('、'):String(value||'（未填写）');
+const fieldDisplay=(key:string,value:any)=>key==='cover_crop'?describeCoverCrop(value):display(value);
 export function ArticleConflict({comparison,current,busy,onResolve,onPublish,onRefresh,onContinue}:{comparison:any;current:any;busy:boolean;onResolve:(choice:Choice)=>Promise<void>;onPublish:()=>void;onRefresh:()=>void;onContinue:()=>void}){
  const [target,setTarget]=useState<'post'|'draft'>(comparison.post?'post':'draft');
  const selected=target==='post'?comparison.post:comparison.draft;
@@ -23,6 +25,6 @@ export function ArticleConflict({comparison,current,busy,onResolve,onPublish,onR
    <section><h3>当前编辑内容</h3><p className="article-conflict-meta">包含本页尚未保存的修改</p><h4>{current.title||'未命名文章'}</h4><div className="article-conflict-reading"><MarkdownContent content={current.content||'（正文为空）'} headingPrefix="conflict-local"/></div></section>
    <section><h3>{target==='post'?'网站当前版本':'服务器草稿'}</h3><p className="article-conflict-meta">版本 {selected.version} · {selected.updated_at?new Date(selected.updated_at).toLocaleString():'更新时间未记录'}{target==='draft'&&comparison.last_recorded_by?` · 最近历史记录：${comparison.last_recorded_by}`:''}</p><h4>{other.title||'未命名文章'}</h4><div className="article-conflict-reading"><MarkdownContent content={other.content||'（正文为空）'} headingPrefix="conflict-remote"/></div></section>
   </div>
-  <details className="article-conflict-diff"><summary><ChevronDown size={16} aria-hidden="true"/>查看具体差异 · {changes.length} 行正文变化</summary><p>− 为所选版本内容，+ 为当前编辑内容。可复制需要保留的部分，返回编辑后合并。</p>{Object.entries(labels).filter(([key])=>display(current[key])!==display(other[key])).map(([key,label])=><div className="revision-field" key={key}><strong>{label}</strong><del>{display(other[key])}</del><ins>{display(current[key])}</ins></div>)}<pre>{changes.length?changes.map((line,i)=><span key={i} className={`revision-line revision-${line.kind}`}>{line.kind==='added'?'+ ':'− '}{line.text}{'\n'}</span>):'正文内容相同。'}</pre></details>
+  <details className="article-conflict-diff"><summary><ChevronDown size={16} aria-hidden="true"/>查看具体差异 · {changes.length} 行正文变化</summary><p>− 为所选版本内容，+ 为当前编辑内容。可复制需要保留的部分，返回编辑后合并。</p>{Object.entries(labels).filter(([key])=>fieldDisplay(key,current[key])!==fieldDisplay(key,other[key])).map(([key,label])=><div className="revision-field" key={key}><strong>{label}</strong><del>{fieldDisplay(key,other[key])}</del><ins>{fieldDisplay(key,current[key])}</ins></div>)}<pre>{changes.length?changes.map((line,i)=><span key={i} className={`revision-line revision-${line.kind}`}>{line.kind==='added'?'+ ':'− '}{line.text}{'\n'}</span>):'正文内容相同。'}</pre></details>
  </section>;
 }

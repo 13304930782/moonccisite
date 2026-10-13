@@ -7,7 +7,7 @@ import {createPortal} from 'react-dom';
 import {ArticlePresentation} from './ArticlePresentation';
 import {checkArticleImage} from '../lib/checkArticleImage';
 type ImageIssue = {url:string; index:number; result:'failed'|'timeout'};
-const srcDoc='<!doctype html><html lang="zh-CN"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="preview-root" class="neo-page" style="padding:20px"></div></body></html>';
+const srcDoc='<!doctype html><html lang="zh-CN"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="preview-root" class="neo-page"></div></body></html>';
 export function ArticleReview({post,onPublish,busy,disabled=false,publishLabel='确认发布',onFix}:{post:any;onPublish:()=>void;busy:boolean;disabled?:boolean;publishLabel?:string;onFix?:(field:string)=>void}){
  const description=stripLegacyAgeNotice(post.summary).trim();
  const frame=useRef<HTMLIFrameElement>(null);const [root,setRoot]=useState<HTMLElement|null>(null),[width,setWidth]=useState(375),[checking,setChecking]=useState(false),[report,setReport]=useState<{snapshot:string;errors:string[];warnings:string[];imageIssues:ImageIssue[]}|null>(null);const run=useRef(0);const [retryUrl,setRetryUrl]=useState<string|null>(null);const resultHeading=useRef<HTMLHeadingElement>(null);const snapshot=JSON.stringify(post);const preview=useMemo(()=> <ArticlePresentation preview post={post}/>,[snapshot]);
@@ -15,7 +15,7 @@ export function ArticleReview({post,onPublish,busy,disabled=false,publishLabel='
  async function ready(){const doc=frame.current?.contentDocument;if(!doc)return;
  const loads=Array.from(document.querySelectorAll('link[rel="stylesheet"],style')).map(el=>{const copy=el.cloneNode(true) as HTMLElement;if(copy instanceof HTMLLinkElement){copy.href=(el as HTMLLinkElement).href;return new Promise<void>(resolve=>{copy.onload=()=>resolve();copy.onerror=()=>resolve();doc.head.appendChild(copy);});}doc.head.appendChild(copy);return Promise.resolve();});
  doc.documentElement.classList.toggle('dark',document.documentElement.classList.contains('dark'));
- const style=doc.createElement('style');style.textContent='html{scrollbar-gutter:auto}body{margin:0}.detail-preview{max-width:680px;margin:auto}';doc.head.appendChild(style);
+ const style=doc.createElement('style');style.textContent='html{scrollbar-gutter:auto}body{margin:0}.detail-preview{max-width:none;margin:auto}';doc.head.appendChild(style);
  await Promise.all(loads);if(frame.current?.contentDocument===doc)setRoot(doc.getElementById('preview-root'));
  }
  async function check(){if(!root)return;const id=++run.current;setChecking(true);const errors:string[]=[],warnings:string[]=[],imageIssues:ImageIssue[]=[];

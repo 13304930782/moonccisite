@@ -1138,3 +1138,32 @@ ceiling and unchanged worker PID/restart count. Do not run npm or SQL migrations
 To roll back, restore the saved configuration and reload only the API in the same
 way. Observe RSS and restart count over multiple PM2 memory-check intervals;
 450M is a restart ceiling, not a reservation or a change to the V8 heap limit.
+
+
+## Article cover framing (local preview, not deployed)
+
+Cover framing stores two independent normalized `{x,y,zoom}` tuples in the nullable
+`posts.cover_crop` JSON column. Original uploads are unchanged. New drafts,
+publication/review snapshots and revision hashes carry this metadata; old articles
+with null metadata retain centered cards and top-aligned detail covers.
+
+An existing production database needs only the additive migration
+`server/database/migrations/202610130001_article_cover_crop.sql`. Do not replay
+historical SQL. A future approved release must use a separately reviewed package
+containing the changed backend allowlist, this migration/runner, built `dist/` and
+`server/runtime/`; the frontend-only packer cannot deploy this feature.
+
+The scoped runner uses the live server's installed dependencies and `.env` and
+checks the migration ledger/checksum and existing column shape. It resumes a DDL
+that completed before its ledger write. Run it in the approved offline deployment
+child shell, with the explicit live backend directory:
+
+```bash
+node /path/to/scoped-package/server/scripts/migrate-article-cover-crop.js /www/wwwroot/mooncci-source/server
+```
+
+Back up affected source/runtime and database before a future release. Preserve
+uploads, `.env`, all historical migrations and source SQL. Roll back source/runtime
+if needed and keep the additive nullable column; do not drop framing data.
+No new npm dependencies are required. Existing CI is retained, with the new real
+MySQL cover-framing integration enabled in `ci.yml` and SSR/Portal regression tests.

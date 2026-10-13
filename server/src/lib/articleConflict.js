@@ -2,9 +2,10 @@ const revisions = require('./articleRevisions');
 const {payload,publish,error} = require('./articlePublishing');
 const {isAdminLike} = require('../middleware/auth');
 const workflow = require('../services/articleWorkflow');
+const {withCoverCrop}=require('./articleCoverCrop');
 
 const canPublish = user => isAdminLike(user) || (!workflow.enabled() && user.role === 'editor');
-const postPayload = (post,draft) => payload({...post,tags:revisions.snapshot(post).tags,source_url:draft.payload.source_url});
+const postPayload = (post,draft) => payload({...withCoverCrop(post),tags:revisions.snapshot(post).tags,source_url:draft.payload.source_url});
 async function loadPost(c,d,user) {
   if (!d.post_id) return null;
   const [[post]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[d.post_id]);
