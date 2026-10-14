@@ -92,6 +92,7 @@ export default function AdminCommentsPage() {
             <option value="all">全部内容</option><option value="post">文章评论</option><option value="update">近况评论</option>
           </ThemeSelect>
           <input
+            aria-label="搜索评论、用户、邮箱、内容或 IP"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             onKeyDown={(e) => {

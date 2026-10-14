@@ -9,3 +9,4 @@
 .account-workspace .account-page{padding:0;margin:0;max-width:none}.publishing-card{overflow-wrap:anywhere}.publishing-card fieldset{min-width:0}.publishing-card li{margin:12px 0}.publishing-card li button{margin:4px}.publishing-page button:focus-visible,.publishing-page a:focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
 
 .series-search-results{margin:16px 0;padding:16px;border:1px solid var(--border);border-radius:12px}.series-search-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0}.series-search-row span{min-width:0;overflow-wrap:anywhere}.series-search-row button{flex-shrink:0}
+.publishing-page .publishing-card .card-cover-image + h2 { margin-top: 16px; }

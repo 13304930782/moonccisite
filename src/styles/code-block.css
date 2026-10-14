@@ -5,7 +5,7 @@
 .markdown-body .code-copy:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 .markdown-body .code-copy:disabled { opacity:.6; cursor:wait; }
 .markdown-body .code-copy-feedback { position:absolute; top:12px; right:50px; font:12px/1.5 system-ui,sans-serif; color:var(--foreground); background:var(--muted); padding:2px 6px; border-radius:4px; }
-@media(pointer:coarse){.markdown-body .code-copy{width:44px;height:44px;top:2px;right:2px;}.markdown-body .code-copy-feedback{right:52px;}}
+@media(pointer:coarse),(max-width:900px){.markdown-body .code-copy{width:44px;height:44px;top:2px;right:2px;}.markdown-body .code-copy-feedback{right:52px;}}
 
 /* Darcula-inspired palette, scoped to fenced code in all Markdown views. */
 .markdown-body .code-block pre {background:#2b2b2b;color:#a9b7c6;border-color:#414349;color-scheme:dark;}

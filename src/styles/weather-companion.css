@@ -112,8 +112,8 @@
 .weather-companion-heading button {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   margin: -8px -8px -8px 0;
   border: 0;
   background: transparent;

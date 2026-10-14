@@ -995,7 +995,7 @@
   grid-column: 1 / -1;
 }
 .electricity-admin-v2 .electricity-button {
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 6px;
   padding: 8px 13px;
   white-space: nowrap;

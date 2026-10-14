@@ -18,7 +18,7 @@ export function AccountProfileForm({ user, base, onSaved }: { user: AccountProfi
     <form onSubmit={async e=>{e.preventDefault();setBusy(true);setMessage('');try { const r=await api(base.endsWith('/account')?base:`${base}/settings`,{method:'PUT',body:JSON.stringify({username:name,version:user.version})});onSaved(r.user);notify.success(r.message); }catch(e:any){setMessage(e.message); notify.error(e.message);}finally{setBusy(false);}}}>
       <fieldset disabled={busy || Boolean(user.deleted_at)} className="account-fields">
         <div className="account-avatar-row">{user.avatar_url ? <img className="account-avatar" src={safeImageSrc(user.avatar_url)} alt="当前头像"/> : <span className="account-avatar account-avatar-empty">{user.username.slice(0,1)}</span>}
-          <label className="account-upload">上传头像<FormInput type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{void upload(e.target.files?.[0]);e.target.value='';}}/><small>JPG、PNG、WebP，最大 2 MB</small></label>
+          <div className="account-upload"><label className="account-upload-trigger"><span>上传头像</span><FormInput aria-label="上传头像" type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{void upload(e.target.files?.[0]);e.target.value='';}}/></label><small>JPG、PNG、WebP，最大 2 MB</small></div>
         </div>
         <label>用户名<FormInput value={name} maxLength={40} onChange={e=>setName(e.target.value)} required autoComplete="username"/></label>
         <button type="submit" className="neo-button neo-button-dark">{busy?'保存中…':'保存资料'}</button>

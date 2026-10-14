@@ -82,7 +82,7 @@ function ImageField({
     </div>
   </div>;
   const image = safeImageSrc(previewSrc ?? value);
-  if (project) return <section className={`image-field project-image-field${icon ? ' image-field--icon' : ''}`} aria-label={label} aria-busy={busy}>
+  return <section className={`image-field project-image-field${icon ? ' image-field--icon' : ''}`} aria-label={label} aria-busy={busy}>
     <header className="project-image-heading">
       <h3>{label}</h3>
       <p>{description}</p>
@@ -93,8 +93,8 @@ function ImageField({
       </div>
       <div className="project-image-actions">
         <label className="project-image-upload" aria-disabled={busy}>
-          {busy ? '处理中…' : image ? (icon ? '更换图标' : '更换截图') : '上传图片'}
-          <input type="file" aria-label={icon ? '上传作品图标' : '上传作品截图'} accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy}
+            {busy ? '处理中…' : image ? (icon ? '更换图标' : project ? '更换截图' : '更换配图') : '上传图片'}
+          <input type="file" aria-label={project ? (icon ? '上传作品图标' : '上传作品截图') : '上传配图'} accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy}
             onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; void upload(file); }} />
         </label>
         <button type="button" disabled={busy} onClick={library}>从媒体库选择</button>
@@ -108,47 +108,6 @@ function ImageField({
     {mediaLibrary}
     {error && <p className="project-image-error" role="alert">{error}</p>}
   </section>;
-  return (
-    <div className={`image-field${icon ? ' image-field--icon' : ''}`}>
-      <label>
-        {label}
-        <input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="HTTPS 或 /api/uploads/…"
-        />
-      </label>
-      {description && <p className="muted">{description}</p>}
-      <div className="inline-actions">
-        <button type="button" disabled={busy} onClick={library}>
-          从媒体库选择
-        </button>
-        <label className="quiet-button">
-          上传图片
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            disabled={busy}
-            onChange={(e) => upload(e.target.files?.[0])}
-          />
-        </label>
-        {(value || previewSrc) && (
-          <button type="button" disabled={busy} onClick={() => onChange('')}>
-            {icon ? '移除图标' : '移除配图'}
-          </button>
-        )}
-      </div>
-      {safeImageSrc(previewSrc ?? value) && (
-        <img
-          className="image-preview"
-          src={safeImageSrc(previewSrc ?? value)}
-          alt={icon ? '作品图标预览' : '配图预览'}
-        />
-      )}
-      {mediaLibrary}
-      <p role="alert">{error}</p>
-    </div>
-  );
 }
 export function AdminUpdatesPage() {
   const [page, setPage] = useState(1),

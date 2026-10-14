@@ -80,6 +80,7 @@
 .account-mobile-logout{display:none}@media(max-width:760px){.account-mobile-logout{display:grid;place-items:center;width:30px;height:32px}}
 
 .account-return{white-space:nowrap;flex-shrink:0}
+@media(max-width:900px){.account-return{min-height:44px;align-items:center}.account-mobile-logout{width:44px;min-height:44px}.submission-row-actions a{min-height:44px;align-items:center}.submission-pagination button{min-height:44px;min-width:44px}}
 @media(max-width:760px){.account-brand>span:last-child,.account-brand-divider{display:none}.account-topbar-actions{gap:12px}}
 
 .account-bookmarks .bookmark-list{gap:20px}

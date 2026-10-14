@@ -4,10 +4,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { SitePage, PageHeading } from './ContentUI';
 import './AuthShell.css';
 type AuthShellProps = {
-  index: string;
-  modeLabel: string;
-  storyTitle: ReactNode;
-  storyDescription: string;
+  index?: string;
+  modeLabel?: string;
+  storyTitle?: ReactNode;
+  storyDescription?: string;
   formTitle: string;
   formDescription: string;
   alternatePrompt: string;
@@ -37,7 +37,7 @@ export function AuthShell({
         </PageHeading>
         <div className="auth-form-content">{children}</div>
         <div className="auth-alternate">
-          <span>{alternatePrompt}</span>
+          {alternatePrompt && <span>{alternatePrompt}</span>}
           <Link className="text-link" to={alternateTo}>
             {alternateLabel} ↗
           </Link>

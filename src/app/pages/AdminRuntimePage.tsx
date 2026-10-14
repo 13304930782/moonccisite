@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import '../../styles/analytics.css';
 type Runtime = { checkedAt:string; api:{startedAt:string;node:string}; worker:{state:string;startedAt:string|null;checkedAt:string|null}; deployment:{revision:string|null;completedAt:string|null;result:string}; migrations:{filename:string;executedAt:string}[]|null; disk:{freeBytes:number;totalBytes:number}|null };
 const time = (value:string|null) => value ? new Date(value).toLocaleString('zh-CN') : '尚无记录';
 export default function AdminRuntimePage() {

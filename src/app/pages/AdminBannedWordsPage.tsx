@@ -65,14 +65,14 @@ export default function AdminBannedWordsPage() {
         {message && <div className="mb-4 rounded-[6px] bg-muted px-4 py-3 text-foreground">{message}</div>}
 
         <form onSubmit={addWord} className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-3">
-          <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="违禁词" className="rounded-[6px] border px-4 py-2 bg-card" />
+          <input aria-label="违禁词" value={word} onChange={(e) => setWord(e.target.value)} placeholder="违禁词" className="rounded-[6px] border px-4 py-2 bg-card" />
 
           <ThemeSelect aria-label="命中处理方式" value={action} onValueChange={(nextValue) => setAction(nextValue)} >
             <option value="block">拦截</option>
             <option value="replace">替换</option>
           </ThemeSelect>
 
-          <input value={replacement} onChange={(e) => setReplacement(e.target.value)} placeholder="替换为" className="rounded-[6px] border px-4 py-2 bg-card" />
+          <input aria-label="替换为" value={replacement} onChange={(e) => setReplacement(e.target.value)} placeholder="替换为" className="rounded-[6px] border px-4 py-2 bg-card" />
 
           <button className="rounded-[6px] bg-muted px-5 py-2 text-foreground">添加</button>
         </form>
