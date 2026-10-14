@@ -89,4 +89,10 @@ const explicitRemoval=await renderDocument('/projects/promptdock',p=>p.startsWit
 const removedDOM=JSDOM.fragment(explicitRemoval.html);
 assert.equal(removedDOM.querySelector('.project-detail-icon'),null);
 assert.equal(removedDOM.querySelector('.project-detail-showcase img').getAttribute('src'),'/api/uploads/real-shot.png');
+const sizedWork=await renderDocument('/projects/promptdock',p=>p.startsWith('/projects/promptdock')?Promise.resolve({...work,cover_image:'/api/uploads/real-shot.png',image_dimensions:{'/api/uploads/real-shot.png':{width:1600,height:879}}}):workLoad(p));
+const sizedShot=JSDOM.fragment(sizedWork.html).querySelector('.project-detail-showcase img');
+assert.equal(sizedShot.getAttribute('width'),'1600');
+assert.equal(sizedShot.getAttribute('height'),'879');
+assert.equal(sizedShot.getAttribute('loading'),'eager');
+assert.equal(sizedShot.getAttribute('fetchpriority'),'high');
 console.log('Works SSR acceptance: compact home card, article-style detail, real showcase, TOC and explicit icon removal passed.');

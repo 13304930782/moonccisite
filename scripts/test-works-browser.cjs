@@ -62,10 +62,26 @@ const release={id:42,title:'版本记录回归',content:'原始发布内容。',
      }
     }
     project.cover_image='/api/uploads/cover.png';
+    await page.setViewportSize({width:1440,height:900});
+    project.image_dimensions={'/api/uploads/cover.png':{width:1200,height:800}};
+    let finishScreenshot;
+    const screenshotGate=new Promise(resolve=>{finishScreenshot=resolve;});
+    await page.route('**/api/uploads/cover.png',async route=>{await screenshotGate;await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><rect width="1200" height="800" fill="#555"/></svg>'});});
     project.content='<!--mooncci-richtext:v1--><h2>富文本章节</h2><p>真实富文本接口形态。</p><h3>子章节</h3>';
-    await page.goto('http://127.0.0.1:4271/projects/promptdock?release=99');
+    await page.goto('http://127.0.0.1:4271/projects/promptdock?release=99',{waitUntil:'domcontentloaded'});
     await page.getByRole('heading',{name:'PromptDock',exact:true}).waitFor();
     const showcase=page.locator('.project-detail-showcase img');await showcase.waitFor();
+    const beforeScreenshot=await showcase.boundingBox();
+    assert.ok(Math.abs(beforeScreenshot.height-beforeScreenshot.width*800/1200)<1,'original ratio is reserved before image bytes arrive');
+    assert.equal(await showcase.evaluate(el=>el.complete),false,'test holds screenshot response');
+    assert.equal(await showcase.getAttribute('loading'),'eager');
+    finishScreenshot();await page.waitForFunction(()=>document.querySelector('.project-detail-showcase img').complete);
+    const afterScreenshot=await showcase.boundingBox();
+    assert.ok(Math.abs(beforeScreenshot.x-afterScreenshot.x)<1&&Math.abs(beforeScreenshot.height-afterScreenshot.height)<1,'screenshot load does not shift its box');
+    await page.unroute('**/api/uploads/cover.png');
+    await page.setViewportSize({width:390,height:900});
+    const mobileScreenshot=await showcase.boundingBox();
+    assert.ok(Math.abs(mobileScreenshot.height-mobileScreenshot.width*800/1200)<1,'mobile screenshot also preserves original ratio');
     assert.equal(await showcase.evaluate(el=>getComputedStyle(el).objectFit),'contain');
     assert.equal(await page.locator('#release-99').getAttribute('open'),'');
     assert.ok(await page.locator('#release-99').isVisible());

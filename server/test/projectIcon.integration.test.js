@@ -137,12 +137,17 @@ test('project icon migration recovery, editable persistence, public visibility a
   assert.ok(!(await request('/projects', 'GET', undefined, null)).data.items.some(item => item.id === id));
   assert.equal((await request('/admin/projects')).data.items.find(item => item.id === id).icon_image, project.icon_image);
   const update = { ...project, status: 'published', icon_image: 'https://example.test/custom-icon.png' };
+  await setup.query("INSERT INTO media_assets(filename,url,width,height) VALUES ('screenshot.png','/api/uploads/screenshot.png',1600,879),('unrelated.png','/api/uploads/unrelated.png',800,800)");
   assert.equal((await request('/admin/projects/' + id, 'PUT', update, 'admin')).status, 200);
   for (const url of ['/projects', '/projects?featured=true'])
     assert.equal((await request(url, 'GET', undefined, null)).data.items.find(item => item.id === id).icon_image, update.icon_image);
   const publicProject = (await request('/projects/editable-icon', 'GET', undefined, null)).data;
   assert.equal(publicProject.icon_image, update.icon_image);
   assert.equal(publicProject.cover_image, project.cover_image);
+  assert.deepEqual(publicProject.image_dimensions,{'/api/uploads/screenshot.png':{width:1600,height:879}});
+  await setup.query("UPDATE media_assets SET status='trashed' WHERE filename='screenshot.png'");
+  assert.deepEqual((await request('/projects/editable-icon','GET',undefined,null)).data.image_dimensions,{});
+  await setup.query("UPDATE media_assets SET status='active' WHERE filename='screenshot.png'");
   const { icon_image: _icon, ...oldClient } = update;
   oldClient.summary = 'Old client edit';
   assert.equal((await request('/admin/projects/' + id, 'PUT', oldClient, 'admin')).status, 200);

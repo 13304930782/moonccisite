@@ -120,6 +120,10 @@ router.get(
       [req.params.slug],
     );
     if (!rows[0]) throw fail('作品不存在', 404);
+    // Reserve the uploaded screenshot's original ratio before it loads.
+    let image_dimensions = {};
+    try { image_dimensions = await require('../lib/articleImages').articleImageDimensions({ cover_image: rows[0].cover_image }, db); }
+    catch (error) { console.warn('[projects/image-dimensions]', error.code || 'unavailable'); }
     const { page, pageSize, offset } = pagination(req.query);
     const p = rows[0];
     const [[{ total }]] = await db.query(
@@ -138,6 +142,7 @@ router.get(
       : [[]];
     res.json({
       ...p,
+      image_dimensions,
       focusedRelease: focused[0] || null,
       releases: { items, total: Number(total), page, pageSize },
     });
