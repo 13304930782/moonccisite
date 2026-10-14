@@ -277,12 +277,13 @@ async function cli() {
   fs.mkdirSync('/www/backup',{recursive:true});
   const backup=fs.mkdtempSync('/www/backup/mooncci-pr101-edge-');fs.chmodSync(backup,0o700);console.log('BACKUP='+backup);
   checkLog=path.join(backup,'nginx-check.log');
-  if(process.argv[2]==='main') await mainOrigin(backup);
-  else if(process.argv[2]==='us') await overseas(backup,process.argv[3],process.argv[4]);
+  const args=process.argv.slice(2).filter(x=>x!=='--lock-held');
+  if(args[0]==='main') await mainOrigin(backup);
+  else if(args[0]==='us') await overseas(backup,args[1],args[2]);
   else throw Error('Expected main or us mode');
   console.log('REVISION='+REV+'\nEXIT_CODE=0');
 }
-module.exports={addHeaders,patchMain,patchGateway,transaction,walk,assertPath,mainOrigin,overseas};
+module.exports={addHeaders,patchMain,patchGateway,transaction,walk,assertPath,mainOrigin,overseas,cli};
 if(require.main===module) {
   if(!process.argv.includes('--lock-held')) {
     fs.mkdirSync('/www/backup',{recursive:true});
