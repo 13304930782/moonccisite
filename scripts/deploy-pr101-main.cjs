@@ -108,17 +108,24 @@ async function main() {
   const backup = fs.mkdtempSync('/www/backup/mooncci-pr101-main-');
   fs.chmodSync(backup, 0o700);
   console.log('BACKUP=' + backup);
-  const stage = fs.mkdtempSync('/www/wwwroot/.mooncci-pr101-build-');
+  const preparedArg = process.argv.find(arg => arg.startsWith('--prepared-stage='));
+  const prepared = preparedArg ? preparedArg.slice('--prepared-stage='.length) : null;
+  const stagePrefix = '/www/wwwroot/.mooncci-pr101-build-';
+  if (prepared && (!prepared.startsWith(stagePrefix) || !/^[A-Za-z0-9]+$/.test(prepared.slice(stagePrefix.length)) || fs.realpathSync(prepared) !== prepared)) throw Error('Invalid prepared build directory');
+  const stage = prepared || fs.mkdtempSync('/www/wwwroot/.mooncci-pr101-build-');
   fs.chmodSync(stage, 0o700);
   console.log('BUILD_STAGE=' + stage);
   const git = (...args) => output(['git', '-c', 'safe.directory=' + stage, '-C', stage, ...args]);
-  const cacheGit = (...args) => output(['git', '-c', 'safe.directory=' + SOURCE_CACHE, '-C', SOURCE_CACHE, ...args]);
-  if (!fs.existsSync(path.join(SOURCE_CACHE, '.git'))) throw Error('Previously downloaded source cache is missing: ' + SOURCE_CACHE);
-  if (cacheGit('rev-parse', 'HEAD') !== REVISION || cacheGit('status', '--porcelain')) throw Error('Source cache revision/working tree changed; stopped before publishing');
-  console.log('SOURCE_CACHE=verified pinned revision; cloning locally without GitHub network');
-  run(['git', 'clone', '--shared', '--no-checkout', SOURCE_CACHE, stage]);
-  run(['git', '-c', 'safe.directory=' + stage, '-C', stage, 'checkout', '--detach', '-q', REVISION]);
+  if (!prepared) {
+    const cacheGit = (...args) => output(['git', '-c', 'safe.directory=' + SOURCE_CACHE, '-C', SOURCE_CACHE, ...args]);
+    if (!fs.existsSync(path.join(SOURCE_CACHE, '.git'))) throw Error('Previously downloaded source cache is missing: ' + SOURCE_CACHE);
+    if (cacheGit('rev-parse', 'HEAD') !== REVISION || cacheGit('status', '--porcelain')) throw Error('Source cache revision/working tree changed; stopped before publishing');
+    console.log('SOURCE_CACHE=verified pinned revision; cloning locally without GitHub network');
+    run(['git', 'clone', '--shared', '--no-checkout', SOURCE_CACHE, stage]);
+    run(['git', '-c', 'safe.directory=' + stage, '-C', stage, 'checkout', '--detach', '-q', REVISION]);
+  } else console.log('PREPARED_STAGE=reusing existing build and dependencies; no install or rebuild');
   if (git('rev-parse', 'HEAD') !== REVISION) throw Error('Unexpected cached revision');
+  if (git('status', '--porcelain')) throw Error('Prepared source changed; stopped before publishing');
   git('merge-base', '--is-ancestor', BASE, REVISION);
   function baseline() {
     const paths = git('ls-tree', '-r', '--name-only', BASE, '--', 'server/src', 'server/package.json', 'server/package-lock.json').split('\n');
@@ -173,10 +180,18 @@ async function main() {
     }
     assert.equal(doc.querySelectorAll('password').length,0);console.log('PASS: autoconfig XML accepted with Node; no Python');\n`);
   run(['chown', '-R', uid + ':' + gid, path.join(stage, '.cache')]);
-  asUser('npm ci --registry=https://registry.npmjs.org && npm ci --prefix server --omit=dev --registry=https://registry.npmjs.org && npm run typecheck && node --test --test-skip-pattern=' + quote('checked-in public XML is generated from the canonical config and parses') + ' test/*.test.cjs && node .cache/pr101-autoconfig-check.cjs && npm run build && npm run check:bundle && node scripts/test-document.mjs && node --test server/test/mediaReliability.test.js server/test/clientIp.test.js server/test/imageVariants.test.js server/test/dependencySecurity.test.js', stage);
+  const backendChecks = 'node --test server/test/mediaReliability.test.js server/test/clientIp.test.js server/test/imageVariants.test.js server/test/dependencySecurity.test.js';
+  if (prepared) asUser('npm run check:bundle && node .cache/pr101-autoconfig-check.cjs && node scripts/test-document.mjs && ' + backendChecks, stage);
+  else asUser('npm ci --registry=https://registry.npmjs.org && npm ci --prefix server --omit=dev --registry=https://registry.npmjs.org && npm run typecheck && node --test --test-skip-pattern=' + quote('checked-in public XML is generated from the canonical config and parses') + ' test/*.test.cjs && node .cache/pr101-autoconfig-check.cjs && npm run build && npm run check:bundle && node scripts/test-document.mjs && ' + backendChecks, stage);
   if (git('status', '--porcelain')) throw Error('Source changed during build');
   for (const file of FILES.filter(file => file.endsWith('.js'))) run([NODE, '--check', path.join(stage, 'server', file)]);
   const newModules = path.join(stage, 'server/node_modules');
+  const packageInfo = JSON.parse(fs.readFileSync(path.join(stage, 'server/package.json'), 'utf8'));
+  const lockInfo = JSON.parse(fs.readFileSync(path.join(stage, 'server/package-lock.json'), 'utf8'));
+  for (const name of Object.keys(packageInfo.dependencies)) {
+    const installed = JSON.parse(fs.readFileSync(path.join(newModules, name, 'package.json'), 'utf8'));
+    if (installed.version !== lockInfo.packages['node_modules/' + name]?.version) throw Error('Prepared dependency version mismatch: ' + name);
+  }
   const oldModules = path.join(backup, 'node_modules.previous');
   assertDestination(path.join(LIVE, 'node_modules'), LIVE);
   if (!fs.statSync(newModules).isDirectory() || !fs.statSync(path.join(LIVE, 'node_modules')).isDirectory()) throw Error('Dependency directory missing');
@@ -209,6 +224,15 @@ async function main() {
   }
   for (const name of FILES) add(path.join(stage, 'server', name), path.join(LIVE, name), LIVE, 'backend');
   for (const name of walk(path.join(stage, 'server/runtime'))) {
+    // Vite copies public/ into both output directories. Those assets are served
+    // from dist, not the private API runtime; verify and omit the duplicate.
+    const publicFile = path.join(stage, 'public', name);
+    if (fs.existsSync(publicFile) && fs.statSync(publicFile).isFile()) {
+      const data = fs.readFileSync(publicFile);
+      if (sha(data) !== sha(fs.readFileSync(path.join(stage, 'server/runtime', name))) ||
+          sha(data) !== sha(fs.readFileSync(path.join(stage, 'dist', name)))) throw Error('Public build copy mismatch: ' + name);
+      continue;
+    }
     if (!['document.mjs', 'styles.json', 'home.css'].includes(name) && !name.startsWith('chunks/') && !name.startsWith('assets/')) throw Error('Unexpected managed renderer file: ' + name);
     add(path.join(stage, 'server/runtime', name), path.join(LIVE, 'runtime', name), LIVE, 'renderer');
   }
@@ -284,7 +308,8 @@ const lock = '/www/backup/mooncci-deploy.lock';
 if (process.argv.includes('--lock-held')) main().catch(error => { console.error('STOPPED:', error.message, '\nEXIT_CODE=1'); process.exitCode = 1; });
 else {
   fs.mkdirSync('/www/backup', {recursive: true});
-  const result = cp.spawnSync('flock', ['-w', '120', lock, NODE, __filename, '--lock-held'], {stdio: 'inherit', env: {...process.env, PATH: '/opt/mooncci-node-v24.20.0/bin:' + process.env.PATH}});
+  const options = process.argv.slice(2).filter(arg => arg.startsWith('--prepared-stage='));
+  const result = cp.spawnSync('flock', ['-w', '120', lock, NODE, __filename, '--lock-held', ...options], {stdio: 'inherit', env: {...process.env, PATH: '/opt/mooncci-node-v24.20.0/bin:' + process.env.PATH}});
   if (result.error) console.error(result.error.message);
   process.exitCode = result.status ?? 1;
 }
