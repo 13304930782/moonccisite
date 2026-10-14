@@ -1199,3 +1199,29 @@ This restores the exact previous source, complete SSR runtime and overwritten
 static bytes, and removes only newly introduced allowlisted files. It keeps the
 nullable column and all framing data. The five-table SQL is an emergency data
 backup; restoring it to production is a separate operation, not routine code rollback.
+
+### Cover focus and complete card images: offline frontend + SSR release
+
+Use `python scripts/build-cover-focus-release.py --baseline BASELINE.json` from
+a clean, CI-verified commit. Capture current main/reader entry and SSR hashes,
+the 17 allowlisted frontend source hashes (missing files are `null`), unchanged
+backend prerequisites, original covers and sanitized API/worker configuration.
+The builder locally rebuilds paired `dist` and `server/runtime`, includes the
+existing locked renderer dependency closure, and verifies actual archive bytes,
+asset references, LF manifests/checksums and exact allowlists.
+
+Upload the emitted main/reader archives and `.sha256` sidecars, verify each
+sidecar, extract into a dedicated release directory, and run `node verify.cjs
+package DIRECTORY`. Then launch `nohup bash DIRECTORY/deploy.sh > DIRECTORY/deploy.log
+2>&1 < /dev/null &` in a child shell. Production performs no GitHub download,
+dependency installation, frontend build or SQL migration. Main reloads only
+`mooncci-api` to load matching SSR; reader updates only static files. Worker,
+memory budgets, `.env`, uploads and existing crop metadata remain untouched.
+
+Both nodes validate real public SSR, exact entry and asset hashes. Old cached
+entries have a hard 20-second convergence budget; invalid SSR fails immediately.
+Backups cover allowlisted source, complete runtime and overwritten static files,
+with raw tar verification before the first write. Failure automatically restores
+the old release; manual rollback uses the backup command above and refuses to
+overwrite later changes. Inspect the logged `BACKUP`, `EXIT_CODE`, `acceptance.json`
+and `live-crop-ssr-proof.log` (main only) before declaring deployment complete.
