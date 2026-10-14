@@ -11,6 +11,7 @@ const BASE = '332b85f3296e495c3fd8050e6cb79ed9d994f506';
 const LIVE = '/www/wwwroot/mooncci-source/server';
 const WEB = '/www/wwwroot/mooncci.site';
 const NODE = '/opt/mooncci-node-v24.20.0/bin/node';
+const SOURCE_CACHE = '/www/wwwroot/.mooncci-pr101-build-EvQBk5';
 const FILES = ['src/routes/upload.js', 'src/routes/comments.js', 'src/lib/clientIp.js', 'src/lib/mediaReferences.js', 'src/lib/mediaFileTransaction.js', 'src/lib/imageVariants.js', 'src/lib/mailClient.js', 'package.json', 'package-lock.json'];
 // Exact historical versions reported by the user, located and reviewed in Git history.
 const REVIEWED = {
@@ -111,11 +112,13 @@ async function main() {
   fs.chmodSync(stage, 0o700);
   console.log('BUILD_STAGE=' + stage);
   const git = (...args) => output(['git', '-c', 'safe.directory=' + stage, '-C', stage, ...args]);
-  run(['git', 'init', '-q', stage]);
-  run(['git', '-C', stage, 'remote', 'add', 'origin', 'https://github.com/13304930782/moonccisite.git']);
-  run(['git', '-C', stage, 'fetch', '--depth=3', 'origin', REVISION]);
-  run(['git', '-C', stage, 'checkout', '--detach', '-q', 'FETCH_HEAD']);
-  if (git('rev-parse', 'HEAD') !== REVISION) throw Error('Unexpected downloaded revision');
+  const cacheGit = (...args) => output(['git', '-c', 'safe.directory=' + SOURCE_CACHE, '-C', SOURCE_CACHE, ...args]);
+  if (!fs.existsSync(path.join(SOURCE_CACHE, '.git'))) throw Error('Previously downloaded source cache is missing: ' + SOURCE_CACHE);
+  if (cacheGit('rev-parse', 'HEAD') !== REVISION || cacheGit('status', '--porcelain')) throw Error('Source cache revision/working tree changed; stopped before publishing');
+  console.log('SOURCE_CACHE=verified pinned revision; cloning locally without GitHub network');
+  run(['git', 'clone', '--shared', '--no-checkout', SOURCE_CACHE, stage]);
+  run(['git', '-c', 'safe.directory=' + stage, '-C', stage, 'checkout', '--detach', '-q', REVISION]);
+  if (git('rev-parse', 'HEAD') !== REVISION) throw Error('Unexpected cached revision');
   git('merge-base', '--is-ancestor', BASE, REVISION);
   function baseline() {
     const paths = git('ls-tree', '-r', '--name-only', BASE, '--', 'server/src', 'server/package.json', 'server/package-lock.json').split('\n');
