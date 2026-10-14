@@ -14,6 +14,7 @@ import {
 import { MarkdownContent, headingsFor } from "../components/MarkdownContent";
 import { safeImageSrc, safeHref } from "../lib/safeUrl";
 import { projectIcon } from "../lib/projectBrand";
+import { dimensionsFor } from "../lib/imageDimensions";
 import "../../styles/project-detail.css";
 export default function ProjectsPage() {
   const [params, setParams] = useSearchParams();
@@ -126,7 +127,7 @@ export function ProjectDetailPage() {
               {p.tech_stack && <p className="project-detail-tech" aria-label="技术栈">{p.tech_stack}</p>}
             </header>
             {cover && <figure className="project-detail-showcase">
-              <img className="content-image" src={cover} alt={`${p.name} 界面截图`} loading="lazy" />
+              <img className="content-image" src={cover} alt={`${p.name} 界面截图`} {...dimensionsFor(cover, p.image_dimensions)} loading="eager" fetchPriority="high" />
             </figure>}
             <div className="project-reading-grid">
               <details className="project-mobile-toc" data-reading-ignore>
