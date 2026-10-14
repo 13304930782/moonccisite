@@ -70,19 +70,28 @@ const images={
       await page.goto('http://127.0.0.1:4269'+routePath);
       const heading={'/':'完整卡片测试','/account/bookmarks':'我的收藏','/series/card-fixture':'完整封面专栏','/series':'文章专栏'}[routePath];
       if(heading)await page.getByRole('heading',{name:heading,exact:true}).waitFor();
-      const selector=routePath.startsWith('/series')?'.publishing-card > img.card-cover-image':'.blog-card > img.card-cover-image',cards=page.locator(selector);
-      await page.waitForFunction(selector=>{const images=[...document.querySelectorAll(selector)];return images.length===4&&images.every(image=>image.complete&&image.naturalWidth>0);},selector);
-      assert.equal(await cards.count(),4,routePath+' has all loaded image shapes');
+      // Auth restoration intentionally invalidates public snapshots. Wait for
+      // that session and its refresh before measuring the completed page.
+      await page.getByText('fixture',{exact:true}).first().waitFor({state:'attached'});
+      await page.waitForLoadState('networkidle');
+      const selector=routePath.startsWith('/series')?'.publishing-card > img.card-cover-image':'.blog-card > img.card-cover-image';
       await page.evaluate(value=>document.documentElement.classList.toggle('dark',value),dark);
-      for(const image of await cards.all()) {
-       await image.evaluate(img=>img.decode());
-       const box=await image.evaluate(img=>{const css=getComputedStyle(img),rect=img.getBoundingClientRect();return {width:rect.width,height:rect.height,fit:css.objectFit,transform:css.transform,ratio:img.naturalWidth/img.naturalHeight,crop:img.style.getPropertyValue('--cover-x')};});
+      // Take readiness and measurements in the same event-loop turn: a later
+      // React refresh cannot invalidate a previously resolved locator count.
+      const handle=await page.waitForFunction(selector=>{
+       const images=[...document.querySelectorAll(selector)];
+       if(images.length!==4||!images.every(img=>img.complete&&img.naturalWidth>0))return false;
+       return {boxes:images.map(img=>{const css=getComputedStyle(img),rect=img.getBoundingClientRect();return {width:rect.width,height:rect.height,fit:css.objectFit,transform:css.transform,ratio:img.naturalWidth/img.naturalHeight,crop:img.style.getPropertyValue('--cover-x')};}),legacyContainers:document.querySelectorAll('.blog-card-cover').length,overflow:document.documentElement.scrollWidth>innerWidth};
+      },selector);
+      const measured=await handle.jsonValue();await handle.dispose();
+      assert.equal(measured.boxes.length,4,routePath+' has all loaded image shapes');
+      for(const box of measured.boxes) {
        assert.equal(box.fit,'contain');assert.equal(box.transform,'none');assert.equal(box.crop,'');
        assert.ok(Math.abs(box.width/box.height-box.ratio)<.01,'all original image edges remain visible: '+routePath);
        if(!routePath.startsWith('/series'))assert.equal(box.width,width<=760?112:180);
       }
-      assert.equal(await page.locator('.blog-card-cover').count(),0,'legacy card cropping is never rendered');
-      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'page must not overflow: '+routePath);
+      assert.equal(measured.legacyContainers,0,'legacy card cropping is never rendered');
+      assert.equal(measured.overflow,false,'page must not overflow: '+routePath);
       if(width===390||width===1440)await page.screenshot({path:`.cache/article-card-${name}-${width}-${dark}-${routePath.replace(/\W/g,'-')||'home'}.png`,fullPage:true,animations:'disabled'});
      }
     }
