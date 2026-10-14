@@ -1,0 +1,9 @@
+/* Keep native text zoom available while preventing focus-triggered iOS zoom. */
+html { -webkit-text-size-adjust:100%; }
+body { overflow-x:clip; }
+@media(max-width:900px) {
+  body:not(:has(.admin-frame)) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),textarea,select),
+  body:not(:has(.admin-frame)) #root :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),textarea,select) {
+    font-size:max(16px,1em);
+  }
+}

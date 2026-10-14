@@ -11,9 +11,8 @@ import {MarkdownContent} from '../components/MarkdownContent';
 import {safeImageSrc} from '../lib/safeUrl';
 import {ArticleMediaPicker} from '../components/ArticleMediaPicker';
 import {CoverFramingDialog} from '../components/CoverFramingDialog';
-import {CoverImage} from '../components/CoverImage';
+import {CardCoverImage} from '../components/CardCoverImage';
 import {CoverDisplayPreviews} from '../components/CoverDisplayPreviews';
-import {coverFrame} from '../lib/coverCrop';
 import {useState,useRef,useEffect} from 'react';
 import {ArrowLeft, CheckCircle2, FileText} from 'lucide-react';
 import {Link,useParams} from 'react-router-dom';
@@ -70,7 +69,7 @@ function Workspace({userId,postId}:{userId:number;postId?:string}){
   <section className="article-settings-section"><h2>封面</h2><div className="article-settings-grid">
    <label className="article-field-wide">封面地址<input value={d.form.cover_image} onChange={e=>change('cover_image',e.target.value)} placeholder="输入图片地址，或从媒体库选择"/></label>
    <div className="inline-actions article-field-wide"><button type="button" onClick={()=>setPicker('cover')}>从媒体库选择封面</button><button type="button" className="article-button" disabled={!safeImageSrc(d.form.cover_image)||uploads>0||d.busy||d.isRestoring} onClick={()=>setFraming(d.form.cover_image)}>调整显示范围</button><button type="button" disabled={!d.form.cover_image} onClick={()=>change('cover_image','')}>移除封面</button></div>
-   {safeImageSrc(d.form.cover_image)&&<div className="article-field-wide cover-settings-preview"><div className="cover-settings-card"><CoverImage src={safeImageSrc(d.form.cover_image)} frame={coverFrame(d.form.cover_crop,'card')} alt="封面显示范围预览"/></div><p className="article-workspace-caption">{d.form.cover_crop?'已设置文章卡片和详情头图的显示范围。':'使用默认显示范围，可分别调整文章卡片和详情头图。'}</p></div>}
+   {safeImageSrc(d.form.cover_image)&&<div className="article-field-wide cover-settings-preview"><div className="cover-settings-card"><CardCoverImage src={safeImageSrc(d.form.cover_image)} alt="封面显示范围预览"/></div><p className="article-workspace-caption">卡片完整显示原图，焦点和缩放仅影响详情头图。</p></div>}
    <label>上传封面<input type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f)void upload(f).then(url=>change('cover_image',url)).catch(e=>setUploadError(e.message));e.target.value='';}}/></label>
    <label>图片质量<ThemeSelect aria-label="图片质量" value={quality} onValueChange={setQuality}><option value="low">较小</option><option value="medium">标准</option><option value="high">高清</option></ThemeSelect></label>
   </div></section>

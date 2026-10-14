@@ -27,7 +27,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
  const marker=page.getByText('图片下方的文字应保持位置。',{exact:true});
  const y=()=>marker.evaluate(e=>e.getBoundingClientRect().top+scrollY);
  const before=await y(),coverBefore=await cover.boundingBox(),portraitBefore=await portrait.boundingBox();
- assert.equal((await page.locator('.hero-card').boundingBox()).height,width<=900?240:400,'hero cover reserves its fixed card height');
+ const heroBefore=await page.locator('.hero-card').boundingBox(),heroRatio=width<=600?4/3:16/9;
+ assert(Math.abs(heroBefore.height-heroBefore.width/heroRatio)<1,'hero cover reserves its responsive aspect ratio');
  if(sized){assert(Math.abs(portraitBefore.width/portraitBefore.height-.5)<.01);}
  if(out&&width===390&&theme==='light')await page.screenshot({path:path.join(out,sized?'reserved.png':'before.png')});
  release();await portrait.waitFor({state:'attached'});await page.evaluate(()=>document.querySelector('.markdown-body img')?.scrollIntoView({block:'center',behavior:'instant'}));await page.waitForFunction(()=>[...document.querySelectorAll('.article-presentation img')].every(i=>i.complete&&i.naturalWidth>0));

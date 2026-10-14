@@ -10,6 +10,8 @@ export function edgeColor(pixels:Uint8ClampedArray,size=32):[number,number,numbe
  return n?[Math.round(r/n),Math.round(g/n),Math.round(b/n)]:null;
 }
 export function bandGradient(rgb:[number,number,number]):string {
+ if((.2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2])/255>.75)
+  return 'linear-gradient(to bottom, #2b2d30, #1e1f22)';
  const [r,g,b]=rgb.map(v=>Math.min(255,Math.max(0,v))/255);
  const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
  let h=0,s=0,l=(max+min)/2;

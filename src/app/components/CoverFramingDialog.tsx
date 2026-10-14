@@ -1,34 +1,43 @@
 import {useEffect,useId,useLayoutEffect,useRef,useState,type CSSProperties,type KeyboardEvent,type PointerEvent} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import * as Tabs from '@radix-ui/react-tabs';
-import {Monitor,RotateCcw,Smartphone} from 'lucide-react';
 import {CoverImage} from './CoverImage';
-import {coverGeometry,effectiveCoverFrame,normalizeCoverCrop,panCoverFrame,type CoverCrop,type CoverFrame,type CoverSize,type CoverTarget} from '../lib/coverCrop';
+import {CardCoverImage} from './CardCoverImage';
+import {effectiveCoverFrame,normalizeCoverCrop,type CoverCrop,type CoverFrame,type CoverSize} from '../lib/coverCrop';
 import {safeImageSrc} from '../lib/safeUrl';
 import '../../styles/cover-framing.css';
 
 type LoadState = {kind:'loading'}|{kind:'ready';size:CoverSize}|{kind:'error';message:string};
-type Drag = {pointerId:number;clientX:number;clientY:number;frame:CoverFrame;target:CoverTarget;viewport:CoverSize};
-const sameFrame=(a:CoverFrame,b:CoverFrame)=>a.x===b.x && a.y===b.y && a.zoom===b.zoom;
+type Drag = {pointerId:number;clientX:number;clientY:number;frame:CoverFrame;width:number;height:number};
+const DEFAULT_FOCUS:CoverFrame={x:.5,y:.3,zoom:1};
+const clamp=(value:number)=>Math.min(1,Math.max(0,value));
+function initialDetail(value:CoverCrop) {
+  const crop=normalizeCoverCrop(value);
+  return crop?effectiveCoverFrame(crop.detail,'detail'):{...DEFAULT_FOCUS};
+}
 
 export function CoverFramingDialog({src,value,onConfirm,onClose}:{src:string;value:CoverCrop;onConfirm:(value:CoverCrop)=>void;onClose:()=>void}) {
   const safeSrc=safeImageSrc(src),hintId=useId(),zoomId=useId();
-  const [draft,setDraft]=useState<CoverCrop>(()=>normalizeCoverCrop(value));
-  const [target,setTarget]=useState<CoverTarget>('card'),[device,setDevice]=useState<'desktop'|'mobile'>('desktop');
+  const original=useRef(value);
+  const [detailFrame,setDetailFrame]=useState(()=>initialDetail(value)),[changed,setChanged]=useState(false);
   const [load,setLoad]=useState<LoadState>({kind:'loading'}),[attempt,setAttempt]=useState(0);
-  const [viewport,setViewport]=useState<CoverSize>({width:0,height:0}),[dragging,setDragging]=useState(false);
+  const [viewport,setViewport]=useState<CoverSize>({width:0,height:0});
   const [stageElement,setStageElement]=useState<HTMLDivElement|null>(null);
   const heading=useRef<HTMLHeadingElement>(null),previousFocus=useRef<HTMLElement|null>(null),drag=useRef<Drag|null>(null);
-  const frame=effectiveCoverFrame(draft?.[target],target),ready=load.kind==='ready';
-  const geometry=ready?coverGeometry(load.size,viewport,frame):null;
-  const ratio=target==='card'?16/10:device==='desktop'?1000/400:343/240;
+  const detailMarker=useRef<HTMLButtonElement>(null);
+  const ready=load.kind==='ready';
+  const sourceBox=ready && viewport.width>0 && viewport.height>0?(()=>{
+    // Reserve the 44px target around edge coordinates so a focus at 0/100%
+    // remains entirely clickable without clipping or covering other controls.
+    const scale=Math.min(Math.max(1,viewport.width-44)/load.size.width,Math.max(1,viewport.height-44)/load.size.height);
+    const width=load.size.width*scale,height=load.size.height*scale;
+    return {width,height,left:(viewport.width-width)/2,top:(viewport.height-height)/2};
+  })():null;
 
   useEffect(()=>{
-    setDraft(normalizeCoverCrop(value));drag.current=null;setDragging(false);
+    original.current=value;setDetailFrame(initialDetail(value));setChanged(false);drag.current=null;
   },[src]);
   useEffect(()=>{
-    let active=true;
-    setLoad({kind:'loading'});
+    let active=true;setLoad({kind:'loading'});
     if(!safeSrc){setLoad({kind:'error',message:'封面地址无效，请关闭弹窗后更换图片。'});return;}
     const image=new Image();image.decoding='async';
     const finish=(state:LoadState)=>{if(active){clearTimeout(timer);setLoad(state);}};
@@ -42,45 +51,52 @@ export function CoverFramingDialog({src,value,onConfirm,onClose}:{src:string;val
   },[safeSrc,attempt]);
   useLayoutEffect(()=>{
     const element=stageElement;if(!element)return;
-    const measure=()=>{const bounds=element.getBoundingClientRect();setViewport({width:bounds.width,height:bounds.height});drag.current=null;setDragging(false);};
+    const measure=()=>{const bounds=element.getBoundingClientRect();setViewport({width:bounds.width,height:bounds.height});drag.current=null;};
     measure();const observer=new ResizeObserver(measure);observer.observe(element);
     return()=>observer.disconnect();
-  },[stageElement,target,device]);
+  },[stageElement]);
 
-  function changeFrame(next:CoverFrame,selected:CoverTarget=target) {
-    setDraft(previous=>{
-      if(sameFrame(effectiveCoverFrame(previous?.[selected],selected),next))return previous;
-      return {...(previous ?? {card:null,detail:null}),[selected]:next};
-    });
+  function changeFrame(next:CoverFrame) {
+    setChanged(true);setDetailFrame(next);
   }
-  function endDrag(event:PointerEvent<HTMLDivElement>) {
+  function endDrag(event:PointerEvent<HTMLButtonElement>) {
     if(drag.current?.pointerId!==event.pointerId)return;
-    drag.current=null;setDragging(false);
+    drag.current=null;
     if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
   }
-  function beginDrag(event:PointerEvent<HTMLDivElement>) {
-    if(!ready || !geometry || event.button!==0 || !event.isPrimary)return;
+  function beginDrag(event:PointerEvent<HTMLButtonElement>) {
+    if(!ready || !sourceBox || event.button!==0 || !event.isPrimary)return;
     event.preventDefault();event.currentTarget.focus();event.currentTarget.setPointerCapture(event.pointerId);
-    drag.current={pointerId:event.pointerId,clientX:event.clientX,clientY:event.clientY,frame,target,viewport};setDragging(true);
+    drag.current={pointerId:event.pointerId,clientX:event.clientX,clientY:event.clientY,frame:detailFrame,width:sourceBox.width,height:sourceBox.height};
   }
-  function moveDrag(event:PointerEvent<HTMLDivElement>) {
-    const current=drag.current;
-    if(!current || current.pointerId!==event.pointerId || load.kind!=='ready')return;
-    changeFrame(panCoverFrame(current.frame,load.size,current.viewport,event.clientX-current.clientX,event.clientY-current.clientY),current.target);
+  function moveDrag(event:PointerEvent<HTMLButtonElement>) {
+    const current=drag.current;if(!current || current.pointerId!==event.pointerId)return;
+    changeFrame({...current.frame,x:clamp(current.frame.x+(event.clientX-current.clientX)/current.width),y:clamp(current.frame.y+(event.clientY-current.clientY)/current.height)});
   }
-  function moveKey(event:KeyboardEvent<HTMLDivElement>) {
-    if(load.kind!=='ready' || event.altKey || event.ctrlKey || event.metaKey)return;
-    const distance=event.shiftKey?40:10;
+  function moveKey(event:KeyboardEvent<HTMLButtonElement>) {
+    if(!ready || event.altKey || event.ctrlKey || event.metaKey)return;
+    const distance=event.shiftKey?.05:.01;
     const directions:Record<string,[number,number]>={ArrowLeft:[-distance,0],ArrowRight:[distance,0],ArrowUp:[0,-distance],ArrowDown:[0,distance]};
     const delta=directions[event.key];if(!delta)return;
-    event.preventDefault();changeFrame(panCoverFrame(frame,load.size,viewport,...delta));
+    event.preventDefault();changeFrame({...detailFrame,x:clamp(detailFrame.x+delta[0]),y:clamp(detailFrame.y+delta[1])});
   }
-  function resetFrame() {
-    setDraft(previous=>normalizeCoverCrop({...previous,[target]:null}));
+  function resetFrames() {
+    drag.current=null;changeFrame({...DEFAULT_FOCUS});
   }
-  const stageStyle={'--cover-stage-ratio':ratio} as CSSProperties;
-  const sourceStyle=geometry?{width:geometry.width,height:geometry.height,left:geometry.left,top:geometry.top}:undefined;
-  const detailFrame=effectiveCoverFrame(draft?.detail,'detail');
+  function marker() {
+    return <button type="button" ref={detailMarker} className="cover-framing-focus" data-target="detail"
+      style={{left:`${detailFrame.x*100}%`,top:`${detailFrame.y*100}%`}} role="slider" aria-label="详情头图焦点" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(detailFrame.x*100)}
+      aria-valuetext={`横向 ${Math.round(detailFrame.x*100)}%，纵向 ${Math.round(detailFrame.y*100)}%`} aria-describedby={hintId}
+      onPointerDown={beginDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag} onLostPointerCapture={event=>{if(drag.current?.pointerId===event.pointerId)drag.current=null;}} onKeyDown={moveKey}/>;
+  }
+  function controls() {
+    const frame=detailFrame,id=zoomId;
+    return <div className="cover-framing-focus-controls">
+      <div className="cover-framing-focus-value"><span>焦点</span><button type="button" className="cover-framing-coordinate" disabled={!ready} onClick={()=>detailMarker.current?.focus()} aria-label="调整详情头图焦点">{Math.round(frame.x*100)}% · {Math.round(frame.y*100)}%</button></div>
+      <label htmlFor={id}>缩放 <output htmlFor={id}>{frame.zoom.toFixed(1)}×</output></label>
+      <input id={id} type="range" min="1" max="3" step=".1" value={frame.zoom} aria-label="详情头图缩放" aria-valuetext={`${frame.zoom.toFixed(1)}倍`} disabled={!ready} onChange={event=>changeFrame({...frame,zoom:Number(event.target.value)})}/>
+    </div>;
+  }
 
   return <Dialog.Root open onOpenChange={open=>{if(!open)onClose();}}><Dialog.Portal>
     <Dialog.Overlay className="cover-framing-overlay"/>
@@ -90,33 +106,26 @@ export function CoverFramingDialog({src,value,onConfirm,onClose}:{src:string;val
     }} onCloseAutoFocus={event=>{
       if(previousFocus.current?.isConnected){event.preventDefault();previousFocus.current.focus();}
     }}>
-      <header className="cover-framing-header"><Dialog.Close className="cover-framing-button">取消</Dialog.Close><Dialog.Title ref={heading} tabIndex={-1}>调整封面取景</Dialog.Title><button type="button" className="cover-framing-button cover-framing-confirm" disabled={!ready} onClick={()=>onConfirm(normalizeCoverCrop(draft))}>确定</button></header>
-      <Dialog.Description className="cover-framing-description">文章卡片与详情头图可以分别调整。拖动图片，或聚焦取景框后用方向键移动。</Dialog.Description>
-      <Tabs.Root value={target} onValueChange={selected=>{drag.current=null;setDragging(false);setTarget(selected as CoverTarget);}} className="cover-framing-tabs">
-        <Tabs.List className="cover-framing-tablist" aria-label="封面展示位置"><Tabs.Trigger value="card">文章卡片 <small>16:10</small></Tabs.Trigger><Tabs.Trigger value="detail">详情头图</Tabs.Trigger></Tabs.List>
-        <Tabs.Content value={target} className="cover-framing-panel">
-          <div className="cover-framing-scroll">
-            <div className="cover-framing-section-heading"><h3>{target==='card'?'卡片取景':'详情取景'}</h3>{target==='detail'&&<div className="cover-framing-devices" role="group" aria-label="详情取景视口"><button type="button" aria-pressed={device==='desktop'} onClick={()=>setDevice('desktop')}><Monitor size={16} aria-hidden="true"/>桌面</button><button type="button" aria-pressed={device==='mobile'} onClick={()=>setDevice('mobile')}><Smartphone size={16} aria-hidden="true"/>手机</button></div>}</div>
-            <div className="cover-framing-canvas" data-dragging={dragging||undefined}>
-              <div ref={setStageElement} className="cover-framing-viewport" style={stageStyle} role="region" aria-label={target==='card'?'文章卡片取景框':'详情头图取景框'} aria-describedby={hintId} aria-disabled={!ready} tabIndex={ready?0:-1} onPointerDown={beginDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag} onLostPointerCapture={event=>{if(drag.current?.pointerId===event.pointerId){drag.current=null;setDragging(false);}}} onKeyDown={moveKey}>
-                {ready && geometry && <img className="cover-framing-source" src={safeSrc} alt="" draggable={false} style={sourceStyle} onError={()=>setLoad({kind:'error',message:'图片加载失败，请重试。'})}/>}
-                <span className="cover-framing-selection" aria-hidden="true"/>
-                {load.kind==='loading'&&<div className="cover-framing-stage-status" role="status">正在加载封面…</div>}
-                {load.kind==='error'&&<div className="cover-framing-stage-status" role="alert">{load.message}</div>}
-              </div>
-            </div>
-            <div className="cover-framing-hint" id={hintId}><p>亮区是显示范围，暗区是框外的原图。方向键移动 10px，按住 Shift 移动 40px。</p>{load.kind==='error'&&<button type="button" className="cover-framing-button" onClick={()=>setAttempt(previous=>previous+1)}>重新加载图片</button>}</div>
-            <div className="cover-framing-controls"><label htmlFor={zoomId}>缩放 <output htmlFor={zoomId}>{Math.round(frame.zoom*100)}%</output></label><input id={zoomId} type="range" min="1" max="3" step=".01" value={frame.zoom} aria-label="封面缩放" aria-valuetext={`${Math.round(frame.zoom*100)}%`} disabled={!ready} onChange={event=>changeFrame({...frame,zoom:Number(event.target.value)})}/><button type="button" className="cover-framing-button" disabled={!draft?.[target]} onClick={resetFrame}><RotateCcw size={16} aria-hidden="true"/>恢复默认</button></div>
-            {ready && <section className="cover-framing-previews" aria-label="封面展示预览">
-              {target==='card'?<figure className="cover-framing-preview-card"><figcaption>文章卡片预览</figcaption><div className="cover-framing-preview" style={{aspectRatio:'16 / 10'}}><CoverImage src={safeSrc} frame={frame} alt="文章卡片取景预览" draggable={false}/></div></figure>:<>
-                <figure><figcaption><Monitor size={16} aria-hidden="true"/>桌面头图 <small>1000 × 400</small></figcaption><div className="cover-framing-preview" style={{aspectRatio:'1000 / 400'}}><CoverImage src={safeSrc} frame={detailFrame} alt="桌面详情头图取景预览" draggable={false}/></div></figure>
-                <figure><figcaption><Smartphone size={16} aria-hidden="true"/>手机头图 <small>375px 视口</small></figcaption><div className="cover-framing-preview cover-framing-preview-phone" style={{aspectRatio:'343 / 240'}}><CoverImage src={safeSrc} frame={detailFrame} alt="手机详情头图取景预览" draggable={false}/></div></figure>
-              </>}
-            </section>}
-          </div>
-        </Tabs.Content>
-      </Tabs.Root>
-      <footer className="cover-framing-footer"><p>确定后应用两种取景；取消保留原设置。</p></footer>
+      <header className="cover-framing-header"><Dialog.Close className="cover-framing-button">取消</Dialog.Close><Dialog.Title ref={heading} tabIndex={-1}>调整封面取景</Dialog.Title><button type="button" className="cover-framing-button cover-framing-confirm" disabled={!ready} onClick={()=>onConfirm({card:original.current?.card??null,detail:!original.current||changed?detailFrame:original.current.detail})}>确定</button></header>
+      <Dialog.Description className="cover-framing-description"><span id={hintId}>卡片完整显示原图，焦点和缩放仅影响详情头图</span></Dialog.Description>
+      <div className="cover-framing-main">
+        <div ref={setStageElement} className="cover-framing-source-stage" aria-label="完整封面原图">
+          {ready&&sourceBox&&<div className="cover-framing-source-bounds" style={sourceBox as CSSProperties}>
+            <img className="cover-framing-source" src={safeSrc} alt="封面原图" draggable={false} onError={()=>setLoad({kind:'error',message:'图片加载失败，请重试。'})}/>
+            {marker()}
+          </div>}
+          {load.kind==='loading'&&<div className="cover-framing-stage-status" role="status">正在加载封面…</div>}
+          {load.kind==='error'&&<div className="cover-framing-stage-status" role="alert">{load.message}<button type="button" className="cover-framing-button" onClick={()=>setAttempt(previous=>previous+1)}>重新加载图片</button></div>}
+        </div>
+        <div className="cover-framing-settings">
+          {controls()}
+        </div>
+      </div>
+      <section className="cover-framing-previews" aria-label="封面展示预览">
+        <figure><div className="cover-framing-preview cover-card-full">{ready&&<CardCoverImage src={safeSrc} alt="文章卡片完整原图预览" draggable={false}/>}</div><figcaption>文章卡片 · 完整原图</figcaption></figure>
+        {[{name:'详情头图 16:9',ratio:'16 / 9'},{name:'手机详情 4:3',ratio:'4 / 3'}].map(preview=><figure key={preview.name}><div className="cover-framing-preview" style={{aspectRatio:preview.ratio}}>{ready&&<CoverImage src={safeSrc} frame={detailFrame} alt={`${preview.name}取景预览`} draggable={false}/>}</div><figcaption>{preview.name}</figcaption></figure>)}
+      </section>
+      <footer className="cover-framing-footer"><button type="button" className="cover-framing-button" disabled={!ready} onClick={resetFrames}>恢复默认</button><p>确定后才会保存；取消保留原设置</p></footer>
     </Dialog.Content>
   </Dialog.Portal></Dialog.Root>;
 }

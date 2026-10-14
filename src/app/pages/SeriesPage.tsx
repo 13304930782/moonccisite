@@ -1,8 +1,6 @@
 import {Link,useParams} from 'react-router-dom';
 import {SitePage,ResourceState,useResource} from '../components/ContentUI';
-import {safeImageSrc} from '../lib/safeUrl';
-import {CoverImage} from '../components/CoverImage';
-import {coverFrame} from '../lib/coverCrop';
+import {CardCoverImage} from '../components/CardCoverImage';
 import '../../styles/publishing.css';
 export default function SeriesPage(){
  const {slug}=useParams(),resource=useResource('/series'+(slug?'/'+encodeURIComponent(slug):''));
@@ -13,7 +11,7 @@ export default function SeriesPage(){
  {slug&&<p>{data.series.description}</p>}
  {data.items?.length===0&&<p>暂时没有公开专栏。</p>}
  <div className="publishing-list">{data.items?.map((item:any)=><article className="publishing-card" key={item.id}>
- {item.cover_image&&(slug&&coverFrame(item.cover_crop,'card')?<div className="cover-existing-box"><img className="cover-box-sizer" src={safeImageSrc(item.cover_image)} alt="" aria-hidden="true" style={{width:'100%',maxHeight:220,objectFit:'cover'}}/><CoverImage className="cover-box-overlay" src={safeImageSrc(item.cover_image)} frame={coverFrame(item.cover_crop,'card')} alt=""/></div>:<img src={safeImageSrc(item.cover_image)} alt="" style={{width:'100%',maxHeight:220,objectFit:'cover'}}/>)}
+ {item.cover_image&&<CardCoverImage src={item.cover_image} alt=""/>}
  <h2><Link to={slug?'/article/'+item.id:'/series/'+item.slug}>{item.title}</Link></h2>
  <p>{slug?item.summary:item.description}</p>{!slug&&<small>{item.article_count} 篇文章</small>}
  </article>)}</div></section>}</ResourceState></SitePage>;
