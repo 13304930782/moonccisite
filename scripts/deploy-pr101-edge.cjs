@@ -160,7 +160,9 @@ async function mainOrigin(backup) {
   const log=read('/tmp/mooncci-pr101-main.log').toString();
   if(!log.includes('REVISION='+REV) || !log.includes('EXIT_CODE=0')) throw Error('Main deployment is not confirmed complete');
   const stage=log.match(/^BUILD_STAGE=(.+)$/m)?.[1];
-  if(!stage || !stage.startsWith('/www/wwwroot/.mooncci-pr101-build-') || fs.realpathSync(stage)!==stage || output(['git','-C',stage,'rev-parse','HEAD'])!==REV) throw Error('Unexpected prepared stage');
+  if(!stage || !/^\/www\/wwwroot\/\.mooncci-pr101-build-[A-Za-z0-9]+$/.test(stage) || fs.realpathSync(stage)!==stage) throw Error('Unexpected prepared stage');
+  // The main deployer creates the checkout as mooncci. Read Git as that owner.
+  if(output(['su','-s','/bin/bash','mooncci','-c',"git -C '"+stage+"' rev-parse HEAD"])!==REV) throw Error('Unexpected prepared revision');
   const dist=path.join(stage,'dist'), files=walk(dist);
   if(!files.includes('index.html') || files.length<10) throw Error('Missing built frontend');
   for(const file of files) {assertPath(path.join(WEB,file),WEB);if(sha(read(path.join(WEB,file)))!==sha(read(path.join(dist,file)))) throw Error('Main built resource differs from live: '+file);}
