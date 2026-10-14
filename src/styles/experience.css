@@ -19,7 +19,8 @@
 .experience-field-error { color:var(--foreground); padding:8px 0; font-size:14px; }
 @media(max-width:767px) {
 
- :is(.site-header,.account-shell,.admin-shell,.page-content) :is(button,.neo-button,.quiet-button,.theme-select-trigger) { min-height:44px; }
+ :is(.site-header,.account-shell,.admin-frame,.page-content) :is(button,.neo-button,.quiet-button,.theme-select-trigger) { min-height:44px; }
+ .admin-frame button { min-width:44px; }
  :is(.icon-button,.feedback-toast button) { min-width:44px; }
  .account-content,.page-content { min-width:0; }
  .weather-companion { bottom:calc(80px + env(safe-area-inset-bottom)); }
@@ -30,12 +31,13 @@
 }
 
 .experience-field-error { display:block; grid-column:1 / -1; line-height:1.5; }
-:is(.neo-page,.account-shell,.admin-shell) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),textarea,.theme-select-trigger) { border-radius:var(--control-radius); }
+:is(.neo-page,.account-shell,.admin-frame) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),textarea,.theme-select-trigger) { border-radius:var(--control-radius); }
 :is(.account-content,.admin-content,.page-content) :is(.muted,.account-message,.quiet-state) { font-size:14px; }
 [data-slot="dialog-content"],[data-slot="alert-dialog-content"] { border-radius:var(--panel-radius); }
 @media(max-width:767px) {
  .neo-page .weather-companion { bottom:calc(80px + env(safe-area-inset-bottom)); }
- .pagination button,.account-sidebar nav a,.admin-nav a { min-height:44px; }
+ .pagination button,.account-sidebar nav a,.admin-menu a { min-height:44px; }
+ .admin-frame details>summary { min-height:44px; align-content:center; }
 }
 
 .auth-field-control { flex-wrap:wrap; }
@@ -51,8 +53,8 @@
 :is(.page-content,.account-content,.admin-content) :is(button,a,input,textarea,[role="combobox"],summary):focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
 .pagination .quiet-button { min-height:44px; min-width:88px; }
 .pagination button:disabled { opacity:.5; cursor:not-allowed; }
-:is(.neo-page,.account-shell,.admin-shell) :is(.quiet-button,.engagement-button,.article-button,.workflow-button,.account-primary-button) { min-height:44px; border-radius:var(--control-radius); font-size:16px; line-height:1.5; }
-:is(.neo-page,.account-shell,.admin-shell) :is(.engagement-panel,.operations-panel,.editor-panel) { border-radius:var(--panel-radius); }
+:is(.neo-page,.account-shell,.admin-frame) :is(.quiet-button,.engagement-button,.article-button,.workflow-button,.account-primary-button) { min-height:44px; border-radius:var(--control-radius); font-size:16px; line-height:1.5; }
+:is(.neo-page,.account-shell,.admin-frame) :is(.engagement-panel,.operations-panel,.editor-panel) { border-radius:var(--panel-radius); }
 @media(max-width:767px) {
  .resource-notice { flex-direction:column; }
  .resource-notice .quiet-button { align-self:flex-start; }

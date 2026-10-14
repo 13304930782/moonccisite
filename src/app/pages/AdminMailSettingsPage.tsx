@@ -196,8 +196,9 @@ export default function AdminMailSettingsPage() {
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block mb-2 text-sm font-medium text-foreground">SMTP 服务器</label>
+                <label htmlFor="mail-setting-smtp_host" className="block mb-2 text-sm font-medium text-foreground">SMTP 服务器</label>
                 <input
+                  id="mail-setting-smtp_host"
                   value={mail.smtp_host}
                   onChange={(e) => update('smtp_host', e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
@@ -206,8 +207,9 @@ export default function AdminMailSettingsPage() {
               </div>
 
               <div>
-                <label className="block mb-2 text-sm font-medium text-foreground">SMTP 端口</label>
+                <label htmlFor="mail-setting-smtp_port" className="block mb-2 text-sm font-medium text-foreground">SMTP 端口</label>
                 <input
+                  id="mail-setting-smtp_port"
                   value={mail.smtp_port}
                   onChange={(e) => update('smtp_port', e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
@@ -228,8 +230,9 @@ export default function AdminMailSettingsPage() {
               </div>
 
               <div>
-                <label className="block mb-2 text-sm font-medium text-foreground">默认 SMTP 登录邮箱</label>
+                <label htmlFor="mail-setting-smtp_user" className="block mb-2 text-sm font-medium text-foreground">默认 SMTP 登录邮箱</label>
                 <input
+                  id="mail-setting-smtp_user"
                   value={mail.smtp_user}
                   onChange={(e) => update('smtp_user', e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
@@ -238,8 +241,9 @@ export default function AdminMailSettingsPage() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block mb-2 text-sm font-medium text-foreground">默认邮箱密码</label>
+                <label htmlFor="mail-setting-smtp_pass" className="block mb-2 text-sm font-medium text-foreground">默认邮箱密码</label>
                 <input
+                  id="mail-setting-smtp_pass"
                   value={mail.smtp_pass}
                   onChange={(e) => update('smtp_pass', e.target.value)}
                   type="password"
@@ -258,8 +262,9 @@ export default function AdminMailSettingsPage() {
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block mb-2 text-sm font-medium text-foreground">默认发件地址</label>
+                <label htmlFor="mail-setting-smtp_from" className="block mb-2 text-sm font-medium text-foreground">默认发件地址</label>
                 <input
+                  id="mail-setting-smtp_from"
                   value={mail.smtp_from}
                   onChange={(e) => update('smtp_from', e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
@@ -268,8 +273,9 @@ export default function AdminMailSettingsPage() {
               </div>
 
               <div>
-                <label className="block mb-2 text-sm font-medium text-foreground">接收提醒邮箱</label>
+                <label htmlFor="mail-setting-notify_to" className="block mb-2 text-sm font-medium text-foreground">接收提醒邮箱</label>
                 <input
+                  id="mail-setting-notify_to"
                   value={mail.notify_to}
                   onChange={(e) => update('notify_to', e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
@@ -278,8 +284,9 @@ export default function AdminMailSettingsPage() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block mb-2 text-sm font-medium text-foreground">站点地址</label>
+                <label htmlFor="mail-setting-site_url" className="block mb-2 text-sm font-medium text-foreground">站点地址</label>
                 <input
+                  id="mail-setting-site_url"
                   value={mail.site_url}
                   onChange={(e) => update('site_url', e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
@@ -288,8 +295,9 @@ export default function AdminMailSettingsPage() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block mb-2 text-sm font-medium text-foreground">Early Access 下载地址</label>
+                <label htmlFor="mail-setting-early_access_download_url" className="block mb-2 text-sm font-medium text-foreground">Early Access 下载地址</label>
                 <input
+                  id="mail-setting-early_access_download_url"
                   value={mail.early_access_download_url}
                   onChange={(e) => update('early_access_download_url', e.target.value)}
                   type="url"

@@ -7,3 +7,4 @@
 .bookmark-item .blog-card{height:auto}.bookmark-item>.text-link{margin-top:12px}
 .article-discovery .quiet-button{display:inline-flex;align-items:center;gap:6px}
 @media(max-width:640px){.bookmark-list{grid-template-columns:minmax(0,1fr);gap:20px}}
+.about-social a{display:inline-flex;align-items:center;min-height:44px}

@@ -8,6 +8,7 @@ export default function AdminEditorApplicationsPage() {
   const [applications, setApplications] = useState<any[]>([]);
   const [status, setStatus] = useState('all');
   const [message, setMessage] = useState('');
+  const [reviewing, setReviewing] = useState<number | null>(null);
 
   const loadApplications = () => {
     api(`/admin/editor-applications?status=${status}`)
@@ -20,7 +21,11 @@ export default function AdminEditorApplicationsPage() {
   }, [status]);
 
   const review = async (id: number, nextStatus: 'approved' | 'rejected') => {
-    const note = window.prompt(nextStatus === 'approved' ? '通过备注，可留空' : '拒绝理由，可留空') || '';
+    if (reviewing !== null) return;
+    const note = window.prompt(nextStatus === 'approved' ? '通过备注，可留空' : '拒绝理由，可留空');
+    if (note === null) return;
+    setReviewing(id);
+    setMessage('');
 
     try {
       const res = await api(`/admin/editor-applications/${id}`, {
@@ -32,6 +37,8 @@ export default function AdminEditorApplicationsPage() {
       loadApplications();
     } catch (err: any) {
       setMessage(err.message || '操作失败'); notify.error(err.message || '操作失败');
+    } finally {
+      setReviewing(null);
     }
   };
 
@@ -90,10 +97,10 @@ export default function AdminEditorApplicationsPage() {
 
                 {item.status === 'pending' && (
                   <div className="flex gap-2 shrink-0">
-                    <button onClick={() => review(item.id, 'approved')} className="rounded-full bg-muted px-4 py-2 text-sm text-foreground">
-                      通过
+                    <button disabled={reviewing !== null} onClick={() => review(item.id, 'approved')} className="rounded-full bg-muted px-4 py-2 text-sm text-foreground disabled:opacity-50">
+                      {reviewing === item.id ? '处理中…' : '通过'}
                     </button>
-                    <button onClick={() => review(item.id, 'rejected')} className="rounded-full border border-red-200 px-4 py-2 text-sm text-red-600">
+                    <button disabled={reviewing !== null} onClick={() => review(item.id, 'rejected')} className="rounded-full border border-red-200 px-4 py-2 text-sm text-red-600 disabled:opacity-50">
                       拒绝
                     </button>
                   </div>

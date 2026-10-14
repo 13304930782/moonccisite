@@ -1,9 +1,10 @@
 import { FormInput } from '../components/FormInput';
 import { FormEvent, useState } from 'react';
 import {authLink, loginDestination} from '../lib/loginDestination';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Mail } from 'lucide-react';
 import { api } from '../lib/api';
+import { AuthShell } from '../components/AuthShell';
 
 export default function ForgotPasswordPage() {
   const [params] = useSearchParams();
@@ -38,51 +39,37 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="neo-dot-grid flex min-h-screen items-center justify-center px-6 py-10">
-      <div className="w-full max-w-md rounded-[12px] border border-border bg-card p-8 shadow-none">
-        <Link to={authLink('/login', destination)} className="text-sm font-semibold text-foreground hover:underline">
-          返回登录
-        </Link>
-
-        <h1 className="neo-heading mt-5 text-4xl text-foreground">
-          忘记密码
-        </h1>
-
-        <p className="mt-2 text-sm text-muted-foreground">
-          输入注册邮箱，我们会发送一封密码重置邮件。
-        </p>
-
+    <AuthShell formTitle="忘记密码" formDescription="输入注册邮箱，我们会发送一封密码重置邮件。"
+      alternatePrompt="" alternateLabel="返回登录" alternateTo={authLink('/login', destination)}>
         {message && (
-          <div className="mt-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
+          <div className="auth-message" role="status">
             {message}
           </div>
         )}
 
-        <form onSubmit={submit} className="mt-6 space-y-5">
-          <div>
-            <label htmlFor="recovery-email" className="block mb-2 text-sm font-medium text-foreground">
+        <form onSubmit={submit} className="auth-form">
+          <div className="auth-field">
+            <label htmlFor="recovery-email" className="block mb-2">
               邮箱
             </label>
-            <div className="neo-input flex items-center gap-3 px-4 py-3">
+            <div className="auth-field-control">
               <Mail className="w-5 h-5 text-muted-foreground" />
               <FormInput
                 id="recovery-email" autoComplete="email" value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 placeholder="your@email.com"
-                className="w-full bg-transparent outline-none"
               />
             </div>
           </div>
 
           <button
             disabled={loading}
-            className="neo-button neo-button-dark w-full px-5 py-3 disabled:opacity-60"
+            className="auth-submit disabled:opacity-60"
           >
             {loading ? '发送中...' : '发送重置邮件'}
           </button>
         </form>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

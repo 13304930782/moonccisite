@@ -76,6 +76,10 @@
 .journal-actions a:focus-visible .journal-link-arrow { opacity:1; transform:none; }
 @media(hover:hover) { .journal-actions a:hover .journal-link-arrow { opacity:1; transform:none; } }
 @media(prefers-reduced-motion:reduce) { .journal-link-arrow { transition:none; } }
+@media(max-width:900px) {
+ .journal-back { display:inline-flex; align-items:center; min-height:44px; }
+ .journal-actions a { min-height:44px; }
+}
 @media(max-width:700px) {
 
 

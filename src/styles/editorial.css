@@ -257,6 +257,7 @@ input[type='checkbox'] {
   border-bottom: 1px solid transparent;
   padding-block: 4px;
   font-size: 14px;
+  min-height: 44px;
 }
 .text-link:hover {
   border-color: currentColor;
@@ -676,6 +677,7 @@ input[type='checkbox'] {
   .hero-note-actions { display:flex; align-items:center; margin-top:auto; padding-top:24px; }
 }
 .home-hero h1 {
+  text-wrap: balance;
   font-size:var(--page-title-size);
   line-height:1.25;
   font-weight:600;
@@ -797,6 +799,10 @@ input[type='checkbox'] {
   margin: 8px 0 12px;
 }
 .blog-card p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
   font-size: 15px;
   line-height: 1.7;
   color: var(--muted-foreground);

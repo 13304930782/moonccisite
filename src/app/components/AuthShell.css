@@ -36,11 +36,16 @@
   font-weight: 500;
 }
 .auth-field-label a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   font-size: 12px;
   color: var(--muted-foreground);
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+.auth-layout .auth-alternate a,
+.auth-layout .auth-form-content > .text-link { min-height: 44px; }
 .auth-field-control {
   position: relative;
   display: flex;

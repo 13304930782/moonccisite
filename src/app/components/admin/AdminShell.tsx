@@ -1,4 +1,5 @@
 import { reducedMotion } from '../../lib/motionPreference';
+import { focusableWithin, loopFocus } from '../../lib/focusLoop';
 import {useOperations} from '../../lib/useOperations';
 import '../../../styles/workspace-polish.css';
 import {usePublishing} from '../../lib/usePublishing';
@@ -76,6 +77,8 @@ function canWrite(role?: string) {
 
 export function AdminShell({ children }: AdminShellProps) {
   const mainRef = useRef<HTMLElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null), mobileBarRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null), mobileMenuRef = useRef<HTMLElement>(null);
   const [showTop, setShowTop] = useState(false);
   function backToTop() {
     const main = mainRef.current;
@@ -102,12 +105,32 @@ export function AdminShell({ children }: AdminShellProps) {
     setShowTop(false);
   }, [location.pathname]);
   useEffect(() => {
-    const close = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMobileOpen(false);
-    };
-    window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
+    const media = window.matchMedia('(max-width:760px)');
+    const resize = () => { if (!media.matches) setMobileOpen(false); };
+    media.addEventListener('change', resize);
+    return () => media.removeEventListener('change', resize);
   }, []);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const background = [mainRef.current, sidebarRef.current, mobileBarRef.current]
+      .filter((element): element is HTMLElement => !!element);
+    const previous = background.map(element => element.inert);
+    background.forEach(element => { element.inert = true; });
+    const frame = requestAnimationFrame(() => {
+      const menu = mobileMenuRef.current;
+      if (menu) (focusableWithin(menu)[0] || menu).focus({preventScroll:true});
+    });
+    const keys = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setMobileOpen(false); }
+      else if (mobileMenuRef.current) loopFocus(event, mobileMenuRef.current);
+    };
+    window.addEventListener('keydown', keys);
+    return () => {
+      cancelAnimationFrame(frame); window.removeEventListener('keydown', keys);
+      background.forEach((element, index) => { element.inert = previous[index]; });
+      if (menuButtonRef.current?.offsetParent) menuButtonRef.current.focus({preventScroll:true});
+    };
+  }, [mobileOpen]);
 
   const role = user?.role || 'user';
   const manager = isManager(role);
@@ -268,13 +291,13 @@ export function AdminShell({ children }: AdminShellProps) {
     if (await logout()) closeMobile();
   };
 
-  const MenuContent = () => (
+  const MenuContent = ({mobile = false}: {mobile?: boolean} = {}) => (
     <>
       <div className="admin-menu-head">
         <Link className="site-brand" to="/">
           mooncci
         </Link>
-        <ThemeToggle />
+        <div className="admin-menu-head-actions"><ThemeToggle />{mobile && <button className="icon-button" type="button" aria-label="关闭后台菜单" onClick={closeMobile}><X /></button>}</div>
       </div>
       <p className="admin-user">
         {user?.username} · {getRoleName(role)}
@@ -308,19 +331,21 @@ export function AdminShell({ children }: AdminShellProps) {
   );
   return (
     <div className="admin-frame">
-      <aside className="admin-sidebar">
+      <aside className="admin-sidebar" ref={sidebarRef}>
         {MenuContent()}
       </aside>
-      <header className="admin-mobile-bar">
+      <header className="admin-mobile-bar" ref={mobileBarRef}>
         <Link className="site-brand" to="/">
           mooncci
         </Link>
         <div className="header-actions">
           <ThemeToggle />
           <button
+            ref={menuButtonRef}
             className="icon-button"
             aria-label={mobileOpen ? '关闭后台菜单' : '打开后台菜单'}
             aria-expanded={mobileOpen}
+            aria-controls="admin-mobile-menu"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
             {mobileOpen ? <X /> : <Menu />}
@@ -332,10 +357,11 @@ export function AdminShell({ children }: AdminShellProps) {
           <button
             className="admin-menu-backdrop"
             aria-label="关闭菜单"
+            tabIndex={-1}
             onClick={closeMobile}
           />
-          <aside>
-            {MenuContent()}
+          <aside id="admin-mobile-menu" ref={mobileMenuRef} role="dialog" aria-modal="true" aria-label="后台导航" tabIndex={-1}>
+            {MenuContent({mobile:true})}
           </aside>
         </div>
       )}

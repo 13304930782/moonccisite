@@ -11,7 +11,7 @@
 .project-image-preview--icon { flex:0 0 88px; width:88px; aspect-ratio:1; }
 .project-image-preview img { display:block; width:100%; height:100%; max-height:100%; object-fit:contain; }
 .project-image-preview--icon img { padding:8px; }
-.project-image-actions { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center; min-width:0; flex:1; }
+.project-image-actions { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center; min-width:0; flex:1 1 160px; }
 .project-image-field .project-image-actions > :is(button,label) { display:inline-flex; position:relative; align-items:center; justify-content:center; min-height:44px; margin:0; padding:0 12px; border:0; border-radius:8px; font:inherit; font-size:13px; line-height:1.4; background:var(--fill); color:var(--foreground); cursor:pointer; white-space:nowrap; }
 .project-image-field label.project-image-upload { background:var(--primary); color:var(--primary-foreground); }
 .project-image-field .project-image-actions .project-image-remove { background:transparent; color:var(--muted-foreground); }
