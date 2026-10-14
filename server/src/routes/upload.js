@@ -286,7 +286,8 @@ async function compressImageIfNeeded(file, imageInfo, qualityKey, journal) {
   const baseName = path.basename(file.filename, currentExt);
   const nextFilename = `${baseName}.webp`;
   const nextPath = path.join(uploadDir, nextFilename);
-  const tmpPath = file.tmpPath || `${nextPath}.tmp`;
+  // Never accept a temporary path from a file/request object.
+  const tmpPath = path.join(uploadDir, `compression-${require('node:crypto').randomUUID()}.tmp`);
   const originalSize = fs.statSync(originalPath).size;
 
   // A byte snapshot also releases the input file before the same path is replaced.
@@ -753,12 +754,11 @@ router.post('/media/:filename/recompress', authRequired, editorOrAdmin, async (r
     }
 
     const nextPath = filePathFor(`${path.basename(filename, path.extname(filename))}.webp`);
-    const tmpPath = `${nextPath}.tmp-${require('node:crypto').randomUUID()}`;
-    const {updated, result} = await mediaFileTransaction(db, uploadDir, [filePath, nextPath, tmpPath], async (c, journal) => {
+    const {updated, result} = await mediaFileTransaction(db, uploadDir, [filePath, nextPath], async (c, journal) => {
       const current = await findMedia(filename, 'active', c);
       if (!current) throw Object.assign(new Error('媒体文件不存在'), {status:404});
       if (nextPath !== filePath && (fs.existsSync(nextPath) || await findMedia(path.basename(nextPath), null, c))) throw Object.assign(new Error('目标文件名已存在'), {status:409});
-      const file = {filename, path:filePath, tmpPath, size:fs.statSync(filePath).size};
+      const file = {filename, path:filePath, size:fs.statSync(filePath).size};
       const result = await compressImageIfNeeded(file, imageInfo, quality, journal);
       const meta = await getImageMeta(file.path, file.filename, {original_name:current.original_name, display_name:current.display_name, alt_text:current.alt_text, quality});
       await mediaReferences.updateReferences(c, current.url, meta.url, req.user.id);

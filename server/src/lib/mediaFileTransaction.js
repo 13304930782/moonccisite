@@ -10,7 +10,11 @@ async function mediaFileTransaction(db, directory, files, work) {
   const backup = await fs.mkdtemp(path.join(root, 'mutation-'));
   const saved = [];
   const created = new Map();
-  const journal = {created(file) { const stat=fsSync.lstatSync(file);created.set(file, {dev:stat.dev, ino:stat.ino}); }};
+  const journal = {created(file) {
+    if (!saved.some(item => item.file===file) && path.dirname(path.resolve(file)) !== path.resolve(directory)) throw new Error('Unexpected media journal path');
+    const stat=fsSync.lstatSync(file);created.set(file, {dev:stat.dev, ino:stat.ino});
+    if (!saved.some(item => item.file===file)) saved.push({file, existed:false});
+  }};
   let c, committing = false, finished = false;
   try {
     c = await db.getConnection();

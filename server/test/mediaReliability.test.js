@@ -16,6 +16,10 @@ test('media relocation preserves a valid AI receipt and never legitimizes an inv
  assert.equal(proof.valid(next),true);assert.equal(next.summary,before.summary);assert.deepEqual(next.cover_crop,before.cover_crop);assert.equal(proof.valid(before),true);
  assert.equal(proof.valid(remapPayload({...before,summary_receipt:'f'.repeat(64)},'/api/uploads/old.png','/api/uploads/new.png')),false);
 });
+test('URL relocation does not rewrite a different asset sharing the same filename prefix',()=>{
+ const value={content:'![one](/api/uploads/a.png) ![two](/api/uploads/a.png-other.webp)',cover_image:'/api/uploads/a.png-other.webp'};
+ assert.deepEqual(remapPayload(value,'/api/uploads/a.png','/api/uploads/new.png'),{content:'![one](/api/uploads/new.png) ![two](/api/uploads/a.png-other.webp)',cover_image:value.cover_image});
+});
 function fakeDb({commit=async()=>{}}={}){
  const events=[];return {events,getConnection:async()=>({beginTransaction:async()=>events.push('begin'),query:async()=>{events.push('lock');return [[]]},commit:async()=>{events.push('commit');await commit()},rollback:async()=>events.push('rollback'),release:()=>events.push('release')})};
 }
@@ -48,6 +52,12 @@ test('successful mutation commits before removing recovery files',async t=>{
  const file=path.join(dir,'image.webp');await fs.writeFile(file,'original');const db=fakeDb();
  assert.equal(await mediaFileTransaction(db,dir,[file],async()=>{await fs.writeFile(file,'compressed');return 'done'}),'done');
  assert.equal(await fs.readFile(file,'utf8'),'compressed');assert.deepEqual(await fs.readdir(path.join(dir,'.mutations')),[]);assert.deepEqual(db.events,['begin','lock','commit','release']);
+});
+test('declared trash moves participate in rollback while dynamically created paths stay in uploads',async t=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'media-trash-'));t.after(()=>fs.rm(dir,{recursive:true,force:true}));await fs.mkdir(path.join(dir,'.trash'));
+ const file=path.join(dir,'image.webp'),trash=path.join(dir,'.trash/image.webp');await fs.writeFile(file,'original');
+ await assert.rejects(mediaFileTransaction(fakeDb(),dir,[file,trash],async(_c,journal)=>{await fs.rename(file,trash);journal.created(trash);throw Error('metadata failed')}),/metadata failed/);
+ assert.equal(await fs.readFile(file,'utf8'),'original');await assert.rejects(fs.access(trash));
 });
 test('upload callback forwards a metadata failure to Express without an unhandled rejection',async()=>{
  const source=require('node:fs').readFileSync(path.join(__dirname,'../src/routes/upload.js'),'utf8');

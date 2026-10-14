@@ -23,7 +23,10 @@ async function countReferences(db, url) {
   return total;
 }
 function remap(value, oldUrl, newUrl) {
-  if (typeof value === 'string') return value.split(oldUrl).join(newUrl);
+  if (typeof value === 'string') {
+    const literal = oldUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return value.replace(new RegExp(literal + '(?=$|[\\s"\'<>\\)\\]\\}?#,&])', 'g'), () => newUrl);
+  }
   if (Array.isArray(value)) return value.map(item => remap(item, oldUrl, newUrl));
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, remap(item, oldUrl, newUrl)]));
   return value;
@@ -41,7 +44,8 @@ async function updateReferences(c, oldUrl, newUrl, actorId) {
   // Use the same lock order as publishing: working copy, workflow, public post.
   const [drafts] = await c.query(`SELECT * FROM article_drafts WHERE ${matches(['payload'])} OR post_id IN (SELECT id FROM posts WHERE ${matches(['content', 'cover_image'])}) ORDER BY id FOR UPDATE`, [oldUrl, oldUrl, oldUrl]);
   const [workflows] = await c.query(`SELECT * FROM article_workflows WHERE ${matches(['snapshot'])}${drafts.length ? ' OR draft_id IN (?)' : ''} ORDER BY draft_id FOR UPDATE`, [oldUrl, ...(drafts.length ? [drafts.map(d => d.id)] : [])]);
-  const [posts] = await c.query(`SELECT * FROM posts WHERE ${matches(['content', 'cover_image'])} ORDER BY id FOR UPDATE`, [oldUrl, oldUrl]);
+  const [rows] = await c.query(`SELECT * FROM posts WHERE ${matches(['content', 'cover_image'])} ORDER BY id FOR UPDATE`, [oldUrl, oldUrl]);
+  const posts = rows.filter(post => { const next=remap(post,oldUrl,newUrl);return next.content!==post.content || next.cover_image!==post.cover_image; });
   for (const post of posts) {
     await revisions.baseline(c, post, actorId);
     const next = remap(post, oldUrl, newUrl);
@@ -68,7 +72,12 @@ async function updateReferences(c, oldUrl, newUrl, actorId) {
     await c.query('UPDATE article_revisions SET payload=?,content_hash=? WHERE id=?', [JSON.stringify(next), revisions.hash(next), row.id]);
   }
   for (const [table, fields] of sources.filter(([table]) => ['site_settings','updates','projects','site_now','article_series'].includes(table))) {
-    await c.query(`UPDATE ${table} SET ${fields.map(field => `${field}=REPLACE(${field}, ?, ?)`).join(',')} WHERE ${matches(fields)}`, [...fields.flatMap(() => [oldUrl, newUrl]), ...fields.map(() => oldUrl)]);
+    const key = table==='site_settings' ? 'setting_key' : 'id';
+    const [items] = await c.query(`SELECT ${key},${fields.join(',')} FROM ${table} WHERE ${matches(fields)} ORDER BY ${key} FOR UPDATE`, fields.map(() => oldUrl));
+    for (const item of items) {
+      const next=remap(item,oldUrl,newUrl);
+      if (fields.some(field => next[field]!==item[field])) await c.query(`UPDATE ${table} SET ${fields.map(field => `${field}=?`).join(',')} WHERE ${key}=?`, [...fields.map(field => next[field]), item[key]]);
+    }
   }
 }
 module.exports = { countReferences, updateReferences, remapPayload };
