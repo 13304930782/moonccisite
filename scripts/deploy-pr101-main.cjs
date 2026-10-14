@@ -11,7 +11,14 @@ const BASE = '332b85f3296e495c3fd8050e6cb79ed9d994f506';
 const LIVE = '/www/wwwroot/mooncci-source/server';
 const WEB = '/www/wwwroot/mooncci.site';
 const NODE = '/opt/mooncci-node-v24.20.0/bin/node';
-const FILES = ['src/routes/upload.js', 'src/routes/comments.js', 'src/lib/clientIp.js', 'src/lib/mediaReferences.js', 'src/lib/mediaFileTransaction.js'];
+const FILES = ['src/routes/upload.js', 'src/routes/comments.js', 'src/lib/clientIp.js', 'src/lib/mediaReferences.js', 'src/lib/mediaFileTransaction.js', 'src/lib/imageVariants.js', 'src/lib/mailClient.js', 'package.json', 'package-lock.json'];
+// Exact historical versions reported by the user, located and reviewed in Git history.
+const REVIEWED = {
+  'package.json': '6c11365197fac61c380516afa835f48bfe08dad571b27e445f46284b6182f2da',
+  'package-lock.json': 'ed70ac1c4b9c6d06d35606ba5521026920d8254e5fee18898a6d7ed9228f26c0',
+  'src/lib/imageVariants.js': '50ef2decb14263022f9d3951dfb8bfbb1df6d39e3dd918dac6f87417e3547272',
+  'src/lib/mailClient.js': '6cbceebb8eb0657d5a9140d2a286e453057e5d4dbc6fed7e3f62354532c29abc',
+};
 const sha = data => crypto.createHash('sha256').update(data).digest('hex');
 const normal = data => sha(data.toString('utf8').replace(/\r\n/g, '\n'));
 const quote = value => "'" + value.replace(/'/g, "'\\''") + "'";
@@ -33,7 +40,27 @@ function apiProcess() {
   const matches = pm2list().filter(p => p.name === 'mooncci-api' &&
     p.pm2_env.pm_exec_path === LIVE + '/src/index.js' && p.pm2_env.pm_cwd === LIVE);
   if (matches.length !== 1 || matches[0].pm2_env.status !== 'online') throw Error('API process/path is not the expected online mooncci-api');
+  if (!(Number(String(matches[0].pm2_env.node_version).split('.')[0]) >= 24)) throw Error('Running API must already use Node 24+');
   return matches[0];
+}
+function workerProcess() {
+  const matches = pm2list().filter(p => p.name === 'mooncci-worker' &&
+    p.pm2_env.pm_exec_path === LIVE + '/src/worker.js' && p.pm2_env.pm_cwd === LIVE);
+  if (matches.length !== 1 || matches[0].pm2_env.status !== 'online') throw Error('Worker process/path is not the expected online mooncci-worker');
+  if (!(Number(String(matches[0].pm2_env.node_version).split('.')[0]) >= 24)) throw Error('Running worker must already use Node 24+');
+  return matches[0];
+}
+async function workerReady(since) {
+  for (let i = 0; i < 20; i++) {
+    try {
+      const worker = workerProcess();
+      const directory = worker.pm2_env.MOONCCI_RUNTIME_DIR || path.join(LIVE, 'runtime');
+      const state = JSON.parse(fs.readFileSync(path.join(directory, 'worker.json'), 'utf8'));
+      if (!state.stopped && Date.parse(state.startedAt) >= since - 1000 && Date.parse(state.checkedAt) >= since - 1000) return;
+    } catch {}
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  throw Error('Worker readiness check failed');
 }
 function walk(directory, prefix = '') {
   const result = [];
@@ -75,6 +102,7 @@ async function main() {
   const uid = Number(output(['id', '-u', 'mooncci']));
   const gid = Number(output(['id', '-g', 'mooncci']));
   const api = apiProcess();
+  const worker = workerProcess();
   fs.mkdirSync('/www/backup', {recursive: true});
   const backup = fs.mkdtempSync('/www/backup/mooncci-pr101-main-');
   fs.chmodSync(backup, 0o700);
@@ -97,7 +125,7 @@ async function main() {
       assertDestination(dest, LIVE);
       const before = cp.execFileSync('git', ['-c', 'safe.directory=' + stage, '-C', stage, 'show', BASE + ':' + source]);
       const next = fs.readFileSync(path.join(stage, source));
-      const accepted = FILES.includes(relative) ? [normal(before), normal(next)] : [normal(before)];
+      const accepted = FILES.includes(relative) ? [normal(before), normal(next), REVIEWED[relative]] : [normal(before)];
       if (!fs.existsSync(dest) || !accepted.includes(normal(fs.readFileSync(dest)))) throw Error('Production source drift: ' + relative + '; stopped before publishing');
     }
     for (const relative of FILES) {
@@ -123,13 +151,33 @@ async function main() {
         'SELECT id,payload,content_hash FROM article_revisions LIMIT 0',
         'SELECT draft_id,snapshot,draft_version FROM article_workflows LIMIT 0'
       ]) await db.query(sql);
-      require.resolve('jsdom',{paths:[${JSON.stringify(LIVE + '/runtime')}]});
     }finally{await db.end();}})().catch(e=>{console.error('Schema/dependency check failed:',e.code||e.message);process.exitCode=1;});`;
   run([NODE, '-e', schemaCode], {cwd: LIVE});
   run(['chown', '-R', uid + ':' + gid, stage]);
-  asUser('npm ci --registry=https://registry.npmjs.org && npm run check && node scripts/test-document.mjs', stage);
+  fs.mkdirSync(path.join(stage, '.cache'), {recursive: true});
+  // Preserve the XML acceptance check with Node instead of invoking system Python.
+  const xmlCheck = path.join(stage, '.cache/pr101-autoconfig-check.cjs');
+  fs.writeFileSync(xmlCheck, `const assert=require('node:assert/strict'),fs=require('node:fs');
+    const {JSDOM}=require('jsdom'),{autoconfig}=require('../server/src/lib/mailClient');
+    const xml=autoconfig();assert.equal(fs.readFileSync('public/mail/config-v1.1.xml','utf8'),xml);
+    const doc=new JSDOM(xml,{contentType:'text/xml'}).window.document;
+    const root=doc.documentElement;assert.equal(root.tagName,'clientConfig');assert.equal(root.getAttribute('version'),'1.1');
+    const provider=root.querySelector('emailProvider');assert.equal(provider.getAttribute('id'),'mooncci.site');
+    assert.equal(provider.querySelector('domain').textContent,'mooncci.site');
+    for(const [tag,type,port] of [['incomingServer','imap','993'],['outgoingServer','smtp','465']]){
+      const server=provider.querySelector(tag);assert.equal(server.getAttribute('type'),type);
+      for(const [name,value] of Object.entries({hostname:'mail.cuegroveapp.com',port,socketType:'SSL',username:'%EMAILADDRESS%',authentication:'password-cleartext'}))assert.equal(server.querySelector(name).textContent,value);
+    }
+    assert.equal(doc.querySelectorAll('password').length,0);console.log('PASS: autoconfig XML accepted with Node; no Python');\n`);
+  run(['chown', '-R', uid + ':' + gid, path.join(stage, '.cache')]);
+  asUser('npm ci --registry=https://registry.npmjs.org && npm ci --prefix server --omit=dev --registry=https://registry.npmjs.org && npm run typecheck && node --test --test-skip-pattern=' + quote('checked-in public XML is generated from the canonical config and parses') + ' test/*.test.cjs && node .cache/pr101-autoconfig-check.cjs && npm run build && npm run check:bundle && node scripts/test-document.mjs && node --test server/test/mediaReliability.test.js server/test/clientIp.test.js server/test/imageVariants.test.js server/test/dependencySecurity.test.js', stage);
   if (git('status', '--porcelain')) throw Error('Source changed during build');
-  for (const file of FILES) run([NODE, '--check', path.join(stage, 'server', file)]);
+  for (const file of FILES.filter(file => file.endsWith('.js'))) run([NODE, '--check', path.join(stage, 'server', file)]);
+  const newModules = path.join(stage, 'server/node_modules');
+  const oldModules = path.join(backup, 'node_modules.previous');
+  assertDestination(path.join(LIVE, 'node_modules'), LIVE);
+  if (!fs.statSync(newModules).isDirectory() || !fs.statSync(path.join(LIVE, 'node_modules')).isDirectory()) throw Error('Dependency directory missing');
+  if (fs.statSync(newModules).dev !== fs.statSync(LIVE).dev || fs.statSync(backup).dev !== fs.statSync(LIVE).dev) throw Error('Dependency staging/backup must share the production filesystem');
   // Check the built renderer against production renderer dependencies, not build dependencies.
   const smoke = fs.mkdtempSync(path.join(LIVE, '.pr101-render-check-'));
   try {
@@ -163,15 +211,18 @@ async function main() {
   }
   add(path.join(stage, 'dist/index.html'), WEB + '/index.html', WEB, 'entry');
   fs.writeFileSync(path.join(backup, 'MANIFEST.json'), JSON.stringify({revision: REVISION, base: BASE, python: false,
-    migrations: [], dependencies: [], restart: ['mooncci-api'], nginx: false, reader: false, files: rows}, null, 2) + '\n');
+    migrations: [], dependencies: ['server/package-lock.json pinned production dependency installation'], restart: ['mooncci-api', 'mooncci-worker'], nginx: false, reader: false, files: rows}, null, 2) + '\n');
   baseline();
   if (apiProcess().pm_id !== api.pm_id) throw Error('API process changed during build');
+  if (workerProcess().pm_id !== worker.pm_id) throw Error('Worker process changed during build');
   for (const row of rows) {
     const current = fs.existsSync(row.destination) ? sha(fs.readFileSync(row.destination)) : null;
     if (current !== row.before) throw Error('Live file changed during preparation: ' + row.destination);
   }
   const changed = [];
   let stopped = false;
+  let originalModulesMoved = false, newModulesMoved = false;
+  const processIds = api.pm_id + ' ' + worker.pm_id;
   const install = row => {
     assertDestination(row.destination, row.root);
     const temporary = row.destination + '.pr101-new';
@@ -187,10 +238,14 @@ async function main() {
   try {
     for (const row of rows.filter(row => row.kind === 'frontend')) install(row);
     stopped = true;
-    asUser('pm2 stop ' + api.pm_id);
+    asUser('pm2 stop ' + processIds);
+    fs.renameSync(path.join(LIVE, 'node_modules'), oldModules); originalModulesMoved = true;
+    fs.renameSync(newModules, path.join(LIVE, 'node_modules')); newModulesMoved = true;
     for (const row of rows.filter(row => ['backend', 'renderer'].includes(row.kind))) install(row);
-    asUser('pm2 restart ' + api.pm_id);
+    const restartedAt = Date.now();
+    asUser('pm2 restart ' + processIds);
     await health();
+    await workerReady(restartedAt);
     for (const url of ['/', '/article/18']) {
       const r = await fetch('http://127.0.0.1:3001' + url, {headers: {Host: 'mooncci.site'}, signal: AbortSignal.timeout(10000)});
       const html = await r.text();
@@ -201,7 +256,9 @@ async function main() {
   } catch (error) {
     console.error('Deployment failed; restoring scoped files:', error.message);
     try {
-      if (stopped) asUser('pm2 stop ' + api.pm_id);
+      if (stopped) asUser('pm2 stop ' + processIds);
+      if (newModulesMoved) fs.renameSync(path.join(LIVE, 'node_modules'), path.join(backup, 'node_modules.failed'));
+      if (originalModulesMoved) fs.renameSync(oldModules, path.join(LIVE, 'node_modules'));
       for (const row of [...changed].reverse()) {
         const current = fs.existsSync(row.destination) ? sha(fs.readFileSync(row.destination)) : null;
         if (current !== row.after && current !== row.before) throw Error('Rollback refused later modification: ' + row.destination);
@@ -212,12 +269,12 @@ async function main() {
           fs.chownSync(row.destination, row.stat.uid, row.stat.gid); fs.chmodSync(row.destination, row.stat.mode);
         }
       }
-      if (stopped) { asUser('pm2 restart ' + api.pm_id); await health(); }
+      if (stopped) { const since = Date.now(); asUser('pm2 restart ' + processIds); await health(); await workerReady(since); }
       console.error('ROLLBACK=PASS');
     } catch (rollbackError) { console.error('ROLLBACK NEEDS ATTENTION:', rollbackError.message); }
     throw error;
   }
-  console.log('PASS: main frontend, matching SSR, and PR101 scoped backend published.');
+  console.log('PASS: main frontend, matching SSR, reviewed backend and pinned dependencies published; API and worker ready.');
   console.log('REVISION=' + REVISION + '\nBACKUP=' + backup + '\nEXIT_CODE=0');
 }
 const lock = '/www/backup/mooncci-deploy.lock';
