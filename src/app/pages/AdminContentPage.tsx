@@ -18,6 +18,7 @@ import {
 import { MarkdownContent } from '../components/MarkdownContent';
 import { safeImageSrc } from '../lib/safeUrl';
 import { projectIcon } from '../lib/projectBrand';
+import { Image as ImageIcon } from 'lucide-react';
 import '../../styles/project-images.css';
 
 function ImageField({
@@ -28,6 +29,7 @@ function ImageField({
   description,
   previewSrc,
   icon = false,
+  project = false,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -36,6 +38,7 @@ function ImageField({
   description?: string;
   previewSrc?: string;
   icon?: boolean;
+  project?: boolean;
 }) {
   const [open, setOpen] = useState(false),
     [images, setImages] = useState<any[]>([]),
@@ -69,6 +72,42 @@ function ImageField({
       setBusy(false);
     }
   }
+  const mediaLibrary = open && <div className="image-field-library">
+    <button type="button" onClick={() => setOpen(false)}>关闭媒体库</button>
+    <div className="media-picker">
+      {images.map(img => <button type="button" key={img.filename} onClick={() => { onChange(img.url); setOpen(false); }}>
+        <img src={safeImageSrc(img.url)} alt={img.alt_text || img.filename} />
+        <small>{img.display_name || img.filename}</small>
+      </button>)}
+    </div>
+  </div>;
+  const image = safeImageSrc(previewSrc ?? value);
+  if (project) return <section className={`image-field project-image-field${icon ? ' image-field--icon' : ''}`} aria-label={label} aria-busy={busy}>
+    <header className="project-image-heading">
+      <h3>{label}</h3>
+      <p>{description}</p>
+    </header>
+    <div className="project-image-content">
+      <div className={`project-image-preview${icon ? ' project-image-preview--icon' : ''}`}>
+        {image ? <img src={image} alt={icon ? '作品图标预览' : '配图预览'} /> : <><ImageIcon size={24} aria-hidden="true" /><span>未选择图片</span></>}
+      </div>
+      <div className="project-image-actions">
+        <label className="project-image-upload" aria-disabled={busy}>
+          {busy ? '处理中…' : image ? (icon ? '更换图标' : '更换截图') : '上传图片'}
+          <input type="file" aria-label={icon ? '上传作品图标' : '上传作品截图'} accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy}
+            onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; void upload(file); }} />
+        </label>
+        <button type="button" disabled={busy} onClick={library}>从媒体库选择</button>
+        {(value || previewSrc) && <button type="button" className="project-image-remove" disabled={busy} onClick={() => onChange('')}>{icon ? '移除图标' : '移除配图'}</button>}
+      </div>
+    </div>
+    <details className="project-image-url">
+      <summary>使用图片地址</summary>
+      <label>{label}<input value={value} disabled={busy} onChange={event => onChange(event.target.value)} placeholder="HTTPS 或 /api/uploads/…" /></label>
+    </details>
+    {mediaLibrary}
+    {error && <p className="project-image-error" role="alert">{error}</p>}
+  </section>;
   return (
     <div className={`image-field${icon ? ' image-field--icon' : ''}`}>
       <label>
@@ -106,31 +145,7 @@ function ImageField({
           alt={icon ? '作品图标预览' : '配图预览'}
         />
       )}
-      {open && (
-        <div>
-          <button type="button" onClick={() => setOpen(false)}>
-            关闭媒体库
-          </button>
-          <div className="media-picker">
-            {images.map((img) => (
-              <button
-                type="button"
-                key={img.filename}
-                onClick={() => {
-                  onChange(img.url);
-                  setOpen(false);
-                }}
-              >
-                <img
-                  src={safeImageSrc(img.url)}
-                  alt={img.alt_text || img.filename}
-                />
-                <small>{img.display_name || img.filename}</small>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {mediaLibrary}
       <p role="alert">{error}</p>
     </div>
   );
@@ -365,19 +380,21 @@ export function AdminProjectsPage() {
             onChange={(e) => setForm({ ...form, content: e.target.value })}
           />
         </label>
-        <ImageField onBusy={iconBusy} icon
+        <div className="project-image-settings">
+        <ImageField onBusy={iconBusy} icon project
           value={form.icon_image ?? ''}
           previewSrc={projectIcon(form)}
           onChange={(icon_image) => setForm((previous:any) => ({ ...previous, icon_image }))}
           label="作品图标"
-          description="用于首页作品卡片和详情页标题旁。可上传、更换或从媒体库选择；移除图标不影响界面截图。"
+          description="用于首页卡片与详情标题，不影响界面截图。"
         />
-        <ImageField onBusy={coverBusy}
+        <ImageField onBusy={coverBusy} project
           value={form.cover_image}
           onChange={(cover_image) => setForm((previous:any) => ({ ...previous, cover_image }))}
           label="作品界面截图"
-          description="可上传真实界面截图，或从媒体库选择。保存后将显示在作品列表与详情页；留空时仅展示文字。"
+          description="上传真实界面截图，留空时仅展示文字。"
         />
+        </div>
         <div className="form-grid">
           <label>
             开发状态
