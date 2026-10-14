@@ -46,6 +46,10 @@ def safe_name(name):
         part not in ("", ".", "..") for part in name.split("/")) and not name.startswith("/")
 
 
+def runtime_state(name):
+    return bool(re.fullmatch(r"(?:worker|deployment)\.json(?:\.\d+\.tmp)?", name))
+
+
 def tree(folder, prefix, skip_hidden=False):
     result = {}
     for file in sorted(folder.rglob("*")):
@@ -172,7 +176,10 @@ def bundle(target, revision, baseline):
     if not entries.get("dist/index.html"):
         raise ValueError("Frontend build missing")
     if target == "main":
-        entries.update(tree(ROOT / "server/runtime", "server/runtime"))
+        runtime = tree(ROOT / "server/runtime", "server/runtime")
+        if any(runtime_state(name.removeprefix("server/runtime/")) for name in runtime):
+            raise ValueError("Runtime state must never be packaged")
+        entries.update(runtime)
         entries.update(renderer_dependencies(ROOT / ".cache/document-deps/node_modules"))
         for name in SOURCES:
             entries["source/" + name] = lf(ROOT / name)
@@ -189,6 +196,7 @@ def bundle(target, revision, baseline):
         "migrations": [],
         "migration_runner": None,
         "restarts": ["mooncci-api"] if target == "main" else [],
+        "runtime_install": "managed-files-atomic-entry" if target == "main" else None,
         "dependency_install": False, "configuration_changes": False,
         "isolated_renderer_lock": sha(lf(ROOT / "scripts/document-runtime/package-lock.json")) if target == "main" else None}
     entries["MANIFEST.json"] = (json.dumps(manifest, indent=2) + "\n").encode()

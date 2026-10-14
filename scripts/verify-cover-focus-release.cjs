@@ -47,6 +47,34 @@ function tree(root, prefix = '') {
   }
   return result;
 }
+const runtimeState = name => /^(?:worker|deployment)\.json(?:\.\d+\.tmp)?$/.test(name);
+function runtimeIdentity(root) {
+  const stat = fs.lstatSync(root, {bigint: true});
+  if (!stat.isDirectory() || stat.isSymbolicLink()) throw Error('Nonregular runtime directory');
+  return {device: stat.dev.toString(), inode: stat.ino.toString()};
+}
+function managedRuntimeTree(root, prefix = '') {
+  const rootStat = fs.lstatSync(root);
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw Error('Nonregular runtime directory');
+  const result = [];
+  for (const name of fs.readdirSync(root).sort()) {
+    const relative = prefix + name, file = path.join(root, name);
+    if (!safeName(relative)) throw Error('Unsafe runtime path: ' + relative);
+    if (!prefix && runtimeState(name)) {
+      // Worker atomically replaces these precise root state paths while releases
+      // run. They are not code and never participate in a backup or restore.
+      try { if (!fs.lstatSync(file).isFile()) throw Error('Nonregular runtime state'); }
+      catch (error) { if (error.code !== 'ENOENT') throw error; }
+      continue;
+    }
+    const stat = fs.lstatSync(file);
+    if (stat.isSymbolicLink()) throw Error('Unsafe runtime symlink: ' + relative);
+    if (stat.isDirectory()) result.push(...managedRuntimeTree(file, relative + '/'));
+    else if (stat.isFile()) result.push(relative);
+    else throw Error('Nonregular runtime path: ' + relative);
+  }
+  return result;
+}
 function setup(root) { return {manifest: readJSON(path.join(root, 'MANIFEST.json')), baseline: readJSON(path.join(root, 'BASELINE.json'))}; }
 function baselineSchema(baseline) {
   sameKeys(baseline, ['version', 'captured_at', 'backend', 'prerequisites', 'main', 'reader', 'pm2', 'verify_articles', 'original_covers', 'frontend_source']);
@@ -72,6 +100,7 @@ function verifyPackage(root) {
   if (manifest.configuration_changes !== false || manifest.dependency_install !== false ||
     !equal(manifest.backend_files, []) || !equal(manifest.source_files, target === 'main' ? SOURCES : []) || !equal(manifest.migrations, []) ||
     manifest.migration_runner !== null ||
+    manifest.runtime_install !== (target === 'main' ? 'managed-files-atomic-entry' : null) ||
     !equal(manifest.restarts, target === 'main' ? ['mooncci-api'] : [])) throw Error('Unexpected deployment scope');
   const listed = fs.readFileSync(path.join(root, 'FILELIST'), 'utf8');
   if (listed.includes('\r') || !listed.endsWith('\n')) throw Error('Non-LF file list');
@@ -86,6 +115,7 @@ function verifyPackage(root) {
     const allowed = metadata.has(name) || name.startsWith('dist/') || target === 'main' &&
       (name.startsWith('server/runtime/') || name.startsWith('source/') && SOURCES.includes(name.slice(7)));
     if (!allowed || /(?:^|\/)(?:\.env|schema\.sql|\.cache|\.git|credentials)(?:\/|$)/i.test(name) || name.endsWith('.node')) throw Error('Forbidden package scope: ' + name);
+    if (name.startsWith('server/runtime/') && runtimeState(name.slice(15))) throw Error('Runtime state must never be packaged');
     if (name.endsWith('.sh') || name.endsWith('.sql') || metadata.has(name)) {
       const bytes = fs.readFileSync(path.join(root, name));
       if (bytes.includes(13) || bytes.length && bytes.at(-1) !== 10) throw Error('Non-LF script or metadata: ' + name);
@@ -134,11 +164,12 @@ function verifyBaseline(root, live, web) {
 }
 function snapshot(root, live, web, folder) {
   const {manifest, baseline, files} = verifyPackage(root); roots(live, web, manifest.target);
-  const before = {version: 1, target: manifest.target, live, web, backend: {}, source: {}, frontend: {}, runtime: {}, original_covers: baseline.original_covers};
+  const before = {version: 1, target: manifest.target, live, web, backend: {}, source: {}, frontend: {}, runtime: {}, runtime_directory: null, original_covers: baseline.original_covers};
   for (const name of files.filter(name => name.startsWith('dist/')).map(name => name.slice(5))) before.frontend[name] = digest(web, name);
   if (manifest.target === 'main') {
+    before.runtime_directory = runtimeIdentity(path.join(live, 'runtime'));
     for (const name of SOURCES) before.source[name] = digest(path.dirname(live), name);
-    for (const name of tree(path.join(live, 'runtime'))) before.runtime[name] = digest(path.join(live, 'runtime'), name);
+    for (const name of managedRuntimeTree(path.join(live, 'runtime'))) before.runtime[name] = digest(path.join(live, 'runtime'), name);
   }
   for (const [key, suffix] of [['frontend', 'WEB'], ['source', 'SOURCE']]) {
     const entries = Object.entries(before[key]);
@@ -157,6 +188,7 @@ function snapshot(root, live, web, folder) {
     else if (name.startsWith('server/runtime/')) expected.runtime[name.slice(15)] = hash;
   }
   writeJSON(path.join(folder, 'EXPECTED.json'), expected);
+  fs.writeFileSync(path.join(folder, 'NEW_RUNTIME'), Object.keys(expected.runtime).filter(name => !Object.hasOwn(before.runtime, name)).map(name => name + '\n').join(''));
 }
 function guardRollback(folder) {
   const before = readJSON(path.join(folder, 'BEFORE.json'));
@@ -171,19 +203,15 @@ function guardRollback(folder) {
     }
   }
   if (before.target === 'main') {
-    const sameTree = (root, hashes) => fs.lstatSync(root).isDirectory() && !fs.lstatSync(root).isSymbolicLink() &&
-      equal(tree(root).sort(), Object.keys(hashes).sort()) && Object.entries(hashes).every(([name, hash]) => digest(root, name) === hash);
     const runtime = path.join(before.live, 'runtime');
-    if (fs.existsSync(runtime)) {
-      if (fs.lstatSync(runtime).isSymbolicLink() || !fs.lstatSync(runtime).isDirectory() ||
-        !sameTree(runtime, before.runtime) && !sameTree(runtime, expected.runtime))
-        throw Error('Rollback rejected later runtime drift');
-    } else {
-      try { fs.lstatSync(runtime); throw Error('Nonregular missing runtime'); }
-      catch (error) { if (error.code !== 'ENOENT') throw error; }
-      // Recovery between the two atomic renames is valid only if the displaced
-      // runtime is still the complete inspected previous tree.
-      if (!sameTree(path.join(folder, 'runtime-prior'), before.runtime)) throw Error('Unverified runtime transfer intermediate state');
+    if (!equal(runtimeIdentity(runtime), before.runtime_directory)) throw Error('Rollback rejected replaced runtime directory');
+    const currentFiles = managedRuntimeTree(runtime), allowed = new Set([...Object.keys(before.runtime), ...Object.keys(expected.runtime)]);
+    for (const name of currentFiles) if (!allowed.has(name)) throw Error('Rollback rejected unknown runtime code: ' + name);
+    for (const name of allowed) {
+      const old = before.runtime[name] ?? null;
+      const next = expected.runtime[name] ?? old;
+      const current = digest(runtime, name);
+      if (current !== old && current !== next) throw Error('Rollback rejected later runtime drift: ' + name);
     }
     const baseline = readJSON(path.join(folder, 'BASELINE.json'));
     for (const [name, hash] of Object.entries({...baseline.backend, ...baseline.prerequisites}))
@@ -197,7 +225,8 @@ function restored(folder) {
     if (digest(root, name) !== expected) throw Error('Rollback bytes differ: ' + key + '/' + name);
   if (before.target === 'main') {
     const runtime = path.join(before.live, 'runtime');
-    if (!equal(tree(runtime).sort(), Object.keys(before.runtime).sort())) throw Error('Rollback runtime file set differs');
+    if (!equal(runtimeIdentity(runtime), before.runtime_directory)) throw Error('Restored runtime directory identity differs');
+    if (!equal(managedRuntimeTree(runtime).sort(), Object.keys(before.runtime).sort())) throw Error('Rollback managed runtime file set differs');
     for (const [name, expected] of Object.entries(before.runtime)) if (digest(runtime, name) !== expected) throw Error('Rollback runtime bytes differ: ' + name);
     originalCovers(before.live, readJSON(path.join(folder, 'BASELINE.json')));
   }
@@ -209,6 +238,17 @@ function removeNew(folder) {
       if (expected !== null) continue;
       if (key === 'source' && !SOURCES.includes(name)) throw Error('Unexpected newly created source file');
       const file = plainFile(root, name, true);
+      if (file) fs.unlinkSync(file);
+    }
+  }
+  if (before.target === 'main') {
+    const expected = readJSON(path.join(folder, 'EXPECTED.json'));
+    const runtime = path.join(before.live, 'runtime');
+    managedRuntimeTree(runtime); // Reject a replaced/symlinked directory before deletion.
+    for (const name of Object.keys(expected.runtime)) {
+      if (Object.hasOwn(before.runtime, name)) continue;
+      if (runtimeState(name)) throw Error('Runtime state cannot be removed');
+      const file = plainFile(runtime, name, true);
       if (file) fs.unlinkSync(file);
     }
   }
@@ -356,7 +396,7 @@ async function matchingDocument(request, url, entries, validate, options = {}) {
   }
 }
 function readJSONData(value) { return JSON.parse(value); }
-module.exports = {safeName, plainFile, baselineSchema, verifyPackage, digest, snapshot, restored, roots, verifyBaseline, removeNew, installed, guardRollback, matchingDocument, publicChecks};
+module.exports = {safeName, plainFile, baselineSchema, verifyPackage, digest, snapshot, restored, roots, verifyBaseline, removeNew, installed, guardRollback, matchingDocument, publicChecks, runtimeState, managedRuntimeTree};
 if (require.main === module) {
   (async () => {
     const [command, ...args] = process.argv.slice(2);

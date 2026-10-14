@@ -6,6 +6,9 @@ import json
 import subprocess
 import tarfile
 import tempfile
+import os
+import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -172,11 +175,115 @@ class CoverFocusRelease(unittest.TestCase):
         (live / "runtime/later.mjs").write_bytes(b"later runtime update\n")
         rejected = subprocess.run(["node", "-e", "require(process.argv[1]).guardRollback(process.argv[2])", str(isolated), str(backup)], capture_output=True, text=True)
         self.assertNotEqual(rejected.returncode, 0)
-        self.assertIn("later runtime drift", rejected.stderr)
+        self.assertIn("unknown runtime code", rejected.stderr)
         (live / "runtime/later.mjs").unlink()
-        # The safe atomic-transfer intermediate state also remains recoverable.
-        (live / "runtime").rename(backup / "runtime-prior")
+        # A partially installed known SSR file set remains recoverable.
+        (live / "runtime/document.mjs").write_bytes((package / "server/runtime/document.mjs").read_bytes())
         command("guardRollback", backup)
+
+    def test_continuously_renamed_worker_state_survives_install_and_restore(self):
+        _, package = self.package()
+        live, web, backup = self.root / "active-production/server", self.root / "active-web", self.root / "active-backup"
+        backup.mkdir()
+        for name in release.SOURCES:
+            target = live.parent / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(b"old-source\n")
+        for name in [*release.UNCHANGED_BACKEND, *release.PREREQUISITES]:
+            target = live / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(b"old\n")
+        (web / "assets").mkdir(parents=True)
+        (web / "index.html").write_bytes(b"old-entry\n")
+        runtime = live / "runtime"
+        runtime.mkdir()
+        for name in ["document.mjs", "styles.json", "home.css"]:
+            (runtime / name).write_bytes(b"old-runtime\n")
+        inode = runtime.stat().st_ino
+        isolated = self.write("active-isolated-verifier.cjs", (package / "verify.cjs").read_text().replace("function roots(live, web, target) {", "function roots(live, web, target) { return;"))
+        def command(cmd, *args, ok=True):
+            code = "const v=require(process.argv[1]);v[process.argv[2]](...process.argv.slice(3));"
+            result = subprocess.run(["node", "-e", code, str(isolated), cmd, *map(str, args)], capture_output=True, text=True)
+            self.assertEqual(result.returncode == 0, ok, result.stderr)
+            return result
+        stop, state = threading.Event(), {"count": 0, "errors": []}
+        def writer():
+            try:
+                while not stop.is_set():
+                    state["count"] += 1
+                    for name in ["worker.json", "deployment.json"]:
+                        tmp = runtime / (name + "." + str(os.getpid()) + ".tmp")
+                        tmp.write_text(json.dumps({"counter": state["count"]}) + "\n")
+                        os.replace(tmp, runtime / name)
+                    time.sleep(.002)
+            except Exception as error:
+                state["errors"].append(repr(error))
+        thread = threading.Thread(target=writer)
+        thread.start()
+        try:
+            command("snapshot", package, live, web, backup)
+            before = json.loads((backup / "BEFORE.json").read_text())
+            self.assertNotIn("worker.json", before["runtime"])
+            self.assertNotIn("deployment.json", before["runtime"])
+            self.assertFalse(any(name.endswith(".tmp") for name in before["runtime"]))
+            command("restored", backup)  # Periodic writes are not code drift.
+            saved = backup / "runtime-before.tar"
+            with tarfile.open(saved, "w") as archive:
+                for name in before["runtime"]:
+                    archive.add(runtime / name, arcname=name, recursive=False)
+            # Install non-entry assets first, retaining old hashed files. Then
+            # perform actual same-filesystem atomic entry replacement.
+            candidate = package / "server/runtime"
+            incoming = backup / "incoming"
+            incoming.mkdir()
+            for source in sorted(candidate.rglob("*")):
+                if source.is_file():
+                    name = source.relative_to(candidate).as_posix()
+                    if name in ["document.mjs", "styles.json", "home.css"]:
+                        continue
+                    dest = runtime / name
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(source.read_bytes())
+            command("guardRollback", backup)  # Valid partial update.
+            for name in ["document.mjs", "styles.json", "home.css"]:
+                (incoming / name).write_bytes((candidate / name).read_bytes())
+                os.replace(incoming / name, runtime / name)
+                command("guardRollback", backup)
+            count_at_install = state["count"]
+            self.assertEqual(runtime.stat().st_ino, inode)
+            # Third-value source changes and unknown runtime files still fail.
+            (runtime / "home.css").write_bytes(b"later SSR hotfix\n")
+            command("guardRollback", backup, ok=False)
+            (runtime / "home.css").write_bytes((candidate / "home.css").read_bytes())
+            (runtime / "worker.json.not-a-pid.tmp").write_bytes(b"unexpected-code\n")
+            command("guardRollback", backup, ok=False)
+            (runtime / "worker.json.not-a-pid.tmp").unlink()
+            (runtime / "later.mjs").write_bytes(b"unexpected-code\n")
+            command("guardRollback", backup, ok=False)
+            (runtime / "later.mjs").unlink()
+            # Restore only managed tar members and atomically replace entries;
+            # state writers are still running throughout.
+            with tarfile.open(saved) as archive:
+                for member in archive.getmembers():
+                    self.assertFalse(release.runtime_state(member.name))
+                    (incoming / member.name).parent.mkdir(parents=True, exist_ok=True)
+                    (incoming / member.name).write_bytes(archive.extractfile(member).read())
+                    os.replace(incoming / member.name, runtime / member.name)
+            command("removeNew", backup)
+            command("restored", backup)
+            self.assertEqual(runtime.stat().st_ino, inode)
+            self.assertGreater(state["count"], count_at_install)
+        finally:
+            stop.set()
+            thread.join()
+        self.assertEqual(state["errors"], [])
+        self.assertGreaterEqual(json.loads((runtime / "worker.json").read_text())["counter"], count_at_install)
+        self.assertGreaterEqual(json.loads((runtime / "deployment.json").read_text())["counter"], count_at_install)
+
+    def test_runtime_state_is_not_a_release_input(self):
+        self.write("server/runtime/worker.json", '{"not":"packaged"}\n')
+        with self.assertRaisesRegex(ValueError, "state must never"):
+            self.package()
 
     def test_cache_retry_is_bounded_and_structure_failures_are_immediate(self):
         _, folder = self.package()
@@ -251,6 +358,9 @@ v.publicChecks(root,'/unused',path.join(root,'dist'),folder).then(async()=>{
         self.assertLess(deploy.index('source-before.tar'), deploy.index('changed=1'))
         self.assertIn('bash "$backup/rollback.sh"', deploy)
         self.assertIn("EXPECTED.json", deploy)
+        self.assertIn("--temp-dir=", deploy)
+        self.assertNotIn('mv -- "$live/runtime"', deploy)
+        self.assertNotIn('mv -- "$live/runtime"', (PROJECT / "scripts/rollback-cover-focus.sh").read_text())
         rollback = (PROJECT / "scripts/rollback-cover-focus.sh").read_text()
         self.assertLess(rollback.index("rollback-guard"), rollback.index("tar -xpf"))
 

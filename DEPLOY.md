@@ -1225,3 +1225,34 @@ with raw tar verification before the first write. Failure automatically restores
 the old release; manual rollback uses the backup command above and refuses to
 overwrite later changes. Inspect the logged `BACKUP`, `EXIT_CODE`, `acceptance.json`
 and `live-crop-ssr-proof.log` (main only) before declaring deployment complete.
+
+### Cover-focus follow-up: preserve live runtime state during SSR updates
+
+The reviewed follow-up package uses `runtime_install: managed-files-atomic-entry`.
+It supersedes whole-directory runtime replacement for cover-focus deployments;
+do not reuse the earlier archive. Build a new package from the follow-up merged
+commit after full CI and the dedicated release regression have passed.
+
+Keep the live `server/runtime` directory in place. The worker atomically replaces
+root `worker.json` and its `worker.json.<numeric PID>.tmp` file while running;
+root `deployment.json` and its matching numeric-PID temporary files are also
+operational state. These exact paths are excluded from the managed SSR snapshot,
+archive, drift checks and restore. Neither deployment nor rollback writes,
+renames, hardlinks, copies or removes these state paths, and worker is not reloaded.
+All other runtime files, including unknown new code, remain drift-protected.
+
+Stage and verify the new SSR renderer first. Copy new chunks, locked dependencies
+and assets with rsync, retaining old hashed resources and placing rsync temporary
+files in the private backup directory. Atomically install `document.mjs`,
+`styles.json` and `home.css` one file at a time using same-filesystem temporary
+files, then reload only API. Never rename or replace the live runtime directory.
+
+Before the first mutation, byte-verify the tar of managed runtime files and save
+the expected new hashes and explicit new-runtime allowlist. Rollback rejects
+unknown managed paths and third-value hashes, but accepts known before/new file
+values during a partial installation. It restores the managed tar, atomically
+replaces the three entries, and deletes only newly introduced allowlisted SSR
+files. Preserve the runtime directory and live state writer throughout. The
+dedicated regression continuously replaces worker/deployment state with actual
+atomic renames during isolated installation and recovery, checks that the
+directory inode and advancing state survive, and still rejects later SSR changes.
