@@ -1,6 +1,6 @@
-import { DetailPage, DetailMeta, EmptyState, SingleLine } from '../components/DetailUI';
+import { EmptyState } from '../components/DetailUI';
 import { ProjectCard } from '../components/ProjectCard';
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   PageHeading,
@@ -13,6 +13,8 @@ import {
 } from "../components/ContentUI";
 import { MarkdownContent, headingsFor } from "../components/MarkdownContent";
 import { safeImageSrc, safeHref } from "../lib/safeUrl";
+import { projectIcon } from "../lib/projectBrand";
+import "../../styles/project-detail.css";
 export default function ProjectsPage() {
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get("page")) || 1);
@@ -56,6 +58,32 @@ export function ProjectDetailPage() {
     ),
     p = resource.data;
   const focusedId = params.get("release");
+  const articleRef = useRef<HTMLElement>(null);
+  const headings = useMemo(() => headingsFor(p?.content || ''), [p?.content]);
+  const toc = useMemo(() => [
+    ...headings.map(heading => ({ ...heading, id: `project-${heading.id}` })),
+    { id: 'project-releases', title: '版本记录', level: 2 },
+  ], [headings]);
+  const [activeId, setActiveId] = useState('');
+  useEffect(() => {
+    if (!p) return;
+    setActiveId(toc[0].id);
+    if (typeof IntersectionObserver === 'undefined') return;
+    const visible = new Map<string, Element>();
+    const observer = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) visible.set(entry.target.id, entry.target);
+        else visible.delete(entry.target.id);
+      }
+      const first = [...visible.values()].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
+      if (first) setActiveId(first.id);
+    }, { rootMargin: '-96px 0px -55% 0px' });
+    for (const item of toc) {
+      const element = articleRef.current?.querySelector(`#${item.id}`);
+      if (element) observer.observe(element);
+    }
+    return () => observer.disconnect();
+  }, [p, toc]);
   useEffect(() => {
     if (p && focusedId && /^\d+$/.test(focusedId))
       {
@@ -63,69 +91,96 @@ export function ProjectDetailPage() {
         if (release) window.scrollTo({ top: window.scrollY + release.getBoundingClientRect().top - 100 });
       }
   }, [p, focusedId]);
+  const cover = p ? safeImageSrc(p.cover_image) : '';
+  const icon = p ? projectIcon(p) : undefined;
+  const renderToc = (compact = false) => (
+    <nav className="project-reading-toc" aria-label={compact ? '折叠作品目录' : '作品目录'}>
+      {toc.map(item => <a key={item.id} href={`#${item.id}`} title={item.title}
+        data-level={item.level} aria-current={activeId === item.id ? 'location' : undefined}
+        onClick={event => {
+          setActiveId(item.id);
+          if (compact) event.currentTarget.closest('details')?.removeAttribute('open');
+        }}>{item.title}</a>)}
+    </nav>
+  );
   return (
-    <SitePage detail>
+    <SitePage detail className="project-detail-page">
       <ResourceState resource={resource}>
         {p && (
-          <DetailPage className="project-reading" backTo="/projects" backLabel="全部作品" label={labels[p.stage] || '作品'} title={p.name}
-            meta={<DetailMeta author={p.author_name} avatar={p.author_avatar} date={p.published_at || p.created_at} />}
-            asideTitle="作品信息" aside={<>
-              <SingleLine className="project-actions" label="作品链接">
-                {p.demo_url && <a className="quiet-button project-primary" href={safeHref(p.demo_url)} target="_blank" rel="noreferrer">{p.slug === 'promptdock' ? '申请体验' : '打开作品'} ↗</a>}
-                {p.slug === 'promptdock' && !p.demo_url && <Link className="quiet-button project-primary" to="/early-access">申请体验 ↗</Link>}
-                {p.repo && <a className="quiet-button" href={`https://github.com/${p.repo}`} target="_blank" rel="noreferrer">GitHub ↗</a>}
-              </SingleLine>
-              {p.tech_stack && <div className="project-tech"><h2>技术栈</h2><p>{p.tech_stack}</p></div>}
-              <nav className="project-reading-toc" aria-label="作品目录"><h2>本页目录</h2>{headingsFor(p.content).map(h => <a key={h.id} href={`#project-${h.id}`}>{h.title}</a>)}<a href="#project-releases">版本记录</a></nav>
-            </>}>
-            {p.summary && <p className="article-summary">{p.summary}</p>}
-            <div className="project-reading-body">
-            {safeImageSrc(p.cover_image) && (
-              <img
-                className="content-image"
-                src={safeImageSrc(p.cover_image)}
-                alt={`${p.name} 界面截图`}
-                loading="lazy"
-              />
-            )}
-            <MarkdownContent content={p.content} headingPrefix="project-heading" />
-            <section className="project-releases" id="project-releases" data-reading-ignore>
-              <h2>版本记录</h2>
-              {!p.releases.items.length && (
-                <EmptyState>暂无版本记录。</EmptyState>
-              )}
-              {(p.focusedRelease &&
-              !p.releases.items.some((r: any) => r.id === p.focusedRelease.id)
-                ? [p.focusedRelease, ...p.releases.items]
-                : p.releases.items
-              ).map((r: any) => (
-                <details
-                  open={String(r.id)===focusedId}
-                  className="release-record"
-                  key={r.id}
-                  id={`release-${r.id}`}
-                >
-                  <summary><time className="muted">
-                    {formatDate(r.published_at)} · GitHub Releases
-                  </time>
-                  <span>{r.title} {Number(r.prerelease) === 1 && <small className="release-prerelease">预发布</small>}</span></summary>
-                  <MarkdownContent content={r.content} />
-                  <a
-                    className="text-link"
-                    href={safeHref(r.url)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    查看原始发布 ↗
-                  </a>
-                </details>
-              ))}
-              <Pagination
-                data={p.releases}
-                onPage={(page) => setParams({ page: String(page) })}
-              />
-            </section></div>
-          </DetailPage>
+          <article className="project-reading" ref={articleRef} data-reading-content>
+            <header className="project-detail-heading">
+              <div className="project-detail-back-row" data-reading-ignore>
+                <Link className="project-detail-pill" to="/projects">← 全部作品</Link>
+                <span className="project-detail-pill project-detail-stage">{labels[p.stage] || '作品'}</span>
+              </div>
+              <div className="project-detail-identity">
+                {icon && <img className="project-detail-icon" src={icon} alt={`${p.name} 应用图标`} width="72" height="72" />}
+                <h1 className="detail-title">{p.name}</h1>
+              </div>
+              {p.summary && <p className="project-detail-subtitle">{p.summary}</p>}
+              <div className="project-actions" aria-label="作品链接" data-reading-ignore>
+                {p.demo_url && <a className="project-detail-action project-primary" href={safeHref(p.demo_url)} target="_blank" rel="noreferrer">{p.slug === 'promptdock' ? '申请体验' : '打开作品'} ↗</a>}
+                {p.slug === 'promptdock' && !p.demo_url && <Link className="project-detail-action project-primary" to="/early-access">申请体验 ↗</Link>}
+                {p.repo && <a className="project-detail-action" href={safeHref(`https://github.com/${p.repo}`)} target="_blank" rel="noreferrer">GitHub ↗</a>}
+              </div>
+              {p.tech_stack && <p className="project-detail-tech" aria-label="技术栈">{p.tech_stack}</p>}
+            </header>
+            {cover && <figure className="project-detail-showcase">
+              <img className="content-image" src={cover} alt={`${p.name} 界面截图`} loading="lazy" />
+            </figure>}
+            <div className="project-reading-grid">
+              <details className="project-mobile-toc" data-reading-ignore>
+                <summary>本页目录 <span aria-hidden="true">⌄</span></summary>
+                {renderToc(true)}
+              </details>
+              <div className="detail-body project-reading-body">
+                <MarkdownContent content={p.content} headingPrefix="project-heading" />
+                <section className="project-releases" id="project-releases" data-reading-ignore>
+                  <h2>版本记录</h2>
+                  {!p.releases.items.length && (
+                    <EmptyState>暂无版本记录。</EmptyState>
+                  )}
+                  {(p.focusedRelease &&
+                  !p.releases.items.some((r: any) => r.id === p.focusedRelease.id)
+                    ? [p.focusedRelease, ...p.releases.items]
+                    : p.releases.items
+                  ).map((r: any) => (
+                    <details
+                      open={String(r.id)===focusedId}
+                      className="release-record"
+                      key={r.id}
+                      id={`release-${r.id}`}
+                    >
+                      <summary><span className="project-release-copy"><time className="muted">
+                        {formatDate(r.published_at)} · GitHub Releases
+                      </time>
+                      <span>{r.title} {Number(r.prerelease) === 1 && <small className="release-prerelease">预发布</small>}</span></span><span className="project-release-arrow" aria-hidden="true">⌄</span></summary>
+                      <div className="project-release-body"><MarkdownContent content={r.content} />
+                      <a
+                        className="text-link"
+                        href={safeHref(r.url)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        查看原始发布 ↗
+                      </a></div>
+                    </details>
+                  ))}
+                  <Pagination
+                    data={p.releases}
+                    onPage={(page) => setParams(current => {
+                      const next = new URLSearchParams(current);
+                      next.set('page', String(page));
+                      return next;
+                    })}
+                  />
+                </section>
+              </div>
+                  <aside className="project-reading-rail" data-reading-ignore>
+                <div className="project-rail-sticky"><p>本页目录</p>{renderToc()}</div>
+              </aside>
+            </div>
+          </article>
         )}
       </ResourceState>
     </SitePage>

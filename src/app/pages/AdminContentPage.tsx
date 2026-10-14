@@ -4,7 +4,7 @@ import { confirmAction } from '../lib/confirmAction';
 import {useUnsavedLeave} from '../lib/useUnsavedLeave';
 import { Link } from 'react-router-dom';
 import { ThemeSelect } from '../components/ThemeSelect';
-import { FormEvent, useState, useEffect } from 'react';
+import { FormEvent, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import {
@@ -17,6 +17,8 @@ import {
 } from '../components/ContentUI';
 import { MarkdownContent } from '../components/MarkdownContent';
 import { safeImageSrc } from '../lib/safeUrl';
+import { projectIcon } from '../lib/projectBrand';
+import '../../styles/project-images.css';
 
 function ImageField({
   value,
@@ -24,12 +26,16 @@ function ImageField({
   onBusy,
   label = '配图地址',
   description,
+  previewSrc,
+  icon = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   onBusy?: (v:boolean)=>void;
   label?: string;
   description?: string;
+  previewSrc?: string;
+  icon?: boolean;
 }) {
   const [open, setOpen] = useState(false),
     [images, setImages] = useState<any[]>([]),
@@ -64,7 +70,7 @@ function ImageField({
     }
   }
   return (
-    <div className="image-field">
+    <div className={`image-field${icon ? ' image-field--icon' : ''}`}>
       <label>
         {label}
         <input
@@ -87,17 +93,17 @@ function ImageField({
             onChange={(e) => upload(e.target.files?.[0])}
           />
         </label>
-        {value && (
-          <button type="button" onClick={() => onChange('')}>
-            移除配图
+        {(value || previewSrc) && (
+          <button type="button" disabled={busy} onClick={() => onChange('')}>
+            {icon ? '移除图标' : '移除配图'}
           </button>
         )}
       </div>
-      {safeImageSrc(value) && (
+      {safeImageSrc(previewSrc ?? value) && (
         <img
           className="image-preview"
-          src={safeImageSrc(value)}
-          alt="配图预览"
+          src={safeImageSrc(previewSrc ?? value)}
+          alt={icon ? '作品图标预览' : '配图预览'}
         />
       )}
       {open && (
@@ -250,6 +256,7 @@ const emptyProject = {
   summary: '',
   content: '',
   cover_image: '',
+  icon_image: null,
   tech_stack: '',
   stage: 'building',
   status: 'draft',
@@ -260,7 +267,10 @@ const emptyProject = {
 export function AdminProjectsPage() {
   const [clock, setClock] = useState(Date.now());
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(timer); }, []);
-  const [dirty,setDirty]=useState(false),[imageBusy,setImageBusy]=useState(false);useUnsavedLeave(dirty);
+  const [dirty,setDirty]=useState(false),[busyImages,setBusyImages]=useState({cover:false,icon:false});useUnsavedLeave(dirty);
+  const imageBusy = busyImages.cover || busyImages.icon;
+  const coverBusy = useCallback((value:boolean) => setBusyImages(previous => previous.cover === value ? previous : {...previous,cover:value}), []);
+  const iconBusy = useCallback((value:boolean) => setBusyImages(previous => previous.icon === value ? previous : {...previous,icon:value}), []);
   const { user } = useAuth(),
     owner = user?.role === 'owner';
   const [page, setPage] = useState(1),
@@ -301,7 +311,7 @@ export function AdminProjectsPage() {
       {rawSetForm({ ...emptyProject });setDirty(false);}
   }
   return (
-    <div className="content-admin">
+    <div className="content-admin content-admin--projects">
       <PageHeading eyebrow="WORK" title="作品管理" />
       <p className="muted">
         自动同步服务：
@@ -355,9 +365,16 @@ export function AdminProjectsPage() {
             onChange={(e) => setForm({ ...form, content: e.target.value })}
           />
         </label>
-        <ImageField onBusy={setImageBusy}
+        <ImageField onBusy={iconBusy} icon
+          value={form.icon_image ?? ''}
+          previewSrc={projectIcon(form)}
+          onChange={(icon_image) => setForm((previous:any) => ({ ...previous, icon_image }))}
+          label="作品图标"
+          description="用于首页作品卡片和详情页标题旁。可上传、更换或从媒体库选择；移除图标不影响界面截图。"
+        />
+        <ImageField onBusy={coverBusy}
           value={form.cover_image}
-          onChange={(cover_image) => setForm({ ...form, cover_image })}
+          onChange={(cover_image) => setForm((previous:any) => ({ ...previous, cover_image }))}
           label="作品界面截图"
           description="可上传真实界面截图，或从媒体库选择。保存后将显示在作品列表与详情页；留空时仅展示文字。"
         />

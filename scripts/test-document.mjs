@@ -73,3 +73,20 @@ const oldArticle=await renderDocument('/article/7',p=>p==='/posts/7'?Promise.res
 const oldImage=JSDOM.fragment(oldArticle.html).querySelector('.hero-card img');
 assert.equal(oldImage.className,'content-image');assert.equal(oldImage.getAttribute('style'),null);
 console.log('Cover SSR acceptance: all cards ignore preserved crop metadata; detail crop and legacy image markup passed.');
+
+const work={id:1,slug:'promptdock',name:'PromptDock',stage:'building',summary:'公开作品简介',content:'## 核心功能\n\n真实作品正文。',cover_image:'',icon_image:null,repo:'13304930782/PromptDock',tech_stack:'SwiftUI',demo_url:'https://cuegroveapp.com/early-access',releases:{items:[],total:0,page:1,pageSize:20}};
+const workLoad=p=>p==='/posts?pageSize=4'?Promise.resolve([]):p.startsWith('/projects/promptdock')?Promise.resolve(work):p.startsWith('/projects')?Promise.resolve({items:[work],total:1,page:1,pageSize:20}):load(p);
+const workHome=JSDOM.fragment((await renderDocument('/',workLoad)).html);
+assert.ok(workHome.querySelector('.project-card--compact .project-card-icon'));
+assert.equal(workHome.querySelector('.project-card--compact h3').textContent,'PromptDock');
+const workDetail=JSDOM.fragment((await renderDocument('/projects/promptdock',workLoad)).html);
+assert.ok(workDetail.querySelector('.project-reading-body'));
+assert.ok(workDetail.querySelector('.project-detail-icon'));
+assert.equal(workDetail.querySelector('.project-detail-showcase'),null,'no fake product screenshot');
+assert.equal(workDetail.querySelector('.project-reading-toc a').getAttribute('href'),'#project-heading-0');
+assert.ok(workDetail.querySelector('#project-heading-0'));
+const explicitRemoval=await renderDocument('/projects/promptdock',p=>p.startsWith('/projects/promptdock')?Promise.resolve({...work,icon_image:'',cover_image:'/api/uploads/real-shot.png'}):workLoad(p));
+const removedDOM=JSDOM.fragment(explicitRemoval.html);
+assert.equal(removedDOM.querySelector('.project-detail-icon'),null);
+assert.equal(removedDOM.querySelector('.project-detail-showcase img').getAttribute('src'),'/api/uploads/real-shot.png');
+console.log('Works SSR acceptance: compact home card, article-style detail, real showcase, TOC and explicit icon removal passed.');

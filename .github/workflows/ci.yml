@@ -30,6 +30,9 @@ jobs:
       - run: python3 scripts/test-offline-release.py
       - run: python3 -m py_compile scripts/build-cover-framing-release.py
       - run: python3 scripts/test-cover-focus-release.py
+      - run: python3 scripts/test-works-release.py
+      - run: python3 -m py_compile scripts/build-works-release.py
+      - run: bash -n scripts/deploy-works.sh scripts/rollback-works.sh scripts/stage-works-reader-assets.sh
       - run: python3 -m py_compile scripts/build-cover-focus-release.py
       - run: bash -n scripts/deploy-cover-focus.sh scripts/rollback-cover-focus.sh
       - run: bash -n scripts/deploy-cover-framing.sh scripts/rollback-cover-framing.sh
@@ -55,6 +58,7 @@ jobs:
       - run: node scripts/test-bookmarks-browser.cjs
       - run: node scripts/test-reading-browser.cjs
       - run: node scripts/test-detail-browser.cjs
+      - run: node scripts/test-works-browser.cjs
       - run: node scripts/test-update-journal-browser.cjs
       - run: node scripts/test-analytics-browser.cjs
       - run: node scripts/test-ux-unification.cjs
@@ -147,6 +151,11 @@ jobs:
       - run: node --test server/test/articleCoverCrop.integration.test.js server/test/articleCoverCropInit.integration.test.js
         env:
           COVER_CROP_INTEGRATION: "true"
+          TEST_DB_PORT: "3306"
+
+      - run: node --test server/test/projectIcon.integration.test.js
+        env:
+          PROJECT_ICON_INTEGRATION: "true"
           TEST_DB_PORT: "3306"
 
       - run: node --test server/test/articleBookmarks.integration.test.js

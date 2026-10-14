@@ -55,6 +55,9 @@ function projectInput(body) {
     summary: str(body.summary, 2000, true),
     content: str(body.content, 50000),
     cover_image: webUrl(body.cover_image, true),
+    ...(Object.prototype.hasOwnProperty.call(body, 'icon_image')
+      ? { icon_image: body.icon_image === null ? null : webUrl(body.icon_image, true) }
+      : {}),
     tech_stack: str(body.tech_stack, 1000),
     stage: body.stage,
     status: body.status,

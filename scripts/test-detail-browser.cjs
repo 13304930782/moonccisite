@@ -80,7 +80,7 @@ const { chromium } = require('playwright');
         assert.equal(outer.paddingLeft,'0px');assert.equal(outer.paddingRight,'0px');
         const usableWidth=await page.locator('main.detail-container').evaluate(el=>el.parentElement.getBoundingClientRect().width);
         if(width>=1440){assert.equal(outer.width,isArticle?usableWidth:1200);measurements.push({name,viewport:width,...outer});}
-        const pill=await page.locator(isArticle?`.detail-label ${name==='article-cover'?'.hero-pill':'.hero-pill--light'}`:'.detail-category').evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,radius:s.borderRadius};});
+        const pill=await page.locator(isArticle?`.detail-label ${name==='article-cover'?'.hero-pill':'.hero-pill--light'}`:'.project-detail-stage').evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,radius:s.borderRadius};});
         assert.notEqual(pill.background,'rgba(0, 0, 0, 0)');assert.equal(pill.radius,'999px');
         if(isArticle)await assertArticlePills(name==='article-cover',width);
         const body=await page.locator('.detail-body').boundingBox();
@@ -92,11 +92,15 @@ const { chromium } = require('playwright');
           if(width>=1440){const footer=await page.locator('.site-footer .site-container').boundingBox();const subscribe=await page.locator('.subscribe-inner').boundingBox();assert.equal(footer.width,1200);assert.equal(subscribe.width,1200);}
         }
         if(name==='project'){
-        if(width>=1100)assert.ok(body.width>=640 && body.width<=680);
-        const row=page.locator('.detail-meta');
-        const metrics=await row.evaluate(el=>({height:el.getBoundingClientRect().height,children:Array.from(el.children).map(c=>({center:c.getBoundingClientRect().y+c.getBoundingClientRect().height/2,shrink:getComputedStyle(c).flexShrink,white:getComputedStyle(c).whiteSpace})),overflow:getComputedStyle(el).overflowX}));
-        assert.ok(metrics.height<=32);assert.equal(metrics.overflow,'auto');
-        for(const c of metrics.children){assert.equal(c.shrink,'0');assert.equal(c.white,'nowrap');assert.ok(Math.abs(c.center-metrics.children[0].center)<1);}
+          if(width>=1100)assert.equal(body.width,720);
+          assert.ok(Math.abs(body.x+body.width/2-(outer.left+outer.width/2))<1,'project reading column centered');
+          assert.equal(await page.locator('.detail-meta').count(),0,'no fabricated author metadata');
+          for(const action of await page.locator('.project-detail-action').all())assert.ok((await action.boundingBox()).height>=44);
+          const rail=page.locator('.project-reading-rail'), narrow=page.locator('.project-mobile-toc');
+          assert.equal(await rail.isVisible(),width>=1280);
+          assert.equal(await narrow.isVisible(),width<1280);
+          if(width>=1280)assert.equal((await rail.boundingBox()).width,200);
+          else {await narrow.locator('summary').click();await narrow.locator('nav').waitFor({state:'visible'});await narrow.locator('summary').click();}
         }
         const aside=page.locator('.detail-aside');
         if(await aside.count()){
@@ -116,25 +120,25 @@ const { chromium } = require('playwright');
           assert.deepEqual(panel.borders,['0px','0px','0px','0px']);assert.equal(panel.background,'rgba(0, 0, 0, 0)');assert.equal(panel.radius,'0px');
           assert.equal(await page.locator('.detail-panel-content').evaluate(el=>getComputedStyle(el).paddingRight),'0px');
         }
-        if(width<=375){assert.equal(await page.locator('.detail-title').evaluate(el=>getComputedStyle(el).fontSize),'28px');await page.getByRole('button',{name:'打开菜单',exact:true}).click();await page.getByRole('navigation',{name:'手机导航'}).waitFor();await page.keyboard.press('Escape');}
+        if(width<=375){assert.equal(await page.locator('.detail-title').evaluate(el=>getComputedStyle(el).fontSize),isArticle?'28px':'32px');await page.getByRole('button',{name:'打开菜单',exact:true}).click();await page.getByRole('navigation',{name:'手机导航'}).waitFor();await page.keyboard.press('Escape');}
         await page.screenshot({path:`.cache/detail-${name}-${width}.png`,fullPage:true});
         if(width===375){await page.evaluate(()=>document.documentElement.classList.add('dark'));await page.screenshot({path:`.cache/detail-${name}-dark.png`,fullPage:true});await page.evaluate(()=>document.documentElement.classList.remove('dark'));}
       }
     }
-    // A single mounted sidebar follows breakpoint changes and native summary keyboard activation.
-    await page.setViewportSize({width:1100,height:900});
+    // The project reading rail switches at 1280px; narrow TOC retains native keyboard activation.
+    await page.setViewportSize({width:1280,height:900});
     await page.goto('http://127.0.0.1:4202/projects/promptdock');
-    await page.locator('.detail-panel:not([data-initial])').waitFor();
-    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===true);
-    await page.setViewportSize({width:1099,height:900});
-    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===false);
-    await page.locator('.detail-panel summary').focus();
+    await page.locator('.project-reading-rail').waitFor({state:'visible'});
+    await page.setViewportSize({width:1279,height:900});
+    const projectToc=page.locator('.project-mobile-toc');
+    await projectToc.waitFor({state:'visible'});
+    await projectToc.locator('summary').focus();
     await page.keyboard.press('Enter');
-    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===true);
+    await page.waitForFunction(()=>document.querySelector('.project-mobile-toc').open===true);
     await page.keyboard.press('Space');
-    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===false);
-    await page.setViewportSize({width:1100,height:900});
-    await page.waitForFunction(()=>document.querySelector('.detail-panel').open===true);
+    await page.waitForFunction(()=>document.querySelector('.project-mobile-toc').open===false);
+    await page.setViewportSize({width:1280,height:900});
+    await page.locator('.project-reading-rail').waitFor({state:'visible'});
     // Updates use their own journal layout rather than the article sidebar grid.
     for (const width of [1440, 390, 320]) {
       await page.setViewportSize({width,height:900});
@@ -147,6 +151,6 @@ const { chromium } = require('playwright');
     }
     require('node:fs').writeFileSync('.cache/centering-measurements.json',JSON.stringify(measurements,null,2)+'\n');
     assert.deepEqual(errors,[]);
-    console.log('PASS: shared 640–680px column, covered/coverless capsules in both themes, aligned atomic metadata, 375px/320px navigation, sidebar folding and no page overflow.');
+    console.log('PASS: centered 720px article/project columns, covered/coverless capsules, atomic metadata, mobile navigation, project TOC keyboard folding and no page overflow.');
   } finally { await browser?.close(); await server.httpServer.close(); }
 })().catch(e=>{console.error(e);process.exitCode=1;});

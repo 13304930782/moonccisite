@@ -106,7 +106,7 @@ router.get(
       (req.query.featured === 'true' ? ' AND featured_rank IS NOT NULL' : '');
     const [[{ total }]] = await db.query(`SELECT COUNT(*) total FROM projects WHERE ${where}`);
     const [items] = await db.query(
-      `SELECT id,slug,name,summary,cover_image,tech_stack,stage,demo_url,repo,featured_rank FROM projects WHERE ${where} ORDER BY featured_rank IS NULL,featured_rank,id DESC LIMIT ? OFFSET ?`,
+      `SELECT id,slug,name,summary,cover_image,icon_image,tech_stack,stage,demo_url,repo,featured_rank FROM projects WHERE ${where} ORDER BY featured_rank IS NULL,featured_rank,id DESC LIMIT ? OFFSET ?`,
       [req.query.featured === 'true' ? 3 : pageSize, offset],
     );
     res.json({ items, total: Number(total), page, pageSize });
@@ -116,7 +116,7 @@ router.get(
   '/projects/:slug',
   a(async (req, res) => {
     const [rows] = await db.query(
-      "SELECT id,slug,name,summary,content,cover_image,tech_stack,stage,demo_url,repo FROM projects WHERE slug=? AND status='published'",
+      "SELECT id,slug,name,summary,content,cover_image,icon_image,tech_stack,stage,demo_url,repo FROM projects WHERE slug=? AND status='published'",
       [req.params.slug],
     );
     if (!rows[0]) throw fail('作品不存在', 404);
