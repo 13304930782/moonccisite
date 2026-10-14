@@ -6,6 +6,7 @@ import { Heart, MessageCircle, Reply, Send, Trash2, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import { formatCommentTime } from '../lib/commentTime';
 
 type Comment = {
   replies?: Comment[];
@@ -255,7 +256,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
               </span>
             )}
 
-            <span>{item.created_at?.slice(0, 10)}</span>
+            <span>{formatCommentTime(item.created_at)}</span>
             {item.ip_location && <span>来自 {item.ip_location}</span>}
 
             {item.status === 'pending' && (
