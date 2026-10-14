@@ -25,7 +25,6 @@ flock -w 120 9
 backup=$(mktemp -d "/www/backup/mooncci-cover-focus-$mode.XXXXXX")
 changed=0
 runtime_stage=''
-runtime_failed=''
 pm() { su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$PATH; pm2 $*"; }
 finish() {
  rc=$?; trap - EXIT; set +e
@@ -37,7 +36,6 @@ finish() {
  fi
  # Leave staged/failed runtime paths in the log for diagnosis; no recursive deletion.
  if [ -n "$runtime_stage" ]; then printf 'STAGED_RUNTIME=%s\n' "$runtime_stage"; fi
- if [ -n "$runtime_failed" ]; then printf 'PRIOR_RUNTIME=%s\n' "$runtime_failed"; fi
  printf '%s\n' "$rc" > "$backup/exit-code"
  printf 'BACKUP=%s\nEXIT_CODE=%s\n' "$backup" "$rc"
  exit "$rc"
@@ -85,7 +83,7 @@ print('PASS: complete backup tar file lists and captured bytes')
 PY
 (
  cd "$backup"
- files=(BEFORE.json EXPECTED.json BASELINE.json MANIFEST.json EXISTING_WEB NEW_WEB EXISTING_SOURCE NEW_SOURCE RUNTIME_FILES NODE rollback.sh verify.cjs frontend-before.tar)
+ files=(BEFORE.json EXPECTED.json BASELINE.json MANIFEST.json EXISTING_WEB NEW_WEB EXISTING_SOURCE NEW_SOURCE RUNTIME_FILES NEW_RUNTIME NODE rollback.sh verify.cjs frontend-before.tar)
  if [ "$mode" = main ]; then files+=(source-before.tar runtime-before.tar pm2-before.json); fi
  sha256sum -- "${files[@]}" > BACKUP_SHA256SUMS
  sha256sum --strict -c BACKUP_SHA256SUMS >/dev/null
@@ -109,14 +107,20 @@ if [ "$mode" = main ]; then
    install -o mooncci -g mooncci -m 644 "source/$file" "$dest.cover-focus-new"
    mv -f -- "$dest.cover-focus-new" "$dest"
  done < SOURCE_FILES
- runtime_failed="$backup/runtime-prior"
- mv -- "$live/runtime" "$runtime_failed"
- mv -- "$runtime_stage" "$live/runtime"
- runtime_stage=''
+ # Preserve this directory and the live worker/deployment state writer inode.
+ # Transfer temporary files outside runtime; interrupted rsync cannot introduce
+ # unknown temporary code paths into the rollback-protected managed tree.
+ mkdir "$backup/runtime-incoming"
+ rsync -ac --temp-dir="$backup/runtime-incoming" --exclude=/document.mjs --exclude=/styles.json --exclude=/home.css "$runtime_stage/" "$live/runtime/"
+ for entry in document.mjs styles.json home.css; do
+   install -o mooncci -g mooncci -m 644 "$runtime_stage/$entry" "$backup/runtime-incoming/$entry"
+   mv -f -- "$backup/runtime-incoming/$entry" "$live/runtime/$entry"
+ done
 fi
 install -m 644 dist/index.html "$web/.index-cover-focus-new"
 mv -f -- "$web/.index-cover-focus-new" "$web/index.html"
 "$node" verify.cjs installed "$package" "$live" "$web" > "$backup/installed.log"
+"$node" verify.cjs rollback-guard "$backup"
 if [ "$mode" = main ]; then
  pm reload mooncci-api
  ready=0

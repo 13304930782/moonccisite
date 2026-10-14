@@ -25,13 +25,18 @@ pm() { su -s /bin/bash mooncci -c "export PATH=/opt/mooncci-node-v24.20.0/bin:\$
 tar -xpf "$backup/frontend-before.tar" -C "$web"
 if [ "$mode" = main ]; then
  tar -xpf "$backup/source-before.tar" -C "$(dirname "$live")"
- # A complete tar snapshot also recovers failures between the two runtime renames.
+ # Restore managed SSR files while leaving the runtime directory and active
+ # worker/deployment state paths in place. Stage entries on the same filesystem.
  restore=$(mktemp -d "$live/.runtime-cover-focus-restore.XXXXXX")
  tar -xpf "$backup/runtime-before.tar" -C "$restore"
  chown -R mooncci:mooncci "$restore"
  chmod -R u=rwX,go=rX "$restore"
- if [ -d "$live/runtime" ]; then mv -- "$live/runtime" "$backup/runtime-failed-$(date +%s)-$$"; fi
- mv -- "$restore" "$live/runtime"
+ incoming=$(mktemp -d "$live/.runtime-cover-focus-rollback-incoming.XXXXXX")
+ rsync -ac --temp-dir="$incoming" --exclude=/document.mjs --exclude=/styles.json --exclude=/home.css "$restore/" "$live/runtime/"
+ for entry in document.mjs styles.json home.css; do
+   install -o mooncci -g mooncci -m 644 "$restore/$entry" "$incoming/$entry"
+   mv -f -- "$incoming/$entry" "$live/runtime/$entry"
+ done
 fi
 "$node" "$backup/verify.cjs" remove-new "$backup"
 "$node" "$backup/verify.cjs" restored "$backup" > "$backup/restored.log"

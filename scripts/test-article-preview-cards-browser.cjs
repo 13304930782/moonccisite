@@ -68,8 +68,11 @@ const images={
      await page.setViewportSize({width,height:950});
      for(const routePath of width===390||width===1440?['/articles','/','/account/bookmarks','/series/card-fixture','/series']:['/articles']) {
       await page.goto('http://127.0.0.1:4269'+routePath);
-      const cards=page.locator(routePath.startsWith('/series')?'.publishing-card > img.card-cover-image':'.blog-card > img.card-cover-image');
-      await cards.first().waitFor();assert.equal(await cards.count(),4,routePath+' has all image shapes');
+      const heading={'/':'完整卡片测试','/account/bookmarks':'我的收藏','/series/card-fixture':'完整封面专栏','/series':'文章专栏'}[routePath];
+      if(heading)await page.getByRole('heading',{name:heading,exact:true}).waitFor();
+      const selector=routePath.startsWith('/series')?'.publishing-card > img.card-cover-image':'.blog-card > img.card-cover-image',cards=page.locator(selector);
+      await page.waitForFunction(selector=>{const images=[...document.querySelectorAll(selector)];return images.length===4&&images.every(image=>image.complete&&image.naturalWidth>0);},selector);
+      assert.equal(await cards.count(),4,routePath+' has all loaded image shapes');
       await page.evaluate(value=>document.documentElement.classList.toggle('dark',value),dark);
       for(const image of await cards.all()) {
        await image.evaluate(img=>img.decode());
