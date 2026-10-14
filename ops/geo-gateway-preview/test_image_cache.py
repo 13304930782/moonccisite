@@ -25,6 +25,14 @@ class ImageCacheTest(unittest.TestCase):
         self.assertEqual(result.count('add_header Cache-Control "private, no-store" always;'), 2)
         self.assertEqual(result.count('proxy_cache off;'), original.count('proxy_cache off;'))
         self.assertEqual(result.count(VARY), 2)
+        for header in ['X-Frame-Options SAMEORIGIN', 'Referrer-Policy no-referrer', 'Strict-Transport-Security "max-age=31536000; includeSubDomains"', 'Content-Security-Policy "frame-ancestors \'self\'; object-src \'none\'; base-uri \'self\'"']:
+            self.assertEqual(original.count('add_header ' + header + ' always;'), 4)
+            self.assertEqual(result.count('add_header ' + header + ' always;'), 4)
+        legacy = original
+        for line in original.splitlines(keepends=True):
+            if any('add_header '+header.split(' ')[0]+' ' in line for header in ['X-Frame-Options','Referrer-Policy','Strict-Transport-Security','Content-Security-Policy']):
+                legacy = legacy.replace(line, '')
+        self.assertEqual(patch(legacy).count(VARY), 2, 'old deployed header groups stay supported')
         old = result.replace(BLOCK, LEGACY_BLOCK).replace('\n    ' + VARY, '')
         self.assertEqual(patch(old), result, 'upgrade existing deployed cache map')
         self.assertEqual(patch(result.replace(BLOCK, LEGACY_BLOCK)), result, 'upgrade deployed Vary version')

@@ -4,7 +4,7 @@ import {dimensionsFor, type ImageDimensions} from '../lib/imageDimensions';
 import {CodeBlock} from './CodeBlock';
 import '../../styles/rich-text.css';
 export function richTextHeadings(content: string) {
-  return Array.from(richTextFragment(content).querySelectorAll('h1,h2,h3,h4,h5,h6')).flatMap((el,index) => Number(el.tagName[1]) <= 3 ? [{id:`heading-${index}`,title:el.textContent || '',level:Number(el.tagName[1])}] : []);
+  return Array.from(richTextFragment(content).querySelectorAll('h1,h2,h3,h4,h5,h6')).flatMap((el,index) => Number(el.tagName[1]) <= 3 && el.textContent?.trim() ? [{id:`heading-${index}`,title:el.textContent.trim(),level:Number(el.tagName[1])}] : []);
 }
 export function RichTextContent({content,headingPrefix,imageDimensions}: {content:string;headingPrefix?:string;imageDimensions?:ImageDimensions}) {
   let heading = 0;

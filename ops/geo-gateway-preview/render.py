@@ -12,6 +12,10 @@ def render(region, cert, private_key, reader_key=None, ca_bundle='/etc/ssl/certs
         return '''
         add_header Cache-Control "private, no-store" always;
         add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options SAMEORIGIN always;
+        add_header Referrer-Policy no-referrer always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Content-Security-Policy "frame-ancestors 'self'; object-src 'none'; base-uri 'self'" always;
         add_header X-Mooncci-Node REGION always;
         add_header X-Mooncci-Route ROUTE always;
 '''.replace('REGION',region).replace('ROUTE',route)

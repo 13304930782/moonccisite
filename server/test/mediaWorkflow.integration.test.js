@@ -22,6 +22,24 @@ test('real media rename and repeated compression keep file, dimensions and artic
  const form=new FormData();form.append('quality','original');form.append('image',new Blob([data],{type:'image/png'}),'workflow.png');
  const uploaded=await ok('/upload/image','POST',form);
  const [post]=await setup.query("INSERT INTO posts(title,slug,content,cover_image,status,author_id) VALUES ('Media','media',?,?,'published',?)",['![test]('+uploaded.url+')',uploaded.url,user.insertId]);
+ const proof=require('../src/lib/articleSummaryProof'),draftId=require('node:crypto').randomUUID();
+ const payload={title:'Media',slug:'media',content:'![test]('+uploaded.url+')',cover_image:uploaded.url,summary:'Approved description',summary_mode:'ai',category:'',tags:[]};payload.summary_receipt=proof.signature(payload);
+ await setup.query('INSERT INTO article_drafts(id,author_id,post_id,base_version,payload,dirty,published_version) VALUES (?,?,?,1,?,0,1)',[draftId,user.insertId,post.insertId,JSON.stringify(payload)]);
+ await setup.query("INSERT INTO article_workflows(draft_id,state,draft_version,snapshot,scheduled_at) VALUES (?,'scheduled',1,?,?)",[draftId,JSON.stringify(payload),Date.now()+86400000]);
+ await setup.query("INSERT INTO updates(content,image_url,author_id,status) VALUES (?, ?,?,'published')",['![test]('+uploaded.url+')',uploaded.url,user.insertId]);
+ await setup.query("INSERT INTO projects(slug,name,summary,content,cover_image,icon_image,tech_stack,status) VALUES ('fixture','Fixture','summary',?,?,?,'','published')",['![test]('+uploaded.url+')',uploaded.url,uploaded.url]);
+ await setup.query("INSERT INTO article_series(slug,title,description,cover_image) VALUES ('fixture','Fixture','',?)",[uploaded.url]);
+ await setup.query('INSERT INTO site_now(id,content) VALUES (1,?)',['![test]('+uploaded.url+')']);
+ assert.equal((await request('/upload/media/'+uploaded.filename,'DELETE')).status,409,'active content and hidden snapshots protect an image from deletion');
+ const referencesAligned=async url=>{
+  for(const [table,fields] of [['updates',['content','image_url']],['projects',['content','cover_image','icon_image']],['article_series',['cover_image']],['site_now',['content']]]){
+   const [[row]]=await setup.query('SELECT '+fields.join(',')+' FROM '+table+' LIMIT 1');for(const field of fields)assert(row[field].includes(url),table+'.'+field);
+  }
+  const [[draft]]=await setup.query('SELECT * FROM article_drafts WHERE id=?',[draftId]);const p=typeof draft.payload==='string'?JSON.parse(draft.payload):draft.payload;assert.equal(p.cover_image,url);assert.ok(proof.valid(p));assert.equal(draft.dirty,0);assert.equal(draft.published_version,draft.version);
+  const [[w]]=await setup.query('SELECT * FROM article_workflows WHERE draft_id=?',[draftId]);const snap=typeof w.snapshot==='string'?JSON.parse(w.snapshot):w.snapshot;assert.equal(w.state,'scheduled');assert.equal(w.draft_version,draft.version);assert.equal(snap.cover_image,url);assert.ok(proof.valid(snap));
+  const [[publicPost]]=await setup.query('SELECT version FROM posts WHERE id=?',[post.insertId]);assert.equal(draft.base_version,publicPost.version);
+  const [history]=await setup.query('SELECT payload,content_hash FROM article_revisions WHERE post_id=?',[post.insertId]);for(const r of history){const p=typeof r.payload==='string'?JSON.parse(r.payload):r.payload;assert.equal(p.cover_image,url);assert.equal(r.content_hash,require('../src/lib/articleRevisions').hash(p));}
+ };
  const check=async file=>{
   const [[row]]=await setup.query('SELECT * FROM media_assets WHERE filename=?',[file]);assert(row);
   const bytes=fs.readFileSync(path.join(m.exports.uploadDir,file)),actual=await sharp(bytes).metadata();
@@ -31,11 +49,18 @@ test('real media rename and repeated compression keep file, dimensions and artic
  };
  await check(uploaded.filename);
  const renamed=await ok('/upload/media/'+uploaded.filename+'/rename','PUT',{filename:'workflow-renamed.png'});assert.equal(renamed.filename,'workflow-renamed.png');assert(!fs.existsSync(path.join(m.exports.uploadDir,uploaded.filename)));await check(renamed.filename);
+ await referencesAligned(renamed.url);
+ const getConnection=db.getConnection.bind(db);db.getConnection=async()=>{const c=await getConnection(),query=c.query.bind(c),release=c.release.bind(c);c.query=async(sql,...args)=>{if(sql.startsWith('UPDATE media_assets SET filename='))throw Error('Injected metadata failure');return query(sql,...args);};c.release=()=>{c.query=query;release();};return c;};
+ try{assert.equal((await request('/upload/media/'+renamed.filename+'/rename','PUT',{filename:'failed-rename.png'})).status,500);}
+ finally{db.getConnection=getConnection;}
+ assert(fs.existsSync(path.join(m.exports.uploadDir,renamed.filename)));assert(!fs.existsSync(path.join(m.exports.uploadDir,'failed-rename.png')));await referencesAligned(renamed.url);
  let media=await ok('/upload/media/'+renamed.filename+'/recompress','POST',{quality:'high'});assert.equal(media.width,2200);await check(media.filename);
+ await referencesAligned(media.url);
  const webp=media.filename;
  media=await ok('/upload/media/'+webp+'/recompress','POST',{quality:'medium'});assert.equal(media.filename,webp);assert.equal(media.width,1600);await check(media.filename);
  media=await ok('/upload/media/'+webp+'/recompress','POST',{quality:'low'});assert.equal(media.width,1200);await check(media.filename);
  const final=await ok('/upload/media/'+webp+'/rename','PUT',{filename:'workflow-final.webp'});await check(final.filename);
+ await referencesAligned(final.url);
  const before=fs.readFileSync(path.join(m.exports.uploadDir,final.filename));
  assert.equal((await request('/upload/media/'+final.filename+'/rename','PUT',{filename:'wrong.jpg'})).status,400);
  assert.equal((await request('/upload/media/'+final.filename+'/recompress','POST',{quality:'original'})).status,400);
