@@ -1,0 +1,13 @@
+img.card-cover-image {
+  display:block;
+  width:100%;
+  height:auto;
+  max-width:100%;
+  max-height:none;
+  aspect-ratio:auto;
+  object-fit:contain;
+  object-position:center;
+  transform:none;
+}
+.cover-settings-preview .cover-settings-card { aspect-ratio:auto; }
+.cover-settings-card > img.card-cover-image { height:auto; max-height:none; object-fit:contain; }

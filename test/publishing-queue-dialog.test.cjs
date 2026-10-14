@@ -3,7 +3,10 @@ const React=require('react'),{act,create}=require('react-test-renderer');
 function loadTs(file,modules={}){const m={exports:{}};const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;new Function('exports','require',code)(m.exports,name=>name.endsWith('.css')?{}:modules[name]||require(name));return m.exports;}
 const crop=loadTs('src/app/lib/coverCrop.ts');
 const image=loadTs('src/app/components/CoverImage.tsx',{'../lib/coverCrop':crop});
-const previews=loadTs('src/app/components/CoverDisplayPreviews.tsx',{'./CoverImage':image,'../lib/coverCrop':crop});
+const safeUrl=loadTs('src/app/lib/safeUrl.ts');
+const responsiveImage=loadTs('src/app/lib/responsiveImage.ts');
+const cardImage=loadTs('src/app/components/CardCoverImage.tsx',{'../lib/safeUrl':safeUrl,'../lib/responsiveImage':responsiveImage});
+const previews=loadTs('src/app/components/CoverDisplayPreviews.tsx',{'./CoverImage':image,'./CardCoverImage':cardImage,'../lib/coverCrop':crop});
 
 test('review dismissal retains manuscript during exit, blocks closing actions and opens the next draft',async()=>{
  const module={exports:{}},writes=[];

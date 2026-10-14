@@ -7,8 +7,13 @@ test('palette uses only the outer two rings, not a bright center',()=>{
  for(let y=0;y<32;y++)for(let x=0;x<32;x++){const p=(y*32+x)*4;data.set(x>1&&x<30&&y>1&&y<30?[255,255,255,255]:[30,40,50,255],p);}
  assert.deepEqual(edgeColor(data),[30,40,50]);assert.equal(edgeColor(new Uint8ClampedArray(32*32*4)),null);assert.equal(edgeColor(new Uint8ClampedArray(4)),null);
 });
-test('white, black and saturated covers stay within the specified saturation and lightness limits',()=>{
- for(const rgb of [[255,255,255],[0,0,0],[255,0,0],[0,255,0],[0,0,255],[255,255,0]]){
+test('bright edges use the exact fallback; weighted threshold retains other colors',()=>{
+ for(const rgb of [[255,255,255],[240,240,240],[255,255,0]])assert.equal(bandGradient(rgb),'linear-gradient(to bottom, #2b2d30, #1e1f22)');
+ assert.match(bandGradient([191,191,191]),/^linear-gradient\(to bottom, hsl/);
+ assert.equal(bandGradient([192,192,192]),'linear-gradient(to bottom, #2b2d30, #1e1f22)');
+});
+test('black and non-bright saturated covers retain the original saturation and lightness limits',()=>{
+ for(const rgb of [[0,0,0],[255,0,0],[0,255,0],[0,0,255]]){
   const gradient=bandGradient(rgb),colors=[...gradient.matchAll(/hsl\((\d+) ([\d.]+)% ([\d.]+)%\)/g)];
   assert.equal(colors.length,2);assert.ok(Number(colors[0][2])<=40);assert.ok(Number(colors[1][3])>=8&&Number(colors[1][3])<=28);assert.ok(Math.abs(Number(colors[0][3])-Number(colors[1][3])-7)<.01);
  }
