@@ -307,9 +307,13 @@ async function compressImageIfNeeded(file, imageInfo, qualityKey, journal) {
     fs.linkSync(tmpPath, nextPath);
     journal.created(nextPath);
     fs.unlinkSync(tmpPath);
-  } else fs.renameSync(tmpPath, nextPath);
+  } else {
+    journal?.changed(originalPath);
+    fs.renameSync(tmpPath, nextPath);
+  }
 
   if (path.resolve(originalPath) !== path.resolve(nextPath)) {
+    journal?.changed(originalPath);
     removeUploadedFile(originalPath);
   }
 
@@ -382,8 +386,13 @@ async function moveMediaToTrash(filename, force = false) {
   const nextPath = trashPathFor(filename);
 
   if (fs.existsSync(oldPath)) {
-    fs.linkSync(oldPath, nextPath);
-    journal.created(nextPath);
+    if (fs.existsSync(nextPath)) {
+      if (!await journal.recoveredCopy(oldPath,nextPath)) throw Object.assign(new Error('回收站已有同名文件，归属未确认，未修改任何文件。'), {status:409});
+    } else {
+      fs.linkSync(oldPath, nextPath);
+      journal.created(nextPath);
+    }
+    journal.changed(oldPath);
     fs.unlinkSync(oldPath);
   }
 
@@ -407,14 +416,17 @@ async function restoreMediaFromTrash(filename) {
   const oldPath = trashPathFor(filename);
   const nextPath = filePathFor(filename);
 
-  if (fs.existsSync(nextPath)) {
-    return { filename, ok: false, reason: 'target_exists' };
-  }
-
   if (fs.existsSync(oldPath)) {
-    fs.linkSync(oldPath, nextPath);
-    journal.created(nextPath);
+    if (fs.existsSync(nextPath)) {
+      if (!await journal.recoveredCopy(oldPath,nextPath)) throw Object.assign(new Error('uploads 中已有同名文件，归属未确认，无法恢复。'), {status:409});
+    } else {
+      fs.linkSync(oldPath, nextPath);
+      journal.created(nextPath);
+    }
+    journal.changed(oldPath);
     fs.unlinkSync(oldPath);
+  } else if (fs.existsSync(nextPath)) {
+    throw Object.assign(new Error('uploads 中已有同名文件，无法恢复。'), {status:409});
   }
 
   await c.query(
@@ -427,13 +439,14 @@ async function restoreMediaFromTrash(filename) {
 }
 
 async function permanentlyDeleteMedia(filename) {
- return mediaFileTransaction(db, uploadDir, [trashPathFor(filename)], async c => {
+ return mediaFileTransaction(db, uploadDir, [trashPathFor(filename)], async (c,journal) => {
   const media = await findMedia(filename, 'trashed', c);
 
   if (!media) {
     return { filename, ok: false, reason: 'not_found' };
   }
 
+  journal.changed(trashPathFor(filename));
   await fs.promises.rm(trashPathFor(filename), {force:true});
   await c.query('DELETE FROM media_assets WHERE filename=? AND status="trashed"', [filename]);
 
@@ -522,7 +535,7 @@ router.post('/media/batch/delete', authRequired, editorOrAdmin, async (req, res)
     });
   } catch (err) {
     console.error('[upload/media/batch/delete]', err);
-    res.status(500).json({ message: '批量删除失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '批量删除失败' });
   }
 });
 
@@ -549,7 +562,7 @@ router.post('/media/batch/restore', authRequired, editorOrAdmin, async (req, res
     });
   } catch (err) {
     console.error('[upload/media/batch/restore]', err);
-    res.status(500).json({ message: '批量恢复失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '批量恢复失败' });
   }
 });
 
@@ -576,7 +589,7 @@ router.post('/media/batch/permanent', authRequired, editorOrAdmin, async (req, r
     });
   } catch (err) {
     console.error('[upload/media/batch/permanent]', err);
-    res.status(500).json({ message: '批量彻底删除失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '批量彻底删除失败' });
   }
 });
 
@@ -646,6 +659,7 @@ router.put('/media/:filename/rename', authRequired, editorOrAdmin, async (req, r
       // link() never replaces a concurrently created destination.
       fs.linkSync(oldPath, nextPath);
       journal.created(nextPath);
+      journal.changed(oldPath);
       fs.unlinkSync(oldPath);
       const nextUrl = toPublicUrl(nextFilename);
       await mediaReferences.updateReferences(c, toPublicUrl(filename), nextUrl, req.user.id);
@@ -680,7 +694,7 @@ router.delete('/media/:filename', authRequired, editorOrAdmin, async (req, res) 
     res.json({ message: '媒体文件已移入回收站' });
   } catch (err) {
     console.error('[upload/media/delete]', err);
-    res.status(500).json({ message: '媒体文件删除失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '媒体文件删除失败' });
   }
 });
 
@@ -703,7 +717,7 @@ router.post('/media/:filename/restore', authRequired, editorOrAdmin, async (req,
     res.json(mapMediaRow(updated));
   } catch (err) {
     console.error('[upload/media/restore]', err);
-    res.status(500).json({ message: '媒体文件恢复失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '媒体文件恢复失败' });
   }
 });
 
@@ -721,7 +735,7 @@ router.delete('/media/:filename/permanent', authRequired, editorOrAdmin, async (
     res.json({ message: '媒体文件已彻底删除' });
   } catch (err) {
     console.error('[upload/media/permanent]', err);
-    res.status(500).json({ message: '彻底删除失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '彻底删除失败' });
   }
 });
 

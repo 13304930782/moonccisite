@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 test('real media rename and repeated compression keep file, dimensions and article references aligned', {skip:process.env.MEDIA_INTEGRATION!=='true'}, async t=>{
  const name='mooncci_qa_media_workflow_'+process.pid;
- Object.assign(process.env,{DB_HOST:'127.0.0.1',DB_PORT:process.env.TEST_DB_PORT||'33079',DB_USER:'root',DB_PASSWORD:'',DB_NAME:name,JWT_SECRET:'isolated-media-workflow-test-secret',MAIL_ENABLED:'false',NEWSLETTER_DELIVERY_ENABLED:'false',PUBLISHING_ENABLED:'false'});
+ Object.assign(process.env,{DB_HOST:'127.0.0.1',DB_PORT:process.env.TEST_DB_PORT||'33079',DB_USER:'root',DB_PASSWORD:'',DB_NAME:name,JWT_SECRET:'isolated-media-workflow-test-secret',SITE_URL:'https://mooncci.site',MAIL_ENABLED:'false',NEWSLETTER_DELIVERY_ENABLED:'false',PUBLISHING_ENABLED:'false'});
  const setup=await require('mysql2/promise').createConnection({host:'127.0.0.1',port:Number(process.env.DB_PORT),user:'root',multipleStatements:true});
  const parent=path.resolve(__dirname,'../../.cache');fs.mkdirSync(parent,{recursive:true});const fixture=fs.mkdtempSync(path.join(parent,'media-workflow-'));
  let db,server,created=false;const sharp=require('sharp');
@@ -21,15 +21,30 @@ test('real media rename and repeated compression keep file, dimensions and artic
  const data=await sharp({create:{width:2201,height:821,channels:3,background:'#777'}}).png().toBuffer();
  const form=new FormData();form.append('quality','original');form.append('image',new Blob([data],{type:'image/png'}),'workflow.png');
  const uploaded=await ok('/upload/image','POST',form);
- const [post]=await setup.query("INSERT INTO posts(title,slug,content,cover_image,status,author_id) VALUES ('Media','media',?,?,'published',?)",['![test]('+uploaded.url+')',uploaded.url,user.insertId]);
+ const editorial={title:'Media '+uploaded.url,summary:'Approved description '+uploaded.url,category:'Category '+uploaded.url,tags:[uploaded.url],source_url:'https://source.example'+uploaded.url};
+ const external='https://external.example'+uploaded.url,prefix=uploaded.url+'-other.webp';
+ const articleContent=url=>'![test]('+url+') ![absolute](https://mooncci.site'+url+'?v=1#preview) ![external]('+external+') ![prefix]('+prefix+')';
+ const [post]=await setup.query("INSERT INTO posts(title,slug,summary,category,tags,content,cover_image,status,author_id) VALUES (?,'media',?,?,?,?,?,'published',?)",[editorial.title,editorial.summary,editorial.category,JSON.stringify(editorial.tags),articleContent(uploaded.url),uploaded.url,user.insertId]);
  const proof=require('../src/lib/articleSummaryProof'),draftId=require('node:crypto').randomUUID();
- const payload={title:'Media',slug:'media',content:'![test]('+uploaded.url+')',cover_image:uploaded.url,summary:'Approved description',summary_mode:'ai',category:'',tags:[]};payload.summary_receipt=proof.signature(payload);
+ const payload={...editorial,slug:'media',content:articleContent(uploaded.url),cover_image:uploaded.url,summary_mode:'ai'};payload.summary_receipt=proof.signature(payload);
  await setup.query('INSERT INTO article_drafts(id,author_id,post_id,base_version,payload,dirty,published_version) VALUES (?,?,?,1,?,0,1)',[draftId,user.insertId,post.insertId,JSON.stringify(payload)]);
  await setup.query("INSERT INTO article_workflows(draft_id,state,draft_version,snapshot,scheduled_at) VALUES (?,'scheduled',1,?,?)",[draftId,JSON.stringify(payload),Date.now()+86400000]);
+ const revisionsApi=require('../src/lib/articleRevisions');
+ await setup.query("INSERT INTO article_revisions(post_id,actor_id,kind,payload,content_hash,published_version) VALUES (?,?,'publish',?,?,1)",[post.insertId,user.insertId,JSON.stringify(payload),revisionsApi.hash(payload)]);
  await setup.query("INSERT INTO updates(content,image_url,author_id,status) VALUES (?, ?,?,'published')",['![test]('+uploaded.url+')',uploaded.url,user.insertId]);
  await setup.query("INSERT INTO projects(slug,name,summary,content,cover_image,icon_image,tech_stack,status) VALUES ('fixture','Fixture','summary',?,?,?,'','published')",['![test]('+uploaded.url+')',uploaded.url,uploaded.url]);
  await setup.query("INSERT INTO article_series(slug,title,description,cover_image) VALUES ('fixture','Fixture','',?)",[uploaded.url]);
  await setup.query('INSERT INTO site_now(id,content) VALUES (1,?)',['![test]('+uploaded.url+')']);
+ await setup.query('INSERT INTO site_settings(setting_key,setting_value) VALUES (?,?)',[ 'media-fixture',JSON.stringify({logo_url:'https://mooncci.site'+uploaded.url+'?v=1',description:uploaded.url,source_url:external})]);
+ const foreignId=require('node:crypto').randomUUID(),foreignPayload={...editorial,content:'![external]('+external+')',cover_image:prefix,summary_mode:'manual'},foreignJson=JSON.stringify(foreignPayload);
+ await setup.query("INSERT INTO projects(slug,name,summary,content,cover_image,icon_image,tech_stack,status) VALUES ('foreign','Foreign','summary',?,?,?,'','published')",[external,external,prefix]);
+ await setup.query('INSERT INTO article_drafts(id,author_id,payload,dirty) VALUES (?,?,?,1)',[foreignId,user.insertId,foreignJson]);
+ await setup.query("INSERT INTO article_workflows(draft_id,state,draft_version,snapshot) VALUES (?,'submitted',1,?)",[foreignId,foreignJson]);
+ await setup.query("INSERT INTO article_revisions(draft_id,actor_id,kind,payload,content_hash) VALUES (?,?,'manual',?,?)",[foreignId,user.insertId,foreignJson,revisionsApi.hash(foreignPayload)]);
+ const references=require('../src/lib/mediaReferences');assert.equal(await references.countReferences(db,uploaded.url),9,'all nine local consumers count once, external and prefix rows do not count');
+ const foreignOnly='/api/uploads/external-only.png';
+ await setup.query("INSERT INTO projects(slug,name,summary,content,cover_image,icon_image,tech_stack,status) VALUES ('external-only','External only','summary',?,?,?,'','draft')",['https://external.example'+foreignOnly,'https://external.example'+foreignOnly,foreignOnly+'-prefix.webp']);
+ assert.equal(await references.countReferences(db,foreignOnly),0,'external and filename-prefix matches must not block deletion');
  assert.equal((await request('/upload/media/'+uploaded.filename,'DELETE')).status,409,'active content and hidden snapshots protect an image from deletion');
  const referencesAligned=async url=>{
   for(const [table,fields] of [['updates',['content','image_url']],['projects',['content','cover_image','icon_image']],['article_series',['cover_image']],['site_now',['content']]]){
@@ -38,13 +53,19 @@ test('real media rename and repeated compression keep file, dimensions and artic
   const [[draft]]=await setup.query('SELECT * FROM article_drafts WHERE id=?',[draftId]);const p=typeof draft.payload==='string'?JSON.parse(draft.payload):draft.payload;assert.equal(p.cover_image,url);assert.ok(proof.valid(p));assert.equal(draft.dirty,0);assert.equal(draft.published_version,draft.version);
   const [[w]]=await setup.query('SELECT * FROM article_workflows WHERE draft_id=?',[draftId]);const snap=typeof w.snapshot==='string'?JSON.parse(w.snapshot):w.snapshot;assert.equal(w.state,'scheduled');assert.equal(w.draft_version,draft.version);assert.equal(snap.cover_image,url);assert.ok(proof.valid(snap));
   const [[publicPost]]=await setup.query('SELECT version FROM posts WHERE id=?',[post.insertId]);assert.equal(draft.base_version,publicPost.version);
-  const [history]=await setup.query('SELECT payload,content_hash FROM article_revisions WHERE post_id=?',[post.insertId]);for(const r of history){const p=typeof r.payload==='string'?JSON.parse(r.payload):r.payload;assert.equal(p.cover_image,url);assert.equal(r.content_hash,require('../src/lib/articleRevisions').hash(p));}
+  const [[publicFields]]=await setup.query('SELECT title,summary,category,tags,content FROM posts WHERE id=?',[post.insertId]);
+  for(const doc of [publicFields,p,snap]){for(const key of ['title','summary','category'])assert.equal(doc[key],editorial[key],key+' preserves editorial text');assert.deepEqual(typeof doc.tags==='string'?JSON.parse(doc.tags):doc.tags,editorial.tags);assert.equal(doc.content,articleContent(url));}
+  assert.equal(p.source_url,editorial.source_url);assert.equal(snap.source_url,editorial.source_url);
+  const [history]=await setup.query('SELECT payload,content_hash FROM article_revisions WHERE post_id=?',[post.insertId]);for(const r of history){const p=typeof r.payload==='string'?JSON.parse(r.payload):r.payload;assert.equal(p.cover_image,url);assert.equal(r.content_hash,revisionsApi.hash(p));for(const key of ['title','summary','category'])assert.equal(p[key],editorial[key]);assert.deepEqual(p.tags,editorial.tags);if(p.summary_mode==='ai'){assert(proof.valid(p));assert.equal(p.source_url,editorial.source_url);}}
+  const [[setting]]=await setup.query("SELECT setting_value FROM site_settings WHERE setting_key='media-fixture'");const value=JSON.parse(setting.setting_value);assert.equal(value.logo_url,'https://mooncci.site'+url+'?v=1');assert.equal(value.description,uploaded.url);assert.equal(value.source_url,external);
+  const [[foreign]]=await setup.query("SELECT content,cover_image,icon_image FROM projects WHERE slug='foreign'");assert.deepEqual(foreign,{content:external,cover_image:external,icon_image:prefix});
+  for(const [table,column] of [['article_drafts','payload'],['article_workflows','snapshot'],['article_revisions','payload']]){const [[row]]=await setup.query('SELECT '+column+' FROM '+table+' WHERE '+(table==='article_drafts'?'id':'draft_id')+'=?',[foreignId]);assert.deepEqual(typeof row[column]==='string'?JSON.parse(row[column]):row[column],foreignPayload,table+' foreign references remain intact');}
  };
  const check=async file=>{
   const [[row]]=await setup.query('SELECT * FROM media_assets WHERE filename=?',[file]);assert(row);
   const bytes=fs.readFileSync(path.join(m.exports.uploadDir,file)),actual=await sharp(bytes).metadata();
   assert.equal(row.width,actual.width);assert.equal(row.height,actual.height);assert.equal(row.size,bytes.length);
-  const article=await ok('/posts/'+post.insertId);assert.equal(article.cover_image,row.url);assert.equal(article.content,'![test]('+row.url+')');
+  const article=await ok('/posts/'+post.insertId);assert.equal(article.cover_image,row.url);assert.equal(article.content,articleContent(row.url));assert.equal(article.title,editorial.title);assert.equal(article.summary,editorial.summary);
   assert.deepEqual(article.image_dimensions[row.url],{width:actual.width,height:actual.height});return row;
  };
  await check(uploaded.filename);
