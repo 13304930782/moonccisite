@@ -1,0 +1,4 @@
+.image-field--icon .image-preview { width:96px; height:96px; max-width:100%; object-fit:contain; border:0; background:transparent; }
+.image-field--icon .inline-actions > :is(button,label) { min-height:44px; }
+.image-field--icon .inline-actions :is(button,label):focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+.content-admin--projects .admin-records .inline-actions { flex-wrap:wrap; justify-content:flex-start; max-width:100%; }

@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN icon_image VARCHAR(500) NULL DEFAULT NULL AFTER cover_image;

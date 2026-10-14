@@ -286,6 +286,7 @@ CREATE TABLE IF NOT EXISTS projects (
   summary TEXT NOT NULL,
   content TEXT NOT NULL,
   cover_image VARCHAR(500) NOT NULL DEFAULT '',
+  icon_image VARCHAR(500) NULL DEFAULT NULL,
   tech_stack TEXT NOT NULL,
   stage ENUM('building','active','maintenance','archived') NOT NULL DEFAULT 'building',
   status ENUM('draft','published') NOT NULL DEFAULT 'draft',
