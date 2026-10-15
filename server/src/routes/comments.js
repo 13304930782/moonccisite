@@ -18,18 +18,9 @@ async function optionalUser(req) {
 }
 
 function getClientIp(req) {
-  const cfIp = req.headers['cf-connecting-ip'];
-  const realIp = req.headers['x-real-ip'];
-  const forwarded = req.headers['x-forwarded-for'];
-
-  const ip =
-    cfIp ||
-    realIp ||
-    (forwarded ? String(forwarded).split(',')[0].trim() : '') ||
-    req.socket.remoteAddress ||
-    '';
-
-  return String(ip).replace('::ffff:', '');
+  // Express applies the configured trust-proxy boundary. Visitor-provided CF
+  // or X-Real-IP headers must not override the address used by the API limiter.
+  return require('../lib/clientIp').clientIp(req);
 }
 
 function maskIp(ip) {

@@ -5,6 +5,7 @@ import { AdminPagination } from '../components/AdminPagination';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useState } from 'react';
 import { api } from '../lib/api';
+import { formatCommentTime } from '../lib/commentTime';
 
 const statusText: Record<string, string> = {
   pending: '待审核',
@@ -135,7 +136,7 @@ export default function AdminCommentsPage() {
                       {statusText[item.status] || item.status}
                     </span>
                     <span>IP：{item.ip_address || item.ip_address_masked || '-'}</span>
-                    <span>时间：{item.created_at?.slice(0, 19).replace('T', ' ')}</span>
+                    <span>时间：{formatCommentTime(item.created_at, true)}（北京时间）</span>
                   </div>
 
                   <p className="mt-4 whitespace-pre-wrap rounded-[10px] bg-muted px-4 py-3 leading-7 text-foreground">

@@ -16,6 +16,10 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
   return http.createServer(async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-Content-Type-Options','nosniff');
+    res.setHeader('X-Frame-Options','SAMEORIGIN');
+    res.setHeader('Referrer-Policy','no-referrer');
+    res.setHeader('Strict-Transport-Security','max-age=31536000; includeSubDomains');
+    res.setHeader('Content-Security-Policy',"frame-ancestors 'self'; object-src 'none'; base-uri 'self'");
     let counted=false;
     const stop=(status,text)=>{res.writeHead(status,{'Content-Type':'text/plain; charset=utf-8'});res.end(text);};
     try {

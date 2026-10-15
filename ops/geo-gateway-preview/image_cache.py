@@ -36,7 +36,10 @@ def patch(text):
                       'proxy_pass https://mooncci_cn_tls_pool;']:
         if text.count(directive) != (4 if directive == 'proxy_next_upstream off;' else 2):
             raise ValueError('Unexpected gateway configuration: ' + directive)
-    pattern = r'add_header Cache-Control "private, no-store" always;(?=\s*add_header X-Content-Type-Options nosniff always;\s*add_header X-Mooncci-Node US always;\s*add_header X-Mooncci-Route primary always;)'
+    # Security headers may sit between nosniff and the route marker. Keep their
+    # bytes intact, and still match only the two recognized primary groups.
+    security = r'(?:\s*add_header (?:X-Frame-Options|Referrer-Policy|Strict-Transport-Security|Content-Security-Policy)\s+(?:"[^"]*"|[^;\n]+)\s+always;)*'
+    pattern = r'add_header Cache-Control "private, no-store" always;(?=\s*add_header X-Content-Type-Options nosniff always;' + security + r'\s*add_header X-Mooncci-Node US always;\s*add_header X-Mooncci-Route primary always;)'
     updated, count = re.subn(pattern, 'add_header Cache-Control ' + VARIABLE + ' always;\n    ' + VARY, text)
     if count != 2:
         raise ValueError('Expected exactly two primary response header groups')

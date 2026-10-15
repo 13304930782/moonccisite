@@ -22,10 +22,10 @@ export function headingsFor(content: string) {
     .parse(String(content || ''));
   const headings: { id: string; title: string; level: number }[] = [];
   function visit(node: any) {
-    if (node.type === 'heading' && node.depth <= 3)
+    if (node.type === 'heading' && node.depth <= 3 && plainText(node).trim())
       headings.push({
         id: `heading-${node.position.start.line - 1}`,
-        title: plainText(node),
+        title: plainText(node).trim(),
         level: node.depth,
       });
     for (const child of node.children || []) visit(child);

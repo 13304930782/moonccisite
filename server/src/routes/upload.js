@@ -6,6 +6,8 @@ const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 const db = require('../db');
+const mediaReferences = require('../lib/mediaReferences');
+const { mediaFileTransaction } = require('../lib/mediaFileTransaction');
 const { sanitizeNamePart } = require('../lib/mediaName');
 const { authRequired, editorOrAdmin, adminOnly } = require('../middleware/auth');
 
@@ -185,8 +187,8 @@ async function getImageMeta(filePath, filename, fallback = {}) {
   };
 }
 
-async function upsertMediaRecord(meta, userId = null, insertOnly = false) {
-  await db.query(
+async function upsertMediaRecord(meta, userId = null, insertOnly = false, connection = db) {
+  await connection.query(
     `
     INSERT ${insertOnly ? 'IGNORE' : ''} INTO media_assets
     (filename, original_name, display_name, alt_text, url, mime, ext, size, width, height, quality, status, uploaded_by)
@@ -232,7 +234,7 @@ const syncMediaRecords = require('../lib/mediaSync').createMediaSync({
   },
 });
 
-async function findMedia(filename, status = null) {
+async function findMedia(filename, status = null, connection = db) {
   const safeName = safeBasename(filename);
   const params = [safeName];
   let statusSql = '';
@@ -242,7 +244,7 @@ async function findMedia(filename, status = null) {
     params.push(status);
   }
 
-  const [rows] = await db.query(
+  const [rows] = await connection.query(
     `SELECT * FROM media_assets WHERE filename=?${statusSql} LIMIT 1`,
     params
   );
@@ -250,44 +252,7 @@ async function findMedia(filename, status = null) {
   return rows[0] || null;
 }
 
-async function updateReferences(oldUrl, newUrl, actorId) {
-  const c=await db.getConnection();const revisions=require('../lib/articleRevisions');
-  try {
-    await c.beginTransaction();
-    const [posts]=await c.query('SELECT * FROM posts WHERE content LIKE ? OR cover_image=? ORDER BY id FOR UPDATE',[`%${oldUrl}%`,oldUrl]);
-    for(const post of posts){
-      await revisions.baseline(c,post,actorId);
-      // Renaming/recompressing the same asset preserves its normalized framing.
-      // The revision snapshot includes cover_crop alongside the synchronized URL.
-      const next={...post,content:post.content.split(oldUrl).join(newUrl),cover_image:post.cover_image===oldUrl?newUrl:post.cover_image};
-      await c.query('UPDATE posts SET content=?,cover_image=?,version=version+1,updated_at=NOW() WHERE id=?',[next.content,next.cover_image,post.id]);
-      await revisions.record(c,{post_id:post.id},next,post.status==='published'?'publish':'manual',actorId,post.status==='published'?post.version+1:null);
-    }
-    await c.commit();
-  } catch(e){await c.rollback();throw e;} finally{c.release();}
-
-  try {
-    await db.query('UPDATE site_settings SET setting_value=REPLACE(setting_value, ?, ?) WHERE setting_value LIKE ?', [oldUrl, newUrl, `%${oldUrl}%`]);
-  } catch (err) {
-    if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
-  }
-}
-
-async function countReferences(url) {
-  const [[postContent]] = await db.query('SELECT COUNT(*) AS count FROM posts WHERE content LIKE ?', [`%${url}%`]);
-  const [[postCover]] = await db.query('SELECT COUNT(*) AS count FROM posts WHERE cover_image=?', [url]);
-  let settingsCount = { count: 0 };
-
-  try {
-    [[settingsCount]] = await db.query('SELECT COUNT(*) AS count FROM site_settings WHERE setting_value LIKE ?', [`%${url}%`]);
-  } catch (err) {
-    if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
-  }
-
-  return Number(postContent.count || 0) + Number(postCover.count || 0) + Number(settingsCount.count || 0);
-}
-
-async function compressImageIfNeeded(file, imageInfo, qualityKey) {
+async function compressImageIfNeeded(file, imageInfo, qualityKey, journal) {
   const preset = qualityPresets[qualityKey];
   const currentExt = path.extname(file.filename || '').toLowerCase();
   const originalPath = checkedUploadPath(file);
@@ -321,7 +286,8 @@ async function compressImageIfNeeded(file, imageInfo, qualityKey) {
   const baseName = path.basename(file.filename, currentExt);
   const nextFilename = `${baseName}.webp`;
   const nextPath = path.join(uploadDir, nextFilename);
-  const tmpPath = `${nextPath}.tmp`;
+  // Never accept a temporary path from a file/request object.
+  const tmpPath = path.join(uploadDir, `compression-${require('node:crypto').randomUUID()}.tmp`);
   const originalSize = fs.statSync(originalPath).size;
 
   // A byte snapshot also releases the input file before the same path is replaced.
@@ -335,11 +301,19 @@ async function compressImageIfNeeded(file, imageInfo, qualityKey) {
       quality: preset.quality,
       effort: 4,
     })
-    .toFile(tmpPath);
+    .toFile(tmpPath).finally(() => { if (journal && fs.existsSync(tmpPath)) journal.created(tmpPath); });
 
-  fs.renameSync(tmpPath, nextPath);
+  if (journal && nextPath !== originalPath) {
+    fs.linkSync(tmpPath, nextPath);
+    journal.created(nextPath);
+    fs.unlinkSync(tmpPath);
+  } else {
+    journal?.changed(originalPath);
+    fs.renameSync(tmpPath, nextPath);
+  }
 
   if (path.resolve(originalPath) !== path.resolve(nextPath)) {
+    journal?.changed(originalPath);
     removeUploadedFile(originalPath);
   }
 
@@ -396,13 +370,14 @@ function normalizeFilenameList(value) {
 }
 
 async function moveMediaToTrash(filename, force = false) {
-  const media = await findMedia(filename, 'active');
+ return mediaFileTransaction(db, uploadDir, [filePathFor(filename), trashPathFor(filename)], async (c, journal) => {
+  const media = await findMedia(filename, 'active', c);
 
   if (!media) {
     return { filename, ok: false, reason: 'not_found' };
   }
 
-  const refCount = await countReferences(media.url);
+  const refCount = await mediaReferences.countReferences(c, media.url);
   if (refCount > 0 && !force) {
     return { filename, ok: false, reason: 'referenced', ref_count: refCount };
   }
@@ -411,19 +386,28 @@ async function moveMediaToTrash(filename, force = false) {
   const nextPath = trashPathFor(filename);
 
   if (fs.existsSync(oldPath)) {
-    fs.renameSync(oldPath, nextPath);
+    if (fs.existsSync(nextPath)) {
+      if (!await journal.recoveredCopy(oldPath,nextPath)) throw Object.assign(new Error('回收站已有同名文件，归属未确认，未修改任何文件。'), {status:409});
+    } else {
+      fs.linkSync(oldPath, nextPath);
+      journal.created(nextPath);
+    }
+    journal.changed(oldPath);
+    fs.unlinkSync(oldPath);
   }
 
-  await db.query(
+  await c.query(
     'UPDATE media_assets SET status="trashed", deleted_at=NOW(), updated_at=CURRENT_TIMESTAMP WHERE filename=?',
     [filename]
   );
 
   return { filename, ok: true };
+ });
 }
 
 async function restoreMediaFromTrash(filename) {
-  const media = await findMedia(filename, 'trashed');
+ return mediaFileTransaction(db, uploadDir, [filePathFor(filename), trashPathFor(filename)], async (c, journal) => {
+  const media = await findMedia(filename, 'trashed', c);
 
   if (!media) {
     return { filename, ok: false, reason: 'not_found' };
@@ -432,33 +416,42 @@ async function restoreMediaFromTrash(filename) {
   const oldPath = trashPathFor(filename);
   const nextPath = filePathFor(filename);
 
-  if (fs.existsSync(nextPath)) {
-    return { filename, ok: false, reason: 'target_exists' };
-  }
-
   if (fs.existsSync(oldPath)) {
-    fs.renameSync(oldPath, nextPath);
+    if (fs.existsSync(nextPath)) {
+      if (!await journal.recoveredCopy(oldPath,nextPath)) throw Object.assign(new Error('uploads 中已有同名文件，归属未确认，无法恢复。'), {status:409});
+    } else {
+      fs.linkSync(oldPath, nextPath);
+      journal.created(nextPath);
+    }
+    journal.changed(oldPath);
+    fs.unlinkSync(oldPath);
+  } else if (fs.existsSync(nextPath)) {
+    throw Object.assign(new Error('uploads 中已有同名文件，无法恢复。'), {status:409});
   }
 
-  await db.query(
+  await c.query(
     'UPDATE media_assets SET status="active", deleted_at=NULL, updated_at=CURRENT_TIMESTAMP WHERE filename=?',
     [filename]
   );
 
   return { filename, ok: true };
+ });
 }
 
 async function permanentlyDeleteMedia(filename) {
-  const media = await findMedia(filename, 'trashed');
+ return mediaFileTransaction(db, uploadDir, [trashPathFor(filename)], async (c,journal) => {
+  const media = await findMedia(filename, 'trashed', c);
 
   if (!media) {
     return { filename, ok: false, reason: 'not_found' };
   }
 
-  removeUploadedFile(trashPathFor(filename));
-  await db.query('DELETE FROM media_assets WHERE filename=? AND status="trashed"', [filename]);
+  journal.changed(trashPathFor(filename));
+  await fs.promises.rm(trashPathFor(filename), {force:true});
+  await c.query('DELETE FROM media_assets WHERE filename=? AND status="trashed"', [filename]);
 
   return { filename, ok: true };
+ });
 }
 
 router.get('/media',routeLimiter, authRequired, contributor, async (req, res) => {
@@ -542,7 +535,7 @@ router.post('/media/batch/delete', authRequired, editorOrAdmin, async (req, res)
     });
   } catch (err) {
     console.error('[upload/media/batch/delete]', err);
-    res.status(500).json({ message: '批量删除失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '批量删除失败' });
   }
 });
 
@@ -569,7 +562,7 @@ router.post('/media/batch/restore', authRequired, editorOrAdmin, async (req, res
     });
   } catch (err) {
     console.error('[upload/media/batch/restore]', err);
-    res.status(500).json({ message: '批量恢复失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '批量恢复失败' });
   }
 });
 
@@ -596,7 +589,7 @@ router.post('/media/batch/permanent', authRequired, editorOrAdmin, async (req, r
     });
   } catch (err) {
     console.error('[upload/media/batch/permanent]', err);
-    res.status(500).json({ message: '批量彻底删除失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '批量彻底删除失败' });
   }
 });
 
@@ -660,22 +653,23 @@ router.put('/media/:filename/rename', authRequired, editorOrAdmin, async (req, r
       return res.status(409).json({ message: '目标文件名已存在' });
     }
 
-    fs.renameSync(oldPath, nextPath);
-
-    const oldUrl = toPublicUrl(filename);
-    const nextUrl = toPublicUrl(nextFilename);
-    await updateReferences(oldUrl, nextUrl, req.user.id);
-
-    await db.query(
-      'UPDATE media_assets SET filename=?, url=?, updated_at=CURRENT_TIMESTAMP WHERE filename=?',
-      [nextFilename, nextUrl, filename]
-    );
-
-    const updated = await findMedia(nextFilename);
+    const updated = await mediaFileTransaction(db, uploadDir, [oldPath, nextPath], async (c, journal) => {
+      if (!await findMedia(filename, 'active', c)) throw Object.assign(new Error('媒体文件不存在'), {status:404});
+      if (fs.existsSync(nextPath) || await findMedia(nextFilename, null, c)) throw Object.assign(new Error('目标文件名已存在'), {status:409});
+      // link() never replaces a concurrently created destination.
+      fs.linkSync(oldPath, nextPath);
+      journal.created(nextPath);
+      journal.changed(oldPath);
+      fs.unlinkSync(oldPath);
+      const nextUrl = toPublicUrl(nextFilename);
+      await mediaReferences.updateReferences(c, toPublicUrl(filename), nextUrl, req.user.id);
+      await c.query('UPDATE media_assets SET filename=?,url=?,updated_at=CURRENT_TIMESTAMP WHERE filename=?', [nextFilename, nextUrl, filename]);
+      return findMedia(nextFilename, null, c);
+    });
     res.json(mapMediaRow(updated));
   } catch (err) {
     console.error('[upload/media/rename]', err);
-    res.status(500).json({ message: '媒体文件改名失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '媒体文件改名失败，原文件和引用已保留。' });
   }
 });
 
@@ -700,7 +694,7 @@ router.delete('/media/:filename', authRequired, editorOrAdmin, async (req, res) 
     res.json({ message: '媒体文件已移入回收站' });
   } catch (err) {
     console.error('[upload/media/delete]', err);
-    res.status(500).json({ message: '媒体文件删除失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '媒体文件删除失败' });
   }
 });
 
@@ -723,7 +717,7 @@ router.post('/media/:filename/restore', authRequired, editorOrAdmin, async (req,
     res.json(mapMediaRow(updated));
   } catch (err) {
     console.error('[upload/media/restore]', err);
-    res.status(500).json({ message: '媒体文件恢复失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '媒体文件恢复失败' });
   }
 });
 
@@ -741,7 +735,7 @@ router.delete('/media/:filename/permanent', authRequired, editorOrAdmin, async (
     res.json({ message: '媒体文件已彻底删除' });
   } catch (err) {
     console.error('[upload/media/permanent]', err);
-    res.status(500).json({ message: '彻底删除失败' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '彻底删除失败' });
   }
 });
 
@@ -773,29 +767,19 @@ router.post('/media/:filename/recompress', authRequired, editorOrAdmin, async (r
       return res.status(400).json({ message: '二次压缩请选择低/中/高，不要选择原图' });
     }
 
-    const file = {
-      filename,
-      path: filePath,
-      size: fs.statSync(filePath).size,
-    };
-
-    const result = await compressImageIfNeeded(file, imageInfo, quality);
-    const meta = await getImageMeta(file.path, file.filename, {
-      original_name: media.original_name,
-      display_name: media.display_name,
-      alt_text: media.alt_text,
-      quality,
+    const nextPath = filePathFor(`${path.basename(filename, path.extname(filename))}.webp`);
+    const {updated, result} = await mediaFileTransaction(db, uploadDir, [filePath, nextPath], async (c, journal) => {
+      const current = await findMedia(filename, 'active', c);
+      if (!current) throw Object.assign(new Error('媒体文件不存在'), {status:404});
+      if (nextPath !== filePath && (fs.existsSync(nextPath) || await findMedia(path.basename(nextPath), null, c))) throw Object.assign(new Error('目标文件名已存在'), {status:409});
+      const file = {filename, path:filePath, size:fs.statSync(filePath).size};
+      const result = await compressImageIfNeeded(file, imageInfo, quality, journal);
+      const meta = await getImageMeta(file.path, file.filename, {original_name:current.original_name, display_name:current.display_name, alt_text:current.alt_text, quality});
+      await mediaReferences.updateReferences(c, current.url, meta.url, req.user.id);
+      if (file.filename !== filename) await c.query('DELETE FROM media_assets WHERE filename=?', [filename]);
+      await upsertMediaRecord(meta, current.uploaded_by, false, c);
+      return {updated:await findMedia(file.filename, 'active', c), result};
     });
-
-    const oldUrl = media.url;
-    await updateReferences(oldUrl, meta.url, req.user.id);
-
-    if (file.filename !== filename) {
-      await db.query('DELETE FROM media_assets WHERE filename=?', [filename]);
-    }
-
-    await upsertMediaRecord(meta, media.uploaded_by);
-    const updated = await findMedia(file.filename, 'active');
 
     res.json({
       ...mapMediaRow(updated),
@@ -805,12 +789,12 @@ router.post('/media/:filename/recompress', authRequired, editorOrAdmin, async (r
     });
   } catch (err) {
     console.error('[upload/media/recompress]', err);
-    res.status(500).json({ message: '二次压缩失败，请换一张图片或稍后重试' });
+    res.status(err.status || 500).json({ message: err.status ? err.message : '二次压缩失败，原文件和引用已保留。' });
   }
 });
 
-router.post('/image', authRequired, contributor, require('express-rate-limit')({windowMs:3600000,limit:30,skip:req=>isManager(req.user)||!require('../services/articleWorkflow').enabled(),standardHeaders:true,legacyHeaders:false}), (req, res) => {
-  upload.single('image')(req, res, async (err) => {
+router.post('/image', authRequired, contributor, require('express-rate-limit')({windowMs:3600000,limit:30,skip:req=>isManager(req.user)||!require('../services/articleWorkflow').enabled(),standardHeaders:true,legacyHeaders:false}), (req, res, next) => {
+  const finishUpload = async (err) => {
     if (err) {
       return res.status(400).json({ message: err.message || '图片上传失败' });
     }
@@ -863,7 +847,8 @@ router.post('/image', authRequired, contributor, require('express-rate-limit')({
       original_size: result.original_size,
       output_size: result.output_size,
     });
-  });
+  };
+  upload.single('image')(req, res, err => { void finishUpload(err).catch(next); });
 });
 
 module.exports = {
