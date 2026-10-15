@@ -179,3 +179,30 @@
     line-height: 1.5;
   }
 }
+
+/* Admin UI extends the site palette without changing shared shadcn tokens. */
+:root {
+  --ui-fill: #f1f0ec;
+  --ui-fill-strong: #ecebe6;
+  --ui-sidebar: #f5f4f0;
+  --ui-text-muted: #6b6a65;
+  --ui-warn-bg: #faeeda;
+  --ui-warn-text: #854f0b;
+  --ui-ok: #1D9E75;
+  --ui-brand: var(--article-accent);
+  --ui-on-brand: #ffffff;
+  --ui-text-body: var(--foreground);
+  --ui-media-overlay: rgba(0,0,0,.55);
+  --ui-media-overlay-fill: rgba(255,255,255,.22);
+  --ui-media-overlay-text: #ffffff;
+}
+.dark {
+  --ui-fill: rgba(255,255,255,.06);
+  --ui-fill-strong: rgba(255,255,255,.10);
+  --ui-sidebar: rgba(255,255,255,.03);
+  --ui-text-muted: #a8a69f;
+  --ui-warn-bg: rgba(250,199,117,.16);
+  --ui-warn-text: #fac775;
+  --ui-ok: #4fc3a1;
+  --ui-on-brand: #141413;
+}

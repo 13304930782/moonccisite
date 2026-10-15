@@ -1,0 +1,66 @@
+.admin-posts-page { max-width:1040px; margin-inline:auto; font-size:14px; }
+.admin-posts-header { display:flex; justify-content:space-between; align-items:center; gap:20px; margin-bottom:28px; }
+.admin-posts-heading { display:flex; flex-wrap:wrap; align-items:baseline; gap:12px; }
+.admin-posts-heading h1 { margin:0; font-size:28px; line-height:1.35; font-weight:600; }
+.admin-posts-heading > span { font-size:13px; color:var(--ui-text-muted); }
+.admin-posts-back { display:inline-flex; align-items:center; min-height:44px; color:var(--ui-text-muted); font-size:13px; }
+.admin-posts-header-actions { display:flex; gap:10px; flex-wrap:wrap; }
+.admin-posts-filters { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:20px; }
+.admin-posts-filters .admin-button { gap:8px; padding-inline:16px; border-radius:999px; }
+.admin-posts-filters .admin-button[aria-pressed=true] { background:var(--ui-fill-strong); font-weight:600; }
+.admin-posts-filter-count { color:var(--ui-text-muted); font-size:12px; font-weight:400; }
+.admin-posts-list { display:grid; gap:12px; }
+.admin-posts-row { display:flex; align-items:center; gap:20px; min-width:0; padding:16px 20px; border-radius:12px; }
+.admin-posts-row:hover,.admin-posts-row:focus-within { background:var(--ui-fill); }
+.admin-posts-main { display:grid; gap:6px; min-width:0; flex:1; color:var(--foreground); text-decoration:none; min-height:44px; align-content:center; }
+.admin-posts-main h2,.admin-posts-main p { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin:0; }
+.admin-posts-main h2 { font-size:15px; line-height:1.6; font-weight:600; }
+.admin-posts-main :is(.admin-posts-meta,.admin-posts-summary) { color:var(--ui-text-muted); font-size:13px; line-height:1.6; }
+.admin-posts-row-end { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex:none; }
+.admin-posts-unpublished { padding:3px 10px; border-radius:999px; background:var(--ui-warn-bg); color:var(--ui-warn-text); font-size:12px; white-space:nowrap; }
+.admin-posts-status { display:inline-flex; align-items:center; gap:7px; color:var(--ui-text-muted); font-size:13px; white-space:nowrap; }
+.admin-posts-status-dot { flex:none; width:8px; height:8px; border-radius:50%; background:var(--ui-text-muted); }
+.admin-posts-status[data-status=published] .admin-posts-status-dot { background:var(--ui-ok); }
+.admin-posts-actions { display:flex; align-items:center; gap:2px; }
+.admin-posts-main:focus-visible,.admin-posts-back:focus-visible { outline:2px solid var(--ui-brand); outline-offset:4px; border-radius:4px; }
+.admin-posts-menu [data-slot=dropdown-menu-item] { min-height:44px; padding-inline:12px; border-radius:8px; }
+.admin-posts-message { margin-bottom:20px; padding:14px 16px; border-radius:10px; background:var(--ui-fill); overflow-wrap:anywhere; }
+.admin-posts-more { display:flex; justify-content:center; margin-top:16px; }
+.admin-posts-pagination { display:flex; justify-content:center; align-items:center; gap:16px; flex-wrap:wrap; margin-top:28px; color:var(--ui-text-muted); font-size:13px; }
+.admin-posts-shown { margin:24px 0 0; text-align:center; color:var(--ui-text-muted); font-size:12px; }
+.admin-posts-empty { display:grid; justify-items:center; gap:16px; padding:48px 20px; text-align:center; color:var(--ui-text-muted); }
+.admin-posts-skeleton { display:grid; gap:12px; }
+.admin-posts-skeleton-row { display:grid; gap:10px; padding:20px; }
+.admin-posts-skeleton [data-slot=skeleton] { background:var(--ui-fill); animation:none; height:15px; }
+.admin-posts-skeleton-title { width:48%; }
+.admin-posts-skeleton-meta { width:28%; }
+.admin-posts-skeleton-summary { width:72%; }
+.admin-posts-import-dialog { width:calc(100vw - 32px); max-width:600px; max-height:85dvh; overflow-y:auto; border:0; border-radius:16px; color:var(--foreground); }
+.admin-posts-import-dialog .article-import { border:0; margin:0; padding:0; }
+.admin-posts-import-dialog .article-import > summary { display:none; }
+.admin-posts-import-dialog .article-import p { color:var(--ui-text-muted); margin-block:12px; font-size:14px; }
+.admin-posts-import-dialog .article-import form { display:grid; gap:8px; }
+.admin-posts-import-dialog .article-import-input { display:flex; gap:12px; }
+.admin-posts-import-dialog .article-import-input input { min-width:0; flex:1; min-height:44px; padding:10px 12px; border:0; border-radius:10px; background:var(--ui-fill); font-size:14px; }
+.admin-posts-import-dialog .article-import-input input:focus-visible { outline:2px solid var(--ui-brand); outline-offset:2px; }
+.admin-posts-import-dialog .article-import .workflow-button { min-height:44px; border:0; border-radius:8px; }
+@media (hover:hover) and (pointer:fine) {
+ .admin-posts-actions { opacity:0; pointer-events:none; }
+ .admin-posts-row:hover .admin-posts-actions,.admin-posts-row:focus-within .admin-posts-actions { opacity:1; pointer-events:auto; }
+}
+@media (prefers-reduced-motion:no-preference) {
+ .admin-posts-actions { transition:opacity 120ms ease; }
+ .admin-posts-skeleton [data-slot=skeleton] { animation:admin-posts-pulse 1.4s ease-in-out infinite; }
+ @keyframes admin-posts-pulse { 50% { opacity:.45; } }
+}
+@media (max-width:900px) {
+ .admin-posts-import-dialog .article-import-input input { font-size:16px; }
+}
+@media (max-width:700px) {
+ .admin-posts-header { align-items:flex-start; flex-direction:column; gap:16px; }
+ .admin-posts-row { align-items:stretch; flex-direction:column; gap:12px; padding:16px; }
+ .admin-posts-row-end { justify-content:flex-start; flex-wrap:wrap; gap:10px; }
+ .admin-posts-actions { margin-left:auto; }
+ .admin-posts-import-dialog .article-import-input { flex-direction:column; }
+ .admin-posts-pagination { gap:8px; }
+}
