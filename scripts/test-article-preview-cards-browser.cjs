@@ -49,7 +49,7 @@ const images={
     });
     await page.goto('http://127.0.0.1:4269/admin/write?draft='+draft.id);
     await page.evaluate(()=>new Promise(resolve=>{const link=document.createElement('link');link.rel='stylesheet';link.href='/fixture-review.css';link.onload=resolve;document.head.appendChild(link);}));
-    await page.getByRole('button',{name:'预览并发布',exact:true}).click();
+    await page.getByRole('button',{name:'发布',exact:true}).click();
     const check=page.getByRole('button',{name:'运行发布前检查',exact:true});
     await check.waitFor();
     await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(button=>button.textContent==='运行发布前检查'&&!button.disabled),null,{timeout:3000});
@@ -61,7 +61,7 @@ const images={
     releaseStyles();
     // Repeat mounting with the stylesheet now cached, covering missed load events.
     await page.getByRole('button',{name:'返回编辑',exact:true}).first().click();
-    await page.getByRole('button',{name:'预览并发布',exact:true}).click();
+    await page.getByRole('button',{name:'发布',exact:true}).click();
     await check.click();
     await page.getByRole('heading',{name:'检查通过，可以继续',exact:true}).waitFor();
     for(const width of [320,390,768,1440])for(const dark of [false,true]) {
