@@ -31,7 +31,7 @@ async function main() {
       for (const [url, title] of [['/admin/users', '用户管理'], ['/admin/users/2/settings', '用户设置'], ['/account/settings', '账号设置']]) {
         await page.goto('http://127.0.0.1:4196' + url);
         await page.getByRole('heading', { name: title, exact: true }).waitFor();
-        if (url === '/admin/users') await page.getByText('测试读者', { exact: true }).waitFor();
+        if (url === '/admin/users') await page.getByRole('main').getByText('测试读者', { exact: true }).waitFor();
         else await page.getByLabel('用户名', { exact: true }).waitFor();
         if (url !== '/admin/users') {
           const labels = url.includes('/admin/') ? ['角色', '状态', '评论权限'] : ['确认身份的方式'];

@@ -1,16 +1,19 @@
 import { reducedMotion } from '../../lib/motionPreference';
-import { focusableWithin, loopFocus } from '../../lib/focusLoop';
 import {useOperations} from '../../lib/useOperations';
 import '../../../styles/workspace-polish.css';
+import '../../../styles/admin-shell.css';
 import {usePublishing} from '../../lib/usePublishing';
-import { useSiteSettings } from '../../context/SiteSettingsContext';
-import { safeImageSrc } from '../../lib/safeUrl';
+import { AdminButton } from './AdminButton';
+import { Avatar, AvatarFallback } from '../ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from '../ui/sheet';
 import { ThemeToggle } from '../../context/ThemeContext';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
   ArrowUp,
+  ChevronDown,
   Ban,
   Crown,
   FileText,
@@ -22,6 +25,7 @@ import {
   LogOut,
   Mail,
   Menu,
+  MoreHorizontal,
   MessageCircle,
   PenLine,
   Send,
@@ -77,8 +81,6 @@ function canWrite(role?: string) {
 
 export function AdminShell({ children }: AdminShellProps) {
   const mainRef = useRef<HTMLElement>(null);
-  const sidebarRef = useRef<HTMLElement>(null), mobileBarRef = useRef<HTMLElement>(null);
-  const menuButtonRef = useRef<HTMLButtonElement>(null), mobileMenuRef = useRef<HTMLElement>(null);
   const [showTop, setShowTop] = useState(false);
   function backToTop() {
     const main = mainRef.current;
@@ -95,8 +97,6 @@ export function AdminShell({ children }: AdminShellProps) {
   }
 
   const { user, logout, loggingOut, logoutError } = useAuth();
-  const { data: settings } = useSiteSettings();
-  const brand = settings?.brand || {};
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   useEffect(() => {
@@ -105,32 +105,11 @@ export function AdminShell({ children }: AdminShellProps) {
     setShowTop(false);
   }, [location.pathname]);
   useEffect(() => {
-    const media = window.matchMedia('(max-width:760px)');
+    const media = window.matchMedia('(max-width:900px)');
     const resize = () => { if (!media.matches) setMobileOpen(false); };
     media.addEventListener('change', resize);
     return () => media.removeEventListener('change', resize);
   }, []);
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const background = [mainRef.current, sidebarRef.current, mobileBarRef.current]
-      .filter((element): element is HTMLElement => !!element);
-    const previous = background.map(element => element.inert);
-    background.forEach(element => { element.inert = true; });
-    const frame = requestAnimationFrame(() => {
-      const menu = mobileMenuRef.current;
-      if (menu) (focusableWithin(menu)[0] || menu).focus({preventScroll:true});
-    });
-    const keys = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); setMobileOpen(false); }
-      else if (mobileMenuRef.current) loopFocus(event, mobileMenuRef.current);
-    };
-    window.addEventListener('keydown', keys);
-    return () => {
-      cancelAnimationFrame(frame); window.removeEventListener('keydown', keys);
-      background.forEach((element, index) => { element.inert = previous[index]; });
-      if (menuButtonRef.current?.offsetParent) menuButtonRef.current.focus({preventScroll:true});
-    };
-  }, [mobileOpen]);
 
   const role = user?.role || 'user';
   const manager = isManager(role);
@@ -297,11 +276,8 @@ export function AdminShell({ children }: AdminShellProps) {
         <Link className="site-brand" to="/">
           mooncci
         </Link>
-        <div className="admin-menu-head-actions"><ThemeToggle />{mobile && <button className="icon-button" type="button" aria-label="关闭后台菜单" onClick={closeMobile}><X /></button>}</div>
+        <div className="admin-menu-head-actions"><ThemeToggle />{mobile && <SheetClose asChild><AdminButton variant="ghost" size="icon" aria-label="关闭后台菜单"><X /></AdminButton></SheetClose>}</div>
       </div>
-      <p className="admin-user">
-        {user?.username} · {getRoleName(role)}
-      </p>
       <nav className="admin-menu" aria-label="后台导航">
         {[
           {label:'工作台',paths:['/admin/operations','/admin','/admin/analytics']},
@@ -309,62 +285,55 @@ export function AdminShell({ children }: AdminShellProps) {
           {label:'用户与互动',paths:['/admin/comments','/admin/users','/admin/editor-applications','/admin/editor-apply','/admin/early-access','/admin/banned-words']},
           {label:'邮件与订阅',paths:['/admin/mailbox','/admin/mailbox-requests','/admin/newsletter','/admin/mail-settings','/admin/send-mail']},
           {label:'站点与系统',paths:['/admin/ai-settings','/admin/node-monitor','/admin/blog-pages','/admin/site-settings','/admin/login-settings','/admin/electricity','/admin/runtime']},
-        ].map(group=>{const items=group.paths.map(path=>menus.find(item=>item.to===path)).filter((item):item is MenuItem=>!!item);if(!items.length)return null;return <details className="admin-menu-group" key={group.label+location.pathname} open={group.label==='工作台'||items.some(item=>item.to==='/admin'?location.pathname==='/admin':location.pathname.startsWith(item.to))}><summary>{group.label}</summary>{items.map(item=><NavLink key={item.to} to={item.to} end={item.to==='/admin'} onClick={closeMobile}><item.icon/><span>{item.title}</span></NavLink>)}</details>;})}
-        <div className="admin-menu-footer">
-        <Link to="/account/settings" onClick={closeMobile}><Settings /><span>个人设置</span></Link>
-        <Link to="/" onClick={closeMobile}>
-          <Home />
-          <span>返回首页</span>
-        </Link>
-        <button onClick={handleLogout} disabled={loggingOut}>
-          <LogOut />
-          <span>{loggingOut ? '正在退出…' : '退出登录'}</span>
-        </button>
-        </div>
+        ].map(group=>{const items=group.paths.map(path=>menus.find(item=>item.to===path)).filter((item):item is MenuItem=>!!item);if(!items.length)return null;return <details className="admin-menu-group" key={group.label+location.pathname} open={group.label==='工作台'||items.some(item=>item.to==='/admin'?location.pathname==='/admin':location.pathname.startsWith(item.to))}><summary><span>{group.label}</span><ChevronDown className="admin-group-chevron" aria-hidden="true"/></summary>{items.map(item=><NavLink className="admin-nav-link" key={item.to} to={item.to} end={item.to==='/admin'} onClick={closeMobile}><span className="admin-nav-item"><item.icon aria-hidden="true"/><span>{item.title}</span></span></NavLink>)}</details>;})}
       </nav>
+      <div className="admin-user-card">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className="admin-user-trigger" aria-label={`${user?.username || ''}，${getRoleName(role)}，打开账户菜单`}>
+              <Avatar className="admin-user-avatar"><AvatarFallback>{Array.from(user?.username || '?')[0].toLocaleUpperCase()}</AvatarFallback></Avatar>
+              <span className="admin-user-identity"><strong>{user?.username}</strong><span>{getRoleName(role)}</span></span>
+              <MoreHorizontal size={18} aria-hidden="true"/>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="admin-portal admin-user-dropdown" side="top" align="start" sideOffset={8}>
+            <DropdownMenuItem asChild><Link to="/account/settings" onClick={closeMobile}><Settings aria-hidden="true"/>个人设置</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/" onClick={closeMobile}><Home aria-hidden="true"/>返回首页</Link></DropdownMenuItem>
+            <DropdownMenuItem disabled={loggingOut} onSelect={() => { void handleLogout(); }}><LogOut aria-hidden="true"/>{loggingOut ? '正在退出…' : '退出登录'}</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       {logoutError && (
         <p className="admin-user" role="alert">
           {logoutError}
         </p>
       )}
+      </div>
     </>
   );
   return (
+    <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
     <div className="admin-frame">
-      <aside className="admin-sidebar" ref={sidebarRef}>
+      <aside className="admin-sidebar">
         {MenuContent()}
       </aside>
-      <header className="admin-mobile-bar" ref={mobileBarRef}>
+      <header className="admin-mobile-bar">
         <Link className="site-brand" to="/">
           mooncci
         </Link>
         <div className="header-actions">
           <ThemeToggle />
-          <button
-            ref={menuButtonRef}
-            className="icon-button"
+          <SheetTrigger asChild><AdminButton
+            variant="ghost" size="icon"
             aria-label={mobileOpen ? '关闭后台菜单' : '打开后台菜单'}
-            aria-expanded={mobileOpen}
-            aria-controls="admin-mobile-menu"
-            onClick={() => setMobileOpen(!mobileOpen)}
           >
             {mobileOpen ? <X /> : <Menu />}
-          </button>
+          </AdminButton></SheetTrigger>
         </div>
       </header>
-      {mobileOpen && (
-        <div className="admin-mobile-layer">
-          <button
-            className="admin-menu-backdrop"
-            aria-label="关闭菜单"
-            tabIndex={-1}
-            onClick={closeMobile}
-          />
-          <aside id="admin-mobile-menu" ref={mobileMenuRef} role="dialog" aria-modal="true" aria-label="后台导航" tabIndex={-1}>
-            {MenuContent({mobile:true})}
-          </aside>
-        </div>
-      )}
+      <SheetContent side="left" className="admin-portal admin-sheet" aria-describedby={undefined}>
+        <SheetTitle className="sr-only">后台导航</SheetTitle>
+        {MenuContent({mobile:true})}
+      </SheetContent>
       <main
         className="admin-main"
         ref={mainRef}
@@ -387,6 +356,7 @@ export function AdminShell({ children }: AdminShellProps) {
         </button>
       )}
     </div>
+    </Sheet>
   );
 }
 export default AdminShell;

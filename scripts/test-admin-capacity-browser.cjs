@@ -43,7 +43,7 @@ async function main() {
     await page.getByText('media-page-1', { exact: true }).waitFor();
     await page.getByRole('navigation', { name: '媒体库分页' }).getByRole('button', { name: '下一页' }).click();
     await page.getByText('media-page-2', { exact: true }).waitFor();
-    const search = page.getByPlaceholder('搜索文件名、显示名、Alt...');
+    const search = page.getByRole('textbox', { name: '搜索媒体文件' });
     await search.fill('slow');
     await page.waitForRequest(r => new URL(r.url()).searchParams.get('q') === 'slow');
     await search.fill('fast');

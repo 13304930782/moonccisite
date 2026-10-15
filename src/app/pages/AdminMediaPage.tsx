@@ -1,22 +1,21 @@
 import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
-import { ThemeSelect } from '../components/ThemeSelect';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import { AdminButton } from '../components/admin/AdminButton';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Copy,
-  Eye,
+  Check,
+  ChevronDown,
   Image as ImageIcon,
-  Pencil,
+  MoreHorizontal,
   RefreshCw,
-  RotateCw,
-  Save,
   Trash2,
-  Undo2,
-  Upload,
+  X,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { safeImageSrc } from '../lib/safeUrl';
+import '../../styles/admin-media.css';
 
 const IMAGE_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp,image/x-icon,image/vnd.microsoft.icon,.jpg,.jpeg,.png,.gif,.webp,.ico';
 
@@ -76,6 +75,11 @@ async function copyText(text: string) {
   await navigator.clipboard.writeText(text);
 }
 
+function QualityMenu({ value, onChange, upload = false, disabled = false }: { value: string; onChange: (value: string) => void; upload?: boolean; disabled?: boolean }) {
+  const names: Record<string, string> = { low: '低', medium: '中', high: '高', original: '原图' };
+  return <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" variant="ghost" disabled={disabled} aria-label={upload ? '上传图片质量' : '压缩图片质量'}>{upload ? '上传质量' : '压缩质量'}：{names[value]}<ChevronDown size={14} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal media-quality-menu"><DropdownMenuRadioGroup value={value} onValueChange={onChange}>{[['low', '低清晰度'], ['medium', '中清晰度'], ['high', '高清晰度'], ...(upload ? [['original', '原图']] : [])].map(([key, label]) => <DropdownMenuRadioItem key={key} value={key}>{label}</DropdownMenuRadioItem>)}</DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>;
+}
+
 export default function AdminMediaPage() {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [page, setPage] = useState(1);
@@ -91,17 +95,32 @@ export default function AdminMediaPage() {
   const [status, setStatus] = useState<MediaStatus>('active');
   const [selected, setSelected] = useState<MediaItem | null>(null);
   const detailTrigger = useRef<HTMLButtonElement | null>(null);
+  const batchMenuTrigger = useRef<HTMLButtonElement | null>(null);
   const [selectedFilenames, setSelectedFilenames] = useState<string[]>([]);
+  const [manualSelection, setManualSelection] = useState(false);
+  const [finePointer, setFinePointer] = useState(() => window.matchMedia('(hover: hover) and (pointer: fine)').matches);
   const [displayName, setDisplayName] = useState('');
   const [altText, setAltText] = useState('');
   const [renameTo, setRenameTo] = useState('');
   const [recompressQuality, setRecompressQuality] = useState('medium');
   const [saving, setSaving] = useState(false);
+  const uploadInput = useRef<HTMLInputElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const clearSearch = () => { setKeyword(''); setSearch(''); setPage(1); searchInput.current?.focus(); };
+
+  useEffect(() => {
+    const media = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const update = () => setFinePointer(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   const queryKey = `${status}:${search}:${page}`;
   const currentQuery = useRef(queryKey);
   currentQuery.current = queryKey;
   const load = async () => {
+    if (currentQuery.current !== queryKey) return;
     const version = ++requestVersion.current;
     const current = () => version === requestVersion.current && currentQuery.current === queryKey;
     setLoading(true);
@@ -112,6 +131,7 @@ export default function AdminMediaPage() {
       if (!current()) return;
       setItems(data.items);
       setTotal(data.total);
+      setSelectedFilenames(current => current.filter(filename => data.items.some((item: MediaItem) => item.filename === filename)));
       if (data.page !== page) setPage(data.page);
     } catch (err: any) {
       if (current()) { setLoadError(err.message || '媒体库加载失败'); }
@@ -124,6 +144,7 @@ export default function AdminMediaPage() {
   useEffect(() => {
     setSelected(null);
     setSelectedFilenames([]);
+    setManualSelection(false);
     setItems([]);
     void load();
     return () => { requestVersion.current++; };
@@ -132,6 +153,7 @@ export default function AdminMediaPage() {
 
   const selectedSet = useMemo(() => new Set(selectedFilenames), [selectedFilenames]);
   const selectedCount = selectedFilenames.length;
+  const selecting = manualSelection || selectedCount > 0;
   const allVisibleSelected = filtered.length > 0 && filtered.every((item) => selectedSet.has(item.filename));
 
   const openDetail = (item: MediaItem, trigger: HTMLButtonElement) => {
@@ -152,6 +174,7 @@ export default function AdminMediaPage() {
   };
 
   const toggleOne = (filename: string) => {
+    if (saving) return;
     setSelectedFilenames((current) => {
       if (current.includes(filename)) {
         return current.filter((item) => item !== filename);
@@ -201,49 +224,31 @@ export default function AdminMediaPage() {
     }
   };
 
-  const saveMeta = async () => {
-    if (!selected) return;
-
+  const saveDetails = async () => {
+    if (!selected || saving) return;
     setSaving(true);
     setMessage('');
-
+    let metadataSaved = false;
     try {
-      const updated = await requestJson(`/upload/media/${encoded(selected.filename)}`, {
+      let updated = await requestJson(`/upload/media/${encoded(selected.filename)}`, {
         method: 'PUT',
-        body: JSON.stringify({
-          display_name: displayName,
-          alt_text: altText,
-        }),
+        body: JSON.stringify({ display_name: displayName, alt_text: altText }),
       });
-
-      setItems((current) => current.map((item) => (item.filename === selected.filename ? updated : item)));
-      refreshSelected(updated);
-      notify.success('媒体信息已保存');
-    } catch (err: any) {
-      setMessage(err.message || '保存失败'); notify.error(err.message || '保存失败');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const renameFile = async () => {
-    if (!selected) return;
-
-    setSaving(true);
-    setMessage('');
-
-    try {
-      const updated = await requestJson(`/upload/media/${encoded(selected.filename)}/rename`, {
-        method: 'PUT',
-        body: JSON.stringify({ filename: renameTo }),
+      metadataSaved = true;
+      setItems(current => current.map(item => item.filename === selected.filename ? updated : item));
+      // Keep typed fields if the second request fails; the two existing endpoints are not atomic.
+      setSelected(updated);
+      const renamed = selected.status !== 'trashed' && renameTo !== selected.filename;
+      if (renamed) updated = await requestJson(`/upload/media/${encoded(updated.filename)}/rename`, {
+        method: 'PUT', body: JSON.stringify({ filename: renameTo }),
       });
-
       setItems((current) => current.map((item) => (item.filename === selected.filename ? updated : item)));
       setSelectedFilenames((current) => current.map((filename) => (filename === selected.filename ? updated.filename : filename)));
       refreshSelected(updated);
-      notify.success('文件名已修改，文章和站点设置中的旧链接已同步替换');
+      notify.success(renamed ? '文件名已修改，文章和站点设置中的旧链接已同步替换' : '媒体信息已保存');
     } catch (err: any) {
-      setMessage(err.message || '改名失败'); notify.error(err.message || '改名失败');
+      const error = metadataSaved ? `显示信息已保存，文件名修改失败：${err.message || '请重试'}` : err.message || '保存失败';
+      setMessage(error); notify.error(error);
     } finally {
       setSaving(false);
     }
@@ -263,7 +268,10 @@ export default function AdminMediaPage() {
 
       setItems((current) => current.map((item) => (item.filename === selected.filename ? updated : item)));
       setSelectedFilenames((current) => current.map((filename) => (filename === selected.filename ? updated.filename : filename)));
-      refreshSelected(updated);
+      setSelected(updated);
+      setDisplayName(value => value === (selected.display_name || '') ? updated.display_name || '' : value);
+      setAltText(value => value === (selected.alt_text || '') ? updated.alt_text || '' : value);
+      setRenameTo(value => value === selected.filename ? updated.filename : value);
       notify.success(`二次压缩完成：${updated.size_text}`);
     } catch (err: any) {
       setMessage(err.message || '二次压缩失败'); notify.error(err.message || '二次压缩失败');
@@ -274,6 +282,7 @@ export default function AdminMediaPage() {
 
   const deleteFile = async (force = false) => {
     if (!selected) return;
+    if (!force && !(await confirmAction('确定将这个文件移入回收站？'))) return;
 
     setSaving(true);
     setMessage('');
@@ -349,6 +358,7 @@ export default function AdminMediaPage() {
 
   const batchDelete = async (force = false) => {
     if (!selectedCount) return;
+    if (!force && !(await confirmAction(`确定将选中的 ${selectedCount} 个文件移入回收站？`))) return;
 
     setSaving(true);
     setMessage('');
@@ -373,9 +383,10 @@ export default function AdminMediaPage() {
           await batchDelete(true);
           return;
         }
-      } else {
-        setMessage(err.message || '批量删除失败'); notify.error(err.message || '批量删除失败');
       }
+      // A batch can partially commit before returning an error; re-read without retrying writes.
+      await load();
+      setMessage(err.message || '批量删除失败'); notify.error(err.message || '批量删除失败');
     } finally {
       setSaving(false);
     }
@@ -398,6 +409,7 @@ export default function AdminMediaPage() {
       notify.success(data.message || '批量恢复完成');
       await load();
     } catch (err: any) {
+      await load();
       setMessage(err.message || '批量恢复失败'); notify.error(err.message || '批量恢复失败');
     } finally {
       setSaving(false);
@@ -406,7 +418,11 @@ export default function AdminMediaPage() {
 
   const batchPermanentDelete = async () => {
     if (!selectedCount) return;
-    if (!(await confirmAction(`确定彻底删除选中的 ${selectedCount} 个文件？这一步不可恢复。`))) return;
+    if (!(await confirmAction(`确定彻底删除选中的 ${selectedCount} 个文件？这一步不可恢复。`))) {
+      // The menu item has unmounted; restore its trigger after the dialog closes.
+      setTimeout(() => batchMenuTrigger.current?.focus(), 0);
+      return;
+    }
 
     setSaving(true);
     setMessage('');
@@ -422,6 +438,7 @@ export default function AdminMediaPage() {
       notify.success(data.message || '批量彻底删除完成');
       await load();
     } catch (err: any) {
+      await load();
       setMessage(err.message || '批量彻底删除失败'); notify.error(err.message || '批量彻底删除失败');
     } finally {
       setSaving(false);
@@ -429,394 +446,74 @@ export default function AdminMediaPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-[10px] border border-border bg-card p-8 shadow-none ">
-        <div className="flex flex-col gap-5">
-          <div>
-            <h1 className="admin-title">媒体库</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              管理上传图片，支持预览、复制链接、改显示名、改文件名、回收站、批量操作和二次压缩。
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <ThemeSelect aria-label="上传图片质量"
-              value={imageQuality}
-              onValueChange={(nextValue) => setImageQuality(nextValue)}
-
-            >
-              <option value="low">低清晰度</option>
-              <option value="medium">中清晰度</option>
-              <option value="high">高清晰度</option>
-              <option value="original">原图</option>
-            </ThemeSelect>
-
-            <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-border bg-card focus-within:ring-2 focus-within:ring-ring px-5 py-3 text-sm text-foreground hover:bg-muted">
-              <Upload className="h-4 w-4" />
-              {uploading ? '上传中...' : '上传图片'}
-              <input
-                type="file"
-                accept={IMAGE_ACCEPT}
-                className="sr-only"
-                disabled={uploading}
-                onChange={(e) => handleUpload(e.target.files?.[0])}
-              />
-            </label>
-
-            <button
-              type="button"
-              onClick={load}
-              className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-sm text-foreground hover:bg-muted"
-            >
-              <RefreshCw className="h-4 w-4" />
-              刷新
-            </button>
-          </div>
+    <div className={`admin-media-page${selecting ? ' is-selecting' : ''}${selectedCount ? ' has-selection' : ''}`}>
+      <header className="media-page-header">
+        <div className="media-page-heading"><h1>媒体库</h1>{!loading && !loadError && <span>{search ? `找到 ${total} 个文件` : `共 ${total} 个文件`}</span>}</div>
+        <div className="media-page-actions">
+          <AdminButton type="button" disabled={uploading} onClick={() => uploadInput.current?.click()}>{uploading ? '上传中…' : '上传图片'}</AdminButton>
+          <QualityMenu value={imageQuality} onChange={setImageQuality} upload disabled={uploading} />
+          {!finePointer && <AdminButton type="button" variant="ghost" className="media-selection-toggle" aria-pressed={selecting} disabled={saving || loading} onClick={() => { setManualSelection(!selecting); if (selecting) setSelectedFilenames([]); }}>{selecting ? '完成' : '选择'}</AdminButton>}
+          <input ref={uploadInput} type="file" hidden accept={IMAGE_ACCEPT} aria-label="上传图片文件" disabled={uploading} onChange={event => { void handleUpload(event.target.files?.[0]); event.target.value = ''; }} />
         </div>
+      </header>
 
-        <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => { setPage(1); setStatus('active'); }}
-              aria-pressed={status === 'active'}
-              className={`rounded-[10px] border px-4 py-2 text-sm ${status === 'active' ? 'bg-foreground text-background border-foreground' : 'bg-card text-foreground border-border'}`}
-            >
-              正常文件
-            </button>
-            <button
-              type="button"
-              onClick={() => { setPage(1); setStatus('trashed'); }}
-              aria-pressed={status === 'trashed'}
-              className={`rounded-[10px] border px-4 py-2 text-sm ${status === 'trashed' ? 'bg-foreground text-background border-foreground' : 'bg-card text-foreground border-border'}`}
-            >
-              回收站
-            </button>
-          </div>
-
-          <input
-            aria-label="搜索媒体文件"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring lg:max-w-md"
-            placeholder="搜索文件名、显示名、Alt..."
-          />
-
-          <p className="text-sm text-muted-foreground">
-            共 {total} 个文件，本页 {filtered.length} 个
-          </p>
+      <div className="media-page-toolbar">
+        <div className="media-status-tabs" role="group" aria-label="媒体状态">
+          <button type="button" aria-pressed={status === 'active'} disabled={saving} onClick={() => { setPage(1); setStatus('active'); }}>正常文件{status === 'active' && !search && !loading && !loadError && <span>{total}</span>}</button>
+          <button type="button" aria-pressed={status === 'trashed'} disabled={saving} onClick={() => { setPage(1); setStatus('trashed'); }}>回收站{status === 'trashed' && !search && !loading && !loadError && <span>{total}</span>}</button>
         </div>
-
-        {(total > 50 || page > 1) && <nav aria-label="媒体库分页" className="mt-4 flex flex-wrap items-center gap-3">
-          <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="rounded border px-4 py-2 disabled:opacity-50">上一页</button>
-          <span>第 {page} / {Math.max(1, Math.ceil(total / 50))} 页</span>
-          <button type="button" disabled={loading || page * 50 >= total} onClick={() => setPage(page + 1)} className="rounded border px-4 py-2 disabled:opacity-50">下一页</button>
-        </nav>}
-        <div className="mt-5 flex flex-col gap-3 rounded-[10px] bg-muted p-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={toggleVisible}
-              disabled={filtered.length === 0}
-              className="rounded-[10px] border border-border bg-card px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
-            >
-              {allVisibleSelected ? '取消本页全选' : '本页全选'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedFilenames([])}
-              disabled={selectedCount === 0}
-              className="rounded-[10px] border border-border bg-card px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
-            >
-              清空选择
-            </button>
-
-            <span className="text-sm text-muted-foreground">{selectedCount ? `已选择 ${selectedCount} 个` : '先选择图片，再执行批量操作'}</span>
-          </div>
-
-          {status === 'active' ? (
-            <button
-              type="button"
-              disabled={selectedCount === 0 || saving}
-              onClick={() => batchDelete(false)}
-              className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-border bg-card px-5 py-2.5 text-sm text-foreground hover:bg-muted disabled:opacity-50"
-            >
-              <Trash2 className="h-4 w-4" />
-              批量删除到回收站
-            </button>
-          ) : (
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                disabled={selectedCount === 0 || saving}
-                onClick={batchRestore}
-                className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-2.5 text-sm text-foreground hover:bg-muted disabled:opacity-50"
-              >
-                <Undo2 className="h-4 w-4" />
-                批量恢复
-              </button>
-
-              <button
-                type="button"
-                disabled={selectedCount === 0 || saving}
-                onClick={batchPermanentDelete}
-                className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-border bg-card px-5 py-2.5 text-sm text-foreground hover:bg-muted disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4" />
-                批量彻底删除
-              </button>
-            </div>
-          )}
-        </div>
-
-        {message && (
-          <div role="alert" className="mt-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
-            {message}
-          </div>
-        )}
+        <div className="media-search-field"><input ref={searchInput} aria-label="搜索媒体文件" value={keyword} onChange={event => setKeyword(event.target.value)} placeholder="搜索文件名、显示名、Alt" />{keyword && <button type="button" className="media-search-clear" aria-label="清除搜索" onClick={clearSearch}><X size={16} aria-hidden="true" /></button>}</div>
+        <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" variant="ghost" className="media-sort-trigger">最近更新<ChevronDown size={14} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal media-list-menu"><DropdownMenuRadioGroup value="updated"><DropdownMenuRadioItem value="updated">最近更新</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>
+        <AdminButton type="button" variant="ghost" size="icon" className="media-refresh" aria-label="刷新媒体库" disabled={loading || saving} onClick={() => void load()}><RefreshCw size={16} strokeWidth={1.8} aria-hidden="true" /></AdminButton>
       </div>
 
-      {loadError && <div className="resource-notice" role="alert"><div><strong>{items.length ? '刷新失败，已保留当前图片' : '媒体库加载失败'}</strong><p>{loadError}</p></div><button className="quiet-button" disabled={loading} onClick={() => void load()}>重新加载媒体库</button></div>}
-      {loading && !filtered.length ? (
-        <div className="py-6 text-muted-foreground">
-          正在加载媒体库...
-        </div>
-      ) : filtered.length === 0 && !loadError ? (
-        <div className="py-6 text-muted-foreground">
-          {search ? '没有找到匹配的媒体文件。' : status === 'trashed' ? '回收站为空。' : '暂无媒体文件，请先上传图片。'}
-          {search && <button className="quiet-button" onClick={() => { setKeyword(''); setSearch(''); setPage(1); }}>清除搜索</button>}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {filtered.map((item) => {
-            const imageUrl = safeImageSrc(item.url);
-            const markdown = `![${item.alt_text || mediaName(item)}](${item.url})`;
-            const checked = selectedSet.has(item.filename);
-
-            return (
-              <div key={item.filename} className={`overflow-hidden rounded-[10px] border bg-card shadow-none ${checked ? 'border-border ring-2 ring-ring' : 'border-border'}`}>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={(event) => openDetail(item, event.currentTarget)}
-                    className="flex h-48 w-full items-center justify-center bg-muted"
-                  >
-                    {imageUrl ? (
-                      <img src={imageUrl} alt={mediaName(item)} className="h-full w-full object-cover" loading="lazy" />
-                    ) : (
-                      <ImageIcon className="h-10 w-10 text-muted-foreground" />
-                    )}
-                  </button>
-
-                  <label className="absolute left-3 top-3 inline-flex cursor-pointer items-center gap-2 rounded-[10px] bg-card px-3 py-2 text-xs font-medium text-foreground shadow-none">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleOne(item.filename)}
-                      className="h-4 w-4 rounded border-border text-foreground"
-                    />
-                    选择
-                  </label>
-                </div>
-
-                <div className="space-y-3 p-4">
-                  <div>
-                    <p className="truncate text-sm font-medium text-foreground" title={mediaName(item)}>
-                      {mediaName(item)}
-                    </p>
-                    <p className="mt-1 truncate text-xs text-muted-foreground" title={item.filename}>
-                      {item.filename}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {item.size_text} · {item.ext} · {formatTime(item.uploaded_at)}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={(event) => openDetail(item, event.currentTarget)}
-                      className="inline-flex items-center justify-center gap-1 rounded-[6px] bg-muted px-3 py-2 text-xs text-foreground hover:bg-muted"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      打开
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(item.url, '图片 URL')}
-                      className="inline-flex items-center justify-center gap-1 rounded-[6px] bg-muted px-3 py-2 text-xs text-foreground hover:bg-muted"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                      URL
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(markdown, 'Markdown')}
-                      className="inline-flex items-center justify-center gap-1 rounded-[6px] bg-muted px-3 py-2 text-xs text-foreground hover:bg-muted"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                      MD
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {selected && (
-        <Dialog open onOpenChange={(open) => { if (!open && !saving) setSelected(null); }}>
-          <DialogContent onCloseAutoFocus={(event) => { if (detailTrigger.current?.isConnected) { event.preventDefault(); detailTrigger.current.focus(); } }} className="max-h-[92dvh] w-[calc(100%-2rem)] sm:max-w-5xl overflow-y-auto rounded-[10px] bg-card p-6 shadow-none [&>button:last-child]:min-h-11 [&>button:last-child]:min-w-11 [&>button:last-child]:inline-flex [&>button:last-child]:items-center [&>button:last-child]:justify-center">
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0 pr-8 break-words">
-                <DialogTitle className="text-2xl font-medium text-foreground">{mediaName(selected)}</DialogTitle>
-                <DialogDescription className="mt-1 text-sm text-muted-foreground">{selected.filename}</DialogDescription>
-              </div>
+      {message && !selected && <p role="alert" className="media-notice">{message}</p>}
+      {loadError && <div className="resource-notice" role="alert"><div><strong>{items.length ? '刷新失败，已保留当前图片' : '媒体库加载失败'}</strong><p>{loadError}</p></div><AdminButton type="button" variant="soft" disabled={loading} onClick={() => void load()}>重新加载媒体库</AdminButton></div>}
+      {loading && !filtered.length ? <p className="media-empty" role="status">正在加载媒体库…</p> : filtered.length === 0 && !loadError ? <div className="media-empty"><p>{search ? '没有找到匹配的媒体文件。' : status === 'trashed' ? '回收站为空。' : '暂无媒体文件，请先上传图片。'}</p></div> : <div className="media-file-grid">
+        {filtered.map(item => {
+          const imageUrl = safeImageSrc(item.url), markdown = `![${item.alt_text || mediaName(item)}](${item.url})`, checked = selectedSet.has(item.filename);
+          return <article className="media-file" key={item.filename}>
+            <div className={`media-file-image${checked ? ' is-selected' : ''}`}>
+              <button type="button" className="media-detail-trigger" aria-label={mediaName(item)} disabled={saving && selecting} onClick={event => selecting ? toggleOne(item.filename) : openDetail(item, event.currentTarget)}>{imageUrl ? <img src={imageUrl} alt="" loading="lazy" /> : <ImageIcon size={32} aria-hidden="true" />}</button>
+              <label className="media-file-select"><input type="checkbox" aria-label={`选择 ${mediaName(item)}`} checked={checked} disabled={saving} onChange={() => toggleOne(item.filename)} /><span aria-hidden="true"><Check size={18} strokeWidth={2.5} /></span></label>
+              {finePointer && !selecting && <div className="media-card-actions"><button type="button" onClick={() => void handleCopy(item.url, '图片 URL')} aria-label={`复制 ${mediaName(item)} 的 URL`}>URL</button><button type="button" onClick={() => void handleCopy(markdown, 'Markdown')} aria-label={`复制 ${mediaName(item)} 的 Markdown`}>MD</button><button type="button" onClick={event => openDetail(item, event.currentTarget)} aria-label={`打开 ${mediaName(item)} 的详情`}>打开</button></div>}
             </div>
+            <p className="media-file-name" title={mediaName(item)}>{mediaName(item)}</p>
+            <p className="media-file-meta">{item.size_text} · {new Date(item.uploaded_at).toLocaleDateString('zh-CN')}</p>
+          </article>;
+        })}
+      </div>}
 
-            {message && <p role="alert" className="rounded-[10px] bg-muted px-4 py-3 text-sm">{message}</p>}
-            <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="w-fit max-w-full self-start overflow-hidden rounded-[10px] bg-muted">
-                <img src={safeImageSrc(selected.url)} alt={mediaName(selected)} className="block h-auto max-h-[62vh] w-auto max-w-full object-contain" />
-              </div>
+      {(total > 50 || page > 1) ? <nav aria-label="媒体库分页" className="media-pagination"><AdminButton type="button" variant="ghost" disabled={loading || saving || page <= 1} onClick={() => setPage(page - 1)}>上一页</AdminButton><span>第 {page} / {Math.max(1, Math.ceil(total / 50))} 页</span><AdminButton type="button" variant="ghost" disabled={loading || saving || page * 50 >= total} onClick={() => setPage(page + 1)}>下一页</AdminButton></nav> : !loading && !loadError && filtered.length > 0 && <p className="media-page-end">已显示 {filtered.length} 个文件</p>}
 
-              <div className="space-y-4">
-                <div className="rounded-[10px] bg-muted p-4 text-sm text-muted-foreground">
-                  <div>大小：{selected.size_text}</div>
-                  <div>类型：{selected.mime || selected.ext}</div>
-                  <div>尺寸：{selected.width && selected.height ? `${selected.width} × ${selected.height}` : '-'}</div>
-                  <div>时间：{formatTime(selected.uploaded_at)}</div>
-                </div>
+      {selectedCount > 0 && <div className="media-batch-bar" role="region" aria-label="批量媒体操作">
+        <div className="media-batch-actions">
+          <button type="button" className="media-batch-icon" aria-label="清空选择" disabled={saving} onClick={() => setSelectedFilenames([])}><X size={20} aria-hidden="true" /></button>
+          <span role="status" aria-live="polite">已选 {selectedCount} 项</span>
+          {status === 'active' ? <><button type="button" aria-label="全选本页" disabled={saving || allVisibleSelected || !filtered.length} onClick={toggleVisible}>全选</button><button type="button" className="media-batch-icon media-batch-danger" aria-label="删除到回收站" disabled={saving} onClick={() => void batchDelete(false)}><Trash2 size={20} aria-hidden="true" /></button></> : <><button type="button" disabled={saving} onClick={() => void batchRestore()}>恢复</button><DropdownMenu><DropdownMenuTrigger asChild><button type="button" ref={batchMenuTrigger} className="media-batch-icon" aria-label="更多批量操作" disabled={saving}><MoreHorizontal size={20} aria-hidden="true" /></button></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal media-list-menu"><DropdownMenuItem disabled={saving || allVisibleSelected || !filtered.length} onSelect={toggleVisible}>全选本页</DropdownMenuItem><DropdownMenuItem className="media-menu-danger" disabled={saving} onSelect={() => void batchPermanentDelete()}><Trash2 size={18} aria-hidden="true" />彻底删除</DropdownMenuItem></DropdownMenuContent></DropdownMenu></>}
+        </div>
+      </div>}
 
-                <label className="block">
-                  <span className="text-sm font-medium text-foreground">链接显示名</span>
-                  <input
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="mt-2 w-full rounded-[10px] border border-border px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="例如：首页封面图"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="text-sm font-medium text-foreground">Alt 文本</span>
-                  <input
-                    value={altText}
-                    onChange={(e) => setAltText(e.target.value)}
-                    className="mt-2 w-full rounded-[10px] border border-border px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="给搜索引擎和无障碍阅读器看的图片说明"
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={saveMeta}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-sm text-foreground hover:bg-muted disabled:opacity-60"
-                >
-                  <Save className="h-4 w-4" />
-                  保存显示信息
-                </button>
-
-                {selected.status !== 'trashed' ? (
-                  <>
-                    <label className="block">
-                      <span className="text-sm font-medium text-foreground">文件名</span>
-                      <input
-                        value={renameTo}
-                        onChange={(e) => setRenameTo(e.target.value)}
-                        className="mt-2 w-full rounded-[10px] border border-border px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-                        placeholder={selected.filename}
-                      />
-                    </label>
-
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={renameFile}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-sm text-foreground hover:bg-muted disabled:opacity-60"
-                    >
-                      <Pencil className="h-4 w-4" />
-                      修改文件名并同步文章引用
-                    </button>
-
-                    <div className="grid gap-3">
-                      <ThemeSelect aria-label="压缩图片质量"
-                        value={recompressQuality}
-                        onValueChange={(nextValue) => setRecompressQuality(nextValue)}
-
-                      >
-                        <option value="low">低清晰度</option>
-                        <option value="medium">中清晰度</option>
-                        <option value="high">高清晰度</option>
-                      </ThemeSelect>
-                      <button
-                        type="button"
-                        disabled={saving}
-                        onClick={recompress}
-                        className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-emerald-600 px-5 py-3 text-sm text-foreground hover:bg-emerald-700 disabled:opacity-60"
-                      >
-                        <RotateCw className="h-4 w-4" />
-                        二次压缩
-                      </button>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => deleteFile(false)}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-red-600 px-5 py-3 text-sm text-foreground hover:bg-red-700 disabled:opacity-60"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      删除到回收站
-                    </button>
-                  </>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={restoreFile}
-                      className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-muted px-5 py-3 text-sm text-foreground hover:bg-muted disabled:opacity-60"
-                    >
-                      <Undo2 className="h-4 w-4" />
-                      恢复
-                    </button>
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={permanentDelete}
-                      className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-red-600 px-5 py-3 text-sm text-foreground hover:bg-red-700 disabled:opacity-60"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      彻底删除
-                    </button>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(selected.url, '图片 URL')}
-                    className="rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground hover:bg-muted"
-                  >
-                    复制 URL
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(`![${altText || mediaName(selected)}](${selected.url})`, 'Markdown')}
-                    className="rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground hover:bg-muted"
-                  >
-                    复制 Markdown
-                  </button>
-                </div>
-              </div>
+      {selected && <Dialog open onOpenChange={open => { if (!open && !saving) setSelected(null); }}>
+        <DialogContent className="admin-portal media-detail-drawer" onCloseAutoFocus={event => { if (detailTrigger.current?.isConnected) { event.preventDefault(); detailTrigger.current.focus(); } }}>
+          <header className="media-detail-heading"><DialogTitle>{mediaName(selected)}</DialogTitle><DialogDescription>{selected.filename}</DialogDescription></header>
+          <form className="media-detail-form" onSubmit={event => { event.preventDefault(); void saveDetails(); }}>
+            <div className="media-detail-scroll">
+              <div className="media-detail-preview">{safeImageSrc(selected.url) ? <img src={safeImageSrc(selected.url)} alt={mediaName(selected)} /> : <ImageIcon size={40} aria-label="图片暂不可预览" />}</div>
+              <div className="media-detail-links"><AdminButton type="button" variant="soft" onClick={() => void handleCopy(selected.url, '图片 URL')}>复制链接</AdminButton><AdminButton type="button" variant="soft" onClick={() => void handleCopy(`![${altText || mediaName(selected)}](${selected.url})`, 'Markdown')}>复制 Markdown</AdminButton>{safeImageSrc(selected.url) && <AdminButton type="button" variant="soft" asChild><a href={safeImageSrc(selected.url)} target="_blank" rel="noopener noreferrer">打开原图</a></AdminButton>}</div>
+              {message && <p role="alert" className="media-notice">{message}</p>}
+              <fieldset disabled={saving} className="media-detail-fields">
+                <label>链接显示名<input value={displayName} onChange={event => setDisplayName(event.target.value)} placeholder="例如：首页封面图" /></label>
+                <label>Alt 文本<input value={altText} onChange={event => setAltText(event.target.value)} placeholder="给搜索引擎和无障碍阅读器看的图片说明" /></label>
+                <label>文件名<input value={renameTo} readOnly={selected.status === 'trashed'} onChange={event => setRenameTo(event.target.value)} placeholder={selected.filename} aria-describedby="media-rename-hint" /></label>
+                <p id="media-rename-hint">{selected.status === 'trashed' ? '恢复文件后可以修改文件名' : '修改文件名会同步更新文章里的引用'}</p>
+              </fieldset>
+              <div className="media-detail-compression"><div className="media-detail-metadata">{selected.size_text} · {selected.mime || selected.ext} · {selected.width && selected.height ? `${selected.width} × ${selected.height}` : '-'}<br />{formatTime(selected.uploaded_at)}</div>{selected.status !== 'trashed' && <div className="media-compression-actions"><QualityMenu value={recompressQuality} onChange={setRecompressQuality} disabled={saving} /><AdminButton type="button" variant="soft" disabled={saving} onClick={() => void recompress()}>二次压缩</AdminButton></div>}</div>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+            <footer className="media-detail-footer"><div>{selected.status !== 'trashed' ? <AdminButton type="button" variant="ghost" className="media-danger" disabled={saving} onClick={() => void deleteFile(false)}>删除到回收站</AdminButton> : <><AdminButton type="button" variant="ghost" disabled={saving} onClick={() => void restoreFile()}>恢复</AdminButton><AdminButton type="button" variant="ghost" className="media-danger" disabled={saving} onClick={() => void permanentDelete()}>彻底删除</AdminButton></>}</div><div><AdminButton type="button" variant="ghost" disabled={saving} onClick={() => setSelected(null)}>取消</AdminButton><AdminButton type="submit" disabled={saving} aria-label="保存显示信息">{saving ? '保存中…' : '保存'}</AdminButton></div></footer>
+          </form>
+        </DialogContent>
+      </Dialog>}
     </div>
   );
 }
