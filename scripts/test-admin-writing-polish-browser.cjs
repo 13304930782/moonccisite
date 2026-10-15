@@ -5,7 +5,8 @@ const { createFixture, ID } = require('./fixtures/admin-redesign.cjs');
 const BASE = process.env.ADMIN_REDESIGN_URL || 'http://127.0.0.1:5195';
 const origin = new URL(BASE);
 assert(origin.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(origin.hostname), 'Local fixture preview only');
-const OUT = path.resolve('.cache/admin-redesign/writing-polish-chrome');
+const OUT = path.resolve(process.env.WRITING_POLISH_OUT || '.cache/admin-redesign/writing-polish-chrome');
+const selectedCase = process.env.WRITING_POLISH_CASE;
 const rich = '<!--mooncci-richtext:v1-->\n<p>Chrome 写作验收正文，保留原有保存与发布流程。</p>';
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jA1sAAAAASUVORK5CYII=','base64');
 const results = [], startedAt = new Date().toISOString();
@@ -111,6 +112,7 @@ async function toolbarContract(page, width) {
 }
 
 async function scenario(name, width, dark, configure, task, { viewportMock = false, legacySource = false, viewportInitialHeight = 1000 } = {}) {
+  if(selectedCase && name!==selectedCase)return;
   const context = await browser.newContext({ viewport:{width,height:1000}, hasTouch:width<768, isMobile:width<768, reducedMotion:'reduce', serviceWorkers:'block' });
   const page=await context.newPage(), state=createFixture(), row={name,width,dark,passed:false,screenshots:[]}, errors=[], blocked=[]; results.push(row);
   configure?.(state); page.setDefaultTimeout(12000); page.on('pageerror',error=>errors.push(error.message));
@@ -130,7 +132,7 @@ async function scenario(name, width, dark, configure, task, { viewportMock = fal
   finally {
     row.runtimeErrors=errors;row.blockedExternal=blocked;row.requests=state.requests;row.saves=state.saves;row.finalDraft=state.draft;
     row.uploads=state.uploads.map(raw=>({quality:/name="quality"\r\n\r\n([^\r\n]+)/.exec(raw||'')?.[1],hasImage:/name="image"; filename=/.test(raw||'')}));
-    await context.close();fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({startedAt,scope:layoutOnly?'focused-layout':'full',channel:'chrome',browserMetadata,buildIndexSha256,buildUnchanged:distHash()===buildIndexSha256,passed:results.every(row=>row.passed),mode:'Local persistent isolated API fixtures; no production writes',limitations:[layoutOnly?'Only layout checks executed in this run. Full business and keyboard results are archived separately.':'VisualViewport keyboard checks use deterministic mocked resize/scroll geometry.','No physical phone or native software keyboard test.'],results},null,2)+'\n');
+    await context.close();fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({startedAt,scope:selectedCase?'focused-case':layoutOnly?'focused-layout':'full',selectedCase,channel:'chrome',browserMetadata,buildIndexSha256,buildUnchanged:distHash()===buildIndexSha256,passed:results.every(row=>row.passed),mode:'Local persistent isolated API fixtures; no production writes',limitations:[selectedCase?'Only the explicitly selected scenario executed in this run.':layoutOnly?'Only layout checks executed in this run. Full business and keyboard results are archived separately.':'VisualViewport keyboard checks use deterministic mocked resize/scroll geometry.','No physical phone or native software keyboard test.'],results},null,2)+'\n');
   }
 }
 
@@ -196,7 +198,7 @@ async function scenario(name, width, dark, configure, task, { viewportMock = fal
       await page.locator('#article-category').fill('Chrome最终分类');await manual(page,state);assert.equal(state.draft.payload.summary_receipt,'');await page.locator('#article-summary').fill('作者手写简介，确认保存后的字段与重新加载读取一致。');await manual(page,state);
       await page.getByRole('group',{name:'图片质量',exact:true}).getByRole('button',{name:'高清',exact:true}).click();await page.getByLabel('上传封面',{exact:true}).setInputFiles({name:'cover.png',mimeType:'image/png',buffer:png});await page.locator('.writing-cover-preview img').waitFor();await until(()=>state.uploads.length===1,'cover upload');assert.match(state.uploads[0],/name="quality"\r\n\r\nhigh/);await manual(page,state);
       await page.reload();await ready(page);assert.equal(await page.locator('#article-category').inputValue(),'Chrome最终分类');for(const tag of ['标签一','标签二'])assert(await page.getByRole('button',{name:'移除标签 '+tag,exact:true}).isVisible());assert.equal(state.draft.payload.cover_image,'/qa-cover.svg');assert.equal(state.draft.payload.summary_mode,'manual');
-      await editor(page).click();await page.keyboard.press('Control+a');await page.getByRole('button',{name:'Link',exact:true}).click();const address=page.getByRole('textbox',{name:'链接地址',exact:true});await address.fill('https://example.test/chrome-link');await address.press('Home');assert(await address.evaluate(element=>element===document.activeElement&&element.selectionStart===0));await address.press('End');assert(await address.evaluate(element=>element===document.activeElement&&element.selectionStart===element.value.length));await address.press('Enter');await until(()=>state.draft.payload.content.includes('https://example.test/chrome-link'),'link Enter persisted');await manual(page,state);
+      await editor(page).click();await page.keyboard.press('Control+a');await page.getByRole('button',{name:'Link',exact:true}).click();const address=page.getByRole('textbox',{name:'链接地址',exact:true}),expectedLink='https://example.test/chrome-link';await address.fill(expectedLink);await address.press('Home');assert(await address.evaluate(element=>element===document.activeElement&&element.selectionStart===0));await address.press('End');assert(await address.evaluate(element=>element===document.activeElement&&element.selectionStart===element.value.length));await address.press('Enter');await until(()=>state.draft.payload.content.match(/href="([^"]+)"/)?.[1]===expectedLink,'link Enter persisted');await manual(page,state);assert.equal(state.draft.payload.content.match(/href="([^"]+)"/)?.[1],expectedLink);
       await page.getByRole('button',{name:'修订历史',exact:true}).click();const history=page.getByRole('dialog',{name:'修订历史',exact:true});await history.getByRole('button',{name:/手动保存 ·/}).click();await history.getByRole('button',{name:'恢复为草稿',exact:true}).click();await page.getByRole('alertdialog').getByRole('button',{name:'确认继续',exact:true}).click();await until(()=>state.restores===1,'history restore');await page.keyboard.press('Escape');await history.waitFor({state:'hidden'});assert.equal(await page.locator('#article-title').inputValue(),'恢复后的历史标题');
       await shot('readback');await page.getByRole('button',{name:'发布',exact:true}).click();await page.getByRole('button',{name:'运行发布前检查',exact:true}).click();await until(()=>page.getByRole('button',{name:'确认发布',exact:true}).isEnabled(),'publish check');await page.getByRole('button',{name:'确认发布',exact:true}).click();await page.getByRole('heading',{name:'文章已发布',exact:true}).waitFor();assert.equal(state.publishes,1);assert.equal(state.draft.dirty,0);await shot('published');
     });
@@ -255,6 +257,6 @@ async function scenario(name, width, dark, configure, task, { viewportMock = fal
       await page.evaluate(()=>window.__writingViewportSimulation.set({height:620}));await until(()=>workspace.getAttribute('data-keyboard-open').then(value=>value==='true'),'recovered initial viewport can float');await page.evaluate(()=>window.__writingViewportSimulation.set({height:1000}));await until(()=>workspace.getAttribute('data-keyboard-open').then(value=>value!=='true'),'recovered full height closes keyboard');row.recovered=true;
     },{viewportMock:true,viewportInitialHeight:initial});
     }
-    assert.equal(distHash(),buildIndexSha256,'Build changed during acceptance');log(JSON.stringify({passed:results.every(row=>row.passed),scenarios:results.length,screenshots:results.flatMap(row=>row.screenshots).length,failed:results.filter(row=>!row.passed).map(row=>row.name),report:path.join(OUT,'report.json')},null,2));if(results.some(row=>!row.passed))process.exitCode=1;
+    if(selectedCase)assert.equal(results.length,1,'Unknown WRITING_POLISH_CASE');assert.equal(distHash(),buildIndexSha256,'Build changed during acceptance');log(JSON.stringify({passed:results.every(row=>row.passed),scenarios:results.length,screenshots:results.flatMap(row=>row.screenshots).length,failed:results.filter(row=>!row.passed).map(row=>row.name),report:path.join(OUT,'report.json')},null,2));if(results.some(row=>!row.passed))process.exitCode=1;
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
