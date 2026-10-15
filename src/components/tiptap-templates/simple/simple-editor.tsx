@@ -194,7 +194,7 @@ const MainToolbarContent = ({
 function WritingMoreTools({compact,disabled,onSearch,searchOpen,triggerRef}:{compact:boolean;disabled:boolean;onSearch:()=>void;searchOpen:boolean;triggerRef:React.RefObject<HTMLButtonElement>}){
   const [open,setOpen]=useState(false);
   return <ToolbarGroup><Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild><Button className="writing-toolbar-more-trigger" ref={triggerRef} disabled={disabled} aria-label="更多编辑工具" tooltip="更多编辑工具"><span>更多</span><ChevronDown className="tiptap-button-dropdown-small"/></Button></PopoverTrigger>
-    <PopoverContent className="writing-toolbar-more" align="end" aria-label="更多编辑工具">
+    <PopoverContent className="writing-toolbar-more ui-v2" align="end" aria-label="更多编辑工具">
       <Toolbar variant="floating" aria-label="更多编辑工具">
         {compact&&<ToolbarGroup><BlockquoteButton/><CodeBlockButton/></ToolbarGroup>}
         <ToolbarGroup><MarkButton type="superscript"/><MarkButton type="subscript"/></ToolbarGroup>

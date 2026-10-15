@@ -1,21 +1,21 @@
 /* Layout values follow the supplied MediaList and MediaDetail HTML references. */
-.admin-frame:has(.admin-media-page) .admin-main { padding:40px 56px 120px; }
+.admin-frame:has(.admin-media-page.ui-v2) .admin-main { padding:40px 56px 0; }
 .admin-frame:has(.admin-media-page) .admin-content { max-width:1100px; }
 .admin-media-page { min-width:0; font-size:14px; }
-.admin-media-page.has-selection { padding-bottom:calc(env(safe-area-inset-bottom) + 96px); }
+.admin-media-page.has-selection .media-list-content { padding-bottom:calc(env(safe-area-inset-bottom) + 96px); }
 /* Compact visible faces retain a full 44px keyboard and touch target. */
-:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button,
-.media-batch-bar button,.media-status-tabs>button { --media-button-fill:transparent; position:relative; isolation:isolate; display:inline-flex; align-items:center; justify-content:center; min-height:44px; height:44px; min-width:64px; padding:0 12px; border:0; border-radius:8px; background:transparent!important; color:var(--media-button-text,var(--ui-text-body))!important; line-height:20px; }
-:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button::before,
-.media-batch-bar button::before,.media-status-tabs>button::before { content:''; position:absolute; inset:6px 0; z-index:-1; border-radius:8px; background:var(--media-button-fill); pointer-events:none; }
-:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button--solid { --media-button-fill:var(--admin-solid-fill); --media-button-text:var(--admin-solid-text); }
-:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button--soft { --media-button-fill:var(--ui-fill); }
-:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button--ghost:hover,
-.media-status-tabs>button:hover { --media-button-fill:var(--ui-fill); }
-:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button--soft:hover { --media-button-fill:var(--ui-fill-strong); }
-:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button--solid:hover { --media-button-fill:var(--admin-solid-hover); }
-:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-icon-button { min-width:44px; width:44px; padding:0; }
-:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-icon-button::before { inset:6px; }
+:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button:not(.ui-btn),
+.media-batch-bar button:not(.ui-btn),.media-status-tabs>button:not(.ui-btn) { --media-button-fill:transparent; position:relative; isolation:isolate; display:inline-flex; align-items:center; justify-content:center; min-height:44px; height:44px; min-width:64px; padding:0 12px; border:0; border-radius:8px; background:transparent!important; color:var(--media-button-text,var(--ui-text-body))!important; line-height:20px; }
+:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button:not(.ui-btn)::before,
+.media-batch-bar button:not(.ui-btn)::before,.media-status-tabs>button:not(.ui-btn)::before { content:''; position:absolute; inset:6px 0; z-index:-1; border-radius:8px; background:var(--media-button-fill); pointer-events:none; }
+:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button--solid:not(.ui-btn) { --media-button-fill:var(--admin-solid-fill); --media-button-text:var(--admin-solid-text); }
+:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button--soft:not(.ui-btn) { --media-button-fill:var(--ui-fill); }
+:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button--ghost:not(.ui-btn):hover,
+.media-status-tabs>button:not(.ui-btn):hover { --media-button-fill:var(--ui-fill); }
+:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button--soft:not(.ui-btn):hover { --media-button-fill:var(--ui-fill-strong); }
+:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-button--solid:not(.ui-btn):hover { --media-button-fill:var(--admin-solid-hover); }
+:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-icon-button:not(.ui-btn) { min-width:44px; width:44px; padding:0; }
+:is(.admin-frame .admin-media-page,.admin-portal.media-detail-drawer) .admin-icon-button:not(.ui-btn)::before { inset:6px; }
 .admin-frame:has(.admin-media-page) .admin-nav-link[aria-current=page] .admin-nav-item { color:var(--ui-ok); }
 .media-page-header,.media-page-heading,.media-page-actions { display:flex; align-items:center; }
 .media-page-header { justify-content:space-between; gap:16px; }
@@ -28,7 +28,7 @@
 .media-status-tabs { display:flex; gap:4px; grid-area:tabs; }
 .media-status-tabs button { padding:0 16px; }
 .media-status-tabs button::before { border-radius:999px; }
-.media-status-tabs button[aria-pressed=true] { --media-button-fill:var(--ui-fill-strong); font-weight:600; }
+.media-status-tabs button:not(.ui-btn)[aria-pressed=true] { --media-button-fill:var(--ui-fill-strong); font-weight:600; }
 .media-status-tabs button span { margin-left:6px; font-size:13px; color:var(--ui-text-muted); font-weight:400; }
 .media-sort-trigger { grid-area:sort; white-space:nowrap; }
 .admin-frame .admin-media-page .media-sort-trigger:is(:hover,:active,[data-state=open]) { --media-button-fill:var(--ui-fill); }
@@ -116,7 +116,7 @@
 .media-detail-drawer :is(input,button,a):focus-visible { outline:2px solid var(--ui-brand); outline-offset:2px; box-shadow:none; }
 @media(min-width:901px) and (max-width:1200px) { .media-file-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } .media-page-header { align-items:flex-start; flex-direction:column; } }
 @media(max-width:900px) {
- .admin-frame:has(.admin-media-page) .admin-main { padding:24px 16px 140px; }
+ .admin-frame:has(.admin-media-page.ui-v2) .admin-main { padding:24px 16px 0; }
  .media-page-header { align-items:flex-start; flex-direction:column; }
  .media-page-actions { width:100%; justify-content:flex-start; gap:8px; }
  .media-page-toolbar { grid-template-columns:minmax(0,1fr) auto 44px; grid-template-areas:'tabs tabs refresh' 'search sort sort'; gap:12px 8px; }

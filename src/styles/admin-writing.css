@@ -91,8 +91,8 @@
 .writing-history-dialog .revision-list button[aria-pressed=true] { background:var(--ui-fill-strong); text-decoration:none; }
 .writing-history-dialog .revision-list li { min-width:0; }
 .writing-history-dialog .revision-history { margin:0; }
-:is(.writing-more-menu,.writing-draft-actions) .writing-menu-danger { color:var(--destructive); }
-.dark :is(.writing-more-menu,.writing-draft-actions) .writing-menu-danger { color:var(--destructive-foreground); }
+:is(.writing-more-menu,.writing-draft-actions) .writing-menu-danger:not(.ui-btn) { color:var(--destructive); }
+.dark :is(.writing-more-menu,.writing-draft-actions) .writing-menu-danger:not(.ui-btn) { color:var(--destructive-foreground); }
 .writing-workspace .article-workspace-notice { border:0; background:var(--ui-fill); border-radius:12px; }
 .writing-workspace :is(.article-review-result,.article-review-scroll,.submission-document,.submission-document > header,.article-submission-bar) { border:0; }
 .writing-workspace .article-review-result { background:var(--ui-fill); border-radius:12px; }
@@ -151,15 +151,15 @@
 .writing-more-menu [data-slot=dropdown-menu-item] { min-height:44px; min-width:44px; padding:10px 12px; border-radius:8px; }
 .writing-more-menu [data-highlighted] { background:var(--ui-fill); }
 /* Keep compact button faces within their full 44px interaction areas. */
-.writing-topbar .admin-button:is(.admin-button--solid,.admin-button--soft),
-:is(.writing-workspace,.writing-settings-sheet) .writing-generate-summary { position:relative; isolation:isolate; height:44px; min-height:44px; padding:0 14px; background:transparent!important; color:var(--writing-button-text,var(--ui-text-body))!important; line-height:20px; }
-.writing-topbar .admin-button:is(.admin-button--solid,.admin-button--soft)::before,
-.writing-generate-summary::before { content:''; position:absolute; inset:6px 0; z-index:-1; border-radius:8px; background:var(--writing-button-fill,var(--ui-fill-strong)); }
-:is(.admin-frame,.account-shell) .writing-workspace .writing-topbar .admin-button--solid { --writing-button-fill:var(--admin-solid-fill); --writing-button-text:var(--admin-solid-text); min-width:72px; }
-:is(.admin-frame,.account-shell) .writing-workspace .writing-topbar .admin-button--solid:hover { --writing-button-fill:var(--admin-solid-hover); }
-:is(.admin-frame,.account-shell) .writing-workspace .writing-topbar .admin-button--soft { --writing-button-fill:var(--ui-fill); min-width:88px; }
-:is(.admin-frame,.account-shell) .writing-workspace .writing-summary-actions .writing-generate-summary,
-.admin-portal.writing-settings-sheet .writing-summary-actions .writing-generate-summary { min-width:88px; font-size:13px; }
+.writing-topbar .admin-button:not(.ui-btn):is(.admin-button--solid,.admin-button--soft),
+:is(.writing-workspace,.writing-settings-sheet) .writing-generate-summary:not(.ui-btn) { position:relative; isolation:isolate; height:44px; min-height:44px; padding:0 14px; background:transparent!important; color:var(--writing-button-text,var(--ui-text-body))!important; line-height:20px; }
+.writing-topbar .admin-button:not(.ui-btn):is(.admin-button--solid,.admin-button--soft)::before,
+.writing-generate-summary:not(.ui-btn)::before { content:''; position:absolute; inset:6px 0; z-index:-1; border-radius:8px; background:var(--writing-button-fill,var(--ui-fill-strong)); }
+:is(.admin-frame,.account-shell) .writing-workspace .writing-topbar .admin-button--solid:not(.ui-btn) { --writing-button-fill:var(--admin-solid-fill); --writing-button-text:var(--admin-solid-text); min-width:72px; }
+:is(.admin-frame,.account-shell) .writing-workspace .writing-topbar .admin-button--solid:not(.ui-btn):hover { --writing-button-fill:var(--admin-solid-hover); }
+:is(.admin-frame,.account-shell) .writing-workspace .writing-topbar .admin-button--soft:not(.ui-btn) { --writing-button-fill:var(--ui-fill); min-width:88px; }
+:is(.admin-frame,.account-shell) .writing-workspace .writing-summary-actions .writing-generate-summary:not(.ui-btn),
+.admin-portal.writing-settings-sheet .writing-summary-actions .writing-generate-summary:not(.ui-btn) { min-width:88px; font-size:13px; }
 .writing-summary-actions { gap:8px; }
 .writing-quality .writing-segment { position:relative; isolation:isolate; background:transparent; }
 .writing-quality .writing-segment::before { content:''; position:absolute; inset:3px 0; z-index:-2; border-radius:10px; background:var(--ui-fill-strong); }
@@ -185,8 +185,8 @@
  .writing-settings-bottom .writing-setting-section :is(input,textarea) { font-size:16px; }
  .writing-settings-bottom .writing-draft-actions { margin-top:4px; gap:8px; justify-items:start; }
  .writing-settings-bottom .writing-draft-actions .admin-button { justify-content:flex-start; justify-self:start; min-height:44px; padding:0 12px 0 0; gap:8px; font-size:13px; }
- .admin-portal.writing-settings-bottom .writing-draft-actions .writing-menu-danger { color:var(--destructive); }
- .dark .admin-portal.writing-settings-bottom .writing-draft-actions .writing-menu-danger { color:var(--destructive-foreground); }
+ .admin-portal.writing-settings-bottom .writing-draft-actions .writing-menu-danger:not(.ui-btn) { color:var(--destructive); }
+ .dark .admin-portal.writing-settings-bottom .writing-draft-actions .writing-menu-danger:not(.ui-btn) { color:var(--destructive-foreground); }
  .admin-portal.writing-settings-bottom:focus { outline:none; box-shadow:none; }
  .admin-portal.writing-settings-bottom :is(button,a,input,textarea,select):focus { outline:none; box-shadow:none; }
  .admin-portal.writing-settings-bottom :is(button,a,input,textarea,select):focus-visible { outline:2px solid var(--brand); outline-offset:2px; box-shadow:none; }

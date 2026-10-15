@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from '../components/ui/skeleton';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import '../../styles/admin-ui-v2.css';
 import '../../styles/admin-posts.css';
 
 type Post = { id: number; title: string; summary: string; category: string; author_name: string; status: string; has_unpublished: number | boolean };
@@ -108,10 +109,10 @@ export default function AdminPostsPage() {
 
   function rowActions(edit: string, title: string, key: string, remove: () => void, draft = false, view?: string) {
     return <div className="admin-posts-actions">
-      <AdminButton asChild variant="ghost"><Link to={edit}>编辑</Link></AdminButton>
+      <AdminButton asChild variant="ghost" className="ui-btn ui-btn--ghost"><Link to={edit}>编辑</Link></AdminButton>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild><AdminButton variant="ghost" size="icon" aria-label={`更多操作：${title}`}><MoreHorizontal aria-hidden="true" size={18} /></AdminButton></DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="admin-portal admin-posts-menu">
+        <DropdownMenuTrigger asChild><AdminButton variant="ghost" size="icon" aria-label={`更多操作：${title}`} className="ui-btn ui-btn--ghost ui-btn--icon"><MoreHorizontal aria-hidden="true" size={18} /></AdminButton></DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="admin-portal ui-v2 admin-posts-menu">
           <DropdownMenuItem asChild><Link to={edit}>{draft ? '继续编辑 / 预览' : '编辑'}</Link></DropdownMenuItem>
           {view && <DropdownMenuItem asChild><Link to={view}>查看</Link></DropdownMenuItem>}
           <DropdownMenuItem variant="destructive" disabled={removing === key} onSelect={remove}>{draft ? '删除草稿' : '删除'}</DropdownMenuItem>
@@ -120,24 +121,24 @@ export default function AdminPostsPage() {
     </div>;
   }
 
-  return <div className="admin-page admin-posts-page">
+  return <div className="admin-page admin-posts-page ui-v2">
     <div className="admin-page-body">
       <header className="admin-posts-header">
         <div><Link to="/admin" className="admin-posts-back">返回后台</Link><div className="admin-posts-heading"><h1>文章管理</h1>{knownTotal !== null && <span>共 {knownTotal} 篇</span>}</div></div>
         <div className="admin-posts-header-actions">
           {manager && <Dialog>
-            <DialogTrigger asChild><AdminButton variant="soft">从旧站导入</AdminButton></DialogTrigger>
-            <DialogContent className="admin-portal admin-posts-import-dialog" aria-describedby={undefined}>
+            <DialogTrigger asChild><AdminButton variant="soft" className="ui-btn ui-btn--soft">从旧站导入</AdminButton></DialogTrigger>
+            <DialogContent className="admin-portal ui-v2 admin-posts-import-dialog" aria-describedby={undefined}>
               <DialogTitle>从旧站导入</DialogTitle>
               <div ref={element => { if (element && importHost && !element.contains(importHost)) element.appendChild(importHost); }} />
             </DialogContent>
           </Dialog>}
-          <AdminButton asChild variant="solid"><Link to="/admin/write">写文章</Link></AdminButton>
+          <AdminButton asChild variant="solid" className="ui-btn ui-btn--solid"><Link to="/admin/write">写文章</Link></AdminButton>
         </div>
       </header>
       {manager && importHost && createPortal(<ArticleImport />, importHost)}
       <div className="admin-posts-filters" role="group" aria-label="筛选文章状态">
-        {filters.map(item => <AdminButton key={item.value} variant="ghost" aria-pressed={filter === item.value} onClick={() => { setFilter(item.value); setPage(1); }}>{item.label}{counts && <span className="admin-posts-filter-count">{counts[item.value]}</span>}</AdminButton>)}
+        {filters.map(item => <AdminButton key={item.value} variant="ghost" aria-pressed={filter === item.value} onClick={() => { setFilter(item.value); setPage(1); }} className="ui-btn ui-btn--ghost">{item.label}{counts && <span className="admin-posts-filter-count">{counts[item.value]}</span>}</AdminButton>)}
       </div>
       {message && <div className="admin-posts-message" role="alert">{message}</div>}
       {loading ? <div className="admin-posts-skeleton" role="status" aria-label="正在加载文章…">
@@ -161,13 +162,13 @@ export default function AdminPostsPage() {
             </div>
           </article>;
         })}
-        {!message && shown === 0 && <div className="admin-posts-empty"><p>还没有文章，先点击右上角写文章。</p><AdminButton asChild variant="solid"><Link to="/admin/write">写文章</Link></AdminButton></div>}
+        {!message && shown === 0 && <div className="admin-posts-empty"><p>还没有文章，先点击右上角写文章。</p><AdminButton asChild variant="solid" className="ui-btn ui-btn--solid"><Link to="/admin/write">写文章</Link></AdminButton></div>}
       </div>}
-      {filter !== 'published' && draftPage * 20 < draftTotal && <div className="admin-posts-more"><AdminButton variant="ghost" disabled={loading} onClick={() => setDraftPage(value => value + 1)}>加载更多草稿</AdminButton></div>}
+      {filter !== 'published' && draftPage * 20 < draftTotal && <div className="admin-posts-more"><AdminButton variant="ghost" disabled={loading} onClick={() => setDraftPage(value => value + 1)} className="ui-btn ui-btn--ghost">加载更多草稿</AdminButton></div>}
       {pages > 1 ? <nav className="admin-posts-pagination" aria-label="文章管理分页">
-        <AdminButton variant="ghost" disabled={loading || page <= 1} onClick={() => setPage(value => value - 1)}>上一页</AdminButton>
+        <AdminButton variant="ghost" disabled={loading || page <= 1} onClick={() => setPage(value => value - 1)} className="ui-btn ui-btn--ghost">上一页</AdminButton>
         <span>共 {total} 条，第 {page} / {pages} 页</span>
-        <AdminButton variant="ghost" disabled={loading || page >= pages} onClick={() => setPage(value => value + 1)}>下一页</AdminButton>
+        <AdminButton variant="ghost" disabled={loading || page >= pages} onClick={() => setPage(value => value + 1)} className="ui-btn ui-btn--ghost">下一页</AdminButton>
       </nav> : !loading && <p className="admin-posts-shown">已显示 {shown} 篇</p>}
     </div>
   </div>;

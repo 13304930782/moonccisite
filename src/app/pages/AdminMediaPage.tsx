@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { safeImageSrc } from '../lib/safeUrl';
+import '../../styles/admin-ui-v2.css';
 import '../../styles/admin-media.css';
 
 const IMAGE_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp,image/x-icon,image/vnd.microsoft.icon,.jpg,.jpeg,.png,.gif,.webp,.ico';
@@ -77,7 +78,7 @@ async function copyText(text: string) {
 
 function QualityMenu({ value, onChange, upload = false, disabled = false }: { value: string; onChange: (value: string) => void; upload?: boolean; disabled?: boolean }) {
   const names: Record<string, string> = { low: '低', medium: '中', high: '高', original: '原图' };
-  return <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" variant="ghost" disabled={disabled} aria-label={upload ? '上传图片质量' : '压缩图片质量'}>{upload ? '上传质量' : '压缩质量'}：{names[value]}<ChevronDown size={14} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal media-quality-menu"><DropdownMenuRadioGroup value={value} onValueChange={onChange}>{[['low', '低清晰度'], ['medium', '中清晰度'], ['high', '高清晰度'], ...(upload ? [['original', '原图']] : [])].map(([key, label]) => <DropdownMenuRadioItem key={key} value={key}>{label}</DropdownMenuRadioItem>)}</DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>;
+  return <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" variant="ghost" disabled={disabled} aria-label={upload ? '上传图片质量' : '压缩图片质量'} className="ui-btn ui-btn--ghost">{upload ? '上传质量' : '压缩质量'}：{names[value]}<ChevronDown size={14} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal ui-v2 media-quality-menu"><DropdownMenuRadioGroup value={value} onValueChange={onChange}>{[['low', '低清晰度'], ['medium', '中清晰度'], ['high', '高清晰度'], ...(upload ? [['original', '原图']] : [])].map(([key, label]) => <DropdownMenuRadioItem key={key} value={key}>{label}</DropdownMenuRadioItem>)}</DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>;
 }
 
 export default function AdminMediaPage() {
@@ -446,29 +447,30 @@ export default function AdminMediaPage() {
   };
 
   return (
-    <div className={`admin-media-page${selecting ? ' is-selecting' : ''}${selectedCount ? ' has-selection' : ''}`}>
+    <div className={`admin-media-page ui-v2${selecting ? ' is-selecting' : ''}${selectedCount ? ' has-selection' : ''}`}>
       <header className="media-page-header">
         <div className="media-page-heading"><h1>媒体库</h1>{!loading && !loadError && <span>{search ? `找到 ${total} 个文件` : `共 ${total} 个文件`}</span>}</div>
         <div className="media-page-actions">
-          <AdminButton type="button" disabled={uploading} onClick={() => uploadInput.current?.click()}>{uploading ? '上传中…' : '上传图片'}</AdminButton>
+          <AdminButton type="button" disabled={uploading} onClick={() => uploadInput.current?.click()} className="ui-btn ui-btn--solid">{uploading ? '上传中…' : '上传图片'}</AdminButton>
           <QualityMenu value={imageQuality} onChange={setImageQuality} upload disabled={uploading} />
-          {!finePointer && <AdminButton type="button" variant="ghost" className="media-selection-toggle" aria-pressed={selecting} disabled={saving || loading} onClick={() => { setManualSelection(!selecting); if (selecting) setSelectedFilenames([]); }}>{selecting ? '完成' : '选择'}</AdminButton>}
+          {!finePointer && <AdminButton type="button" variant="ghost" className="media-selection-toggle ui-btn ui-btn--ghost" aria-pressed={selecting} disabled={saving || loading} onClick={() => { setManualSelection(!selecting); if (selecting) setSelectedFilenames([]); }}>{selecting ? '完成' : '选择'}</AdminButton>}
           <input ref={uploadInput} type="file" hidden accept={IMAGE_ACCEPT} aria-label="上传图片文件" disabled={uploading} onChange={event => { void handleUpload(event.target.files?.[0]); event.target.value = ''; }} />
         </div>
       </header>
 
       <div className="media-page-toolbar">
         <div className="media-status-tabs" role="group" aria-label="媒体状态">
-          <button type="button" aria-pressed={status === 'active'} disabled={saving} onClick={() => { setPage(1); setStatus('active'); }}>正常文件{status === 'active' && !search && !loading && !loadError && <span>{total}</span>}</button>
-          <button type="button" aria-pressed={status === 'trashed'} disabled={saving} onClick={() => { setPage(1); setStatus('trashed'); }}>回收站{status === 'trashed' && !search && !loading && !loadError && <span>{total}</span>}</button>
+          <button type="button" aria-pressed={status === 'active'} disabled={saving} onClick={() => { setPage(1); setStatus('active'); }} className="ui-btn ui-btn--ghost">正常文件{status === 'active' && !search && !loading && !loadError && <span>{total}</span>}</button>
+          <button type="button" aria-pressed={status === 'trashed'} disabled={saving} onClick={() => { setPage(1); setStatus('trashed'); }} className="ui-btn ui-btn--ghost">回收站{status === 'trashed' && !search && !loading && !loadError && <span>{total}</span>}</button>
         </div>
-        <div className="media-search-field"><input ref={searchInput} aria-label="搜索媒体文件" value={keyword} onChange={event => setKeyword(event.target.value)} placeholder="搜索文件名、显示名、Alt" />{keyword && <button type="button" className="media-search-clear" aria-label="清除搜索" onClick={clearSearch}><X size={16} aria-hidden="true" /></button>}</div>
-        <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" variant="ghost" className="media-sort-trigger">最近更新<ChevronDown size={14} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal media-list-menu"><DropdownMenuRadioGroup value="updated"><DropdownMenuRadioItem value="updated">最近更新</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>
-        <AdminButton type="button" variant="ghost" size="icon" className="media-refresh" aria-label="刷新媒体库" disabled={loading || saving} onClick={() => void load()}><RefreshCw size={16} strokeWidth={1.8} aria-hidden="true" /></AdminButton>
+        <div className="media-search-field"><input ref={searchInput} aria-label="搜索媒体文件" value={keyword} onChange={event => setKeyword(event.target.value)} placeholder="搜索文件名、显示名、Alt" className="ui-input" />{keyword && <button type="button" className="media-search-clear ui-btn ui-btn--ghost ui-btn--icon" aria-label="清除搜索" onClick={clearSearch}><X size={16} aria-hidden="true" /></button>}</div>
+        <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" variant="ghost" className="media-sort-trigger ui-btn ui-btn--ghost">最近更新<ChevronDown size={14} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal ui-v2 media-list-menu"><DropdownMenuRadioGroup value="updated"><DropdownMenuRadioItem value="updated">最近更新</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>
+        <AdminButton type="button" variant="ghost" size="icon" className="media-refresh ui-btn ui-btn--ghost ui-btn--icon" aria-label="刷新媒体库" disabled={loading || saving} onClick={() => void load()}><RefreshCw size={16} strokeWidth={1.8} aria-hidden="true" /></AdminButton>
       </div>
 
+      <div className="media-list-content">
       {message && !selected && <p role="alert" className="media-notice">{message}</p>}
-      {loadError && <div className="resource-notice" role="alert"><div><strong>{items.length ? '刷新失败，已保留当前图片' : '媒体库加载失败'}</strong><p>{loadError}</p></div><AdminButton type="button" variant="soft" disabled={loading} onClick={() => void load()}>重新加载媒体库</AdminButton></div>}
+      {loadError && <div className="resource-notice" role="alert"><div><strong>{items.length ? '刷新失败，已保留当前图片' : '媒体库加载失败'}</strong><p>{loadError}</p></div><AdminButton type="button" variant="soft" disabled={loading} onClick={() => void load()} className="ui-btn ui-btn--soft">重新加载媒体库</AdminButton></div>}
       {loading && !filtered.length ? <p className="media-empty" role="status">正在加载媒体库…</p> : filtered.length === 0 && !loadError ? <div className="media-empty"><p>{search ? '没有找到匹配的媒体文件。' : status === 'trashed' ? '回收站为空。' : '暂无媒体文件，请先上传图片。'}</p></div> : <div className="media-file-grid">
         {filtered.map(item => {
           const imageUrl = safeImageSrc(item.url), markdown = `![${item.alt_text || mediaName(item)}](${item.url})`, checked = selectedSet.has(item.filename);
@@ -484,33 +486,34 @@ export default function AdminMediaPage() {
         })}
       </div>}
 
-      {(total > 50 || page > 1) ? <nav aria-label="媒体库分页" className="media-pagination"><AdminButton type="button" variant="ghost" disabled={loading || saving || page <= 1} onClick={() => setPage(page - 1)}>上一页</AdminButton><span>第 {page} / {Math.max(1, Math.ceil(total / 50))} 页</span><AdminButton type="button" variant="ghost" disabled={loading || saving || page * 50 >= total} onClick={() => setPage(page + 1)}>下一页</AdminButton></nav> : !loading && !loadError && filtered.length > 0 && <p className="media-page-end">已显示 {filtered.length} 个文件</p>}
+      {(total > 50 || page > 1) ? <nav aria-label="媒体库分页" className="media-pagination"><AdminButton type="button" variant="ghost" disabled={loading || saving || page <= 1} onClick={() => setPage(page - 1)} className="ui-btn ui-btn--ghost">上一页</AdminButton><span>第 {page} / {Math.max(1, Math.ceil(total / 50))} 页</span><AdminButton type="button" variant="ghost" disabled={loading || saving || page * 50 >= total} onClick={() => setPage(page + 1)} className="ui-btn ui-btn--ghost">下一页</AdminButton></nav> : !loading && !loadError && filtered.length > 0 && <p className="media-page-end">已显示 {filtered.length} 个文件</p>}
 
+      </div>
       {selectedCount > 0 && <div className="media-batch-bar" role="region" aria-label="批量媒体操作">
         <div className="media-batch-actions">
-          <button type="button" className="media-batch-icon" aria-label="清空选择" disabled={saving} onClick={() => setSelectedFilenames([])}><X size={20} aria-hidden="true" /></button>
+          <button type="button" className="media-batch-icon ui-btn ui-btn--ghost ui-btn--icon" aria-label="清空选择" disabled={saving} onClick={() => setSelectedFilenames([])}><X size={20} aria-hidden="true" /></button>
           <span role="status" aria-live="polite">已选 {selectedCount} 项</span>
-          {status === 'active' ? <><button type="button" aria-label="全选本页" disabled={saving || allVisibleSelected || !filtered.length} onClick={toggleVisible}>全选</button><button type="button" className="media-batch-icon media-batch-danger" aria-label="删除到回收站" disabled={saving} onClick={() => void batchDelete(false)}><Trash2 size={20} aria-hidden="true" /></button></> : <><button type="button" disabled={saving} onClick={() => void batchRestore()}>恢复</button><DropdownMenu><DropdownMenuTrigger asChild><button type="button" ref={batchMenuTrigger} className="media-batch-icon" aria-label="更多批量操作" disabled={saving}><MoreHorizontal size={20} aria-hidden="true" /></button></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal media-list-menu"><DropdownMenuItem disabled={saving || allVisibleSelected || !filtered.length} onSelect={toggleVisible}>全选本页</DropdownMenuItem><DropdownMenuItem className="media-menu-danger" disabled={saving} onSelect={() => void batchPermanentDelete()}><Trash2 size={18} aria-hidden="true" />彻底删除</DropdownMenuItem></DropdownMenuContent></DropdownMenu></>}
+          {status === 'active' ? <><button type="button" aria-label="全选本页" disabled={saving || allVisibleSelected || !filtered.length} onClick={toggleVisible} className="ui-btn ui-btn--ghost">全选</button><button type="button" className="media-batch-icon media-batch-danger ui-btn ui-btn--ghost ui-btn--icon ui-btn--danger" aria-label="删除到回收站" disabled={saving} onClick={() => void batchDelete(false)}><Trash2 size={20} aria-hidden="true" /></button></> : <><button type="button" disabled={saving} onClick={() => void batchRestore()} className="ui-btn ui-btn--ghost">恢复</button><DropdownMenu><DropdownMenuTrigger asChild><button type="button" ref={batchMenuTrigger} className="media-batch-icon ui-btn ui-btn--ghost ui-btn--icon" aria-label="更多批量操作" disabled={saving}><MoreHorizontal size={20} aria-hidden="true" /></button></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal ui-v2 media-list-menu"><DropdownMenuItem disabled={saving || allVisibleSelected || !filtered.length} onSelect={toggleVisible}>全选本页</DropdownMenuItem><DropdownMenuItem className="media-menu-danger" disabled={saving} onSelect={() => void batchPermanentDelete()}><Trash2 size={18} aria-hidden="true" />彻底删除</DropdownMenuItem></DropdownMenuContent></DropdownMenu></>}
         </div>
       </div>}
 
       {selected && <Dialog open onOpenChange={open => { if (!open && !saving) setSelected(null); }}>
-        <DialogContent className="admin-portal media-detail-drawer" onCloseAutoFocus={event => { if (detailTrigger.current?.isConnected) { event.preventDefault(); detailTrigger.current.focus(); } }}>
+        <DialogContent className="admin-portal ui-v2 media-detail-drawer" onCloseAutoFocus={event => { if (detailTrigger.current?.isConnected) { event.preventDefault(); detailTrigger.current.focus(); } }}>
           <header className="media-detail-heading"><DialogTitle>{mediaName(selected)}</DialogTitle><DialogDescription>{selected.filename}</DialogDescription></header>
           <form className="media-detail-form" onSubmit={event => { event.preventDefault(); void saveDetails(); }}>
             <div className="media-detail-scroll">
               <div className="media-detail-preview">{safeImageSrc(selected.url) ? <img src={safeImageSrc(selected.url)} alt={mediaName(selected)} /> : <ImageIcon size={40} aria-label="图片暂不可预览" />}</div>
-              <div className="media-detail-links"><AdminButton type="button" variant="soft" onClick={() => void handleCopy(selected.url, '图片 URL')}>复制链接</AdminButton><AdminButton type="button" variant="soft" onClick={() => void handleCopy(`![${altText || mediaName(selected)}](${selected.url})`, 'Markdown')}>复制 Markdown</AdminButton>{safeImageSrc(selected.url) && <AdminButton type="button" variant="soft" asChild><a href={safeImageSrc(selected.url)} target="_blank" rel="noopener noreferrer">打开原图</a></AdminButton>}</div>
+              <div className="media-detail-links"><AdminButton type="button" variant="soft" onClick={() => void handleCopy(selected.url, '图片 URL')} className="ui-btn ui-btn--soft">复制链接</AdminButton><AdminButton type="button" variant="soft" onClick={() => void handleCopy(`![${altText || mediaName(selected)}](${selected.url})`, 'Markdown')} className="ui-btn ui-btn--soft">复制 Markdown</AdminButton>{safeImageSrc(selected.url) && <AdminButton type="button" variant="soft" asChild className="ui-btn ui-btn--soft"><a href={safeImageSrc(selected.url)} target="_blank" rel="noopener noreferrer">打开原图</a></AdminButton>}</div>
               {message && <p role="alert" className="media-notice">{message}</p>}
               <fieldset disabled={saving} className="media-detail-fields">
-                <label>链接显示名<input value={displayName} onChange={event => setDisplayName(event.target.value)} placeholder="例如：首页封面图" /></label>
-                <label>Alt 文本<input value={altText} onChange={event => setAltText(event.target.value)} placeholder="给搜索引擎和无障碍阅读器看的图片说明" /></label>
-                <label>文件名<input value={renameTo} readOnly={selected.status === 'trashed'} onChange={event => setRenameTo(event.target.value)} placeholder={selected.filename} aria-describedby="media-rename-hint" /></label>
+                <label>链接显示名<input value={displayName} onChange={event => setDisplayName(event.target.value)} placeholder="例如：首页封面图" className="ui-input" /></label>
+                <label>Alt 文本<input value={altText} onChange={event => setAltText(event.target.value)} placeholder="给搜索引擎和无障碍阅读器看的图片说明" className="ui-input" /></label>
+                <label>文件名<input value={renameTo} readOnly={selected.status === 'trashed'} onChange={event => setRenameTo(event.target.value)} placeholder={selected.filename} aria-describedby="media-rename-hint" className="ui-input" /></label>
                 <p id="media-rename-hint">{selected.status === 'trashed' ? '恢复文件后可以修改文件名' : '修改文件名会同步更新文章里的引用'}</p>
               </fieldset>
-              <div className="media-detail-compression"><div className="media-detail-metadata">{selected.size_text} · {selected.mime || selected.ext} · {selected.width && selected.height ? `${selected.width} × ${selected.height}` : '-'}<br />{formatTime(selected.uploaded_at)}</div>{selected.status !== 'trashed' && <div className="media-compression-actions"><QualityMenu value={recompressQuality} onChange={setRecompressQuality} disabled={saving} /><AdminButton type="button" variant="soft" disabled={saving} onClick={() => void recompress()}>二次压缩</AdminButton></div>}</div>
+              <div className="media-detail-compression"><div className="media-detail-metadata">{selected.size_text} · {selected.mime || selected.ext} · {selected.width && selected.height ? `${selected.width} × ${selected.height}` : '-'}<br />{formatTime(selected.uploaded_at)}</div>{selected.status !== 'trashed' && <div className="media-compression-actions"><QualityMenu value={recompressQuality} onChange={setRecompressQuality} disabled={saving} /><AdminButton type="button" variant="soft" disabled={saving} onClick={() => void recompress()} className="ui-btn ui-btn--soft">二次压缩</AdminButton></div>}</div>
             </div>
-            <footer className="media-detail-footer"><div>{selected.status !== 'trashed' ? <AdminButton type="button" variant="ghost" className="media-danger" disabled={saving} onClick={() => void deleteFile(false)}>删除到回收站</AdminButton> : <><AdminButton type="button" variant="ghost" disabled={saving} onClick={() => void restoreFile()}>恢复</AdminButton><AdminButton type="button" variant="ghost" className="media-danger" disabled={saving} onClick={() => void permanentDelete()}>彻底删除</AdminButton></>}</div><div><AdminButton type="button" variant="ghost" disabled={saving} onClick={() => setSelected(null)}>取消</AdminButton><AdminButton type="submit" disabled={saving} aria-label="保存显示信息">{saving ? '保存中…' : '保存'}</AdminButton></div></footer>
+            <footer className="media-detail-footer"><div>{selected.status !== 'trashed' ? <AdminButton type="button" variant="ghost" className="media-danger ui-btn ui-btn--ghost ui-btn--danger" disabled={saving} onClick={() => void deleteFile(false)}>删除到回收站</AdminButton> : <><AdminButton type="button" variant="ghost" disabled={saving} onClick={() => void restoreFile()} className="ui-btn ui-btn--ghost">恢复</AdminButton><AdminButton type="button" variant="ghost" className="media-danger ui-btn ui-btn--ghost ui-btn--danger" disabled={saving} onClick={() => void permanentDelete()}>彻底删除</AdminButton></>}</div><div><AdminButton type="button" variant="ghost" disabled={saving} onClick={() => setSelected(null)} className="ui-btn ui-btn--ghost">取消</AdminButton><AdminButton type="submit" disabled={saving} aria-label="保存显示信息" className="ui-btn ui-btn--solid">{saving ? '保存中…' : '保存'}</AdminButton></div></footer>
           </form>
         </DialogContent>
       </Dialog>}
