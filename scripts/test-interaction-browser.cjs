@@ -14,7 +14,7 @@ let browser,server;
 async function fixture(options={}){
  const context=await browser.newContext({viewport:options.viewport||{width:1440,height:900},isMobile:!!options.mobile,hasTouch:!!options.mobile,reducedMotion:options.reduced?'reduce':'no-preference',colorScheme:options.dark?'dark':'light',recordVideo:{dir:path.join(root,'videos'),size:options.mobile?{width:390,height:844}:{width:1440,height:900}}});
  await context.addInitScript(({dark,localReduced,noWAAPI})=>{try{localStorage.setItem('mooncci-theme',dark?'dark':'light');localStorage.setItem('mooncci-reading',JSON.stringify({reduceMotion:localReduced}));}catch{}if(noWAAPI)Element.prototype.animate=undefined;},{dark:!!options.dark,localReduced:!!options.localReduced,noWAAPI:!!options.noWAAPI});
- const state={slow:true,broken:true,bookmark:false,bookmarkFail:false,commentFail:false,writeDelay:300,comments:[structuredClone(comment),{...structuredClone(comment),id:2,user_id:9001,author_name:'另一位读者'}],requests:[],pendingImages:[]};
+ const state={slow:true,broken:true,imageSize:[1200,800],bookmark:false,bookmarkFail:false,commentFail:false,writeDelay:300,comments:[structuredClone(comment),{...structuredClone(comment),id:2,user_id:9001,author_name:'另一位读者'}],requests:[],pendingImages:[]};
  state.releaseImages=()=>{state.slow=false;state.pendingImages.splice(0).forEach(resolve=>resolve());};
  await context.route('**/*',async route=>{
   const request=route.request(),url=new URL(request.url()),method=request.method();
@@ -22,7 +22,7 @@ async function fixture(options={}){
   if(url.pathname.startsWith('/interaction-fixtures/')){
    if(url.pathname.endsWith('/slow.svg')&&state.slow)await new Promise(resolve=>state.pendingImages.push(resolve));
    const fail=url.pathname.endsWith('/broken.svg')&&state.broken;if(fail)report.expectedFailures.push({kind:'image',url:url.pathname,status:503});
-   return route.fulfill({status:fail?503:200,contentType:'image/svg+xml',body:fail?'Unavailable':svg,headers:{'Cache-Control':'no-store'}}).catch(()=>{});
+   return route.fulfill({status:fail?503:200,contentType:'image/svg+xml',body:fail?'Unavailable':svg.replace('width="1200" height="800"',`width="${state.imageSize[0]}" height="${state.imageSize[1]}"`),headers:{'Cache-Control':'no-store'}}).catch(()=>{});
   }
   if(!url.pathname.startsWith('/api/'))return route.continue();
   const key=url.pathname.slice(4);state.requests.push({key,method,body:request.postData()});
@@ -77,6 +77,19 @@ async function counter(page,value){await page.waitForFunction(value=>document.qu
   const scroll=await page.evaluate(()=>scrollY);await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});assert.equal(await image.evaluate(el=>el===document.activeElement),true);assert.equal(await page.evaluate(()=>scrollY),scroll);
   await image.click();await page.getByRole('dialog').waitFor();await page.getByRole('button',{name:'关闭弹窗',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
   assert.equal(await page.evaluate(()=>document.body.style.pointerEvents),'');assert.notEqual(await page.evaluate(()=>getComputedStyle(document.body).overflow),'hidden');row.readingScroll=scroll;
+ });
+ await run('image opening keeps final geometry for portrait, landscape and square pictures',async({page,state},row)=>{
+  state.releaseImages();state.broken=false;row.shapes=[];
+  for(const width of [1440,390])for(const size of [[360,1200],[1200,800],[800,800]]){
+   await page.setViewportSize({width,height:width===390?844:900});state.imageSize=size;await article(page);
+   const image=page.locator('.markdown-body img[data-preview-image]').first();await image.scrollIntoViewIfNeeded();await page.waitForTimeout(100);
+   await page.evaluate(()=>{window.__imageGeometry=[];const start=performance.now();function frame(){const image=document.querySelector('.article-image-stage img'),stage=document.querySelector('.article-image-stage');if(image&&stage&&stage.getAttribute('aria-busy')==='false'){const r=image.getBoundingClientRect();window.__imageGeometry.push({x:r.x,y:r.y,width:r.width,height:r.height,transform:getComputedStyle(image).transform,dialogTransform:getComputedStyle(image.closest('[role=dialog]')).transform,overflowX:stage.scrollWidth-stage.clientWidth,overflowY:stage.scrollHeight-stage.clientHeight});}if(performance.now()-start<450)requestAnimationFrame(frame);}requestAnimationFrame(frame);});
+   await image.evaluate(el=>el.click());await page.waitForTimeout(500);const frames=await page.evaluate(()=>window.__imageGeometry);assert.ok(frames.length>=5);
+   for(const key of ['x','y','width','height'])assert.ok(Math.max(...frames.map(f=>f[key]))-Math.min(...frames.map(f=>f[key]))<.5,`${width} ${size} ${key} must stay stable during fade`);
+   assert.ok(frames.every(f=>f.transform==='none'&&f.dialogTransform==='none'&&f.overflowX<=1&&f.overflowY<=1));
+   await page.getByRole('button',{name:'查看原始尺寸',exact:true}).click();await page.getByRole('button',{name:'适应窗口',exact:true}).click();assert.equal(await slide(page).locator('img').evaluate(el=>el.getAnimations().length),0,'zoom must not replay the entrance');
+   row.shapes.push({viewport:width,size,frames:frames.length,first:frames[0],last:frames.at(-1)});await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
+  }
  });
  await run('slow images, failed image retry and rapid latest selection',async({page,state})=>{
   await article(page);await openImage(page);await page.keyboard.press('ArrowRight');await counter(page,'2 / 3');await page.getByText('正在加载图片…',{exact:true}).waitFor();

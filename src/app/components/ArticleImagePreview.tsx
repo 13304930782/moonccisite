@@ -5,7 +5,7 @@ import { feedbackMotion } from '../lib/feedbackMotion';
 import '../../styles/article-image-preview.css';
 
 type Image = { src: string; alt: string };
-type Gallery = { images: Image[]; index: number; source: DOMRect | null; openedAt: number };
+type Gallery = { images: Image[]; index: number; openedAt: number };
 const PreviewContext = createContext<((image: HTMLImageElement) => void) | null>(null);
 
 export function ArticleImagePreview({ children, enabled }: { children: ReactNode; enabled: boolean }) {
@@ -16,11 +16,11 @@ export function ArticleImagePreview({ children, enabled }: { children: ReactNode
     const index = elements.indexOf(image);
     if (index < 0) return;
     origin.current = image;
-    setGallery({ images: elements.map(node => ({ src: node.currentSrc || node.src, alt: node.alt })), index, source: image.getBoundingClientRect(), openedAt: performance.now() });
+    setGallery({ images: elements.map(node => ({ src: node.currentSrc || node.src, alt: node.alt })), index, openedAt: performance.now() });
     setOpen(true);
   }
   function move(delta: number) {
-    setGallery(current => current ? { ...current, index: Math.max(0, Math.min(current.images.length - 1, current.index + delta)), source: null } : current);
+    setGallery(current => current ? { ...current, index: Math.max(0, Math.min(current.images.length - 1, current.index + delta)) } : current);
   }
   return <PreviewContext.Provider value={enabled ? show : null}>
     {children}
@@ -30,7 +30,7 @@ export function ArticleImagePreview({ children, enabled }: { children: ReactNode
       }}>
         <DialogTitle className="sr-only">文章图片预览</DialogTitle>
         <DialogDescription id="article-image-description" className="sr-only">使用左右方向键或左右滑动切图，按 Escape 关闭。</DialogDescription>
-        <PreviewSlide key={`${gallery.index}:${gallery.openedAt}`} image={gallery.images[gallery.index]} source={gallery.source} openedAt={gallery.openedAt} onSwipe={move} />
+        <PreviewSlide key={`${gallery.index}:${gallery.openedAt}`} image={gallery.images[gallery.index]} onSwipe={move} />
         <div className="article-image-navigation">
           <button type="button" className="quiet-button" aria-label="上一张图片" disabled={gallery.index === 0} onClick={() => move(-1)}><ChevronLeft size={20}/></button>
           <span role="status" aria-live="polite">{gallery.index + 1} / {gallery.images.length}</span>
@@ -54,18 +54,15 @@ export function LinkedImages({ children }: { children: ReactNode }) {
   return <PreviewContext.Provider value={null}>{children}</PreviewContext.Provider>;
 }
 
-function PreviewSlide({ image, source, openedAt, onSwipe }: { image: Image; source: DOMRect | null; openedAt: number; onSwipe: (delta: number) => void }) {
+function PreviewSlide({ image, onSwipe }: { image: Image; onSwipe: (delta: number) => void }) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading'), [attempt, setAttempt] = useState(0), [zoomed, setZoomed] = useState(false);
   const element = useRef<HTMLImageElement>(null), touch = useRef<{ id: number; x: number; y: number } | null>(null);
   const useClientLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
   useClientLayoutEffect(() => {
-    if (status !== 'ready' || !element.current || zoomed) return;
-    const imageElement = element.current, target = imageElement.getBoundingClientRect();
-    const from = source && source.bottom > 0 && source.top < innerHeight && performance.now() - openedAt < 600 && target.width && target.height
-      ? `translate(${source.x + source.width / 2 - target.x - target.width / 2}px, ${source.y + source.height / 2 - target.y - target.height / 2}px) scale(${source.width / target.width}, ${source.height / target.height})`
-      : 'translateY(4px)';
-    return feedbackMotion(imageElement, { opacity: [0, 1], transform: [from, 'none'] });
-  }, [status, source, openedAt, zoomed]);
+    if (status !== 'ready' || !element.current) return;
+    // Geometry animation inside the scroll viewport clips tall images and creates scrollbars.
+    return feedbackMotion(element.current, { opacity: [0, 1] });
+  }, [status]);
   return <>
     <div className={`article-image-stage${zoomed ? ' is-zoomed' : ''}`} aria-busy={status === 'loading'} onTouchStart={event => {
       const first = event.touches[0]; touch.current = !zoomed && event.touches.length === 1 ? { id: first.identifier, x: first.clientX, y: first.clientY } : null;
