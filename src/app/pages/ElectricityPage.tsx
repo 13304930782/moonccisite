@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 const ElectricityChart = lazy(() => import('../components/ElectricityChart'));
 import { Header } from '../components/Header';
+import { SiteBack } from '../components/SiteBack';
 import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
 import { ElectricityRssSubscription } from '../components/ElectricityRssSubscription';
@@ -134,6 +135,7 @@ export default function ElectricityPage() {
       <div className="electricity-page">
         <Header />
         <main className="site-container page-content electricity-access">
+          <SiteBack />
           <p className="eyebrow">日常记录 / 电量</p>
           <h1>宿舍电量监控</h1>
           {authLoading || loading ? (
@@ -283,6 +285,7 @@ function ElectricityDashboard({
     <div className="electricity-page neo-page">
       <Header />
       <main className="site-container page-content electricity-main">
+        <SiteBack />
         <section className="electricity-hero">
           <div>
             <p className="eyebrow">日常记录 / 电量</p>

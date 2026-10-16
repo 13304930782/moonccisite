@@ -48,12 +48,12 @@ function SiteRoutes() {
   const [initialKey]=useState(location.key);
   const [interactive, setInteractive] = useState(false);
   useEffect(() => { startTransition(()=>setInteractive(true)); }, []);
-  return <><NavigationProtection/><RoutePreload/>
+  return <RoutePosition><NavigationProtection/><RoutePreload/>
           <SiteMeta /><DeferredFeedbackHost/>
-          <RoutePosition /><PageAnalytics /><DiagnosticNavigation />
+          <PageAnalytics /><DiagnosticNavigation />
           <Suspense fallback={<RouteLoader />}>{status && status>=400 && location.key===initialKey ? (status===404 ? <NotFoundPage/> : <RouteFailure/>) : (location.pathname==='/'?<HomePage/>:<RoutePages/>)}</Suspense>
           {interactive && <><PublicWeatherCompanion /><Suspense fallback={null}><ReadingTools /></Suspense></>}
-  </>;
+  </RoutePosition>;
 }
 function RouteFailure() {
   return <SitePage><section className="resource-notice" role="alert"><div><h1>页面暂时未能加载</h1><p>请重新加载页面后继续。</p></div><button className="quiet-button" onClick={()=>window.location.reload()}>重新加载</button></section></SitePage>;

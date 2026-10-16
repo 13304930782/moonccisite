@@ -11,6 +11,7 @@ import {loadCoverGradient} from '../lib/coverPalette';
 import { safeImageSrc } from '../lib/safeUrl';
 import { dimensionsFor } from '../lib/imageDimensions';
 import {CoverImage} from './CoverImage';
+import {SiteBack} from './SiteBack';
 import {coverFrame,normalizeCoverCrop} from '../lib/coverCrop';
 import '../../styles/article-detail.css';
 export function ArticlePresentation({ post, preview = false, views = null,progress }: { post: any; preview?: boolean; views?: number | null;progress?:ReactNode }) {
@@ -34,7 +35,7 @@ export function ArticlePresentation({ post, preview = false, views = null,progre
   return <article className={`article-presentation ${cover?'article-has-cover':'article-no-cover'} ${preview?'detail-preview':''}`} data-reading-content={preview?undefined:true}>
     {progress}
     <header className={cover?'hero-band':'hero-heading'} style={cover?bandStyle:undefined}><div className="hero-inner">
-      <div className="detail-intro"><nav className="detail-breadcrumb" aria-label="面包屑导航" data-reading-ignore><Link className={cover?'hero-pill':'hero-pill--light'} to="/articles">← 文章库</Link></nav><div className="detail-label"><Link className={cover?'hero-pill':'hero-pill--light'} to={`/category/${encodeURIComponent(post.category||'文章')}`}>{post.category||'文章'}</Link></div></div>
+      <div className="detail-intro"><nav className="detail-breadcrumb" aria-label="面包屑导航" data-reading-ignore>{preview ? <Link className={cover?'hero-pill':'hero-pill--light'} to="/articles">← 文章库</Link> : <SiteBack className={cover?'hero-pill':'hero-pill--light'}/>}</nav><div className="detail-label"><Link className={cover?'hero-pill':'hero-pill--light'} to={`/category/${encodeURIComponent(post.category||'文章')}`}>{post.category||'文章'}</Link></div></div>
       <h1 className="detail-title">{post.title}</h1>
       <SingleLine className="hero-meta" label="发布信息">
         <span className="g">

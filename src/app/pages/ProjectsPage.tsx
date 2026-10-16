@@ -1,4 +1,5 @@
 import { EmptyState } from '../components/DetailUI';
+import { SiteBack } from '../components/SiteBack';
 import { ProjectCard } from '../components/ProjectCard';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
@@ -111,7 +112,7 @@ export function ProjectDetailPage() {
           <article className="project-reading" ref={articleRef} data-reading-content>
             <header className="project-detail-heading">
               <div className="project-detail-back-row" data-reading-ignore>
-                <Link className="project-detail-pill" to="/projects">← 全部作品</Link>
+                <SiteBack className="project-detail-pill" />
                 <span className="project-detail-pill project-detail-stage">{labels[p.stage] || '作品'}</span>
               </div>
               <div className="project-detail-identity">

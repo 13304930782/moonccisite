@@ -2,10 +2,10 @@ import { safeHref, safeRoutePath, isExternalHttpUrl } from '../lib/safeUrl';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { SiteFooter } from '../components/SiteFooter';
-import { BlogCard } from '../components/BlogCard';
 import { lazy, Suspense } from 'react';
 const MarkdownContent = lazy(() => import('../components/MarkdownContent').then(m => ({ default: m.MarkdownContent })));
 const HomeActivityList = lazy(() => import('../components/home/HomeActivityList').then(m => ({ default: m.HomeActivityList })));
+const HomePostList = lazy(() => import('../components/home/HomeActivityList').then(m => ({ default: m.HomePostList })));
 import {
   ContentSkeleton,
   formatDate,
@@ -112,36 +112,22 @@ export default function HomePage() {
           </div>
           <ResourceState resource={activity}>
             <Suspense fallback={<ContentSkeleton />}>
-              <HomeActivityList items={visibleActivity} posts={posts.data || []} postsLoading={posts.loading} />
+              <HomeActivityList items={visibleActivity} posts={posts.data || []} postsLoading={posts.loading && posts.data === null} />
             </Suspense>
             <div className="home-updates-more"><Link to="/updates" className="home-soft-button">查看全部更新</Link></div>
           </ResourceState>
         </section>
-        <section className="home-section" id="latest">
+        <section className="home-section home-posts" id="latest">
           <div className="section-heading">
             <h2>最近写了什么</h2>
-            <Link to="/articles" className="text-link">
-              文章库 ↗
+            <Link to="/articles" className="home-updates-link">
+              文章库 →
             </Link>
           </div>
           <ResourceState resource={posts}>
-            <div className="post-grid">
-              {(posts.data || []).map((p: any, index: number) => (
-                <BlogCard
-                  key={p.id}
-                  id={p.id}
-                  title={p.title}
-                  excerpt={p.summary}
-                  date={p.updated_at || p.published_at || p.created_at}
-                  dateLabel="更新于"
-                  tags={Array.isArray(p.tags) ? p.tags : []}
-                  readTime=""
-                  image={p.cover_image}
-                  coverCrop={p.cover_crop}
-                  index={index}
-                />
-              ))}
-            </div>
+            <Suspense fallback={<ContentSkeleton />}>
+              <HomePostList posts={posts.data || []} />
+            </Suspense>
             {posts.data?.length === 0 && (
               <p className="quiet-state">第一篇文章正在准备中。</p>
             )}
@@ -150,8 +136,8 @@ export default function HomePage() {
         <section className="home-section">
           <div className="section-heading">
             <h2>作品与实验</h2>
-            <Link to="/projects" className="text-link">
-              全部作品 ↗
+            <Link to="/projects" className="home-updates-link">
+              全部作品 →
             </Link>
           </div>
           <ResourceState resource={projects}>

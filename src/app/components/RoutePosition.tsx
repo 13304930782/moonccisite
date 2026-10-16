@@ -1,8 +1,16 @@
-import { useLayoutEffect } from 'react';
+import { createContext, useContext, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigationType } from 'react-router-dom';
+import { rememberSiteVisit, type SiteVisit } from '../lib/siteHistory';
 const positions = new Map<string, number>();
-export function RoutePosition() {
+const PreviousSiteVisit = createContext<SiteVisit | null>(null);
+export const usePreviousSiteVisit = () => useContext(PreviousSiteVisit);
+export function RoutePosition({ children }: { children?: ReactNode }) {
   const location = useLocation(), navigation = useNavigationType();
+  const visits = useRef(new Map<number, SiteVisit>());
+  const [previousVisit, setPreviousVisit] = useState<SiteVisit | null>(null);
+  useLayoutEffect(() => {
+    setPreviousVisit(rememberSiteVisit(visits.current, history.state?.idx, location, navigation));
+  }, [location.key, location.pathname, location.search, location.hash, navigation]);
   useLayoutEffect(() => {
     if (location.key !== 'default') delete document.documentElement.dataset.documentHydrating;
     const previous = history.scrollRestoration; history.scrollRestoration = 'manual';
@@ -33,7 +41,8 @@ export function RoutePosition() {
     } else window.scrollTo({ top: 0, behavior: 'instant' });
     window.addEventListener('scroll', save, { passive: true });
     window.addEventListener('wheel', stop, { passive: true }); window.addEventListener('touchstart', stop, { passive: true }); window.addEventListener('keydown', stop);
-    return () => { if (!restoring) save(); clearTimeout(timer); observer.disconnect(); anchorObserver?.disconnect(); window.removeEventListener('scroll', save); window.removeEventListener('wheel', stop); window.removeEventListener('touchstart', stop); window.removeEventListener('keydown', stop); history.scrollRestoration = previous; };
+    // Scroll events saved this page before the next page's DOM could clamp scrollY.
+    return () => { clearTimeout(timer); observer.disconnect(); anchorObserver?.disconnect(); window.removeEventListener('scroll', save); window.removeEventListener('wheel', stop); window.removeEventListener('touchstart', stop); window.removeEventListener('keydown', stop); history.scrollRestoration = previous; };
   }, [location.key, navigation, location.hash]);
-  return null;
+  return <PreviousSiteVisit.Provider value={previousVisit}>{children}</PreviousSiteVisit.Provider>;
 }

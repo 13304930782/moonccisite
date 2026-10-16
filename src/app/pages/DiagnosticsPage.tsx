@@ -2,6 +2,7 @@ import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SitePage } from '../components/ContentUI';
+import { SiteBack } from '../components/SiteBack';
 import { clearDiagnostics, diagnosticState, exportDiagnostics, startDiagnostics, stopDiagnostics, subscribeDiagnostics } from '../lib/browserDiagnostics';
 import '../../styles/diagnostics.css';
 
@@ -17,6 +18,7 @@ export default function DiagnosticsPage() {
     setTimeout(() => URL.revokeObjectURL(url), 30000); setNotice('诊断文件已导出。分享前可以打开检查内容。');
   }
   return <SitePage narrow><section className="diagnostics-page">
+    <SiteBack />
     <header><p className="eyebrow">mooncci / 访问诊断</p><h1>记录一次慢访问</h1><p className="muted">主动开启后，记录当前标签页的加载耗时。20 分钟后自动停止，不会自动上传诊断报告。</p></header>
     <div className="diagnostics-panel">
       <label htmlFor="diagnostic-mode">这次访问的网络设置</label>

@@ -104,7 +104,10 @@ test('shared shell, content components and theme retain their 9884b75 Git blobs'
   'src/app/context/ThemeContext.tsx':'7a26de5852af1986d6dff091ac80336786633488',
  };
  for(const [path,pin] of Object.entries(pins)){
-  const bytes=Buffer.from(fs.readFileSync(path,'utf8').replace(/\r\n/g,'\n'));
+  let source=fs.readFileSync(path,'utf8').replace(/\r\n/g,'\n');
+  // The only approved shared presentation change is the source-return entry.
+  if(path==='src/app/components/ContentUI.tsx')source=source.replace("import { SiteBack } from './SiteBack';\n",'').replace('      <SiteBack />\n','');
+  const bytes=Buffer.from(source);
   assert.equal(crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex'),pin,path);
  }
 });

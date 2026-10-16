@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 import { publicRead, publicReadPath } from '../lib/publicRead';
 import { Header } from './Header';
 import { SiteFooter } from './SiteFooter';
+import { SiteBack } from './SiteBack';
 import { visibleDiagnostic } from '../lib/browserDiagnostics';
 
 export type PageData<T = any> = { items: T[]; total: number; page: number; pageSize: number };
@@ -129,6 +130,7 @@ export function PageHeading({
 }) {
   return (
     <div className="page-heading">
+      <SiteBack />
       <p className="eyebrow">{eyebrow}</p>
       <h1>{title}</h1>
       {children && <div className="muted">{children}</div>}

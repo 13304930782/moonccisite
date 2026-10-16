@@ -1,4 +1,5 @@
 import { notify } from '../lib/feedback';
+import { SiteBack } from '../components/SiteBack';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, FileText, GitBranch } from 'lucide-react';
@@ -103,7 +104,7 @@ function UpdateReading({item}: {item: any}) {
   return <div className="update-reading">
     <article aria-labelledby="update-reading-title" data-reading-content>
       <header className="update-reading-header">
-        <div className="update-reading-intro"><Link className="journal-back" to="/updates">← 最近更新</Link><span className="journal-eyebrow">近况</span></div>
+        <div className="update-reading-intro"><SiteBack className="journal-back" /><span className="journal-eyebrow">近况</span></div>
         <h1 id="update-reading-title">{item.title || '一则近况'}</h1>
         <div className="update-reading-meta">{item.author_name && <span>{item.author_name}</span>}<time dateTime={item.published_at}>{formatDate(item.published_at)}</time></div>
       </header>

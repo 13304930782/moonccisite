@@ -21,7 +21,7 @@
 .home-v2 .home-hero {
   grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
   gap: 64px;
-  align-items: stretch;
+  align-items: start;
   padding: 96px 0 0;
   border: 0;
 }
@@ -92,7 +92,6 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 260px;
   padding: 28px;
   border: 0;
   border-radius: 16px;
@@ -107,7 +106,7 @@
 .home-v2 .now-panel > .resource-content > .resource-content {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: initial;
   min-width: 0;
 }
 
@@ -136,8 +135,8 @@
 .home-v2 .hero-note-actions {
   display: flex;
   align-items: center;
-  margin-top: auto;
-  padding-top: 24px;
+  margin-top: 8px;
+  padding-top: 0;
 }
 
 .home-v2 .home-note-link,
@@ -161,13 +160,13 @@
   border: 0;
 }
 
-.home-v2 .home-updates .section-heading {
+.home-v2 .home-section .section-heading {
   margin-bottom: 16px;
-  padding-inline: 24px;
+  padding-inline: 0;
   gap: 12px;
 }
 
-.home-v2 .home-updates h2 {
+.home-v2 .home-section .section-heading h2 {
   margin: 0;
   font-size: 28px;
   font-weight: 600;
@@ -176,7 +175,7 @@
 }
 
 .home-v2 .home-updates-link {
-  padding-inline: 12px;
+  padding-inline: 0;
   flex-shrink: 0;
   color: var(--muted-foreground);
 }
@@ -194,6 +193,7 @@
   min-width: 0;
   min-height: 44px;
   padding: 20px 24px;
+  margin-inline: -24px;
   border: 0;
   border-radius: 14px;
   color: var(--foreground);
@@ -269,6 +269,14 @@
   overflow-wrap: anywhere;
 }
 
+.home-v2 .home-post-date {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .home-v2 .home-activity-thumbnail {
   flex: 0 0 168px;
   width: 168px;
@@ -327,10 +335,6 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 40px;
   }
-
-  .home-v2 .now-panel {
-    min-height: 0;
-  }
 }
 
 @media (max-width: 640px) {
@@ -373,22 +377,28 @@
     padding-top: 44px;
   }
 
-  .home-v2 .home-updates .section-heading {
+  .home-v2 .home-section .section-heading {
     padding-inline: 0;
     margin-bottom: 8px;
   }
 
-  .home-v2 .home-updates h2 {
+  .home-v2 .home-section .section-heading h2 {
     font-size: 24px;
   }
 
   .home-v2 .home-updates-link {
-    padding-inline: 8px;
+    padding-inline: 0;
   }
 
   .home-v2 .home-activity-row {
     gap: 16px;
     align-items: flex-start;
+    padding-inline: 0;
+    margin-inline: 0;
+  }
+
+  .home-v2 .project-card.project-card--compact {
+    padding-inline: 0;
   }
 
   .home-v2 .home-activity-title {
