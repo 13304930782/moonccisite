@@ -14,7 +14,8 @@ export type PageData<T = any> = { items: T[]; total: number; page: number; pageS
 // Only published, user-independent endpoints may share an in-memory snapshot.
 
 const cacheable = publicReadPath;
-export function useResource<T = any>(path: string, enabled = true) {
+export function useResource<T = any>(path: string, enabled = true, options: { keepPrevious?: boolean } = {}) {
+  const keepPrevious = Boolean(options.keepPrevious && cacheable(path));
   const initial = useDocumentResource(path, enabled);
   const snapshot = initial.data ?? (cacheable(path) ? readSnapshot(path) : null);
   const [state, setState] = useState<{ path: string; data: T | null }>({ path, data: snapshot }),
@@ -41,7 +42,7 @@ export function useResource<T = any>(path: string, enabled = true) {
     requestController.current = controller;
     setLoading(true);
     setError('');setErrorStatus(null);
-    setState(current => current.path === path ? current : { path, data: snapshot });
+    setState(current => current.path === path ? current : { path, data: snapshot ?? (keepPrevious ? current.data : null) });
     publicRead(path, controller.signal)
       .then((v) => {
         if (active && (!cacheable(path) || generation === snapshotGeneration())) {
@@ -66,8 +67,8 @@ export function useResource<T = any>(path: string, enabled = true) {
     return () => {
       active = false; controller.abort();
     };
-  }, [path, version, enabled]);
-  return { cancel, errorStatus:enabled&&state.path===path?errorStatus:null, data: enabled ? (state.path === path ? state.data : snapshot) : null, error: enabled&&state.path===path ? error : '', loading: loading || state.path !== path, reload };
+  }, [path, version, enabled, keepPrevious]);
+  return { cancel, errorStatus:enabled&&state.path===path?errorStatus:null, data: enabled ? (state.path === path ? state.data : snapshot ?? (keepPrevious ? state.data : null)) : null, error: enabled&&state.path===path ? error : '', loading: loading || state.path !== path, reload };
 }
 export function ContentSkeleton() {
   return <div className="content-skeleton" role="status" aria-label="正在加载内容" aria-busy="true">
@@ -101,7 +102,7 @@ export function ResourceState({
     );
   return <div className="resource-content" aria-busy={resource.loading}>
     {resource.error && <div className="resource-notice" role="status"><div><strong>暂时无法更新</strong><p>保留上次加载的内容，你可以稍后重试。</p></div><button className="quiet-button" disabled={resource.loading} onClick={resource.reload}>重新加载</button></div>}
-    {resource.loading && resource.data !== null && <p className="sr-only" role="status">正在刷新，当前内容仍可查看。</p>}
+    {resource.loading && resource.data !== null && <p className="resource-refresh" role="status">正在更新结果…</p>}
     {children}
   </div>;
 }

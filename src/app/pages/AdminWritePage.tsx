@@ -60,6 +60,9 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   const [uploadCount, setUploads] = useState(0);
   const [editorPending, setEditorPending] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [failedCover, setFailedCover] = useState<File | null>(null);
+  const [coverError, setCoverError] = useState('');
+  const coverIntent = useRef(0), coverUploading = useRef(false), previewIntent = useRef(0);
   const [quality, setQuality] = useState('medium');
   const uploads = uploadCount + (editorPending ? 1 : 0);
   const [ai, setAi] = useState<any>(null);
@@ -74,6 +77,8 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   const [keyboardToolbar, setKeyboardToolbar] = useState<{ top: number; left: number; width: number } | null>(null);
   const completion = useRef<HTMLHeadingElement>(null);
   const workspace = useRef<HTMLDivElement>(null);
+  const editingFocus = useRef<HTMLElement | null>(null);
+  const previewPosition = useRef<{ scroll: Element; top: number; focus: HTMLElement | null } | null>(null);
   const settingsTrigger = useRef<HTMLButtonElement>(null);
   const settingsClose = useRef<HTMLButtonElement>(null);
   const settingsScroll = useRef<HTMLDivElement>(null);
@@ -152,10 +157,10 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   }, [historyOpen, historyHost]);
 
   const collapseSettings = (value: boolean) => { setCollapsed(value); try { localStorage.setItem(SETTINGS_KEY, String(value)); } catch {} };
-  const change = (key: string, value: any) => d.update((previous: any) => ({ ...previous, [key]: value,
+  const change = (key: string, value: any) => { if (key === 'cover_image') { coverIntent.current++; setCoverError(''); setFailedCover(null); } d.update((previous: any) => ({ ...previous, [key]: value,
     ...(key === 'cover_image' && value !== previous.cover_image ? { cover_crop: null } : {}),
     ...(key === 'summary' ? { summary_mode: 'manual', summary_receipt: '' } : ['title', 'content', 'category', 'tags'].includes(key) ? { summary_receipt: '' } : {}),
-  }));
+  })); };
   const commitTags = (value = tagInput) => {
     const added = value.split(/[,，]/).map(item => item.trim()).filter(Boolean);
     if (added.length) change('tags', [...new Set([...(d.form.tags || []), ...added])]);
@@ -172,8 +177,14 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
     window.addEventListener('keydown', shortcut);
     return () => window.removeEventListener('keydown', shortcut);
   }, [d.save, d.ready, d.busy, d.blocked, d.isRestoring, locked, tagInput, d.form.tags]);
-  const setMode = (mode: EditorMode) => { if (mode !== 'preview') lastEditMode.current = mode; setEditorMode(mode); };
+  const setMode = (mode: EditorMode) => { previewIntent.current++; if (mode !== 'preview') lastEditMode.current = mode; setEditorMode(mode); };
+  const returnToEdit = () => {
+    previewIntent.current++; setPreview(false);
+    const previous = previewPosition.current; previewPosition.current = null;
+    if (previous) requestAnimationFrame(() => { if (previous.scroll.isConnected) previous.scroll.scrollTop = previous.top; if (previous.focus?.isConnected) previous.focus.focus({ preventScroll: true }); });
+  };
   const fixField = (field: string) => {
+    previewPosition.current = null;
     setPreview(false); setMode(lastEditMode.current);
     if (['summary', 'category', 'tags', 'slug', 'cover'].includes(field)) { if (wide) collapseSettings(false); else setSettingsOpen(true); }
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -182,7 +193,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
     }));
   };
   useEffect(() => { if (d.summaryError) fixField('summary'); }, [d.summaryError]);
-  const openPreview = async () => { commitTags(); if (await d.generateSummary()) { setSettingsOpen(false); setPreview(true); } };
+  const openPreview = async () => { const intent = ++previewIntent.current, scroll = workspace.current?.closest('.admin-main') || document.scrollingElement; commitTags(); if (scroll) previewPosition.current = { scroll, top: scroll.scrollTop, focus: editingFocus.current }; if (await d.generateSummary() && intent === previewIntent.current) { setSettingsOpen(false); setPreview(true); } };
   const submit = async () => { if (await d.action('submit')) { setPreview(false); notify.success('稿件已提交审核'); } };
   const publish = async () => {
     if (await (conflictMode === 'review' && d.serverCopy ? d.resolveConflict('publish-current') : d.action('publish'))) { setPreview(false); setConflictMode('edit'); setPublished(true); }
@@ -197,9 +208,12 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
     finally { setUploads(count => Math.max(0, count - 1)); }
   };
   const uploadCover = async (file: File) => {
-    if (fieldsDisabled || uploads > 0) return;
-    if (!file.type.startsWith('image/')) { setUploadError('请选择图片文件。'); return; }
-    try { change('cover_image', await upload(file)); } catch (error: any) { setUploadError(error.message); }
+    if (fieldsDisabled || uploads > 0 || coverUploading.current) return;
+    if (!file.type.startsWith('image/')) { setCoverError('请选择图片文件。'); return; }
+    const intent = coverIntent.current; coverUploading.current = true; setCoverError('');
+    try { const url = await upload(file); setFailedCover(null); if (intent === coverIntent.current) change('cover_image', url); }
+    catch (error: any) { if (intent === coverIntent.current) { setCoverError(error.message); setFailedCover(file); } }
+    finally { coverUploading.current = false; }
   };
   const summary = stripLegacyAgeNotice(d.form.summary), summaryLength = Array.from(summary).length;
   const automatic = d.form.summary_mode === 'ai' || !summary.trim() && d.form.summary_mode !== 'manual';
@@ -212,7 +226,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   </div>;
 
   const openHistory = () => { historyOrigin.current = phone ? moreTrigger.current : historyTrigger.current; setHistoryOpen(true); };
-  const modeSwitch = !locked && !showComparison && <div className="writing-mode-switch writing-segment" role="group" aria-label="正文编辑模式"><button type="button" aria-pressed={!preview && editorMode === 'visual'} disabled={!d.ready || uploads > 0} onClick={() => { setPreview(false); setMode('visual'); }}>富文本编辑</button><button type="button" aria-pressed={preview || editorMode === 'preview'} disabled={!d.ready || uploads > 0} onClick={() => { setPreview(false); setMode('preview'); }}>阅读预览</button></div>;
+  const modeSwitch = !locked && !showComparison && <div className="writing-mode-switch writing-segment" role="group" aria-label="正文编辑模式"><button type="button" aria-pressed={!preview && editorMode === 'visual'} disabled={!d.ready || uploads > 0} onClick={() => { returnToEdit(); setMode('visual'); }}>富文本编辑</button><button type="button" aria-pressed={preview || editorMode === 'preview'} disabled={!d.ready || uploads > 0} onClick={() => { returnToEdit(); setMode('preview'); }}>阅读预览</button></div>;
   const shortStatus = d.error ? '保存失败 重试' : d.busy ? '保存中…' : d.dirty ? '未保存' : d.ready ? '已保存' : '加载中…';
 
   const draftActions = [
@@ -228,6 +242,8 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
       <AdminButton type="button" variant="ghost" className="writing-address-toggle ui-btn ui-btn--ghost" aria-expanded={coverAddress} onClick={() => setCoverAddress(value => !value)}>使用图片地址</AdminButton>
       {(coverAddress || !!d.form.cover_image && !cover) && <label htmlFor="article-cover">封面地址<input id="article-cover" value={d.form.cover_image} onChange={event => change('cover_image', event.target.value)} placeholder="输入图片地址，或从媒体库选择" className="ui-input" /></label>}
       <AdminButton type="button" variant="soft" className="writing-media-select ui-btn ui-btn--soft" onClick={() => setPicker('cover')}>从媒体库选择</AdminButton>
+      {coverUploading.current && uploads > 0 && <p role="status">正在上传封面…</p>}
+      {coverError && <div role="alert"><p>{coverError}</p>{failedCover && <AdminButton type="button" variant="soft" disabled={uploads > 0} onClick={() => void uploadCover(failedCover)} className="ui-btn ui-btn--soft">重试上传封面</AdminButton>}</div>}
       <div className="writing-quality"><span>图片质量</span><div className="writing-segment" role="group" aria-label="图片质量">{[['low', '较小'], ['medium', '标准'], ['high', '高清']].map(([value, label]) => <button type="button" key={value} aria-pressed={quality === value} onClick={() => setQuality(value)}>{label}</button>)}</div></div>
     </section>
     <section className="writing-setting-section"><label htmlFor="article-category">分类<input id="article-category" value={d.form.category} placeholder="选择或输入分类" onChange={event => change('category', event.target.value)} className="ui-input" /></label></section>
@@ -272,10 +288,10 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
         {showComparison && !locked && <ArticleConflict comparison={d.serverCopy} current={d.form} busy={d.busy} onResolve={resolveConflict} onRefresh={() => void inspect()} onPublish={() => { setConflictMode('review'); setPreview(true); }} onContinue={() => { setConflictMode('edit'); setPreview(false); }} />}
         {conflictMode === 'review' && d.serverCopy && <div className="article-workspace-notice"><h2>将使用当前内容覆盖发布</h2><p>已选择的网站版本会保存到修订历史。请检查下方内容，再确认覆盖。</p><AdminButton type="button" variant="soft" disabled={d.busy} onClick={() => setConflictMode('compare')} className="ui-btn ui-btn--soft">返回版本对比</AdminButton>{d.errorStatus !== 409 && d.error && <p role="alert">{d.error}</p>}</div>}
         {!locked && d.recovery && <div className="article-workspace-notice" role="alert">发现未同步的本地内容。<AdminButton type="button" variant="soft" onClick={() => d.resolve(true)} className="ui-btn ui-btn--soft">恢复本地内容</AdminButton><AdminButton type="button" variant="ghost" onClick={() => d.resolve(false)} className="ui-btn ui-btn--ghost">使用服务器内容</AdminButton></div>}
-        {preview && !locked && !showComparison && <section className="article-full-preview"><AdminButton type="button" variant="ghost" className="article-return-edit ui-btn ui-btn--ghost" disabled={d.busy} onClick={() => setPreview(false)}><ArrowLeft size={16} aria-hidden="true" />返回编辑</AdminButton><ArticleReview onFix={fixField} post={{ ...d.form, author_name: '当前作者' }} busy={d.busy || d.isRestoring || uploads > 0} disabled={d.blocked && !(conflictMode === 'review' && d.serverCopy)} publishLabel={conflictMode === 'review' ? '确认覆盖发布' : contributor ? '确认提交审核' : d.draft?.post_status === 'published' ? '确认更新' : '确认发布'} onPublish={() => void (contributor ? submit() : publish())} /></section>}
+        {preview && !locked && !showComparison && <section className="article-full-preview"><AdminButton type="button" variant="ghost" className="article-return-edit ui-btn ui-btn--ghost" disabled={d.busy} onClick={returnToEdit}><ArrowLeft size={16} aria-hidden="true" />返回编辑</AdminButton><ArticleReview onFix={fixField} post={{ ...d.form, author_name: '当前作者' }} busy={d.busy || d.isRestoring || uploads > 0} disabled={d.blocked && !(conflictMode === 'review' && d.serverCopy)} publishLabel={conflictMode === 'review' ? '确认覆盖发布' : contributor ? '确认提交审核' : d.draft?.post_status === 'published' ? '确认更新' : '确认发布'} onPublish={() => void (contributor ? submit() : publish())} /></section>}
         {locked && <article className="submission-document"><header><span className="account-eyebrow">稿件详情</span><h1>{d.form.title || '未命名稿件'}</h1><p className="submission-document-meta">提交的审核版本 · 仅作者与审核人员可见</p></header><div className="submission-document-body">{cover && (d.form.cover_crop ? <CoverDisplayPreviews src={cover} crop={d.form.cover_crop} /> : <img className="content-image" src={cover} alt="" />)}<MarkdownContent content={d.form.content || ''} headingPrefix="submission-heading" /></div></article>}
         {d.summaryBusy && <p role="status">正在根据正文生成 DeepSeek 简介…</p>}
-        <fieldset hidden={preview || locked || showComparison} disabled={fieldsDisabled} className="writing-editor-fields">
+        <fieldset hidden={preview || locked || showComparison} disabled={fieldsDisabled} className="writing-editor-fields" onFocusCapture={event => { if (event.target instanceof HTMLElement && event.target.matches('input,textarea,[contenteditable=true]')) editingFocus.current = event.target; }}>
           <label className="writing-title"><span className="sr-only">标题</span><input id="article-title" value={d.form.title} maxLength={255} onChange={event => change('title', event.target.value)} placeholder="未命名草稿" /></label>
           {!isRichText(d.form.content) && !!d.form.content && <div className="writing-source-toggle"><button type="button" aria-pressed={editorMode === 'source'} disabled={fieldsDisabled || uploads > 0} onClick={() => setMode(editorMode === 'source' ? 'visual' : 'source')}>Markdown 源码</button></div>}
           {d.ready && <ArticleEditor writingToolbar mode={editorMode} onModeChange={setMode} hideModeControls onMediaLibrary={() => setPicker('body')} disabled={fieldsDisabled || uploads > 0} registerImageInsert={fn => { insert.current = fn; }} value={d.form.content} onChange={value => change('content', value)} existing={!!postId || !!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={setEditorPending} />}

@@ -261,6 +261,7 @@ export function SimpleEditor(props: SimpleEditorProps) {
   useEffect(()=>{if(toolbarRef.current)toolbarRef.current.scrollLeft=0},[mobileView])
   const scrollTools=(direction:number)=>{const bar=toolbarRef.current;if(bar)bar.scrollBy({left:direction*Math.max(120,bar.clientWidth*.7),behavior:'instant'})}
   const searchAndReplaceButtonRef = useRef<HTMLButtonElement>(null)
+  const [initialContent] = useState(() => initialHTML(props.value, props.parseLegacy))
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -312,7 +313,7 @@ export function SimpleEditor(props: SimpleEditorProps) {
         onError: (error) => current.current.onError(error.message || "图片上传失败，请重试"),
       }),
     ],
-    content: initialHTML(props.value, props.parseLegacy),
+    content: initialContent,
     onUpdate: ({editor}) => {
       const next = RICH_TEXT_MARKER + '\n' + editor.getHTML();
       lastValue.current = next;

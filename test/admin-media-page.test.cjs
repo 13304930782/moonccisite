@@ -58,6 +58,31 @@ test('media search debounces for 300ms, resets pagination and ignores stale succ
  }finally{await f.close();}
 });
 
+test('round2 media IME holds the existing debounce until the candidate is committed',async()=>{
+ const f=await fixture();try{
+  const search=()=>f.root.root.findByProps({'aria-label':'搜索媒体文件'}),before=f.calls.length;
+  await act(async()=>{search().props.onCompositionStart();search().props.onChange({target:{value:'候选'}});});
+  await act(async()=>f.timers.tick(900));assert.equal(f.calls.length,before);
+  await act(async()=>search().props.onCompositionEnd({currentTarget:{value:'中文确认'}}));await act(async()=>f.timers.tick(300));
+  assert.equal(new URL(f.calls.at(-1).url,'https://local.invalid').searchParams.get('q'),'中文确认');assert.equal(f.calls.length,before+1);
+ }finally{await f.close();}
+});
+test('round2 a query refresh retains current thumbnails as disabled content until the latest response',async()=>{
+ const pending=deferred();const f=await fixture({handle:call=>call.method==='GET'&&new URL(call.url,'https://local.invalid').searchParams.get('q')==='new'?pending.promise:undefined});try{
+  await act(async()=>f.root.root.findByProps({'aria-label':'搜索媒体文件'}).props.onChange({target:{value:'new'}}));await act(async()=>f.timers.tick(300));
+  assert.equal(f.root.root.findByProps({className:'media-detail-trigger'}).props.disabled,true);assert.match(text(f.root.toJSON()),/测试图片/);assert.equal(f.root.root.findByProps({className:'media-list-content'}).props['aria-busy'],true);
+  await act(async()=>pending.resolve({items:[media('new.png')],total:1,page:1}));assert.match(text(f.root.toJSON()),/new.png/);assert.equal(f.root.root.findByProps({className:'media-detail-trigger'}).props.disabled,false);
+ }finally{await f.close();}
+});
+test('round2 upload locks synchronously, retains the failed File and retries only on an explicit click',async()=>{
+ const pending=deferred();let first=true;const f=await fixture({handle:call=>{if(call.url==='/upload/image'&&first){first=false;return pending.promise;}}});try{
+  const file=new File(['pixels'],'retry.png',{type:'image/png'}),upload=()=>f.root.root.findByProps({'aria-label':'上传图片文件'});
+  await act(async()=>{upload().props.onChange({target:{files:[file],value:'x'}});upload().props.onChange({target:{files:[file],value:'x'}});});assert.equal(f.writes().length,1);
+  await act(async()=>pending.reject(Error('上传失败，请重试')));assert.equal(f.writes().length,1);assert.match(text(f.root.toJSON()),/上传失败，请重试/);
+  await f.click('重试上传');assert.equal(f.writes().length,2);assert.equal(f.writes()[1].body.get('image').name,'retry.png');assert.equal(f.root.root.findAllByProps({role:'alert'}).some(node=>text(node).includes('上传失败')),false);
+ }finally{await f.close();}
+});
+
 test('bottom save sends metadata before rename, updates URL and exposes the new filename for bulk selection',async()=>{
  const f=await fixture();try{
   await f.open();await f.edit('链接显示名','新的显示名');await f.edit('Alt 文本','新的无障碍说明');await f.edit('文件名','renamed.png');await f.submit();
@@ -124,11 +149,11 @@ test('general media upload accepts a 6MB image, sends quality and leaves the 12M
  }finally{await f.close();}
 });
 
-test('an upload finishing under an old query cannot invalidate the current pending search request',async()=>{
+test('round2 an upload finishing under an old query revalidates the latest query and isolates earlier results',async()=>{
  const upload=deferred(),search=deferred();const f=await fixture({handle:call=>{if(call.url==='/upload/image')return upload.promise;if(call.method==='GET'&&new URL(call.url,'https://local.invalid').searchParams.get('q')==='current')return search.promise;}});try{
   await act(async()=>f.root.root.findByProps({'aria-label':'上传图片文件'}).props.onChange({target:{files:[new File(['pixels'],'upload.png',{type:'image/png'})],value:'upload.png'}}));
   await act(async()=>f.root.root.findByProps({'aria-label':'搜索媒体文件'}).props.onChange({target:{value:'current'}}));await act(async()=>f.timers.tick(300));assert.equal(f.calls.filter(call=>call.method==='GET').length,2);
-  await act(async()=>upload.resolve({url:'/api/uploads/uploaded.png'}));assert.equal(f.calls.filter(call=>call.method==='GET').length,2,'the stale upload closure must not start a list request or supersede the pending search');
+  await act(async()=>upload.resolve({url:'/api/uploads/uploaded.png'}));assert.equal(f.calls.filter(call=>call.method==='GET').length,3,'upload completion refreshes the current search instead of the stale upload closure');assert.equal(new URL(f.calls.at(-1).url,'https://local.invalid').searchParams.get('q'),'current');
   await act(async()=>search.resolve({items:[media('current.png')],total:1,page:1}));assert.match(text(f.root.toJSON()),/current.png/);assert.doesNotMatch(text(f.root.toJSON()),/正在加载媒体库/);
  }finally{await f.close();}
 });

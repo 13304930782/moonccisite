@@ -21,7 +21,7 @@ export default function UpdatesPage() {
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get('page')) || 1),
     type = params.get('type') || '';
-  const resource = useResource(`/activity?page=${page}&type=${encodeURIComponent(type)}`);
+  const resource = useResource(`/activity?page=${page}&type=${encodeURIComponent(type)}`, true, { keepPrevious: true });
   const filters=useRef<HTMLElement>(null),indicator=useRef<HTMLSpanElement>(null);
   const indicatorStop=useRef(()=>{}),indicatorTarget=useRef('');
   useEffect(()=>()=>indicatorStop.current(),[]);
@@ -68,8 +68,8 @@ export default function UpdatesPage() {
       <ResourceState resource={resource}>
         {resource.data && (
           <>
-            <UpdateTimeline key={`${type}-${page}`} items={resource.data.items} />
-            <Pagination data={resource.data} onPage={(p) => setParams({ type, page: String(p) })} />
+            <UpdateTimeline items={resource.data.items} />
+            <Pagination data={resource.loading || resource.error ? { ...resource.data, page } : resource.data} onPage={(p) => setParams({ type, page: String(p) })} />
           </>
         )}
       </ResourceState>

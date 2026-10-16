@@ -168,11 +168,11 @@
 :is(.writing-workspace,.writing-settings-sheet) .writing-quality .writing-segment button[aria-pressed=true]::before { inset:6px 0; }
 .writing-retry-short { display:block; min-height:44px; padding:0; border:0; background:transparent; color:inherit; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 :is(.writing-workspace,.writing-settings-sheet) :is(input,textarea)::placeholder { color:var(--ui-text-muted); opacity:1; }
-:is(.writing-more-menu,.writing-settings-sheet,.writing-history-dialog) { animation:none; transition:none; }
+:is(.writing-more-menu,.writing-settings-sheet,.writing-history-dialog) { transition:none; }
 @media(max-width:767px) {
  .admin-portal.writing-settings-bottom { --brand:var(--ui-brand); --writing-sheet-surface:var(--color-white); position:fixed; top:auto; left:0; right:0; bottom:0; display:flex; flex-direction:column; width:100%; max-width:none; height:auto; max-height:85vh; min-height:0; box-sizing:border-box; margin:0; padding:0; gap:0; overflow:hidden; border:0; border-radius:20px 20px 0 0; background:var(--writing-sheet-surface); }
  .dark .admin-portal.writing-settings-bottom { --writing-sheet-surface:var(--ui-surface,var(--background)); }
- [data-slot=sheet-overlay]:has(+.writing-settings-bottom) { background:rgba(0,0,0,.45); animation:none; }
+ [data-slot=sheet-overlay]:has(+.writing-settings-bottom) { background:rgba(0,0,0,.45); }
  .writing-settings-bottom>.writing-sheet-header { position:sticky; top:0; z-index:2; flex:none; padding:8px 20px 4px; border:0; background:var(--writing-sheet-surface); }
  .writing-settings-bottom .writing-sheet-handle { position:static; width:36px; height:4px; margin:0 auto 4px; border-radius:999px; background:var(--ui-text-muted); }
  .writing-sheet-title-row { display:flex; align-items:center; justify-content:space-between; min-height:44px; }
@@ -194,4 +194,7 @@
 }
 @media(prefers-reduced-motion:reduce) {
  .admin-portal,[data-slot=dialog-overlay]:has(+.admin-portal),[data-slot=sheet-overlay]:has(+.admin-portal) { animation:none!important; transition:none!important; }
+}
+@media(prefers-reduced-motion:no-preference) {
+ :is(.writing-more-menu,.admin-portal.writing-settings-sheet,.writing-history-dialog)[data-state=open] { animation:mooncci-fade var(--motion-feedback) var(--ease-enter); }
 }

@@ -1,5 +1,5 @@
 import { ThemeSelect } from '../components/ThemeSelect';
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeading, SitePage, useResource } from "../components/ContentUI";
 import { PostResults } from "../components/PostResults";
@@ -14,9 +14,11 @@ export default function SearchPage() {
   if(tag) query.set('tag',tag);
   function filter(key:string,value:string) { const next=new URLSearchParams(params); value?next.set(key,value):next.delete(key); next.delete('page'); setParams(next); }
   const [keyword, setKeyword] = useState(q);
+  const composing = useRef(false);
   useEffect(() => setKeyword(q), [q]);
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (composing.current) return;
     filter('q',keyword.trim());
   }
   return (
@@ -34,6 +36,9 @@ export default function SearchPage() {
           type="search"
           maxLength={100}
           value={keyword}
+          onCompositionStart={() => { composing.current = true; }}
+          onCompositionEnd={() => { composing.current = false; }}
+          onKeyDown={event => { if (event.key === 'Enter' && (event.nativeEvent.isComposing || event.keyCode === 229 || composing.current)) event.preventDefault(); }}
           onChange={(e) => setKeyword(e.target.value)}
           placeholder="输入关键词…"
         />

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowUpRight, Check, Copy, Eye, EyeOff, Inbox, KeyRound, Mail, RefreshCw, Send } from 'lucide-react';
 import { api } from '../lib/api';
 import { visibleDiagnostic } from '../lib/browserDiagnostics';
+import { confirmAction } from '../lib/confirmAction';
+import { useUnsavedLeave } from '../lib/useUnsavedLeave';
 import { useAuth } from '../context/AuthContext';
 import '../../styles/mailbox.css';
 
@@ -45,15 +47,31 @@ function MailboxContent() {
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
   const [view, setView] = useState<Folder | 'compose'>('inbox');
+  const currentView = useRef(view); currentView.current = view;
+  const currentDraft = useRef({ to, subject, content }); currentDraft.current = { to, subject, content };
+  const draftVersion = useRef(0);
+  const composing = useRef(false);
+  const [sendUncertain, setSendUncertain] = useState(false);
+  const replyOrigin = useRef<{ folder: Folder; message: Message; scroll: number } | null>(null);
+  const resumeDetail = useRef(false);
+  const detailScroll = useRef<number | null>(null);
+  const composeInput = useRef<HTMLInputElement>(null);
+  const composeBody = useRef<HTMLTextAreaElement>(null);
+  const listFocus = useRef<number | null>(null);
+  const detailHeading = useRef<HTMLHeadingElement>(null);
+  const listElement = useRef<HTMLUListElement>(null);
+  useUnsavedLeave(Boolean(to || subject || content));
   const [mailList, setMailList] = useState<MailList | null>(null);
   const [selected, setSelected] = useState<Message | null>(null);
   const [mailLoading, setMailLoading] = useState(false);
   const [mailError, setMailError] = useState('');
+  const [pendingMessage, setPendingMessage] = useState<Message | null>(null);
+  const [failedMessage, setFailedMessage] = useState<Message | null>(null);
   const [folderRevision, setFolderRevision] = useState(0);
   const [historyError, setHistoryError] = useState('');
   const [historyLoading, setHistoryLoading] = useState(false);
   const historyLoaded = useRef(false);
-  const historyPending = useRef(false);
+  const historyPending = useRef<number | null>(null);
   // Header-only snapshots live in this keyed account component, never local/session storage.
   const folders = useRef<Partial<Record<Folder, { list: MailList; scroll: number }>>>({});
   const restoreScroll = useRef<number | null>(null);
@@ -78,22 +96,22 @@ function MailboxContent() {
     if (mounted.current && version === accountVersion.current) setAccess(self.access);
   }, []);
   const refreshHistory = useCallback(async () => {
-    if (historyPending.current) return;
-    historyPending.current = true; setHistoryLoading(true);
+    if (historyPending.current !== null) return;
     const version = ++historyVersion.current;
+    historyPending.current = version; setHistoryLoading(true);
     try {
       const history = await api('/mailboxes/sent', { signal: lifetime.current.signal });
       if (mounted.current && version === historyVersion.current) { setSent(history.messages); setHistoryError(''); historyLoaded.current = true; }
     } catch {
       if (mounted.current && version === historyVersion.current) setHistoryError('发送记录暂未刷新，请稍后刷新查看。');
-    } finally { historyPending.current = false; if (mounted.current) setHistoryLoading(false); }
+    } finally { if (historyPending.current === version) { historyPending.current = null; if (mounted.current) setHistoryLoading(false); } }
   }, []);
   useEffect(() => {
     void refresh().catch(error => { if (mounted.current) setNotice(error.message || '邮箱状态暂时无法读取'); })
       .finally(() => { if (mounted.current) setLoading(false); });
   }, [refresh]);
   useEffect(() => {
-    folders.current = {}; setMailList(null); setSelected(null);
+    folders.current = {}; replyOrigin.current = null; setMailList(null); setSelected(null);
     folderRequest.current?.abort(); folderVersion.current++;
   }, [access?.mailbox_address, access?.status, access?.password_change_status]);
   useEffect(() => {
@@ -113,7 +131,7 @@ function MailboxContent() {
     const controller = new AbortController(); folderRequest.current = controller;
     const version = ++folderVersion.current;
     const current = () => mounted.current && version === folderVersion.current && !controller.signal.aborted;
-    setMailLoading(true); setMailError(''); setSelected(null);
+    setMailLoading(true); setMailError(''); setSelected(null); setPendingMessage(null); setFailedMessage(null);
     try {
       const result = await api(`/mailboxes/folders/${folder}?page=${page}`, { signal: controller.signal });
       if (current()) {
@@ -127,14 +145,30 @@ function MailboxContent() {
     finally { if (current()) setMailLoading(false); }
   }, []);
   useEffect(() => {
+    if (resumeDetail.current) { resumeDetail.current = false; return; }
     if (access?.status === 'active' && !['pending', 'claimed', 'review'].includes(access.password_change_status || '') && view !== 'compose') void loadFolder(view);
   }, [access?.status, access?.password_change_status, view, loadFolder, folderRevision]);
   useEffect(() => {
     if (selected || !mailList || restoreScroll.current === null) return;
-    const y = restoreScroll.current; restoreScroll.current = null;
-    const frame = requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' }));
+    const y = restoreScroll.current;
+    const frame = requestAnimationFrame(() => { window.scrollTo({ top: y, behavior: 'instant' }); restoreScroll.current = null; });
     return () => cancelAnimationFrame(frame);
   }, [selected, mailList, view]);
+  useEffect(() => {
+    if (selected) {
+      detailHeading.current?.focus({ preventScroll: true });
+      if (detailScroll.current === null) return;
+      const y = detailScroll.current;
+      const frame = requestAnimationFrame(() => { window.scrollTo({ top: y, behavior: 'instant' }); detailScroll.current = null; });
+      return () => cancelAnimationFrame(frame);
+    }
+    if (view === 'compose' || listFocus.current === null) return;
+    listElement.current?.querySelector<HTMLButtonElement>(`[data-mail-uid="${listFocus.current}"]`)?.focus({ preventScroll: true });
+    listFocus.current = null;
+  }, [selected, view, mailLoading, mailError]);
+  useEffect(() => {
+    if (view === 'compose') (replyOrigin.current ? composeBody.current : composeInput.current)?.focus();
+  }, [view]);
   const openMessage = async (message: Message) => {
     if (view === 'compose' || !mailList?.uidValidity) return;
     folders.current[view] = { list: mailList, scroll: window.scrollY };
@@ -142,7 +176,7 @@ function MailboxContent() {
     const controller = new AbortController(); folderRequest.current = controller;
     const version = ++folderVersion.current;
     const current = () => mounted.current && version === folderVersion.current && !controller.signal.aborted;
-    setMailLoading(true); setMailError('');
+    setMailLoading(true); setMailError(''); setPendingMessage(message); setFailedMessage(null);
     try {
       const result = await api(`/mailboxes/folders/${view}/${message.uid}?uidValidity=${mailList.uidValidity}`, { signal: controller.signal });
       if (!current()) return;
@@ -154,22 +188,24 @@ function MailboxContent() {
       });
     } catch (error: any) { if (current()) {
       if ([401,403,409].includes(error.status)) { folders.current = {}; setMailList(null); setSelected(null); }
+      else setFailedMessage(message);
       setMailError(error.message || '暂时无法读取邮件。');
     } }
-    finally { if (current()) setMailLoading(false); }
+    finally { if (current()) { setMailLoading(false); setPendingMessage(null); } }
   };
   const returnToList = () => {
     folderRequest.current?.abort(); folderVersion.current++;
     if (view !== 'compose') restoreScroll.current = folders.current[view]?.scroll || 0;
-    setMailLoading(false); setSelected(null);
+    listFocus.current = selected?.uid ?? pendingMessage?.uid ?? failedMessage?.uid ?? null;
+    setMailLoading(false); setPendingMessage(null); setFailedMessage(null); setMailError(mailList ? '' : '读取已取消，可以重新加载。'); setSelected(null);
   };
   const changeView = (next: Folder | 'compose') => {
-    if (next === view) { returnToList(); return; }
+    if (next === view) { if (view !== 'compose') returnToList(); return; }
     if (view !== 'compose' && mailList && !selected) folders.current[view] = { list: mailList, scroll: window.scrollY };
     folderRequest.current?.abort(); folderVersion.current++;
     const snapshot = next === 'compose' ? undefined : folders.current[next];
     restoreScroll.current = snapshot?.scroll ?? null;
-    setMailLoading(false); setMailError(''); setSelected(null); setMailList(snapshot?.list || null); setView(next);
+    setMailLoading(false); setMailError(''); setPendingMessage(null); setFailedMessage(null); setSelected(null); setMailList(snapshot?.list || null); setView(next);
   };
   const run = async (work: () => Promise<void>) => {
     setBusy(true); setNotice('');
@@ -189,19 +225,53 @@ function MailboxContent() {
   }); };
   const sendInFlight = useRef(false);
   const send = async (event: FormEvent) => {
-    event.preventDefault(); if (sendInFlight.current) return;
-    sendInFlight.current = true; setBusy(true); setNotice('');
+    event.preventDefault(); if (sendInFlight.current || composing.current) return;
+    sendInFlight.current = true;
+    if (sendUncertain && !await confirmAction('上次发送的结果尚未确认，重复发送可能让收件人收到多封邮件。请先核对发送记录及邮局状态，确认仍需发送后继续。', '已核对，仍要发送', (event.nativeEvent as SubmitEvent | undefined)?.submitter)) { sendInFlight.current = false; return; }
+    if (!mounted.current) { sendInFlight.current = false; return; }
+    const draft = { ...currentDraft.current };
+    const sentVersion = draftVersion.current;
+    setBusy(true); setNotice('');
     try {
-      const result = await api('/mailboxes/send', { method: 'POST', body: JSON.stringify({ to, subject, content }) });
+      const result = await api('/mailboxes/send', { method: 'POST', body: JSON.stringify(draft) });
       if (!mounted.current) return;
       // Only a successful server response confirms acceptance. No guessed Sent UID/body.
       historyVersion.current++;
+      historyPending.current = null; setHistoryLoading(false);
       delete folders.current.sent;
-      setSent(previous => [{ id: result.id, recipient_email: to, subject, status: 'accepted' }, ...previous.filter(row => row.id !== result.id)].slice(0, 50));
-      setHistoryError(''); setTo(''); setSubject(''); setContent(''); setNotice(result.message); changeView('sent');
-      setFolderRevision(value => value + 1);
-    } catch (error: any) { if (mounted.current) setNotice(error.message || '操作失败，请稍后重试。'); }
+      setSent(previous => [{ id: result.id, recipient_email: draft.to, subject: draft.subject, status: 'accepted' }, ...previous.filter(row => row.id !== result.id)].slice(0, 50));
+      setHistoryError(''); setSendUncertain(false);
+      const unchanged = draftVersion.current === sentVersion && Object.entries(draft).every(([key, value]) => currentDraft.current[key as keyof typeof draft] === value);
+      if (unchanged) { setTo(''); setSubject(''); setContent(''); replyOrigin.current = null; }
+      setNotice(result.message + (unchanged ? '' : ' 等待期间的新编辑已保留。'));
+      if (currentView.current === 'compose' && unchanged) { changeView('sent'); setFolderRevision(value => value + 1); }
+      else if (currentView.current === 'sent') setFolderRevision(value => value + 1);
+    } catch (error: any) { if (mounted.current) {
+      const uncertain = error.uncertain === true;
+      if (uncertain) { setSendUncertain(true); historyVersion.current++; historyPending.current = null; setHistoryLoading(false); historyLoaded.current = false; }
+      setNotice(uncertain ? '发送结果尚未确认，草稿已保留。请先核对发送记录或邮局状态，避免重复发送。' : error.message || '发送未完成，草稿已保留，请重试。');
+    } }
     finally { sendInFlight.current = false; if (mounted.current) setBusy(false); }
+  };
+  const reply = async (message: Message, folder: Folder, trigger: HTMLElement) => {
+    const replyVersion = folderVersion.current;
+    if (to || subject || content) {
+      if (!await confirmAction('已有未发送的草稿。替换为这封邮件的回复？', '替换草稿', trigger)) return;
+      if (!mounted.current || currentView.current !== folder || folderVersion.current !== replyVersion) return;
+    }
+    replyOrigin.current = { folder, message, scroll: window.scrollY };
+    draftVersion.current++;
+    setTo(message.replyTo || ''); setSubject(/^Re:/i.test(message.subject) ? message.subject : `Re: ${message.subject}`); setContent('');
+    changeView('compose');
+  };
+  const returnFromCompose = () => {
+    const origin = replyOrigin.current;
+    if (!origin) { changeView('inbox'); return; }
+    folderRequest.current?.abort(); folderVersion.current++;
+    resumeDetail.current = true;
+    detailScroll.current = origin.scroll;
+    setMailLoading(false); setMailError(''); setMailList(folders.current[origin.folder]?.list || null);
+    setView(origin.folder); setSelected(origin.message);
   };
   const closeCredentials = () => { setCredentialMode(null); setCredentialChallenge(''); setCredentialCode(''); setCredentialPassword(''); setNewPassword(''); setConfirmPassword(''); setCredentialVisible(false); setCredentialMessage(''); setCredentialError(''); };
   const startCredentials = async (mode: 'reveal' | 'change') => {
@@ -227,7 +297,7 @@ function MailboxContent() {
     catch { setCredentialVisible(true); credentialInput.current?.focus(); credentialInput.current?.select(); setCredentialMessage('浏览器未允许自动复制，密码已选中；请使用复制命令。'); }
   };
 
-  return <main className="mailbox-page">
+  return <main className="mailbox-page" onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }} onKeyDown={event => { if (event.key === 'Enter' && (composing.current || event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault(); }} onSubmitCapture={event => { if (composing.current) { event.preventDefault(); event.stopPropagation(); } }}>
     <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>我的邮箱</h1>
       <p>{access?.status === 'active' ? '在这里收信、读信和发送邮件。' : '申请专属 @mooncci.site 地址，获批后即可收发邮件。'}</p></div>
       {owner && <Link className="mailbox-review-link" to="/admin/mailbox-requests">邮箱申请与权限 <ArrowUpRight size={16} aria-hidden="true" /></Link>}
@@ -275,28 +345,28 @@ function MailboxContent() {
           <button type="button" aria-current={view === 'sent' ? 'page' : undefined} onClick={() => changeView('sent')}><Send size={17} aria-hidden="true" />已发送</button>
           <button type="button" aria-current={view === 'compose' ? 'page' : undefined} onClick={() => changeView('compose')}><Mail size={17} aria-hidden="true" />写邮件</button>
         </nav>}
-        {!['pending','claimed','review'].includes(access.password_change_status || '') && view !== 'compose' && <section className="mailbox-panel mailbox-letters" aria-labelledby="mail-folder-title">
-          <div className="mailbox-folder-head"><div><h2 id="mail-folder-title">{view === 'inbox' ? '收件箱' : '已发送'}</h2><p>{mailList ? `${mailList.total} 封邮件` : '正在读取…'}</p></div>
-            <button type="button" className="mailbox-secondary" onClick={() => void loadFolder(view, mailList?.page || 1)} disabled={mailLoading}><RefreshCw size={16} aria-hidden="true" />刷新</button></div>
-          {mailError && <p className="mailbox-error" role="alert">{mailError}</p>}
-          {mailLoading && mailList && <p className="mailbox-refresh-status" role="status">正在读取邮件…</p>}
+        {!['pending','claimed','review'].includes(access.password_change_status || '') && view !== 'compose' && <section className="mailbox-panel mailbox-letters" aria-labelledby="mail-folder-title" aria-busy={mailLoading}>
+          <div className="mailbox-folder-head"><div><h2 id="mail-folder-title">{view === 'inbox' ? '收件箱' : '已发送'}</h2><p role="status">{mailLoading ? pendingMessage ? '正在打开邮件…' : '正在读取邮件…' : mailList ? `${mailList.total} 封邮件` : mailError ? '读取未完成' : '尚未读取'}</p></div>
+            <button type="button" className="mailbox-secondary" onClick={() => mailLoading ? returnToList() : void loadFolder(view, mailList?.page || 1)}><RefreshCw size={16} aria-hidden="true" />{mailLoading ? '取消读取' : '刷新'}</button></div>
+          {mailError && <p className="mailbox-error" role="alert">{mailError} <button type="button" className="mailbox-text-button" disabled={mailLoading} onClick={() => void (failedMessage ? openMessage(failedMessage) : loadFolder(view, mailList?.page || 1))}>重试{failedMessage ? '读取邮件' : '读取列表'}</button></p>}
           {selected ? <article className="mailbox-letter-detail"><button type="button" className="mailbox-back" onClick={returnToList}><ArrowLeft size={16} aria-hidden="true" />返回列表</button>
-            <h3>{selected.subject}</h3><dl><div><dt>发件人</dt><dd>{selected.from || '未知'}</dd></div><div><dt>收件人</dt><dd>{selected.to || '未知'}</dd></div><div><dt>时间</dt><dd>{selected.date ? new Date(selected.date).toLocaleString('zh-CN') : '未知'}</dd></div></dl>
+            <h3 ref={detailHeading} tabIndex={-1}>{selected.subject}</h3><dl><div><dt>发件人</dt><dd>{selected.from || '未知'}</dd></div><div><dt>收件人</dt><dd>{selected.to || '未知'}</dd></div><div><dt>时间</dt><dd>{selected.date ? new Date(selected.date).toLocaleString('zh-CN') : '未知'}</dd></div></dl>
             {selected.tooLarge ? <p className="mailbox-empty">这封邮件超过网页阅读上限（2 MB），请使用邮件客户端查看。</p> : <>
               <pre className="mailbox-letter-body">{selected.text || '这封邮件没有可显示的纯文本正文。'}</pre>
               {!!selected.attachments?.length && <p className="mailbox-attachment-note">附件：{selected.attachments.map(item => item.filename).join('、')}。当前网页暂不提供附件下载，请使用邮件客户端查看。</p>}
             </>}
-            {view === 'inbox' && selected.replyTo && <button type="button" className="mailbox-primary" onClick={() => { setTo(selected.replyTo || ''); setSubject(/^Re:/i.test(selected.subject) ? selected.subject : `Re: ${selected.subject}`); changeView('compose'); }}>回复</button>}
-          </article> : mailLoading && !mailList ? <p className="mailbox-empty">正在读取邮件…</p> : !mailList?.folderAvailable ? <p className="mailbox-empty">邮局尚未提供已发送文件夹。你仍可正常收发邮件。</p> : !mailList.messages.length ? <p className="mailbox-empty">{view === 'inbox' ? '收件箱里还没有邮件。' : '已发送里还没有邮件。'}</p> : <ul className="mailbox-letter-list">{mailList.messages.map(item => <li key={item.uid}><button type="button" disabled={mailLoading} onClick={() => void openMessage(item)} className={item.unread ? 'mailbox-letter-unread' : ''}>
+            {view === 'inbox' && selected.replyTo && <button type="button" className="mailbox-primary" onClick={event => void reply(selected, view, event.currentTarget)}>回复</button>}
+          </article> : mailLoading && !mailList ? <p className="mailbox-empty">正在读取邮件…</p> : mailError && !mailList ? null : !mailList?.folderAvailable ? <p className="mailbox-empty">邮局尚未提供已发送文件夹。你仍可正常收发邮件。</p> : !mailList.messages.length ? <p className="mailbox-empty">{view === 'inbox' ? '收件箱里还没有邮件。' : '已发送里还没有邮件。'}</p> : <ul ref={listElement} className="mailbox-letter-list">{mailList.messages.map(item => <li key={item.uid}><button type="button" data-mail-uid={item.uid} aria-busy={pendingMessage?.uid === item.uid} onClick={() => void openMessage(item)} className={item.unread ? 'mailbox-letter-unread' : ''}>
             <span className="mailbox-letter-correspondent">{view === 'inbox' ? item.from : item.to}</span><span className="mailbox-letter-subject">{item.subject}</span><time>{item.date ? new Date(item.date).toLocaleString('zh-CN') : ''}</time></button></li>)}</ul>}
           {!selected && mailList && mailList.total > mailList.pageSize && <div className="mailbox-list-pages"><span>第 {mailList.page} 页</span><div><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page <= 1} onClick={() => void loadFolder(view, mailList.page - 1)}>上一页</button><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page * mailList.pageSize >= mailList.total} onClick={() => void loadFolder(view, mailList.page + 1)}>下一页</button></div></div>}
         </section>}
-        {!['pending','claimed','review'].includes(access.password_change_status || '') && view === 'compose' && <section className="mailbox-panel" aria-labelledby="mail-compose-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Send size={20} aria-hidden="true" /></span><div><h2 id="mail-compose-title">写邮件</h2><p>发件人：{access.mailbox_address}</p></div></div>
-          <form onSubmit={send} className="mailbox-form"><label htmlFor="mail-to">收件人</label><input id="mail-to" type="email" value={to} onChange={event => setTo(event.target.value)} required placeholder="name@example.com" />
-            <label htmlFor="mail-subject">标题</label><input id="mail-subject" value={subject} onChange={event => setSubject(event.target.value)} required maxLength={120} />
-            <label htmlFor="mail-body">正文</label><textarea id="mail-body" value={content} onChange={event => setContent(event.target.value)} rows={9} required maxLength={10000} />
-            <div className="mailbox-form-footer"><p>发送后，邮件会保存到已发送文件夹。</p><button className="mailbox-primary" disabled={busy}>{busy ? '发送中…' : '发送邮件'}</button></div></form></section>}</>}
-      {access?.status === 'active' && view === 'sent' && <details className="mailbox-panel mailbox-history" onToggle={event => { if (event.currentTarget.open && !historyLoaded.current) void refreshHistory(); }}><summary id="mail-history-title">网页发送记录</summary><p className="mailbox-footnote">查看网页发送的状态记录。</p>
+        {!['pending','claimed','review'].includes(access.password_change_status || '') && view === 'compose' && <section className="mailbox-panel" aria-labelledby="mail-compose-title"><button type="button" className="mailbox-back" onClick={returnFromCompose}><ArrowLeft size={16} aria-hidden="true" />{replyOrigin.current ? '返回邮件' : '返回收件箱'}</button><div className="mailbox-panel-head"><span className="mailbox-icon"><Send size={20} aria-hidden="true" /></span><div><h2 id="mail-compose-title">写邮件</h2><p>发件人：{access.mailbox_address}</p></div></div>
+          {sendUncertain && <p role="alert" className="mailbox-credential-status">上次发送结果待核对，输入内容已保留。<button type="button" className="mailbox-text-button" onClick={() => changeView('sent')}>查看发送记录</button></p>}
+          <form onSubmit={send} className="mailbox-form" aria-busy={busy}><label htmlFor="mail-to">收件人</label><input ref={composeInput} id="mail-to" type="email" value={to} onChange={event => { draftVersion.current++; setTo(event.target.value); }} required placeholder="name@example.com" />
+            <label htmlFor="mail-subject">标题</label><input id="mail-subject" value={subject} onChange={event => { draftVersion.current++; setSubject(event.target.value); }} required maxLength={120} />
+            <label htmlFor="mail-body">正文</label><textarea ref={composeBody} id="mail-body" value={content} onChange={event => { draftVersion.current++; setContent(event.target.value); }} rows={9} required maxLength={10000} />
+            <div className="mailbox-form-footer"><p>{busy ? '正在等待邮局确认，请勿重复发送。' : '草稿仅保留在当前页面；切换邮箱标签不会清空。'}</p><button className="mailbox-primary" disabled={busy}>{busy ? '发送中…' : sendUncertain ? '核对后重新发送' : '发送邮件'}</button></div></form></section>}</>}
+      {access?.status === 'active' && view === 'sent' && <details className="mailbox-panel mailbox-history" open={sendUncertain || undefined} onToggle={event => { if (event.currentTarget.open && !historyLoaded.current) void refreshHistory(); }}><summary id="mail-history-title">网页发送记录</summary><p className="mailbox-footnote">查看网页发送的状态记录。</p>
         {historyError && <p className="mailbox-error" role="alert">{historyError}<button type="button" className="mailbox-text-button" onClick={() => void refreshHistory()}>刷新记录</button></p>}
         {historyLoading && <p role="status">正在加载记录…</p>}{sent.length === 0 ? <p className="mailbox-empty">{historyLoading ? "" : "暂无发送记录。"}</p> : <ul>{sent.map(item => <li key={item.id}><div><strong>{item.subject}</strong><span>{item.recipient_email}</span></div><span>{item.status === 'accepted' ? '已发送' : item.status === 'uncertain' ? '结果待核对' : item.status === 'sending' ? '发送中' : '失败'}</span></li>)}</ul>}</details>}
     </>}

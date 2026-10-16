@@ -14,7 +14,7 @@ export function PostResults({
 }) {
   const [params,setParams]=useSearchParams();
   const page=Math.max(1,Number(params.get('page'))||1);
-  const resource = useResource<PageData>(`${path}${path.includes('?')?'&':'?'}format=paged&pageSize=12&page=${page}`);
+  const resource = useResource<PageData>(`${path}${path.includes('?')?'&':'?'}format=paged&pageSize=12&page=${page}`, true, { keepPrevious: true });
   const posts = resource.data?.items || [];
   function changePage(next:number){const p=new URLSearchParams(params);p.set('page',String(next));setParams(p);}
 
@@ -48,7 +48,7 @@ export function PostResults({
           );
         })}
       </div>
-      {resource.data && resource.data.total>0 && <Pagination data={resource.data} onPage={changePage}/> }
+      {resource.data && resource.data.total>0 && <Pagination data={resource.loading || resource.error ? { ...resource.data, page } : resource.data} onPage={changePage}/> }
     </ResourceState>
   );
 }

@@ -11,6 +11,7 @@ type Props={disabled:boolean;onMediaLibrary:()=>void;uploadImage:(file:File)=>Pr
 export function ArticleImageMenu({disabled,onMediaLibrary,uploadImage,onInsert,onError,onBusy,compact=false}:Props){
  const mobile=useIsBreakpoint()&&compact;
  const [menu,setMenu]=useState(false),[dialog,setDialog]=useState(false),[url,setUrl]=useState(''),[alt,setAlt]=useState(''),[error,setError]=useState(''),[uploading,setUploading]=useState(false);
+ const [failedFile,setFailedFile]=useState<File|null>(null);
  const trigger=useRef<HTMLButtonElement>(null),fileInput=useRef<HTMLInputElement>(null),urlInput=useRef<HTMLInputElement>(null),alive=useRef(true),sending=useRef(false),inserted=useRef(false),nextAction=useRef(false),id=useId();
  const current=useRef({onBusy,onInsert,onError});current.current={onBusy,onInsert,onError};
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;current.current.onBusy(false);};},[]);
@@ -19,8 +20,8 @@ export function ArticleImageMenu({disabled,onMediaLibrary,uploadImage,onInsert,o
   // Match the existing editor's 5 MB limit without eagerly importing its runtime.
   if(file.size>5*1024*1024||file.type&&!file.type.startsWith('image/')){onError(file.size>5*1024*1024?'图片不能超过 5 MB。':'请选择图片文件。');trigger.current?.focus();return;}
   sending.current=true;setUploading(true);onBusy(true);onError('');
-  try{const uploaded=await uploadImage(file);if(alive.current)current.current.onInsert(uploaded,'');}
-  catch(error:any){if(alive.current){current.current.onError(error.message||'图片上传失败，请重试。');requestAnimationFrame(()=>{if(alive.current)trigger.current?.focus();});}}
+  try{const uploaded=await uploadImage(file);if(alive.current){setFailedFile(null);current.current.onInsert(uploaded,'');}}
+  catch(error:any){if(alive.current){setFailedFile(file);current.current.onError(error.message||'图片上传失败，请重试。');requestAnimationFrame(()=>{if(alive.current)trigger.current?.focus();});}}
   finally{sending.current=false;if(alive.current){setUploading(false);current.current.onBusy(false);}}
  }
  const choices=[
@@ -38,6 +39,7 @@ export function ArticleImageMenu({disabled,onMediaLibrary,uploadImage,onInsert,o
   </DropdownMenu>}
   <input ref={fileInput} className="sr-only" aria-label="上传正文图片" type="file" accept="image/*" tabIndex={-1} disabled={disabled||uploading} onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)void upload(file);}}/>
   {uploading&&<span className={compact?'sr-only':'article-image-progress'} role="status">正在上传图片…</span>}
+  {failedFile&&!uploading&&<button type="button" className="article-button" disabled={disabled} onClick={()=>void upload(failedFile)}>重试正文图片</button>}
   <Dialog open={dialog} onOpenChange={setDialog}><DialogContent className={`admin-portal article-image-dialog${compact?' ui-v2':''}`} onOpenAutoFocus={event=>{event.preventDefault();urlInput.current?.focus();}} onCloseAutoFocus={event=>{event.preventDefault();if(!inserted.current)trigger.current?.focus();}}>
    <DialogTitle>插入图片链接</DialogTitle><DialogDescription>填写图片地址和替代文本，将图片插入当前正文位置。</DialogDescription>
    <form onSubmit={event=>{event.preventDefault();if(disabled||uploading)return;const safe=safeImageSrc(url);if(!safe){setError('请输入有效的图片地址。');urlInput.current?.focus();return;}inserted.current=true;setDialog(false);requestAnimationFrame(()=>{if(alive.current)current.current.onInsert(safe,alt.trim());});}}>

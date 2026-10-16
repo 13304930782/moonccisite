@@ -26,7 +26,7 @@ export function ArticleImagePreview({ children, enabled }: { children: ReactNode
     {children}
     {enabled && gallery && <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="article-image-preview" aria-describedby="article-image-description" onCloseAutoFocus={event => { event.preventDefault(); if (origin.current?.isConnected) origin.current.focus({ preventScroll: true }); }} onKeyDown={event => {
-        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); move(event.key === 'ArrowLeft' ? -1 : 1); }
+        if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !(event.target instanceof Element && event.target.closest('.article-image-stage.is-zoomed'))) { event.preventDefault(); move(event.key === 'ArrowLeft' ? -1 : 1); }
       }}>
         <DialogTitle className="sr-only">文章图片预览</DialogTitle>
         <DialogDescription id="article-image-description" className="sr-only">使用左右方向键或左右滑动切图，按 Escape 关闭。</DialogDescription>
@@ -57,6 +57,7 @@ export function LinkedImages({ children }: { children: ReactNode }) {
 function PreviewSlide({ image, onSwipe }: { image: Image; onSwipe: (delta: number) => void }) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading'), [attempt, setAttempt] = useState(0), [zoomed, setZoomed] = useState(false);
   const element = useRef<HTMLImageElement>(null), touch = useRef<{ id: number; x: number; y: number } | null>(null);
+  const drag = useRef<{ id: number; x: number; y: number; left: number; top: number } | null>(null);
   const useClientLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
   useClientLayoutEffect(() => {
     if (status !== 'ready' || !element.current) return;
@@ -64,7 +65,19 @@ function PreviewSlide({ image, onSwipe }: { image: Image; onSwipe: (delta: numbe
     return feedbackMotion(element.current, { opacity: [0, 1] });
   }, [status]);
   return <>
-    <div className={`article-image-stage${zoomed ? ' is-zoomed' : ''}`} aria-busy={status === 'loading'} onTouchStart={event => {
+    <div className={`article-image-stage${zoomed ? ' is-zoomed' : ''}`} aria-busy={status === 'loading'} tabIndex={zoomed ? 0 : undefined} role={zoomed ? 'region' : undefined} aria-label={zoomed ? '原始尺寸图片，可拖动或使用方向键浏览' : undefined} onPointerDown={event => {
+      if (!zoomed || event.pointerType === 'touch' || event.button !== 0) return;
+      const node = event.currentTarget;
+      drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, left: node.scrollLeft, top: node.scrollTop };
+      node.setPointerCapture(event.pointerId); node.dataset.dragging = 'true'; node.focus({ preventScroll: true }); event.preventDefault();
+    }} onPointerMove={event => {
+      const start = drag.current; if (!start || start.id !== event.pointerId) return;
+      event.currentTarget.scrollLeft = start.left - (event.clientX - start.x);
+      event.currentTarget.scrollTop = start.top - (event.clientY - start.y);
+    }} onPointerUp={event => {
+      drag.current = null; delete event.currentTarget.dataset.dragging;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    }} onLostPointerCapture={event => { drag.current = null; delete event.currentTarget.dataset.dragging; }} onPointerCancel={event => { drag.current = null; delete event.currentTarget.dataset.dragging; }} onTouchStart={event => {
       const first = event.touches[0]; touch.current = !zoomed && event.touches.length === 1 ? { id: first.identifier, x: first.clientX, y: first.clientY } : null;
     }} onTouchMove={event => { if (event.touches.length !== 1) touch.current = null; }} onTouchCancel={() => { touch.current = null; }} onTouchEnd={event => {
       const start = touch.current; touch.current = null;

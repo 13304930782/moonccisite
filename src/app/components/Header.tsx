@@ -14,6 +14,7 @@ export function Header() {
   const header = useRef<HTMLElement>(null);
   const menuButton=useRef<HTMLButtonElement>(null),menuPanel=useRef<HTMLDivElement>(null);
   const searchButton=useRef<HTMLButtonElement>(null);
+  const composing=useRef(false);
   const closeAccount = () => header.current?.querySelectorAll('details[open]').forEach(item => item.removeAttribute('open'));
   const { user, logout, loggingOut, logoutError } = useAuth();
   const publishing=usePublishing();
@@ -88,6 +89,7 @@ export function Header() {
   ];
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (composing.current) return;
     if (keyword.trim())
       navigate('/search?q=' + encodeURIComponent(keyword.trim()));
   }
@@ -159,6 +161,9 @@ export function Header() {
             id="header-query"
             autoFocus
             value={keyword}
+            onCompositionStart={()=>{composing.current=true;}}
+            onCompositionEnd={()=>{composing.current=false;}}
+            onKeyDown={event=>{if(event.key==='Enter'&&(event.nativeEvent.isComposing||event.keyCode===229||composing.current))event.preventDefault();}}
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="搜索文章…"
           />

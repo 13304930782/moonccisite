@@ -106,8 +106,20 @@ test('shared appearance retains 9884b75 blobs except explicitly approved navigat
  for(const [path,pin] of Object.entries(pins)){
   let source=fs.readFileSync(path,'utf8').replace(/\r\n/g,'\n');
   // Normalize only the approved navigation/interaction lines; all other source stays pinned.
-  if(path==='src/app/components/ContentUI.tsx')source=source.replace("import { SiteBack } from './SiteBack';\n",'').replace('      <SiteBack />\n','');
+  if(path==='src/app/components/ContentUI.tsx')source=source.replace("import { SiteBack } from './SiteBack';\n",'').replace('      <SiteBack />\n','')
+   // Round 2 permits list retention and honest refresh status, not static appearance changes.
+   .replace('path: string, enabled = true, options: { keepPrevious?: boolean } = {}','path: string, enabled = true')
+   .replace('  const keepPrevious = Boolean(options.keepPrevious && cacheable(path));\n','')
+   .replace('data: snapshot ?? (keepPrevious ? current.data : null)','data: snapshot')
+   .replace('[path, version, enabled, keepPrevious]','[path, version, enabled]')
+   .replace('snapshot ?? (keepPrevious ? state.data : null)','snapshot')
+   .replace('<p className="resource-refresh" role="status">正在更新结果…</p>','<p className="sr-only" role="status">正在刷新，当前内容仍可查看。</p>');
   if(path==='src/app/components/Header.tsx')source=source
+   .replace('  const composing=useRef(false);\n','')
+   .replace('    if (composing.current) return;\n','')
+   .replace('            onCompositionStart={()=>{composing.current=true;}}\n','')
+   .replace('            onCompositionEnd={()=>{composing.current=false;}}\n','')
+   .replace("            onKeyDown={event=>{if(event.key==='Enter'&&(event.nativeEvent.isComposing||event.keyCode===229||composing.current))event.preventDefault();}}\n",'')
    .replace('  const searchButton=useRef<HTMLButtonElement>(null);\n','')
    .replace("        const disclosure=header.current?.querySelector<HTMLDetailsElement>('details[open]');\n",'')
    .replace("        if(disclosure?.contains(document.activeElement)&&!menuPanel.current?.contains(document.activeElement))disclosure.querySelector('summary')?.focus({preventScroll:true});\n",'')

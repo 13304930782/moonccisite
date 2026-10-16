@@ -10,10 +10,10 @@ export function finishConfirmation(confirmed: boolean) {
   listeners.forEach(listener => listener());
   request?.resolve(confirmed);
 }
-export function confirmAction(message: string, label = '确认继续'): Promise<boolean> {
+export function confirmAction(message: string, label = '确认继续', trigger: HTMLElement | null = document.activeElement instanceof HTMLElement ? document.activeElement : null): Promise<boolean> {
   if (current) return Promise.resolve(false);
   return new Promise(resolve => {
-    current = { message, label, resolve, trigger: document.activeElement instanceof HTMLElement ? document.activeElement : null };
+    current = { message, label, resolve, trigger };
     listeners.forEach(listener => listener());
   });
 }

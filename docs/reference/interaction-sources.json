@@ -1,0 +1,22 @@
+{
+  "repository": "https://github.com/Caho1/open-claude-ui",
+  "reviewedCommit": "02d021fceaf2a907f9e63a8125621bdda1b85d60",
+  "reviewedSource": [
+    "code-examples/ClaudeMotionPresets.ts",
+    "code-examples/SegmentedControl.tsx",
+    "code-examples/MediaLightboxViewer.tsx"
+  ],
+  "license": "MIT; full upstream notice retained in open-claude-ui.LICENSE",
+  "adaptation": [
+    "State changes commit immediately; animation only presents the committed result and must cancel on the next intent.",
+    "Preserve the existing component identity, focus and native scroll rather than rebuilding a page to animate it.",
+    "Pointer pan uses the fixed initial scroll offset plus the current pointer delta; touch remains native."
+  ],
+  "notCopied": [
+    "Upstream theme CSS, desktop-extracted code, fonts, imagery and spring constants.",
+    "The upstream globally shared segmented layoutId, which can connect unrelated instances.",
+    "The upstream accumulated drag offset and global view-transition hook, which do not meet mooncci rapid-intent and image-stability requirements.",
+    "Blurred per-character text reveal, all-page entrance, scroll interception and a second component system."
+  ],
+  "implementation": "Independent mooncci implementations reuse Radix ownership, existing feedbackMotion (motion/mini), motion.css, RoutePosition, native pointer capture and native scrolling. No npm dependency was added."
+}

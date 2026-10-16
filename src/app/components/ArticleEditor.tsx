@@ -37,12 +37,15 @@ export function ArticleEditor({
   const [localMode,setLocalMode]=useState<ArticleEditorMode>(existing && !isRichText(value) ? 'source' : 'visual');
   const [visualReady,setVisualReady]=useState(false),[visualBusy,setVisualBusy]=useState(false),[imageBusy,setImageBusy]=useState(false);
   const requestedMode=controlledMode??localMode,mode=requestedMode==='source'&&isRichText(value)?'visual':requestedMode;
+  const [visualStarted,setVisualStarted]=useState(mode==='visual');
+  const visualValue=useRef(value);
+  if(mode==='visual')visualValue.current=value;
   const setMode=useCallback((next:ArticleEditorMode)=>{if(visualBusy||imageBusy)return;if(controlledMode===undefined)setLocalMode(next);onModeChange?.(next);},[controlledMode,onModeChange,visualBusy,imageBusy]);
   useEffect(()=>{if(mode!==requestedMode)setMode(mode)},[mode,requestedMode,setMode]);
   const source=useRef<HTMLTextAreaElement>(null), visual=useRef<((url:string,alt:string)=>void)|null>(null);
   useEffect(()=>{onBusy(visualBusy||imageBusy);},[visualBusy,imageBusy,onBusy]);
   useEffect(()=>()=>onBusy(false),[onBusy]);
-  useEffect(()=>{if(mode==='source'){visual.current=null;setVisualReady(false);}},[mode]);
+  useEffect(()=>{if(mode==='visual')setVisualStarted(true);},[mode]);
   const registerVisual=useCallback((insert:(url:string,alt:string)=>void)=>{visual.current=insert;setVisualReady(true);},[]);
   const insertImage=useCallback((url:string,alt:string)=>{
     if(mode==='visual'&&visual.current){visual.current(url,alt);return;}
@@ -86,9 +89,10 @@ export function ArticleEditor({
             : '使用与公开文章页相同的阅读排版。'}
       </p>}
       {imageTools&&(!writingToolbar||mode==='source')&&<div className={writingToolbar?'article-source-toolbar':'article-editor-image-row'} hidden={mode==='preview'}>{imageTools}</div>}
-      {mode === 'source' ? (
+      {!isRichText(value) && (
         <textarea
           ref={source}
+          hidden={mode!=='source'}
           aria-label="Markdown 正文"
           spellCheck={false}
           rows={22}
@@ -97,15 +101,17 @@ export function ArticleEditor({
           onChange={(e) => onChange(e.target.value)}
           placeholder="开始写作"
         />
-      ) : (<>{mode === 'preview' && (
+      )}
+      {mode === 'preview' && (
         <div className="article-editor-preview">
           <MarkdownContent content={value || '还没有正文内容。'} />
         </div>
-      )}<div hidden={mode==='preview'}><Suspense
+      )}
+      {visualStarted&&<div hidden={mode!=='visual'}><Suspense
           fallback={<p className="quiet-state">正在加载可视化编辑器…</p>}
         >
           <VisualMarkdownEditor
-            value={value}
+            value={visualValue.current}
             onChange={onChange}
             uploadImage={uploadImage}
             onError={onError}
@@ -114,8 +120,7 @@ export function ArticleEditor({
             disabled={disabled}
             writingToolbar={writingToolbar?imageTools??<></>:undefined}
           />
-        </Suspense></div></>
-      )}
+        </Suspense></div>}
     </div>
   );
 }

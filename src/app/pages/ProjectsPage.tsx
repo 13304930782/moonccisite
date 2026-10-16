@@ -20,7 +20,7 @@ import "../../styles/project-detail.css";
 export default function ProjectsPage() {
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get("page")) || 1);
-  const resource = useResource(`/projects?page=${page}`);
+  const resource = useResource(`/projects?page=${page}`, true, { keepPrevious: true });
   return (
     <SitePage>
       <PageHeading eyebrow="SELECTED WORK" title="作品与实验">
@@ -43,7 +43,7 @@ export default function ProjectsPage() {
               </p>
             )}
             <Pagination
-              data={resource.data}
+              data={resource.loading || resource.error ? { ...resource.data, page } : resource.data}
               onPage={(p) => setParams({ page: String(p) })}
             />
           </>

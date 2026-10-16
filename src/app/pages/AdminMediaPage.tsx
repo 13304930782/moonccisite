@@ -92,6 +92,10 @@ export default function AdminMediaPage() {
   const [loadError, setLoadError] = useState('');
   const [keyword, setKeyword] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [failedUpload, setFailedUpload] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState('');
+  const uploadPending = useRef(false), mounted = useRef(true);
+  const [composing, setComposing] = useState(false);
   const [imageQuality, setImageQuality] = useState('medium');
   const [status, setStatus] = useState<MediaStatus>('active');
   const [selected, setSelected] = useState<MediaItem | null>(null);
@@ -109,6 +113,10 @@ export default function AdminMediaPage() {
   const searchInput = useRef<HTMLInputElement>(null);
   const clearSearch = () => { setKeyword(''); setSearch(''); setPage(1); searchInput.current?.focus(); };
 
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   useEffect(() => {
     const media = window.matchMedia('(hover: hover) and (pointer: fine)');
     const update = () => setFinePointer(media.matches);
@@ -138,15 +146,17 @@ export default function AdminMediaPage() {
       if (current()) { setLoadError(err.message || '媒体库加载失败'); }
     } finally { if (current()) setLoading(false); }
   };
+  const loadLatest = useRef(load);
+  loadLatest.current = load;
   useEffect(() => {
+    if (composing) return;
     const timer = setTimeout(() => { setPage(1); setSearch(keyword.trim()); }, 300);
     return () => clearTimeout(timer);
-  }, [keyword]);
+  }, [keyword, composing]);
   useEffect(() => {
     setSelected(null);
     setSelectedFilenames([]);
     setManualSelection(false);
-    setItems([]);
     void load();
     return () => { requestVersion.current++; };
   }, [status, search, page]);
@@ -200,19 +210,24 @@ export default function AdminMediaPage() {
   };
 
   const handleUpload = async (file?: File) => {
-    if (!file) return;
+    if (!file || uploadPending.current) return;
 
+    uploadPending.current = true;
     setUploading(true);
+    setUploadError('');
     setMessage('');
 
     try {
       const result = await uploadImage(file, imageQuality);
-      setMessage(`上传成功：${result.url}`);
-      await load();
+      if (!mounted.current) return;
+      setFailedUpload(null);
+      await loadLatest.current();
+      if (mounted.current) setMessage(`上传成功：${result.url}`);
     } catch (err: any) {
-      setMessage(err.message || '图片上传失败');
+      if (mounted.current) { setUploadError(err.message || '图片上传失败'); setFailedUpload(file); }
     } finally {
-      setUploading(false);
+      uploadPending.current = false;
+      if (mounted.current) setUploading(false);
     }
   };
 
@@ -463,12 +478,14 @@ export default function AdminMediaPage() {
           <button type="button" aria-pressed={status === 'active'} disabled={saving} onClick={() => { setPage(1); setStatus('active'); }} className="ui-btn ui-btn--ghost">正常文件{status === 'active' && !search && !loading && !loadError && <span>{total}</span>}</button>
           <button type="button" aria-pressed={status === 'trashed'} disabled={saving} onClick={() => { setPage(1); setStatus('trashed'); }} className="ui-btn ui-btn--ghost">回收站{status === 'trashed' && !search && !loading && !loadError && <span>{total}</span>}</button>
         </div>
-        <div className="media-search-field"><input ref={searchInput} aria-label="搜索媒体文件" value={keyword} onChange={event => setKeyword(event.target.value)} placeholder="搜索文件名、显示名、Alt" className="ui-input" />{keyword && <button type="button" className="media-search-clear ui-btn ui-btn--ghost ui-btn--icon" aria-label="清除搜索" onClick={clearSearch}><X size={16} aria-hidden="true" /></button>}</div>
+        <div className="media-search-field"><input ref={searchInput} aria-label="搜索媒体文件" value={keyword} onChange={event => setKeyword(event.target.value)} onCompositionStart={() => setComposing(true)} onCompositionEnd={event => { setKeyword(event.currentTarget.value); setComposing(false); }} placeholder="搜索文件名、显示名、Alt" className="ui-input" />{keyword && <button type="button" className="media-search-clear ui-btn ui-btn--ghost ui-btn--icon" aria-label="清除搜索" onClick={clearSearch}><X size={16} aria-hidden="true" /></button>}</div>
         <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" variant="ghost" className="media-sort-trigger ui-btn ui-btn--ghost">最近更新<ChevronDown size={14} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal ui-v2 media-list-menu"><DropdownMenuRadioGroup value="updated"><DropdownMenuRadioItem value="updated">最近更新</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>
         <AdminButton type="button" variant="ghost" size="icon" className="media-refresh ui-btn ui-btn--ghost ui-btn--icon" aria-label="刷新媒体库" disabled={loading || saving} onClick={() => void load()}><RefreshCw size={16} strokeWidth={1.8} aria-hidden="true" /></AdminButton>
       </div>
 
-      <div className="media-list-content">
+      {uploadError && <div className="resource-notice" role="alert"><div><strong>图片上传失败</strong><p>{uploadError}</p></div><AdminButton type="button" variant="soft" disabled={uploading || !failedUpload} onClick={() => void handleUpload(failedUpload || undefined)} className="ui-btn ui-btn--soft">重试上传</AdminButton></div>}
+      <div className="media-list-content" aria-busy={loading}>
+      {loading && filtered.length > 0 && <p className="sr-only" role="status">正在更新媒体库…</p>}
       {message && !selected && <p role="alert" className="media-notice">{message}</p>}
       {loadError && <div className="resource-notice" role="alert"><div><strong>{items.length ? '刷新失败，已保留当前图片' : '媒体库加载失败'}</strong><p>{loadError}</p></div><AdminButton type="button" variant="soft" disabled={loading} onClick={() => void load()} className="ui-btn ui-btn--soft">重新加载媒体库</AdminButton></div>}
       {loading && !filtered.length ? <p className="media-empty" role="status">正在加载媒体库…</p> : filtered.length === 0 && !loadError ? <div className="media-empty"><p>{search ? '没有找到匹配的媒体文件。' : status === 'trashed' ? '回收站为空。' : '暂无媒体文件，请先上传图片。'}</p></div> : <div className="media-file-grid">
@@ -476,9 +493,9 @@ export default function AdminMediaPage() {
           const imageUrl = safeImageSrc(item.url), markdown = `![${item.alt_text || mediaName(item)}](${item.url})`, checked = selectedSet.has(item.filename);
           return <article className="media-file" key={item.filename}>
             <div className={`media-file-image${checked ? ' is-selected' : ''}`}>
-              <button type="button" className="media-detail-trigger" aria-label={mediaName(item)} disabled={saving && selecting} onClick={event => selecting ? toggleOne(item.filename) : openDetail(item, event.currentTarget)}>{imageUrl ? <img src={imageUrl} alt="" loading="lazy" /> : <ImageIcon size={32} aria-hidden="true" />}</button>
-              <label className="media-file-select"><input type="checkbox" aria-label={`选择 ${mediaName(item)}`} checked={checked} disabled={saving} onChange={() => toggleOne(item.filename)} /><span aria-hidden="true"><Check size={18} strokeWidth={2.5} /></span></label>
-              {finePointer && !selecting && <div className="media-card-actions"><button type="button" onClick={() => void handleCopy(item.url, '图片 URL')} aria-label={`复制 ${mediaName(item)} 的 URL`}>URL</button><button type="button" onClick={() => void handleCopy(markdown, 'Markdown')} aria-label={`复制 ${mediaName(item)} 的 Markdown`}>MD</button><button type="button" onClick={event => openDetail(item, event.currentTarget)} aria-label={`打开 ${mediaName(item)} 的详情`}>打开</button></div>}
+              <button type="button" className="media-detail-trigger" aria-label={mediaName(item)} disabled={loading || saving && selecting} onClick={event => selecting ? toggleOne(item.filename) : openDetail(item, event.currentTarget)}>{imageUrl ? <img src={imageUrl} alt="" loading="lazy" /> : <ImageIcon size={32} aria-hidden="true" />}</button>
+              <label className="media-file-select"><input type="checkbox" aria-label={`选择 ${mediaName(item)}`} checked={checked} disabled={saving || loading} onChange={() => toggleOne(item.filename)} /><span aria-hidden="true"><Check size={18} strokeWidth={2.5} /></span></label>
+              {finePointer && !selecting && <div className="media-card-actions"><button type="button" disabled={loading} onClick={() => void handleCopy(item.url, '图片 URL')} aria-label={`复制 ${mediaName(item)} 的 URL`}>URL</button><button type="button" disabled={loading} onClick={() => void handleCopy(markdown, 'Markdown')} aria-label={`复制 ${mediaName(item)} 的 Markdown`}>MD</button><button type="button" disabled={loading} onClick={event => openDetail(item, event.currentTarget)} aria-label={`打开 ${mediaName(item)} 的详情`}>打开</button></div>}
             </div>
             <p className="media-file-name" title={mediaName(item)}>{mediaName(item)}</p>
             <p className="media-file-meta">{item.size_text} · {new Date(item.uploaded_at).toLocaleDateString('zh-CN')}</p>

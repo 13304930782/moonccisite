@@ -8,9 +8,12 @@
 /* Keep positioning translate (for example, dialog centering) independent of motion. */
 @keyframes mooncci-panel-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 @keyframes mooncci-panel-out { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(8px); } }
-html[data-navigation-type="PUSH"] :is(.page-content,.home-main,.auth-form-panel) { animation:mooncci-fade var(--motion-page) var(--ease-feedback); }
-html[data-navigation-type="POP"] :is(.page-content,.home-main,.auth-form-panel,.resource-content) { animation:none; }
-html[data-navigation-type="PUSH"] html[data-navigation-type="PUSH"] .resource-content { animation:mooncci-fade var(--motion-content) var(--ease-feedback); }
+/* Route content stays visible; only the operation's own feedback animates. */
+.resource-content { position:relative; }
+.resource-refresh { position:absolute; z-index:1; top:0; right:0; margin:0; padding:6px 10px; border-radius:8px; background:var(--card); color:var(--muted-foreground); font-size:13px; pointer-events:none; }
+@media(prefers-reduced-motion:no-preference) {
+  html:not([data-reduced-motion="true"]) .resource-refresh { animation:mooncci-fade var(--motion-control) var(--ease-feedback); }
+}
 :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button,.ui-press-feedback) {
   transition:background-color var(--motion-control) ease-out,border-color var(--motion-control) ease-out,color var(--motion-control) ease-out,opacity var(--motion-control) ease-out,scale var(--motion-control) ease-out;
 }
@@ -18,7 +21,9 @@ html[data-navigation-type="PUSH"] html[data-navigation-type="PUSH"] .resource-co
 :is(.post-card,.project-card,.activity-row) { transition:background-color var(--motion-control) ease-out,border-color var(--motion-control) ease-out; }
 :is(.post-card,.project-card,.activity-row):hover { scale:1; }
 :is([data-slot="dialog-content"],[data-slot="alert-dialog-content"],.article-media-dialog,.reading-tools-panel)[data-state="open"] { animation:mooncci-panel-in var(--motion-enter) var(--ease-enter); }
-:is([data-slot="dialog-content"],[data-slot="alert-dialog-content"],.article-media-dialog,.reading-tools-panel)[data-state="closed"] { animation:mooncci-panel-out var(--motion-exit) var(--ease-exit); }
+/* Radix owns modal locks until Presence unmounts. An exit must never eat the next click. */
+:is([data-slot="dialog-content"],[data-slot="dialog-overlay"],[data-slot="alert-dialog-content"],[data-slot="alert-dialog-overlay"],[data-slot="sheet-content"],[data-slot="sheet-overlay"],.article-media-dialog,.reading-tools-panel)[data-state="closed"] { animation:none; pointer-events:none; }
+[data-state="closed"]:is([data-slot="dropdown-menu-content"],[data-slot="dropdown-menu-sub-content"],[data-slot="context-menu-content"],[data-slot="context-menu-sub-content"],[data-slot="popover-content"]) { animation:none; pointer-events:none; }
 [data-slot="dialog-overlay"],[data-slot="alert-dialog-overlay"] { animation-duration:var(--motion-feedback); }
 [data-sonner-toast] { transition:transform var(--motion-feedback) var(--ease-enter),opacity var(--motion-feedback) ease-out !important; }
 .reading-motion-option { display:flex; align-items:center; gap:12px; min-height:44px; }
