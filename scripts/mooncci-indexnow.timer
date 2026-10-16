@@ -1,0 +1,10 @@
+[Unit]
+Description=Check mooncci public sitemap changes every five minutes
+
+[Timer]
+OnActiveSec=5min
+OnUnitActiveSec=5min
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
