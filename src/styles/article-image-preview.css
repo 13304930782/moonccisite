@@ -2,12 +2,11 @@
 .markdown-body img[data-preview-image]:focus-visible { outline:2px solid var(--primary); outline-offset:4px; }
 [data-slot="dialog-content"].article-image-preview { --image-preview-height:min(65dvh,720px,calc(100dvh - 220px)); width:min(1100px,calc(100vw - 32px)); max-width:calc(100vw - 32px); max-height:calc(100dvh - 32px); padding:52px 20px 16px; gap:12px; background:var(--card); color:var(--foreground); }
 [data-slot="dialog-content"].article-image-preview[data-state="open"] { animation:mooncci-fade var(--motion-feedback) var(--ease-feedback); }
-.article-image-preview .article-image-stage { position:relative; display:grid; place-items:center; min-width:0; min-height:0; height:var(--image-preview-height); overflow:auto; overscroll-behavior:contain; touch-action:pan-y pinch-zoom; }
+.article-image-preview .article-image-stage { position:relative; display:grid; place-items:center; min-width:0; min-height:0; height:var(--image-preview-height); overflow:hidden; overscroll-behavior:contain; touch-action:none; }
 .article-image-preview .article-image-stage>img { display:block; width:auto; height:auto; max-width:100%; max-height:var(--image-preview-height); margin:auto; object-fit:contain; }
-.article-image-preview .article-image-stage.is-zoomed { display:block; touch-action:pan-x pan-y pinch-zoom; cursor:grab; }
+.article-image-preview .article-image-stage.is-zoomed { cursor:grab; }
 .article-image-preview .article-image-stage[data-dragging="true"] { cursor:grabbing; user-select:none; }
 .article-image-preview .article-image-stage:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
-.article-image-preview .article-image-stage.is-zoomed>img { max-width:none; max-height:none; }
 .article-image-preview img.is-pending { visibility:hidden; }
 .article-image-preview .article-image-status { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:var(--muted-foreground); }
 .article-image-preview .article-image-navigation { display:flex; align-items:center; justify-content:center; gap:16px; font-size:13px; font-variant-numeric:tabular-nums; }

@@ -5,7 +5,7 @@ const ts = require('typescript');
 const React = require('react');
 const { act, create } = require('react-test-renderer');
 
-const text = node => typeof node === 'string' ? node : Array.isArray(node) ? node.map(text).join('') : node?.children ? text(node.children) : '';
+const text = node => node?.props?.['aria-hidden'] ? '' : typeof node === 'string' ? node : Array.isArray(node) ? node.map(text).join('') : node?.children ? text(node.children) : '';
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const message = (uid, subject = `测试邮件 ${uid}`) => ({ uid, subject, from: 'sender@example.invalid', to: 'reader@example.invalid', date: '2026-10-16T10:00:00Z', unread: true, size: 100, text: `离线正文 ${uid}`, replyTo: 'sender@example.invalid' });
 const list = (folder = 'inbox', page = 1) => ({ messages: [message(page * 10 + 1), message(page * 10 + 2)], total: folder === 'inbox' ? 80 : 2, page, pageSize: 40, uidValidity: '123', folderAvailable: true });
@@ -45,7 +45,7 @@ test('mail test responses remain pending until the native-action scenario explic
 });
 
 async function fixture(handle) {
-  const calls = [], confirmations = [], answers = [], dirty = [], focus = [], scrolls = [], frames = new Map();
+  const calls = [], confirmations = [], answers = [], dirty = [], focus = [], scrolls = [], presentations = [], frames = new Map();
   let root, frame = 0, user = { id: 7001, role: 'owner' };
   const browser = { scrollY: 0, addEventListener() {}, removeEventListener() {}, scrollTo(value) { scrolls.push(value); this.scrollY = value.top; }, setInterval, clearInterval };
   const api = async (path, options = {}) => {
@@ -66,6 +66,9 @@ async function fixture(handle) {
     '../lib/browserDiagnostics': { visibleDiagnostic() {} },
     '../lib/confirmAction': { confirmAction: async (...args) => { confirmations.push(args); assert(answers.length, 'Every confirmation requires an explicit test answer'); return answers.shift(); } },
     '../lib/useUnsavedLeave': { useUnsavedLeave: value => dirty.push(value) },
+    '../lib/useMovingIndicator': { useMovingIndicator() {} },
+    '../lib/feedbackMotion': { feedbackMotion: (element, keyframes, duration) => { const entry = {element,keyframes,duration,stopped:false};presentations.push(entry);return () => { entry.stopped=true; }; } },
+    '../lib/motionDesign': { motionDesign: { content: { duration: .22 } } },
     '../context/AuthContext': { useAuth: () => ({ user }) },
     'react-router-dom': { Link: ({ to, children, ...props }) => React.createElement('a', { ...props, href: to }, children) },
     'lucide-react': Object.fromEntries(['ArrowLeft', 'ArrowUpRight', 'Check', 'Copy', 'Eye', 'EyeOff', 'Inbox', 'KeyRound', 'Mail', 'RefreshCw', 'Send'].map(key => [key, 'svg'])),
@@ -86,12 +89,16 @@ async function fixture(handle) {
   const send = async submitter => act(async () => { void root.root.findAllByType('form').find(node => node.props['aria-busy'] !== undefined).props.onSubmit({ preventDefault() {}, nativeEvent: { submitter } }); });
   const draft = async () => { await click('写邮件'); await edit('mail-to', 'target@example.invalid'); await edit('mail-subject', '离线测试标题'); await edit('mail-body', '离线测试正文'); };
   const flushFrames = async () => act(async () => { for (const [id, fn] of [...frames]) { frames.delete(id); fn(); } });
-  return { root, calls, confirmations, answers, dirty, focus, scrolls, browser, button, click, edit, open, send, draft, flushFrames,
+  return { root, calls, confirmations, answers, dirty, focus, scrolls, presentations, browser, button, click, edit, open, send, draft, flushFrames,
     json: () => text(root.toJSON()), writes: () => calls.filter(call => call.method !== 'GET'),
     switchAccount: async id => { user = { ...user, id }; await act(async () => root.update(React.createElement(Page))); },
     close: async () => act(async () => root.unmount()),
   };
 }
+
+test('mail content handoff skips initial display and cancels the prior presentation on a new action',async()=>{
+  const f=await fixture();try{assert.equal(f.presentations.length,0);await f.open(11);assert.equal(f.presentations.length,1);assert.equal(f.presentations[0].duration,.22);await f.click('返回列表');assert.equal(f.presentations[0].stopped,true);assert.equal(f.presentations.length,2);assert.equal(f.root.root.findAllByProps({className:'choice-caption-inverse'}).filter(node=>String(node.props['aria-hidden'])==='true').length,3);}finally{await f.close();}
+});
 
 test('mail reads follow the newest row, folder or cancellation even if an aborted adapter resolves late', async () => {
   const pending = [];

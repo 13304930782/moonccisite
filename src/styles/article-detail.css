@@ -6,6 +6,10 @@
 .hero-inner { display:flow-root; width:min(var(--container),calc(100% - 48px)); margin:0 auto; }
 .article-presentation .detail-intro { min-height:44px; margin:0; }
 .article-presentation .detail-breadcrumb { font-size:13px; }
+.article-presentation .detail-label { display:flex; align-items:center; gap:8px; }
+.article-presentation .article-heading-settings { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; padding:0; border:0; border-radius:8px; background:transparent; color:var(--muted-foreground); font-size:17px; }
+.article-presentation .article-heading-settings:hover,.article-presentation .article-heading-settings[aria-expanded=true] { background:var(--fill); }
+.article-presentation .article-heading-settings:focus-visible { outline:2px solid var(--article-accent); outline-offset:2px; }
 .article-presentation .hero-band .hero-pill { position:relative; display:inline-flex; align-items:center; font-size:13px; line-height:1.4; padding:6px 14px; border-radius:999px; color:#fff; background:rgba(255,255,255,.10); border:0; box-shadow:none; text-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; filter:none; transform:none; text-decoration:none; -webkit-font-smoothing:antialiased; transition:none; }
 .article-presentation .hero-band .hero-pill::before { content:''; position:absolute; inset:calc((100% - 44px) / 2) 0; }
 .article-presentation .hero-band .hero-pill:hover { background-color:rgba(255,255,255,.18); }
@@ -18,6 +22,8 @@
 .article-presentation .hero-meta-author { min-width:0; overflow:hidden; text-overflow:ellipsis; }
 .article-presentation .hero-meta time,.article-presentation .hero-meta .article-view-count { flex-shrink:0; }
 .article-presentation .hero-meta-avatar { width:24px; height:24px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+.article-presentation .hero-meta .article-view-count { font-variant-numeric:tabular-nums; }
+.article-presentation .hero-meta .article-view-count[data-empty] { visibility:hidden; }
 .article-presentation .hero-meta-author small { margin-left:6px; font-size:11px; }
 .article-presentation .hero-band .article-view-count { color:rgba(255,255,255,.65); }
 .article-presentation .hero-band .article-view-count svg { color:inherit; stroke:currentColor; }
@@ -140,6 +146,9 @@
  .hero-heading .hero-inner { width:calc(100% - 32px); }
  .hero-band { padding-top:24px; }
  .neo-page .article-presentation .hero-meta { font-size:13px; }
+ .neo-page .article-presentation .hero-meta { flex-direction:column; align-items:flex-start; width:fit-content; max-width:100%; margin-inline:auto; }
+ .article-presentation .hero-meta .g { position:relative; padding-inline-start:36px; justify-content:flex-start; }
+ .article-presentation .hero-meta-avatar { position:absolute; inset-inline-start:0; top:0; }
  .article-neighbors a { padding:14px; font-size:14px; }
  .article-route .comment-section:not(.comment-section--compact) .comment-item-actions { gap:16px; }
 }

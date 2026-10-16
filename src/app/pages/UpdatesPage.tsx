@@ -2,6 +2,9 @@ import { notify } from '../lib/feedback';
 import { SiteBack } from '../components/SiteBack';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { feedbackMotion } from '../lib/feedbackMotion';
+import { useMovingIndicator } from '../lib/useMovingIndicator';
+import { MotionDisclosure } from '../components/MotionDisclosure';
+import { motionDesign } from '../lib/motionDesign';
 import { Link } from 'react-router-dom';
 import { MessageCircle, FileText, GitBranch } from 'lucide-react';
 import '../../styles/update-journal.css';
@@ -22,34 +25,16 @@ export default function UpdatesPage() {
   const page = Math.max(1, Number(params.get('page')) || 1),
     type = params.get('type') || '';
   const resource = useResource(`/activity?page=${page}&type=${encodeURIComponent(type)}`, true, { keepPrevious: true });
-  const filters=useRef<HTMLElement>(null),indicator=useRef<HTMLSpanElement>(null);
-  const indicatorStop=useRef(()=>{}),indicatorTarget=useRef('');
-  useEffect(()=>()=>indicatorStop.current(),[]);
-  const useClientLayoutEffect=typeof window==='undefined'?useEffect:useLayoutEffect;
-  useClientLayoutEffect(()=>{
-    const nav=filters.current,line=indicator.current;
-    if(!nav||!line)return;
-    function place(){
-      if(!nav||!line)return;
-      const selected=nav.querySelector<HTMLElement>('[aria-pressed="true"]');
-      if(!selected)return;
-      const old=line.getBoundingClientRect(),bounds=selected.getBoundingClientRect(),parent=nav.getBoundingClientRect(),ready=nav.dataset.indicatorReady==='true';
-      const left=bounds.left-parent.left+nav.scrollLeft,target=`${left}:${bounds.width}`;
-      if(indicatorTarget.current===target)return;
-      indicatorTarget.current=target;indicatorStop.current();line.style.left=`${left}px`;line.style.width=`${bounds.width}px`;nav.dataset.indicatorReady='true';
-      if(ready&&old.width&&bounds.width)indicatorStop.current=feedbackMotion(line,{transform:[`translateX(${old.left-bounds.left}px) scaleX(${old.width/bounds.width})`,'none']},.16);
-    }
-    place();const observer=new ResizeObserver(place);observer.observe(nav);nav.querySelectorAll('button').forEach(button=>observer.observe(button));
-    return()=>observer.disconnect();
-  },[type]);
+  const filters=useRef<HTMLElement>(null);
+  useMovingIndicator(filters,type);
   return (
     <SitePage>
       <div className="update-journal update-feed">
       <PageHeading eyebrow="JOURNAL" title="最近更新">
         <p>文章、近况，以及作品的更新</p>
       </PageHeading>
-      <nav ref={filters} className="filter-tabs" aria-label="更新类型">
-        <span ref={indicator} className="filter-tab-indicator" aria-hidden="true"/>
+      <nav ref={filters} className="filter-tabs motion-selection" aria-label="更新类型">
+        <span data-selection-indicator className="filter-tab-indicator" aria-hidden="true"/>
         {[
           ['', '全部'],
           ['post', '文章'],
@@ -78,12 +63,25 @@ export default function UpdatesPage() {
   );
 }
 function UpdateTimeline({items}: {items: any[]}) {
+  const feed=useRef<HTMLDivElement>(null),seen=useRef<Map<string,string>|null>(null);
+  const layoutEffect=typeof window==='undefined'?useEffect:useLayoutEffect;
+  layoutEffect(()=>{
+    const next=new Map(items.map(item=>[String(item.activity_id),JSON.stringify([item.title,item.excerpt,item.published_at,item.type])])),previous=seen.current;
+    seen.current=next;
+    if(!previous)return;
+    const cleanups:(()=>void)[]=[];
+    feed.current?.querySelectorAll<HTMLElement>('[data-activity-id]').forEach(row=>{
+      const id=row.dataset.activityId!;
+      if(previous.get(id)!==next.get(id))cleanups.push(feedbackMotion(row,{opacity:[.3,1],transform:['translateY(7px)','none']},motionDesign.content.duration));
+    });
+    return()=>cleanups.forEach(stop=>stop());
+  },[items]);
   // The API orders the complete result before pagination by published_at DESC.
   // Preserve that order here so page boundaries and type filters stay consistent.
-  return <div className="journal-feed" aria-label="按时间从新到旧排列的更新">
+  return <MotionDisclosure open><div ref={feed} className="journal-feed" aria-label="按时间从新到旧排列的更新">
     {!items.length && <p className="quiet-state">暂时没有更新。</p>}
     {items.map(item => <TimelineEntry key={item.activity_id} item={item}/>)}
-  </div>;
+  </div></MotionDisclosure>;
 }
 function TimelineEntry({item}: {item: any}) {
   const [discussion, setDiscussion] = useState(false);
@@ -94,20 +92,20 @@ function TimelineEntry({item}: {item: any}) {
   const TypeIcon = isUpdate ? MessageCircle : item.type === 'post' ? FileText : GitBranch;
   const text = String(item.excerpt || '');
   const longText = text.length > 240 || text.split('\n').length > 5;
-  return <div className="journal-timeline journal-feed-row">
+  return <div className="journal-timeline journal-feed-row" data-activity-id={item.activity_id}>
     <aside className="journal-date"><time dateTime={item.published_at}>{date.slice(5).replace('/', '月')}日</time><span>{date.slice(0,4)} · {label}</span></aside>
     <article className={`journal-entry journal-entry--${isUpdate ? 'update' : item.type === 'post' ? 'post' : 'release'}`}>
       <div className="journal-feed-content">
         <div className="journal-kind-row"><span className="journal-kind"><TypeIcon size={14} aria-hidden="true"/>{label}</span>{item.type === 'release' && <><span className="journal-kind-source">GitHub Releases</span>{Number(item.prerelease) === 1 && <span className="release-prerelease">预发布</span>}</>}</div>
         {!isUpdate && <h2><Link to={item.path}>{item.title}</Link></h2>}
-        <p id={`activity-text-${item.activity_id}`} className={`journal-feed-text${longText && !fullText ? ' journal-feed-text--clamped' : ''}`}>{text}</p>
+        <MotionDisclosure open><p id={`activity-text-${item.activity_id}`} className={`journal-feed-text${longText && !fullText ? ' journal-feed-text--clamped' : ''}`}>{text}</p></MotionDisclosure>
         {longText && <button className="comment-expand" aria-expanded={fullText} aria-controls={`activity-text-${item.activity_id}`} onClick={() => setFullText(!fullText)}>{fullText ? '收起正文' : '展开正文'}</button>}
       </div>
       <div className="journal-actions">
         <Link to={item.path}>{isUpdate ? '查看近况' : item.type === 'post' ? '阅读全文' : '查看版本'} <span className="journal-link-arrow" aria-hidden="true">↗</span></Link>
         {isUpdate && <button aria-expanded={discussion} aria-controls={`activity-discussion-${item.id}`} onClick={() => setDiscussion(!discussion)}><MessageCircle size={16}/>{discussion ? '收起讨论' : '展开讨论'}</button>}
       </div>
-      {isUpdate && <div id={`activity-discussion-${item.id}`} hidden={!discussion}>{discussion && <CommentSection updateId={item.id} compact />}</div>}
+      {isUpdate && <MotionDisclosure id={`activity-discussion-${item.id}`} open={discussion}><CommentSection updateId={item.id} compact /></MotionDisclosure>}
     </article>
   </div>;
 }

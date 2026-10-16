@@ -6,7 +6,7 @@ import { MarkdownContent, headingsFor } from './MarkdownContent';
 import {SingleLine} from './DetailUI';
 import {formatDate} from './ContentUI';
 import {Eye,UserRound} from 'lucide-react';
-import {ArticleTableOfContents} from './ArticleTableOfContents';
+import {ArticleTableOfContents,ReadingSettingsTrigger} from './ArticleTableOfContents';
 import {loadCoverGradient} from '../lib/coverPalette';
 import { safeImageSrc } from '../lib/safeUrl';
 import { dimensionsFor } from '../lib/imageDimensions';
@@ -29,13 +29,14 @@ export function ArticlePresentation({ post, preview = false, views = null,progre
   const updatedLabel=!preview&&post.updated_at?formatDate(post.updated_at):'';
   const showUpdated=Boolean(updatedLabel&&updatedLabel!==publishedLabel),showViews=!preview&&views!==null&&views>0;
   const avatar=safeImageSrc(post.author_avatar);
+  const settingsInHeader=!preview&&!cover&&!headings.length;
   const framing=normalizeCoverCrop(post.cover_crop);
   let tags: string[] = [];
   try { tags = Array.isArray(post.tags) ? post.tags : JSON.parse(post.tags || '[]'); } catch {}
   return <article className={`article-presentation ${cover?'article-has-cover':'article-no-cover'} ${preview?'detail-preview':''}`} data-reading-content={preview?undefined:true}>
     {progress}
     <header className={cover?'hero-band':'hero-heading'} style={cover?bandStyle:undefined}><div className="hero-inner">
-      <div className="detail-intro"><nav className="detail-breadcrumb" aria-label="面包屑导航" data-reading-ignore>{preview ? <Link className={cover?'hero-pill':'hero-pill--light'} to="/articles">← 文章库</Link> : <SiteBack className={cover?'hero-pill':'hero-pill--light'}/>}</nav><div className="detail-label"><Link className={cover?'hero-pill':'hero-pill--light'} to={`/category/${encodeURIComponent(post.category||'文章')}`}>{post.category||'文章'}</Link></div></div>
+      <div className="detail-intro"><nav className="detail-breadcrumb" aria-label="面包屑导航" data-reading-ignore>{preview ? <Link className={cover?'hero-pill':'hero-pill--light'} to="/articles">← 文章库</Link> : <SiteBack className={cover?'hero-pill':'hero-pill--light'}/>}</nav><div className="detail-label"><Link className={cover?'hero-pill':'hero-pill--light'} to={`/category/${encodeURIComponent(post.category||'文章')}`}>{post.category||'文章'}</Link>{settingsInHeader&&<ReadingSettingsTrigger compact className="article-heading-settings"/>}</div></div>
       <h1 className="detail-title">{post.title}</h1>
       <SingleLine className="hero-meta" label="发布信息">
         <span className="g">
@@ -43,9 +44,9 @@ export function ArticlePresentation({ post, preview = false, views = null,progre
           <span className="hero-meta-author">{post.author_name||'作者'}{Boolean(post.author_deleted)&&<small>已删除</small>}</span>
           {(preview||published)&&<time dateTime={published||undefined}>{preview?'预览 · 未发布':`发布于 ${publishedLabel}`}</time>}
         </span>
-        {(showUpdated||showViews)&&<span className="g">
+        {(showUpdated||!preview)&&<span className="g">
           {showUpdated&&<time dateTime={post.updated_at}>更新于 {updatedLabel}</time>}
-          {showViews&&<span className="article-view-count" aria-label={`${views} 次阅读`} title="阅读量"><Eye size={15} aria-hidden="true"/><span>{(views??0).toLocaleString('zh-CN')}</span></span>}
+          {!preview&&<span className="article-view-count" data-empty={!showViews||undefined} aria-hidden={!showViews||undefined} aria-label={showViews?`${views} 次阅读`:undefined} title={showViews?'阅读量':undefined}><Eye size={15} aria-hidden="true"/><span>{showViews?views!.toLocaleString('zh-CN'):''}</span></span>}
         </span>}
       </SingleLine>
       {cover&&<div className="hero-card" data-default-focus={!framing||undefined}><CoverImage className="content-image" src={cover} frame={coverFrame(framing,'detail')} alt={post.title||'文章封面'} {...dimensionsFor(cover,post.image_dimensions)} fetchPriority="high"/></div>}
@@ -57,7 +58,7 @@ export function ArticlePresentation({ post, preview = false, views = null,progre
         <MarkdownContent content={content} headingPrefix="heading" imageDimensions={post.image_dimensions} previewImages={!preview}/>
         {tags.length>0&&<SingleLine className="detail-tags" label="文章标签">{tags.map(tag=><Link key={tag} to={`/tag/${encodeURIComponent(tag)}`}>{tag}</Link>)}</SingleLine>}
       </div>
-      <ArticleTableOfContents headings={headings} preview={preview}/>
+      <ArticleTableOfContents headings={headings} preview={preview} settingsInHeader={settingsInHeader}/>
     </div></div>
   </article>;
 }

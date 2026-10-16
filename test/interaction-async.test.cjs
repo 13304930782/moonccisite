@@ -16,6 +16,7 @@ async function commentFixture(){
   '../lib/api':{api},'../lib/feedback':{notify:{success:message=>notices.push({kind:'success',message}),error:message=>notices.push({kind:'error',message})}},
   '../lib/confirmAction':{confirmAction:()=>{confirmCalls++;return typeof confirm==='boolean'?Promise.resolve(confirm):confirm.promise;}},
   './DetailUI':{EmptyState:'div'},'react-router-dom':{useLocation:()=>({pathname:'/article/1'}),Link:'a'},
+  './MotionDisclosure':{MotionDisclosure:({open,children,...props})=>React.createElement('div',{...props,hidden:!open},open?children:null)},'../lib/useMovingIndicator':{useMovingIndicator(){}},
   '../context/AuthContext':{useAuth:()=>({user:{id:1,username:'tester',role:'owner'}})},'../lib/commentTime':{formatCommentTime:()=>''},
  }).CommentSection;
  await act(async()=>{root=create(React.createElement(Component,{postId:1}));});

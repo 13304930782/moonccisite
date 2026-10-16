@@ -7,6 +7,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { formatCommentTime } from '../lib/commentTime';
+import { MotionDisclosure } from './MotionDisclosure';
+import { useMovingIndicator } from '../lib/useMovingIndicator';
 
 type Comment = {
   replies?: Comment[];
@@ -95,6 +97,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
   const [openReplies, setOpenReplies] = useState<Set<number>>(new Set());
   const [openText, setOpenText] = useState<Set<number>>(new Set());
   const listRef = useRef<HTMLDivElement>(null);
+  const sortRef = useRef<HTMLDivElement>(null);
   const toggleSet = (set: React.Dispatch<React.SetStateAction<Set<number>>>, id: number) => set(old => { const next = new Set(old); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const endpoint = '/comments/' + (updateId ? 'update/' : 'post/') + targetId;
   const { user } = useAuth();
@@ -103,6 +106,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
   const [commentsLoading, setCommentsLoading] = useState(true);
   const requestVersion = useRef(0);
   const [sort, setSort] = useState('latest');
+  useMovingIndicator(sortRef, `${sort}:${!compact || comments.length > 0}`);
   const [content, setContent] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -307,9 +311,9 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
             )}
           </div>
 
-          <p id={`${threadId}-text-${item.id}`} className={`comment-text mt-3 whitespace-pre-wrap leading-7 text-foreground ${compact && (item.content.length > 140 || item.content.split('\n').length > 4) && !openText.has(item.id) ? 'comment-text-preview' : ''}`}>
+          <MotionDisclosure open><p id={`${threadId}-text-${item.id}`} className={`comment-text mt-3 whitespace-pre-wrap leading-7 text-foreground ${compact && (item.content.length > 140 || item.content.split('\n').length > 4) && !openText.has(item.id) ? 'comment-text-preview' : ''}`}>
             {item.content}
-          </p>
+          </p></MotionDisclosure>
           {compact && (item.content.length > 140 || item.content.split('\n').length > 4) && <button type="button" className="comment-expand" aria-expanded={openText.has(item.id)} aria-controls={`${threadId}-text-${item.id}`} onClick={() => toggleSet(setOpenText, item.id)}>{openText.has(item.id) ? '收起正文' : '展开全文'}</button>}
 
           {item.status === 'pending' && (
@@ -376,7 +380,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
           </div>
         </div>
 
-        {replyingTo?.id === item.id && (
+        <MotionDisclosure open={replyingTo?.id === item.id}>
           <form
             onSubmit={submitReply}
             className={'comment-reply-compose mt-3 '+(compact&&isReply?'ml-5 md:ml-10':'')}
@@ -421,12 +425,12 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
               </div>
             </div>
           </form>
-        )}
+        </MotionDisclosure>
 
         {item.replies && item.replies.length > 0 && (
           <div className="comment-replies border-l border-border ml-2 md:ml-4">
             {compact && <button type="button" className="comment-expand" aria-expanded={openReplies.has(item.id)} aria-controls={`${threadId}-replies-${item.id}`} onClick={() => toggleSet(setOpenReplies, item.id)}>{openReplies.has(item.id) ? '收起回复' : `展开 ${item.replies.length} 条回复`}</button>}
-            <div id={`${threadId}-replies-${item.id}`} hidden={compact && !openReplies.has(item.id)}>{(!compact || openReplies.has(item.id)) && item.replies.map((reply) => renderCommentItem(reply, true))}</div>
+            <MotionDisclosure id={`${threadId}-replies-${item.id}`} open={!compact || openReplies.has(item.id)}>{item.replies.map((reply) => renderCommentItem(reply, true))}</MotionDisclosure>
           </div>
         )}
       </div>
@@ -444,7 +448,8 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
           <MessageCircle aria-hidden="true" />
           {compact ? '讨论' : '评论'}{compact && <span className="comment-total">{comments.length}</span>}
         </h2>
-        {(!compact || comments.length > 0) && <div className="comment-sort" role="group" aria-label="评论排序">
+        {(!compact || comments.length > 0) && <div ref={sortRef} className="comment-sort motion-selection" role="group" aria-label="评论排序">
+          <span data-selection-indicator className="comment-sort-marker" aria-hidden="true" />
           {sortOptions.map((item) => (
             <button
               type="button"
@@ -508,14 +513,14 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
         </div>
       </form>}
 
-      <div ref={listRef} id={`${threadId}-list`} className={`mt-8 space-y-2 ${compact ? 'comment-preview-list' : ''}`} aria-busy={commentsLoading} tabIndex={compact && comments.length ? 0 : undefined} role={compact ? 'region' : undefined} aria-label={compact ? '近况评论列表' : undefined}>
+      <MotionDisclosure open><div ref={listRef} id={`${threadId}-list`} className={`mt-8 space-y-2 ${compact ? 'comment-preview-list' : ''}`} aria-busy={commentsLoading} tabIndex={compact && comments.length ? 0 : undefined} role={compact ? 'region' : undefined} aria-label={compact ? '近况评论列表' : undefined}>
         {commentsLoading && comments.length === 0 && <p className="quiet-state" role="status">正在读取评论…</p>}
         {!commentsLoading && !message && comments.length === 0 && (!compact || user) && (
           <EmptyState>暂无评论</EmptyState>
         )}
 
         {(compact && !expanded ? commentTree.slice(0, 3) : commentTree).map((item) => renderCommentItem(item, false))}
-      </div>
+      </div></MotionDisclosure>
       {compact && commentTree.length > 3 && <button type="button" className="comment-fold-toggle" aria-expanded={expanded} aria-controls={`${threadId}-list`} onClick={() => { setExpanded(!expanded); setOpenReplies(new Set()); setOpenText(new Set()); if (listRef.current) listRef.current.scrollTop=0; }}>{expanded ? '收起评论' : `展开更多评论（另 ${commentTree.length - 3} 条）`}</button>}
     </section>
   );

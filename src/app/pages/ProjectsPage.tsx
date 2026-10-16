@@ -17,6 +17,7 @@ import { safeImageSrc, safeHref } from "../lib/safeUrl";
 import { projectIcon } from "../lib/projectBrand";
 import { dimensionsFor } from "../lib/imageDimensions";
 import "../../styles/project-detail.css";
+import "../../styles/selection-fold.css";
 export default function ProjectsPage() {
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get("page")) || 1);
@@ -131,8 +132,8 @@ export function ProjectDetailPage() {
               <img className="content-image" src={cover} alt={`${p.name} 界面截图`} {...dimensionsFor(cover, p.image_dimensions)} loading="eager" fetchPriority="high" />
             </figure>}
             <div className="project-reading-grid">
-              <details className="project-mobile-toc" data-reading-ignore>
-                <summary>本页目录 <span aria-hidden="true">⌄</span></summary>
+              <details className="project-mobile-toc motion-details" data-reading-ignore>
+                <summary>本页目录 <span data-disclosure-chevron aria-hidden="true">⌄</span></summary>
                 {renderToc(true)}
               </details>
               <div className="detail-body project-reading-body">
@@ -149,14 +150,14 @@ export function ProjectDetailPage() {
                   ).map((r: any) => (
                     <details
                       open={String(r.id)===focusedId}
-                      className="release-record"
+                      className="release-record motion-details"
                       key={r.id}
                       id={`release-${r.id}`}
                     >
                       <summary><span className="project-release-copy"><time className="muted">
                         {formatDate(r.published_at)} · GitHub Releases
                       </time>
-                      <span>{r.title} {Number(r.prerelease) === 1 && <small className="release-prerelease">预发布</small>}</span></span><span className="project-release-arrow" aria-hidden="true">⌄</span></summary>
+                      <span>{r.title} {Number(r.prerelease) === 1 && <small className="release-prerelease">预发布</small>}</span></span><span className="project-release-arrow" data-disclosure-chevron aria-hidden="true">⌄</span></summary>
                       <div className="project-release-body"><MarkdownContent content={r.content} />
                       <a
                         className="text-link"

@@ -3,7 +3,7 @@ const React=require('react'),{act,create}=require('react-test-renderer');
 function loadSelect(){
  const module={exports:{}};
  const code=ts.transpileModule(fs.readFileSync('src/app/components/ThemeSelect.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- new Function('exports','require',code)(module.exports,name=>name.endsWith('.css')?{}:name==='lucide-react'?{Check:'svg'}:require(name));
+ new Function('exports','require',code)(module.exports,name=>name.endsWith('.css')?{}:name==='../lib/useMovingIndicator'?{useMovingIndicator(){}}:name==='lucide-react'?{Check:'svg'}:require(name));
  return module.exports.ThemeSelect;
 }
 

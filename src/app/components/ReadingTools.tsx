@@ -77,6 +77,11 @@ export default function ReadingTools(){
   place();const frame=requestAnimationFrame(place);window.addEventListener('resize',place);window.addEventListener('scroll',closeOnScroll,{passive:true});
   return()=>{cancelAnimationFrame(frame);window.removeEventListener('resize',place);window.removeEventListener('scroll',closeOnScroll);};
  },[open,narrow]);
+ const positioned=position!==null;
+ useClientLayoutEffect(()=>{
+  // The desktop panel is hidden until placed, so its initial autofocus cannot succeed.
+  if(open&&!narrow&&positioned)closeButton.current?.focus({preventScroll:true});
+ },[open,narrow,positioned]);
  function changeColor(color:ReadingColor){setPrefs(current=>({...current,color}));}
  function colorKeys(event:ReactKeyboardEvent<HTMLDivElement>){
   const index=colors.findIndex(([key])=>key===prefs.color);
@@ -109,9 +114,13 @@ export default function ReadingTools(){
  return <Dialog.Root open={open} onOpenChange={setOpen} modal={narrow}>
   <Dialog.Portal>
    {narrow&&<Dialog.Overlay className="rs-overlay"/>}
-   <Dialog.Content ref={panel} id="reading-settings-panel" className="rs-panel" data-layout={narrow?'sheet':'popover'} style={panelStyle} aria-modal={narrow||undefined} aria-describedby={undefined}
+   <Dialog.Content ref={panel} id="reading-settings-panel" className="rs-panel" data-layout={narrow?'sheet':'popover'} data-motion-ready={narrow||!!position?'true':'false'} style={panelStyle} aria-modal={narrow||undefined} aria-describedby={undefined}
     onOpenAutoFocus={event=>{event.preventDefault();closeButton.current?.focus({preventScroll:true});}}
     onCloseAutoFocus={event=>{event.preventDefault();if(anchor.current?.isConnected)anchor.current.focus({preventScroll:true});}}
+    onKeyDown={event=>{
+     // Radix can retain index=-1 for its first Escape; its normal capture handler runs first.
+     if(event.key==='Escape'&&!event.defaultPrevented&&(event.target as Element).closest('[role=dialog],[role=alertdialog]')===event.currentTarget){event.preventDefault();setOpen(false);}
+    }}
     onInteractOutside={event=>{if(anchor.current?.contains(event.target as Node))event.preventDefault();}}>
     {narrow&&<div className="rs-handle" aria-hidden="true"/>}
     <div className="rs-heading"><Dialog.Title>阅读设置</Dialog.Title><Dialog.Close ref={closeButton} className="rs-close" aria-label="收起阅读设置"><X size={18}/></Dialog.Close></div>

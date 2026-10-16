@@ -11,8 +11,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from '../components/ui/skeleton';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { useMovingIndicator } from '../lib/useMovingIndicator';
 import '../../styles/admin-ui-v2.css';
 import '../../styles/admin-posts.css';
+import '../../styles/selection-fold.css';
 
 type Post = { id: number; title: string; summary: string; category: string; author_name: string; status: string; has_unpublished: number | boolean };
 type Draft = { id: string; post_id: number | null; version: number; updated_at: string; payload: { title?: string } };
@@ -29,6 +31,8 @@ export default function AdminPostsPage() {
   const [draftPage, setDraftPage] = useState(1), [draftTotal, setDraftTotal] = useState(0);
   const [draftsLoaded, setDraftsLoaded] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
+  const filterGroup = useRef<HTMLDivElement>(null);
+  useMovingIndicator(filterGroup, filter);
   const [posts, setPosts] = useState<Post[]>([]);
   const [allPosts, setAllPosts] = useState<Post[] | null>(null);
   const [allTotal, setAllTotal] = useState<number | null>(null);
@@ -137,7 +141,8 @@ export default function AdminPostsPage() {
         </div>
       </header>
       {manager && importHost && createPortal(<ArticleImport />, importHost)}
-      <div className="admin-posts-filters" role="group" aria-label="筛选文章状态">
+      <div ref={filterGroup} className="admin-posts-filters motion-selection" role="group" aria-label="筛选文章状态">
+        <span data-selection-indicator data-selection-fill className="admin-selection-marker" aria-hidden="true" />
         {filters.map(item => <AdminButton key={item.value} variant="ghost" aria-pressed={filter === item.value} onClick={() => { setFilter(item.value); setPage(1); }} className="ui-btn ui-btn--ghost">{item.label}{counts && <span className="admin-posts-filter-count">{counts[item.value]}</span>}</AdminButton>)}
       </div>
       {message && <div className="admin-posts-message" role="alert">{message}</div>}

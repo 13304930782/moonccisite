@@ -7,6 +7,7 @@ function clock(){let now=0,id=0;const pending=new Map();return {set:(fn,ms)=>{pe
 function load(api,confirm,notices,timers,pointer){
  const box=({children,...props})=>React.createElement('fixture-box',props,children),button=React.forwardRef(({asChild,variant,children,...props},ref)=>asChild?React.cloneElement(children,{...props,ref}):React.createElement('button',{...props,ref},children));
  const mocks={'../lib/api':{api},'../lib/confirmAction':{confirmAction:confirm},'../lib/feedback':{notify:{success:value=>notices.push({kind:'success',value}),error:value=>notices.push({kind:'error',value})}},'../lib/safeUrl':{safeImageSrc:value=>value||''},
+  '../lib/useMovingIndicator':{useMovingIndicator(){}},
   '../components/admin/AdminButton':{AdminButton:button},'../components/ui/dialog':{Dialog:box,DialogContent:box,DialogDescription:'p',DialogTitle:'h2'},
   '../components/ui/dropdown-menu':{DropdownMenu:box,DropdownMenuTrigger:box,DropdownMenuContent:box,DropdownMenuItem:'menuitem',DropdownMenuRadioGroup:({value,onValueChange,children})=>React.createElement('select',{value,onChange:onValueChange?event=>onValueChange(event.target.value):undefined},children),DropdownMenuRadioItem:({value,children})=>React.createElement('option',{value},children)},
   'lucide-react':Object.fromEntries(['ChevronDown','Image','RefreshCw','RotateCw','Trash2','Undo2','Upload','X','MoreHorizontal','ArrowDownWideNarrow','Check','CheckSquare','Square','ListFilter'].map(name=>[name,'svg']))};

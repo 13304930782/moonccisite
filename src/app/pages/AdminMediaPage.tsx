@@ -15,8 +15,10 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { safeImageSrc } from '../lib/safeUrl';
+import { useMovingIndicator } from '../lib/useMovingIndicator';
 import '../../styles/admin-ui-v2.css';
 import '../../styles/admin-media.css';
+import '../../styles/selection-fold.css';
 
 const IMAGE_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp,image/x-icon,image/vnd.microsoft.icon,.jpg,.jpeg,.png,.gif,.webp,.ico';
 
@@ -98,6 +100,8 @@ export default function AdminMediaPage() {
   const [composing, setComposing] = useState(false);
   const [imageQuality, setImageQuality] = useState('medium');
   const [status, setStatus] = useState<MediaStatus>('active');
+  const statusGroup = useRef<HTMLDivElement>(null);
+  useMovingIndicator(statusGroup, status);
   const [selected, setSelected] = useState<MediaItem | null>(null);
   const detailTrigger = useRef<HTMLButtonElement | null>(null);
   const batchMenuTrigger = useRef<HTMLButtonElement | null>(null);
@@ -474,7 +478,8 @@ export default function AdminMediaPage() {
       </header>
 
       <div className="media-page-toolbar">
-        <div className="media-status-tabs" role="group" aria-label="媒体状态">
+        <div ref={statusGroup} className="media-status-tabs motion-selection" role="group" aria-label="媒体状态">
+          <span data-selection-indicator data-selection-fill className="admin-selection-marker" aria-hidden="true" />
           <button type="button" aria-pressed={status === 'active'} disabled={saving} onClick={() => { setPage(1); setStatus('active'); }} className="ui-btn ui-btn--ghost">正常文件{status === 'active' && !search && !loading && !loadError && <span>{total}</span>}</button>
           <button type="button" aria-pressed={status === 'trashed'} disabled={saving} onClick={() => { setPage(1); setStatus('trashed'); }} className="ui-btn ui-btn--ghost">回收站{status === 'trashed' && !search && !loading && !loadError && <span>{total}</span>}</button>
         </div>
@@ -515,7 +520,7 @@ export default function AdminMediaPage() {
       </div>}
 
       {selected && <Dialog open onOpenChange={open => { if (!open && !saving) setSelected(null); }}>
-        <DialogContent className="admin-portal ui-v2 media-detail-drawer" onCloseAutoFocus={event => { if (detailTrigger.current?.isConnected) { event.preventDefault(); detailTrigger.current.focus(); } }}>
+        <DialogContent data-motion-side="right" className="admin-portal ui-v2 media-detail-drawer" onCloseAutoFocus={event => { if (detailTrigger.current?.isConnected) { event.preventDefault(); detailTrigger.current.focus(); } }}>
           <header className="media-detail-heading"><DialogTitle>{mediaName(selected)}</DialogTitle><DialogDescription>{selected.filename}</DialogDescription></header>
           <form className="media-detail-form" onSubmit={event => { event.preventDefault(); void saveDetails(); }}>
             <div className="media-detail-scroll">

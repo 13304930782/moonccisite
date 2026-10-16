@@ -2,6 +2,14 @@
 .choice-options{display:flex;flex-wrap:wrap;gap:8px;min-width:0;margin-block:8px}
 .choice-field .choice-options>button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;max-width:100%;padding:10px 24px;border:1px solid var(--muted-foreground);border-radius:10px;background:var(--card);color:var(--foreground);font-size:14px;line-height:1.4;font-weight:500;text-align:center;white-space:normal;overflow-wrap:anywhere;cursor:pointer;transition:background-color var(--motion-control) ease-out,color var(--motion-control) ease-out}
 .choice-field .choice-options>button[aria-checked=true]{background:var(--foreground);color:var(--background);border-color:var(--foreground)}
+.choice-options.motion-selection{isolation:isolate;--selection-radius:10px}
+.choice-options .choice-selection-marker{top:0;border:1px solid var(--foreground);border-radius:var(--selection-radius);background:var(--foreground);z-index:1;visibility:hidden}
+.choice-options[data-indicator-ready=true] .choice-selection-marker{visibility:visible}
+.choice-field .choice-options[data-indicator-ready=true]>button[aria-checked=true]{background:transparent}
+.choice-field .choice-options[data-indicator-ready=true]>button{color:var(--foreground);transition:background-color var(--motion-control) ease-out}
+.choice-options .choice-caption{z-index:2}
+.choice-caption-inverse{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:inherit;z-index:3;pointer-events:none;color:var(--background);clip-path:var(--selection-clip,inset(0 100% 0 0));visibility:hidden}
+.choice-options[data-indicator-ready=true] .choice-caption-inverse{visibility:visible}
 .choice-field .choice-options>button:hover:not(:disabled):not([aria-checked=true]){background:var(--muted)}
 .choice-field .choice-options>button:focus-visible,.choice-field .choice-native:focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
 .choice-field .choice-options>button:disabled{opacity:.45;cursor:not-allowed}
@@ -26,3 +34,4 @@
 @media(max-width:700px){.search-filters>label{flex:1 1 100%}}
 @media(max-width:600px){.choice-options>button{flex:1 1 auto}}
 @media(forced-colors:active){.choice-field .choice-options>button[aria-checked=true]{border:2px solid Highlight}.choice-mark{forced-color-adjust:auto}}
+@media(forced-colors:active){.choice-selection-marker,.choice-caption-inverse{display:none}.choice-field .choice-options[data-indicator-ready=true]>button[aria-checked=true]{background:Highlight;color:HighlightText}.choice-field .choice-options[data-indicator-ready=true]>button:not([aria-checked=true]){color:ButtonText}}

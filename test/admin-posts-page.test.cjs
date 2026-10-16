@@ -7,6 +7,7 @@ function load(file,api,role='owner',confirm=async()=>true,extra={}){
   'react-router-dom':{Link:({to,children,...props})=>React.createElement('a',{href:to,...props},children)},
   'lucide-react':{MoreHorizontal:'svg'},'react-dom':{createPortal:children=>React.createElement('import-host',null,children)},
   '../lib/api':{api},'../lib/feedback':{notify:{success(){},error(){}}},'../lib/confirmAction':{confirmAction:confirm},
+  '../lib/useMovingIndicator':{useMovingIndicator(){}},
   '../context/AuthContext':{useAuth:()=>({user:{role}})},'../components/ArticleImport':{ArticleImport:()=>React.createElement('details',null,'import fixture')},
   '../components/admin/AdminButton':{AdminButton:button},'../components/ui/skeleton':{Skeleton:'skeleton'},
   '../components/ui/dialog':{Dialog:box,DialogContent:box,DialogTitle:'h3',DialogTrigger:box},

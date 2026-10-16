@@ -49,7 +49,7 @@ test('permission failures clear retained public content instead of showing stale
 });
 test('retained article rows never leave pagination stuck on the old page while pending or failed',async()=>{
  let status={data:{items:[],page:1,total:40,pageSize:12},loading:true,error:''},seen,root;const params=new URLSearchParams('page=2');
- const imports={'react-router-dom':{useSearchParams:()=>[params,()=>{}]},'./BlogCard':{BlogCard:()=>null},'./ContentUI':{useResource:()=>status,ResourceState:({children})=>children,Pagination:({data})=>{seen=data;return null;}}};
+ const imports={'react-router-dom':{useSearchParams:()=>[params,()=>{}]},'./BlogCard':{BlogCard:()=>null},'./ContentUI':{useResource:()=>status,ResourceState:({children})=>children,Pagination:({data})=>{seen=data;return null;}},'../lib/feedbackMotion':{feedbackMotion:()=>()=>{}},'../lib/motionDesign':{motionDesign:{content:{duration:.22}}}};
  const code=ts.transpileModule(fs.readFileSync('src/app/components/PostResults.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,module={exports:{}};
  new Function('module','exports','require',code)(module,module.exports,name=>imports[name]||require(name));
  try{await act(async()=>{root=create(React.createElement(module.exports.PostResults,{path:'/posts'}));});assert.equal(seen.page,2);

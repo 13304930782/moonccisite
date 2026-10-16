@@ -26,6 +26,14 @@
 .mailbox-view-tabs{display:flex;gap:8px;margin:0 0 20px;overflow-x:auto;scrollbar-width:thin}
 .mailbox-view-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:44px;padding:10px 18px;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--muted-foreground);font-size:14px;font-weight:600;white-space:nowrap}
 .mailbox-view-tabs button[aria-current=page]{background:var(--foreground);border-color:var(--foreground);color:var(--background)}
+.mailbox-view-tabs{position:relative;isolation:isolate;--selection-radius:12px}
+.mailbox-view-tabs .mailbox-selection-marker{position:absolute;z-index:-1;pointer-events:none;inset:0 auto auto 0;border-radius:12px;background:var(--foreground)}
+.mailbox-view-tabs button{position:relative}
+.mailbox-view-tabs[data-indicator-ready=true] button{background:transparent;color:var(--muted-foreground)}
+.mailbox-view-tabs button .choice-caption,.mailbox-view-tabs button .choice-caption-inverse{display:inline-flex;align-items:center;justify-content:center;gap:9px}
+.mailbox-view-tabs button .choice-caption-inverse{position:absolute;inset:0;padding:inherit;color:var(--background);clip-path:var(--selection-clip,inset(50%));pointer-events:none}
+.mailbox-view-tabs[data-indicator-ready=true] .choice-caption-inverse{visibility:visible}
+html[data-motion-controls=true] .mailbox-primary:active{transform:none}
 .mailbox-letters{padding:0;overflow:hidden}.mailbox-folder-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 28px;border-bottom:1px solid var(--border)}
 .mailbox-folder-head h2{margin:0;font-size:20px;letter-spacing:-.025em}.mailbox-folder-head p{margin:5px 0 0;color:var(--muted-foreground);font-size:13px}
 .mailbox-letters>.mailbox-empty,.mailbox-letters>.mailbox-error{margin:0;padding:28px}.mailbox-error{color:var(--destructive,#b42318);font-size:14px}

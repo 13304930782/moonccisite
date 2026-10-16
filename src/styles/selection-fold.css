@@ -1,0 +1,28 @@
+.motion-disclosure[data-moving="true"] { overflow:hidden; }
+.motion-disclosure[hidden] { display:none; }
+.motion-disclosure-content { display:flow-root; }
+.motion-chevron { display:inline-block; }
+.motion-selection { position:relative; }
+.motion-selection [data-selection-indicator] { position:absolute; left:0; pointer-events:none; }
+.motion-selection [data-selection-indicator] ~ button { position:relative; }
+.ui-v2 .admin-selection-marker { top:0; border-radius:999px; background:var(--ui-fill-strong); visibility:hidden; }
+.ui-v2 [data-indicator-ready="true"] .admin-selection-marker { visibility:visible; }
+.ui-v2 :is(.media-status-tabs,.admin-posts-filters)[data-indicator-ready="true"] .ui-btn[aria-pressed="true"] { background:transparent; }
+.comment-sort.motion-selection .comment-sort-marker { top:0; bottom:0; border-radius:3px; background:var(--muted); }
+.neo-page .comment-sort[data-indicator-ready="true"] button[aria-pressed="true"] { background:transparent; }
+.article-route .comment-section:not(.comment-section--compact) .comment-sort-marker { background:transparent; }
+.article-route .toc-narrow.motion-disclosure:not([hidden]) { margin-bottom:0; }
+.article-route .toc-narrow.motion-disclosure > .motion-disclosure-content { padding-bottom:16px; }
+.project-reading .project-mobile-toc[open] [data-disclosure-chevron] { transform:rotate(180deg); }
+/* Native disclosure semantics stay synchronous; unsupported engines simply snap. */
+@supports (interpolate-size:allow-keywords) {
+  @media (prefers-reduced-motion:no-preference) {
+    html:not([data-reduced-motion="true"]) .motion-details { interpolate-size:allow-keywords; }
+    html:not([data-reduced-motion="true"]) .motion-details::details-content {
+      block-size:0; opacity:0; overflow:clip;
+      transition:block-size 260ms cubic-bezier(.16,1,.3,1),opacity 160ms ease-out,content-visibility 260ms allow-discrete;
+    }
+    html:not([data-reduced-motion="true"]) .motion-details[open]::details-content { block-size:auto; opacity:1; }
+    html:not([data-reduced-motion="true"]) .motion-details [data-disclosure-chevron] { transition:transform 260ms cubic-bezier(.16,1,.3,1); }
+  }
+}

@@ -53,3 +53,24 @@ html[data-reduced-motion="true"] :is(.neo-button,.quiet-button,.article-button,.
 /* Server content is already visible; hydration must not replay its entrance. */
 html[data-document-hydrating] :is(.page-content,.home-main,.resource-content) { animation:none; }
 .pagination [aria-disabled="true"] { opacity:.45; cursor:default; }
+
+/* JS owns physical movement; CSS owns the short icon/color response. */
+html[data-motion-controls=true] :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button,.ui-press-feedback):active { scale:1; }
+@media(prefers-reduced-motion:no-preference) {
+  html:not([data-reduced-motion=true]) [data-motion-pressed] { transition-property:background-color,border-color,color,opacity; }
+  html:not([data-reduced-motion=true]) [data-motion-pressed] > svg { transition:translate 160ms ease-out,opacity 160ms ease-out; }
+  html:not([data-reduced-motion=true]) [data-motion-pressed=true] > svg { translate:0 .5px; opacity:.82; transition-duration:65ms; }
+  html:not([data-reduced-motion=true]) [data-slot=switch-thumb] { transition:translate 260ms cubic-bezier(.2,1.25,.35,1),transform 260ms cubic-bezier(.2,1.25,.35,1); }
+}
+[data-motion-presentation],[data-motion-presentation] * { pointer-events:none; animation:none; }
+[data-motion-presentation] { user-select:none; }
+.control-state-label { display:inline-grid; align-items:center; vertical-align:baseline; }
+.control-state-label::before { content:attr(data-action-reserve); visibility:hidden; grid-area:1 / 1; }
+.control-state-label > span { grid-area:1 / 1; }
+.control-state-icon { display:inline-grid; place-items:center; width:16px; height:16px; flex:none; }
+@media(prefers-reduced-motion:no-preference) {
+  html:not([data-reduced-motion=true]) [aria-busy=true] .control-state-label > span { animation:control-label-in 160ms cubic-bezier(.16,1,.3,1); }
+  html:not([data-reduced-motion=true]) .control-state-icon[data-busy=true] > svg { animation:control-spinner 850ms linear infinite; }
+  @keyframes control-label-in { from { opacity:0; translate:0 3px; } to { opacity:1; translate:0 0; } }
+  @keyframes control-spinner { to { rotate:360deg; } }
+}

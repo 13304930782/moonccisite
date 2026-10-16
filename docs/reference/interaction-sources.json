@@ -4,19 +4,24 @@
   "reviewedSource": [
     "code-examples/ClaudeMotionPresets.ts",
     "code-examples/SegmentedControl.tsx",
-    "code-examples/MediaLightboxViewer.tsx"
+    "code-examples/MediaLightboxViewer.tsx",
+    "code-examples/ThinkingAccordion.tsx",
+    "code-examples/useClaudeSharedElementTransition.ts",
+    "code-examples/CdsButton.tsx"
   ],
   "license": "MIT; full upstream notice retained in open-claude-ui.LICENSE",
   "adaptation": [
     "State changes commit immediately; animation only presents the committed result and must cancel on the next intent.",
     "Preserve the existing component identity, focus and native scroll rather than rebuilding a page to animate it.",
-    "Pointer pan uses the fixed initial scroll offset plus the current pointer delta; touch remains native."
+    "Held controls compress immediately; release, selection and disclosure use role-specific interruptible motion values. Opacity remains a short eased transition.",
+    "Inert local surface snapshots finish visual exits after Radix releases input and scroll ownership; reopening reuses current movement and alpha.",
+    "Local image FLIP preserves source-to-stage continuity without document-wide view-transition snapshots. Zoom stays anchored, pointer movement is direct, and only released overscroll settles."
   ],
   "notCopied": [
     "Upstream theme CSS, desktop-extracted code, fonts, imagery and spring constants.",
     "The upstream globally shared segmented layoutId, which can connect unrelated instances.",
-    "The upstream accumulated drag offset and global view-transition hook, which do not meet mooncci rapid-intent and image-stability requirements.",
+    "The upstream accumulated drag offset and global view-transition hook; runtime findings and diagnostic prerequisites are documented in motion-adaptation.md.",
     "Blurred per-character text reveal, all-page entrance, scroll interception and a second component system."
   ],
-  "implementation": "Independent mooncci implementations reuse Radix ownership, existing feedbackMotion (motion/mini), motion.css, RoutePosition, native pointer capture and native scrolling. No npm dependency was added."
+  "implementation": "Independent mooncci implementations reuse Radix ownership, existing feedbackMotion (motion/mini), installed motion values and numeric animation, motion.css, RoutePosition and native pointer capture. No npm dependency was added."
 }

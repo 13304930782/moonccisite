@@ -21,6 +21,12 @@ import { SitePage, ContentSkeleton } from './components/ContentUI';
 import { ThemeProvider } from './context/ThemeContext';
 
 const ReadingTools = lazy(() => import('./components/ReadingTools'));
+const MotionExperience = lazy(() => import('./components/MotionExperience'));
+function DeferredMotionExperience() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => afterInitialLoad(() => setReady(true), 200), []);
+  return ready ? <Suspense fallback={null}><MotionExperience /></Suspense> : null;
+}
 const WeatherCompanion = lazy(() => import('./components/WeatherCompanion'));
 const RoutePages=lazy(()=>import('./RoutePages'));
 function DeferredFeedbackHost() {
@@ -52,7 +58,7 @@ function SiteRoutes() {
           <SiteMeta /><DeferredFeedbackHost/>
           <PageAnalytics /><DiagnosticNavigation />
           <Suspense fallback={<RouteLoader />}>{status && status>=400 && location.key===initialKey ? (status===404 ? <NotFoundPage/> : <RouteFailure/>) : (location.pathname==='/'?<HomePage/>:<RoutePages/>)}</Suspense>
-          {interactive && <><PublicWeatherCompanion /><Suspense fallback={null}><ReadingTools /></Suspense></>}
+          {interactive && <><PublicWeatherCompanion /><Suspense fallback={null}><ReadingTools /></Suspense><DeferredMotionExperience /></>}
   </RoutePosition>;
 }
 function RouteFailure() {
