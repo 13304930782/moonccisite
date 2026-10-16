@@ -54,7 +54,7 @@ export function ArticlePresentation({ post, preview = false, views = null,progre
       <div className="detail-body">
         {old&&<p className="article-age-notice" role="note">提醒：本文距最后更新已满半年，部分信息可能已发生变化，请结合最新情况参考。</p>}
         {summary&&<p className="article-summary">{summary}</p>}
-        <MarkdownContent content={content} headingPrefix="heading" imageDimensions={post.image_dimensions}/>
+        <MarkdownContent content={content} headingPrefix="heading" imageDimensions={post.image_dimensions} previewImages={!preview}/>
         {tags.length>0&&<SingleLine className="detail-tags" label="文章标签">{tags.map(tag=><Link key={tag} to={`/tag/${encodeURIComponent(tag)}`}>{tag}</Link>)}</SingleLine>}
       </div>
       <ArticleTableOfContents headings={headings} preview={preview}/>

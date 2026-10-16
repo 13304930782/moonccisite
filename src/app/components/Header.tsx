@@ -13,6 +13,7 @@ import '../../styles/navigation.css';
 export function Header() {
   const header = useRef<HTMLElement>(null);
   const menuButton=useRef<HTMLButtonElement>(null),menuPanel=useRef<HTMLDivElement>(null);
+  const searchButton=useRef<HTMLButtonElement>(null);
   const closeAccount = () => header.current?.querySelectorAll('details[open]').forEach(item => item.removeAttribute('open'));
   const { user, logout, loggingOut, logoutError } = useAuth();
   const publishing=usePublishing();
@@ -61,8 +62,11 @@ export function Header() {
   useEffect(() => {
     function close(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        const disclosure=header.current?.querySelector<HTMLDetailsElement>('details[open]');
+        if(disclosure?.contains(document.activeElement)&&!menuPanel.current?.contains(document.activeElement))disclosure.querySelector('summary')?.focus({preventScroll:true});
+        if(searchButton.current?.getAttribute('aria-expanded')==='true')searchButton.current.focus({preventScroll:true});
         closeAccount();
-        setMenu(false);
+        if(menuButton.current?.getAttribute('aria-expanded')==='true')closeMenu();else setMenu(false);
         setSearch(false);
       }
     }
@@ -121,10 +125,12 @@ export function Header() {
         </nav>
         <div className="header-actions">
           <button
+            ref={searchButton}
             className="icon-button"
-            onClick={() => {setMenu(false);setSearch(!search);}}
+            onClick={() => {setMenu(false);setSearch(current=>!current);}}
             aria-label={mobile?'搜索':'搜索文章'}
             aria-expanded={search}
+            aria-controls="header-search-form"
           >
             <Search />
           </button>
@@ -145,7 +151,7 @@ export function Header() {
         </div>
       </div>
       {search && (
-        <form className="site-container header-search" onSubmit={submit}>
+        <form id="header-search-form" className="site-container header-search" onSubmit={submit}>
           <label className="sr-only" htmlFor="header-query">
             搜索文章
           </label>

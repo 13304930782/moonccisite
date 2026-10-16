@@ -11,10 +11,10 @@
 html[data-navigation-type="PUSH"] :is(.page-content,.home-main,.auth-form-panel) { animation:mooncci-fade var(--motion-page) var(--ease-feedback); }
 html[data-navigation-type="POP"] :is(.page-content,.home-main,.auth-form-panel,.resource-content) { animation:none; }
 html[data-navigation-type="PUSH"] html[data-navigation-type="PUSH"] .resource-content { animation:mooncci-fade var(--motion-content) var(--ease-feedback); }
-:is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button) {
+:is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button,.ui-press-feedback) {
   transition:background-color var(--motion-control) ease-out,border-color var(--motion-control) ease-out,color var(--motion-control) ease-out,opacity var(--motion-control) ease-out,scale var(--motion-control) ease-out;
 }
-:is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button):active:not(:disabled) { scale:.98; }
+:is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button,.ui-press-feedback):active:not(:disabled):not([aria-disabled="true"]) { scale:.98; }
 :is(.post-card,.project-card,.activity-row) { transition:background-color var(--motion-control) ease-out,border-color var(--motion-control) ease-out; }
 :is(.post-card,.project-card,.activity-row):hover { scale:1; }
 :is([data-slot="dialog-content"],[data-slot="alert-dialog-content"],.article-media-dialog,.reading-tools-panel)[data-state="open"] { animation:mooncci-panel-in var(--motion-enter) var(--ease-enter); }
@@ -27,11 +27,18 @@ html[data-reduced-motion="true"] { scroll-behavior:auto !important; }
 html[data-reduced-motion="true"] *,html[data-reduced-motion="true"] *::before,html[data-reduced-motion="true"] *::after {
   animation:none !important; transition:none !important; scroll-behavior:auto !important;
 }
-html[data-reduced-motion="true"] :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button):active { scale:1; }
+html[data-reduced-motion="true"] :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button,.ui-press-feedback):active { scale:1; }
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
-  :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button):active { scale:1; }
+  :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button,.ui-press-feedback):active { scale:1; }
 }
+
+/* Use the existing underline, moving only its presentation after selection commits. */
+.filter-tabs { position:relative; }
+.filter-tabs .filter-tab-indicator { position:absolute; bottom:1px; height:1px; background:var(--foreground); pointer-events:none; transform-origin:left center; }
+.filter-tabs[data-indicator-ready="true"] button[aria-pressed="true"] { border-bottom-color:transparent; }
+[data-slot="dropdown-menu-content"],[data-slot="dropdown-menu-sub-content"] { animation-duration:var(--motion-feedback); animation-timing-function:var(--ease-enter); animation-fill-mode:none; }
+.site-header :is(.nav-popover,.header-search) { animation-fill-mode:none; }
 
 .auth-route-skeleton { width:min(100%,440px);margin-inline:auto; min-height:540px; }
 .search-filters { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:24px; }

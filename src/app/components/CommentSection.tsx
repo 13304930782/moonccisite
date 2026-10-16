@@ -2,7 +2,7 @@ import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
 import { EmptyState } from './DetailUI';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { Heart, MessageCircle, Reply, Send, Trash2, X } from 'lucide-react';
+import { Heart, LoaderCircle, MessageCircle, Reply, Send, Trash2, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -109,11 +109,20 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
+  const mounted = useRef(true);
+  const submitPending = useRef(false), replyPending = useRef(false);
+  const contentVersion = useRef(0), replyVersion = useRef(0);
+  const likesPending = useRef(new Set<number>()), deletesPending = useRef(new Set<number>());
+  const [pendingLikes, setPendingLikes] = useState<Set<number>>(new Set());
+  const [pendingDeletes, setPendingDeletes] = useState<Set<number>>(new Set());
+  const currentSort = useRef(sort);
+  currentSort.current = sort;
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const loadComments = () => {
     const version = ++requestVersion.current;
     setCommentsLoading(true);
-    api(endpoint + '?sort=' + sort)
+    api(endpoint + '?sort=' + currentSort.current)
       .then(rows => { if (version === requestVersion.current) setComments(rows); })
       .catch((err) => { if (version === requestVersion.current) setMessage(err.message || '评论加载失败'); })
       .finally(() => { if (version === requestVersion.current) setCommentsLoading(false); });
@@ -136,6 +145,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (submitPending.current) return;
 
     if (!user) {
       setMessage('请先登录后再评论');
@@ -147,27 +157,32 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
       return;
     }
 
+    submitPending.current = true;
+    const sentContent = content, sentVersion = contentVersion.current;
     setLoading(true);
     setMessage('');
 
     try {
       const res = await api(endpoint, {
         method: 'POST',
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content: sentContent }),
       });
 
+      if (!mounted.current) return;
       notify.success(res.message || '评论已提交');
-      setContent('');
+      if (contentVersion.current === sentVersion) setContent('');
       loadComments();
     } catch (err: any) {
-      setMessage(err.message || '评论提交失败'); notify.error(err.message || '评论提交失败');
+      if (mounted.current) { setMessage(err.message || '评论提交失败'); notify.error(err.message || '评论提交失败'); }
     } finally {
-      setLoading(false);
+      submitPending.current = false;
+      if (mounted.current) setLoading(false);
     }
   };
 
   const submitReply = async (event: FormEvent) => {
     event.preventDefault();
+    if (replyPending.current) return;
 
     if (!user || !replyingTo) return;
 
@@ -176,6 +191,8 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
       return;
     }
 
+    replyPending.current = true;
+    const sentContent = replyContent, sentTarget = replyingTo, sentVersion = replyVersion.current;
     setSubmittingReply(true);
     setMessage('');
 
@@ -183,24 +200,26 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
       const res = await api(endpoint, {
         method: 'POST',
         body: JSON.stringify({
-          content: replyContent,
-          parent_id: replyingTo.parent_id || replyingTo.id,
-          reply_to_user_id: replyingTo.user_id,
+          content: sentContent,
+          parent_id: sentTarget.parent_id || sentTarget.id,
+          reply_to_user_id: sentTarget.user_id,
         }),
       });
 
+      if (!mounted.current) return;
       notify.success(res.message || '回复已提交');
-      setReplyContent('');
-      setReplyingTo(null);
+      if (replyVersion.current === sentVersion) { setReplyContent(''); setReplyingTo(null); }
       loadComments();
     } catch (err: any) {
-      setMessage(err.message || '回复提交失败'); notify.error(err.message || '回复提交失败');
+      if (mounted.current) { setMessage(err.message || '回复提交失败'); notify.error(err.message || '回复提交失败'); }
     } finally {
-      setSubmittingReply(false);
+      replyPending.current = false;
+      if (mounted.current) setSubmittingReply(false);
     }
   };
 
   const toggleLike = async (comment: Comment) => {
+    if (likesPending.current.has(comment.id)) return;
     if (!user) {
       setMessage('请先登录后再点赞');
       return;
@@ -211,6 +230,8 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
       return;
     }
 
+    likesPending.current.add(comment.id);
+    setPendingLikes(new Set(likesPending.current));
     try {
       if (comment.liked_by_me) {
         await api('/comments/' + comment.id + '/like', { method: 'DELETE' });
@@ -221,21 +242,35 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
         });
       }
 
-      loadComments();
+      if (mounted.current) {
+        const liked = !comment.liked_by_me;
+        setComments(rows => rows.map(row => row.id === comment.id ? { ...row, liked_by_me: liked, like_count: Math.max(0, row.like_count + (row.liked_by_me === liked ? 0 : liked ? 1 : -1)) } : row));
+        loadComments();
+      }
     } catch (err: any) {
-      setMessage(err.message || '操作失败'); notify.error(err.message || '操作失败');
+      if (mounted.current) { setMessage(err.message || '操作失败'); notify.error(err.message || '操作失败'); }
+    } finally {
+      likesPending.current.delete(comment.id);
+      if (mounted.current) setPendingLikes(new Set(likesPending.current));
     }
   };
 
   const deleteComment = async (comment: Comment) => {
-    if (!(await confirmAction('确定要删除这条评论吗？'))) return;
-
+    if (deletesPending.current.has(comment.id)) return;
+    deletesPending.current.add(comment.id);
     try {
+      if (!(await confirmAction('确定要删除这条评论吗？')) || !mounted.current) return;
+      setPendingDeletes(new Set(deletesPending.current));
       const res = await api('/comments/' + comment.id, { method: 'DELETE' });
+      if (!mounted.current) return;
       notify.success(res.message || '评论已删除');
+      setComments(rows => rows.filter(row => row.id !== comment.id));
       loadComments();
     } catch (err: any) {
-      setMessage(err.message || '删除失败'); notify.error(err.message || '删除失败');
+      if (mounted.current) { setMessage(err.message || '删除失败'); notify.error(err.message || '删除失败'); }
+    } finally {
+      deletesPending.current.delete(comment.id);
+      if (mounted.current) setPendingDeletes(new Set(deletesPending.current));
     }
   };
 
@@ -293,7 +328,9 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
             <button
               onClick={() => toggleLike(item)}
               aria-pressed={item.liked_by_me}
-              disabled={item.status !== 'visible'}
+              aria-busy={pendingLikes.has(item.id)}
+              aria-label={pendingLikes.has(item.id) ? '正在更新点赞' : item.liked_by_me ? '取消点赞' : '点赞'}
+              disabled={item.status !== 'visible' || pendingLikes.has(item.id)}
               className={
                 'comment-like inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition ' +
                 (item.liked_by_me
@@ -302,17 +339,19 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
                 ' disabled:opacity-50'
               }
             >
-              <Heart
+              {pendingLikes.has(item.id) ? <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Heart
                 className={
                   'w-4 h-4 ' + (item.liked_by_me ? 'fill-current' : '')
                 }
-              />
+                aria-hidden="true"
+              />}
               {item.like_count || 0}
             </button>
 
             {user && item.status === 'visible' && (
               <button
                 onClick={() => {
+                  replyVersion.current++;
                   setReplyingTo(item);
                   setReplyContent('');
                 }}
@@ -326,10 +365,12 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
             {canDelete(user, item) && (
               <button
                 onClick={() => deleteComment(item)}
+                aria-busy={pendingDeletes.has(item.id)}
+                disabled={pendingDeletes.has(item.id)}
                 className="comment-delete inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:text-red-600 hover:bg-red-50 transition"
               >
                 <Trash2 className="w-4 h-4" />
-                删除
+                {pendingDeletes.has(item.id) ? '删除中…' : '删除'}
               </button>
             )}
           </div>
@@ -348,6 +389,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
                 <button
                   type="button"
                   onClick={() => {
+                    replyVersion.current++;
                     setReplyingTo(null);
                     setReplyContent('');
                   }}
@@ -360,7 +402,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
               <textarea
                 aria-label={'回复 @'+item.author_name}
                 value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
+                onChange={(e) => { replyVersion.current++; setReplyContent(e.target.value); }}
                 rows={3}
                 placeholder={'回复 @' + item.author_name + '...'}
                 className="w-full rounded-[6px] border border-border bg-card px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -370,6 +412,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
                 <button
                   type="submit"
                   disabled={submittingReply || !replyContent.trim()}
+                  aria-busy={submittingReply}
                   className="inline-flex items-center gap-1.5 rounded-[6px] bg-muted px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60"
                 >
                   <Send className="w-3.5 h-3.5" />
@@ -440,7 +483,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
         <textarea
           aria-label="写下你的评论"
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => { contentVersion.current++; setContent(e.target.value); }}
           rows={3}
           placeholder={
             user
@@ -456,6 +499,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
           {!compact&&user&&<p className="comment-posting-rule">以 {user.username} {getRoleName(user.role)} 发布 · {getCommentRule(user.role)}</p>}
           <button
             disabled={loading || !user}
+            aria-busy={loading}
             className="comment-submit"
           >
             <Send className="w-4 h-4" />

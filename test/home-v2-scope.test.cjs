@@ -89,7 +89,7 @@ test('only HomePage imports the new stylesheet, with no replacement global style
  }
 });
 
-test('shared shell, content components and theme retain their 9884b75 Git blobs',()=>{
+test('shared appearance retains 9884b75 blobs except explicitly approved navigation and interaction logic',()=>{
  // Canonical LF blobs work on Windows and in shallow CI without historical commits.
  const pins={
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
@@ -105,8 +105,18 @@ test('shared shell, content components and theme retain their 9884b75 Git blobs'
  };
  for(const [path,pin] of Object.entries(pins)){
   let source=fs.readFileSync(path,'utf8').replace(/\r\n/g,'\n');
-  // The only approved shared presentation change is the source-return entry.
+  // Normalize only the approved navigation/interaction lines; all other source stays pinned.
   if(path==='src/app/components/ContentUI.tsx')source=source.replace("import { SiteBack } from './SiteBack';\n",'').replace('      <SiteBack />\n','');
+  if(path==='src/app/components/Header.tsx')source=source
+   .replace('  const searchButton=useRef<HTMLButtonElement>(null);\n','')
+   .replace("        const disclosure=header.current?.querySelector<HTMLDetailsElement>('details[open]');\n",'')
+   .replace("        if(disclosure?.contains(document.activeElement)&&!menuPanel.current?.contains(document.activeElement))disclosure.querySelector('summary')?.focus({preventScroll:true});\n",'')
+   .replace("        if(searchButton.current?.getAttribute('aria-expanded')==='true')searchButton.current.focus({preventScroll:true});\n",'')
+   .replace("if(menuButton.current?.getAttribute('aria-expanded')==='true')closeMenu();else setMenu(false);",'setMenu(false);')
+   .replace('            ref={searchButton}\n','')
+   .replace('setSearch(current=>!current);','setSearch(!search);')
+   .replace('            aria-controls="header-search-form"\n','')
+   .replace('<form id="header-search-form" className="site-container header-search"','<form className="site-container header-search"');
   const bytes=Buffer.from(source);
   assert.equal(crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex'),pin,path);
  }

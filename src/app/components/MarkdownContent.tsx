@@ -8,6 +8,7 @@ import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { safeHref, safeImageSrc } from '../lib/safeUrl';
 import { dimensionsFor, type ImageDimensions } from '../lib/imageDimensions';
+import { ArticleImagePreview, LinkedImages, PreviewImage } from './ArticleImagePreview';
 
 function plainText(node: any): string {
   return (
@@ -37,12 +38,14 @@ export function MarkdownContent({
   content,
   headingPrefix,
   imageDimensions,
+  previewImages = false,
 }: {
   content: string;
   headingPrefix?: string;
   imageDimensions?: ImageDimensions;
+  previewImages?: boolean;
 }) {
-  if(isRichText(content)) return <RichTextContent content={content} headingPrefix={headingPrefix} imageDimensions={imageDimensions}/>;
+  if(isRichText(content)) return <ArticleImagePreview key={content} enabled={previewImages}><RichTextContent content={content} headingPrefix={headingPrefix} imageDimensions={imageDimensions}/></ArticleImagePreview>;
   const heading =
     (level: number) =>
     ({ node, children }: any) =>
@@ -56,7 +59,7 @@ export function MarkdownContent({
         children,
       );
   return (
-    <div className="markdown-body">
+    <ArticleImagePreview key={content} enabled={previewImages}><div className="markdown-body">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -75,7 +78,7 @@ export function MarkdownContent({
                 target={safe.startsWith('#') ? undefined : '_blank'}
                 rel="noopener noreferrer"
               >
-                {children}
+                <LinkedImages>{children}</LinkedImages>
               </a>
             ) : (
               <>{children}</>
@@ -84,7 +87,7 @@ export function MarkdownContent({
           img: ({ src, alt }) => {
             const safe = safeImageSrc(src);
             return safe ? (
-              <img src={safe} alt={alt || ''} loading="lazy" {...dimensionsFor(safe, imageDimensions)} />
+              <PreviewImage src={safe} alt={alt || ''} loading="lazy" {...dimensionsFor(safe, imageDimensions)} />
             ) : null;
           },
           table: ({ children }) => (
@@ -101,6 +104,6 @@ export function MarkdownContent({
       >
         {String(content || '')}
       </ReactMarkdown>
-    </div>
+    </div></ArticleImagePreview>
   );
 }

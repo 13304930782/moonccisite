@@ -1,6 +1,7 @@
 import { notify } from '../lib/feedback';
 import { SiteBack } from '../components/SiteBack';
-import { useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { feedbackMotion } from '../lib/feedbackMotion';
 import { Link } from 'react-router-dom';
 import { MessageCircle, FileText, GitBranch } from 'lucide-react';
 import '../../styles/update-journal.css';
@@ -21,13 +22,34 @@ export default function UpdatesPage() {
   const page = Math.max(1, Number(params.get('page')) || 1),
     type = params.get('type') || '';
   const resource = useResource(`/activity?page=${page}&type=${encodeURIComponent(type)}`);
+  const filters=useRef<HTMLElement>(null),indicator=useRef<HTMLSpanElement>(null);
+  const indicatorStop=useRef(()=>{}),indicatorTarget=useRef('');
+  useEffect(()=>()=>indicatorStop.current(),[]);
+  const useClientLayoutEffect=typeof window==='undefined'?useEffect:useLayoutEffect;
+  useClientLayoutEffect(()=>{
+    const nav=filters.current,line=indicator.current;
+    if(!nav||!line)return;
+    function place(){
+      if(!nav||!line)return;
+      const selected=nav.querySelector<HTMLElement>('[aria-pressed="true"]');
+      if(!selected)return;
+      const old=line.getBoundingClientRect(),bounds=selected.getBoundingClientRect(),parent=nav.getBoundingClientRect(),ready=nav.dataset.indicatorReady==='true';
+      const left=bounds.left-parent.left+nav.scrollLeft,target=`${left}:${bounds.width}`;
+      if(indicatorTarget.current===target)return;
+      indicatorTarget.current=target;indicatorStop.current();line.style.left=`${left}px`;line.style.width=`${bounds.width}px`;nav.dataset.indicatorReady='true';
+      if(ready&&old.width&&bounds.width)indicatorStop.current=feedbackMotion(line,{transform:[`translateX(${old.left-bounds.left}px) scaleX(${old.width/bounds.width})`,'none']},.16);
+    }
+    place();const observer=new ResizeObserver(place);observer.observe(nav);nav.querySelectorAll('button').forEach(button=>observer.observe(button));
+    return()=>observer.disconnect();
+  },[type]);
   return (
     <SitePage>
       <div className="update-journal update-feed">
       <PageHeading eyebrow="JOURNAL" title="最近更新">
         <p>文章、近况，以及作品的更新</p>
       </PageHeading>
-      <nav className="filter-tabs" aria-label="更新类型">
+      <nav ref={filters} className="filter-tabs" aria-label="更新类型">
+        <span ref={indicator} className="filter-tab-indicator" aria-hidden="true"/>
         {[
           ['', '全部'],
           ['post', '文章'],
@@ -37,7 +59,7 @@ export default function UpdatesPage() {
           <button
             key={key}
             aria-pressed={type === key}
-            onClick={() => setParams({ type: key, page: '1' })}
+            onClick={() => {if(key!==type||page!==1)setParams({ type: key, page: '1' });}}
           >
             {label}
           </button>
