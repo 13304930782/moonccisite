@@ -5,8 +5,9 @@ import { SiteFooter } from '../components/SiteFooter';
 import { BlogCard } from '../components/BlogCard';
 import { lazy, Suspense } from 'react';
 const MarkdownContent = lazy(() => import('../components/MarkdownContent').then(m => ({ default: m.MarkdownContent })));
+const HomeActivityList = lazy(() => import('../components/home/HomeActivityList').then(m => ({ default: m.HomeActivityList })));
 import {
-  ActivityList,
+  ContentSkeleton,
   formatDate,
   ResourceState,
   SubscribeForm,
@@ -14,10 +15,13 @@ import {
 } from '../components/ContentUI';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { ProjectCard } from '../components/ProjectCard';
-function HeroLink({ to, label }: { to: string; label: string }) {
+import '../../styles/home-v2.css';
+
+function HeroLink({ to, label, primary = false }: { to: string; label: string; primary?: boolean }) {
+  const className = `neo-button home-hero-button${primary ? ' neo-button-dark home-hero-button--primary' : ''}`;
   return isExternalHttpUrl(to) ? (
     <a
-      className="text-link"
+      className={className}
       href={safeHref(to)}
       target="_blank"
       rel="noreferrer"
@@ -25,7 +29,7 @@ function HeroLink({ to, label }: { to: string; label: string }) {
       {label} ↗
     </a>
   ) : (
-    <Link className="text-link" to={safeRoutePath(to)}>
+    <Link className={className} to={safeRoutePath(to)}>
       {label} ↗
     </Link>
   );
@@ -34,9 +38,9 @@ function LatestNote({ latest }: { latest: ReturnType<typeof useResource> }) {
   const note = latest.data?.items?.[0];
   return <ResourceState resource={latest}>
     {note ? <>
-      <p>{note.excerpt}</p>
-      <time className="muted">发布于 {formatDate(note.published_at)}</time>
-      <div className="hero-note-actions"><Link className="text-link" to={safeRoutePath(note.path)}>查看这条近况 ↗</Link></div>
+      <p className="home-note-text">{note.excerpt}</p>
+      <time className="muted home-note-date" dateTime={note.published_at}>发布于 {formatDate(note.published_at)}</time>
+      <div className="hero-note-actions"><Link className="home-note-link" to={safeRoutePath(note.path)}>查看这条近况 →</Link></div>
     </> : <p className="muted">还没有发布近况。</p>}
   </ResourceState>;
 }
@@ -51,7 +55,7 @@ export default function HomePage() {
   const fallbackNoteId = now.data && !now.data.content?.trim() ? latest.data?.items?.[0]?.activity_id : null;
   const visibleActivity = (activity.data?.items || []).filter((item: any) => item.activity_id !== fallbackNoteId);
   return (
-    <div className="neo-page">
+    <div className="neo-page home-v2">
       <Header />
       <main className="site-container home-main">
         <section className="home-hero">
@@ -62,14 +66,15 @@ export default function HomePage() {
               </p>
               <h1>
                 {hero.title ||
-                  `${hero.title_before || ''}${hero.title_highlight || ''}${hero.title_after || ''}`}
+                  `${hero.title_before || ''}${hero.title_highlight || ''}${hero.title_after || ''}` || 'Explore the Programming'}
               </h1>
               <p className="hero-description">{hero.subtitle}</p>
-              <div className="inline-actions">
+              <div className="home-hero-actions">
                 {hero.primary_text && (
                   <HeroLink
                     to={hero.primary_link || '/articles'}
                     label={hero.primary_text}
+                    primary
                   />
                 )}{' '}
                 {hero.secondary_text && (
@@ -82,14 +87,15 @@ export default function HomePage() {
             </ResourceState>
           </div>
           <aside className="now-panel">
-            <p className="eyebrow">{now.data && !now.data.content?.trim() ? 'LATEST NOTE / 最近近况' : 'NOW / 正在做什么'}</p>
+            <p className="eyebrow">最近近况</p>
             <ResourceState resource={now}>
               {now.data?.content?.trim() ? (
                 <>
                   <Suspense fallback={<div className="content-skeleton" style={{ minHeight: 96 }} aria-label="正在加载近况正文" />}><MarkdownContent content={now.data.content} /></Suspense>
-                  <time className="muted">
+                  <time className="muted home-note-date" dateTime={now.data.updated_at || undefined}>
                     更新于 {formatDate(now.data.updated_at)}
                   </time>
+                  <div className="hero-note-actions"><Link className="home-note-link" to="/updates?type=update">查看近况 →</Link></div>
                 </>
               ) : (
                 <LatestNote latest={latest} />
@@ -97,15 +103,18 @@ export default function HomePage() {
             </ResourceState>
           </aside>
         </section>
-        <section className="home-section">
+        <section className="home-section home-updates" aria-labelledby="home-updates-title">
           <div className="section-heading">
-            <h2>最近动态</h2>
-            <Link to="/updates" className="text-link">
-              全部更新 ↗
+            <h2 id="home-updates-title">最近动态</h2>
+            <Link to="/updates" className="home-updates-link">
+              全部更新 →
             </Link>
           </div>
           <ResourceState resource={activity}>
-            <ActivityList items={visibleActivity} />
+            <Suspense fallback={<ContentSkeleton />}>
+              <HomeActivityList items={visibleActivity} posts={posts.data || []} postsLoading={posts.loading} />
+            </Suspense>
+            <div className="home-updates-more"><Link to="/updates" className="home-soft-button">查看全部更新</Link></div>
           </ResourceState>
         </section>
         <section className="home-section" id="latest">
