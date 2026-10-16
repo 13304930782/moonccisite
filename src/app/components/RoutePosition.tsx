@@ -22,7 +22,8 @@ export function RoutePosition({ children }: { children?: ReactNode }) {
     const save = () => { if (!restoring) { if (positions.size > 100) positions.delete(positions.keys().next().value!); positions.set(location.key, window.scrollY); } };
     const stop = () => { restoring = false; observer.disconnect(); anchorObserver?.disconnect(); };
     const observer = new ResizeObserver(restore);
-    if (restoring) { restore(); observer.observe(document.body); timer = setTimeout(stop, 5000); }
+    // Body is viewport-height; only the content layer grows when lazy content loads.
+    if (restoring) { restore(); observer.observe(document.querySelector('.moon-app-layer') || document.body); timer = setTimeout(stop, 5000); }
     else if (location.hash) {
       let anchor = '';
       try { anchor = decodeURIComponent(location.hash.slice(1)); } catch { /* Invalid fragments must not break navigation. */ }
