@@ -91,22 +91,32 @@
 .home-v2 .now-panel {
   display: flex;
   flex-direction: column;
+  align-self: start;
+  justify-self: end;
+  flex: none;
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  min-height: 0;
   min-width: 0;
-  padding: 28px;
+  /* Balance visible text against the link's 44px click area. */
+  padding: 24px 20px 12px;
   border: 0;
   border-radius: 16px;
   background: var(--home-fill);
 }
 
-.home-v2 .now-panel .eyebrow {
-  margin-bottom: 14px;
+.home-v2 .home-hero .now-panel .eyebrow {
+  margin: 0 0 8px;
 }
 
 .home-v2 .now-panel > .resource-content,
 .home-v2 .now-panel > .resource-content > .resource-content {
   display: flex;
   flex-direction: column;
-  flex: initial;
+  flex: none;
+  height: auto;
+  min-height: 0;
   min-width: 0;
 }
 
@@ -114,8 +124,8 @@
 .home-v2 .now-panel .markdown-body {
   margin: 0;
   color: var(--foreground);
-  font-size: 20px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 400;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -126,7 +136,7 @@
 
 .home-v2 .now-panel .home-note-date {
   display: block;
-  margin-top: 10px;
+  margin-top: 8px;
   color: var(--muted-foreground);
   font-size: 13px;
   line-height: 1.5;
@@ -218,14 +228,19 @@
 .home-v2 .home-activity-label {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  height: 24px;
   border-radius: 999px;
-  padding: 3px 10px;
+  padding: 0 10px;
   background: var(--home-fill);
   color: var(--muted-foreground);
   font-size: 12px;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  letter-spacing: 0;
 }
 
 .home-v2 .home-activity-label[data-type='post'] {
@@ -330,10 +345,20 @@
   }
 }
 
+@media (min-width: 1024px) {
+  .home-v2 .now-panel {
+    align-self: center;
+  }
+}
+
 @media (max-width: 1023px) {
   .home-v2 .home-hero {
     grid-template-columns: minmax(0, 1fr);
     gap: 40px;
+  }
+
+  .home-v2 .now-panel {
+    max-width: none;
   }
 }
 
@@ -362,15 +387,6 @@
   .home-v2 .home-hero-button {
     padding-inline: 12px;
     font-size: 14px;
-  }
-
-  .home-v2 .now-panel {
-    padding: 20px;
-  }
-
-  .home-v2 .home-note-text,
-  .home-v2 .now-panel .markdown-body {
-    font-size: 17px;
   }
 
   .home-v2 .home-updates {
