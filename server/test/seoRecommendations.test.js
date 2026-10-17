@@ -1,5 +1,16 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express');
 const seo=require('../src/lib/seo'),{createSeoRouter}=require('../src/routes/seo');
+test('homepage title follows the editable site title without an SEO prefix',()=>{
+ assert.equal(seo.baseMeta('/',{site_title:'mooncci的博客'}).title,'mooncci的博客');
+ assert.equal(seo.baseMeta('/',{site_title:'新的站点名称'}).title,'新的站点名称');
+ assert.equal(seo.baseMeta('/').title,'mooncci');
+ assert.equal(seo.baseMeta('/').robots,'index, follow');
+ assert.equal(seo.baseMeta('/articles',{site_title:'mooncci的博客'}).title,'文章 · 技术实践与经验记录 · mooncci的博客');
+ const html=seo.renderHtml('<html><head><title>old</title></head></html>',seo.baseMeta('/',{site_title:'A & B'}));
+ assert.match(html,/<title>A &amp; B<\/title>/);
+ assert.match(html,/property="og:title" content="A &amp; B"/);
+ assert.match(html,/name="twitter:title" content="A &amp; B"/);
+});
 test('public landing pages have distinct informative metadata and canonical .site URLs',()=>{
  const metas=Object.keys(seo.titles).map(path=>seo.baseMeta(path));
  assert.equal(new Set(metas.map(m=>m.title)).size,metas.length);
