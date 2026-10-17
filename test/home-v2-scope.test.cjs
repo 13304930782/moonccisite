@@ -105,6 +105,7 @@ test('the local licensed Bold face is only applied to the homepage headline',()=
  assert.equal(faces,1);assert.equal(uses,1);
  assert.equal(fs.readFileSync('src/assets/fonts/JetBrainsMono-Bold.woff2').subarray(0,4).toString(),'wOF2');
  assert.match(fs.readFileSync('src/assets/fonts/JetBrainsMono-OFL.txt','utf8'),/SIL OPEN FONT LICENSE/);
+ assert.equal(fs.readFileSync('public/licenses/JetBrainsMono-OFL.txt','utf8'),fs.readFileSync('src/assets/fonts/JetBrainsMono-OFL.txt','utf8'));
 });
 
 test('only HomePage imports the new stylesheet, with no replacement global stylesheet',()=>{
