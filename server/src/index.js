@@ -114,7 +114,7 @@ const globalLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => /^\/weather-mood(?:\/|$)/.test(req.path) || (req.method === 'POST' && /^\/auth\/logout\/?$/i.test(req.path)),
+  skip: (req) => require('./lib/publicDocument').isDocumentResourceRequest(req) || /^\/weather-mood(?:\/|$)/.test(req.path) || (req.method === 'POST' && /^\/auth\/logout\/?$/i.test(req.path)),
   message: { message: '请求过于频繁，请稍后重试' },
 });
 app.use('/api', globalLimiter);

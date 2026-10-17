@@ -1,6 +1,8 @@
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const {pathToFileURL} = require('node:url');
+const {randomBytes,timingSafeEqual} = require('node:crypto');
+const documentToken = randomBytes(32).toString('hex');
 const publicRoutes = /^\/(?:|articles|archives|about|links|projects|updates|tags|categories|rss|series|early-access|mail-setup|article\/[^/]+|updates\/[^/]+|projects\/[^/]+|category\/[^/]+|tag\/[^/]+|series\/[^/]+)$/;
 const privateRoutes = /^\/(?:admin(?:\/.*)?|account(?:\/.*)?|login|admin-login|register|forgot-password|reset-password|complete-registration|subscription\/[^/]+|search|diagnostics|electricity|node-monitor)$/;
 const endpoints = /^\/(?:settings\/(?:site|blog-pages)|publishing\/config|subscriptions\/status|now|activity|projects(?:\/[A-Za-z0-9_-]+)?|updates\/[1-9]\d*|posts(?:\/(?:[1-9]\d*(?:\/discovery)?|archives|meta\/(?:categories|tags)))?|series(?:\/[^/?]+)?)$/;
@@ -13,11 +15,19 @@ function isPublicResource(value) {
 async function loadPublicResource(value,clientIp) {
   if(!isPublicResource(value)) throw Error('Unexpected document resource');
   // Fixed loopback origin; no visitor cookies, Authorization, Host or arbitrary destination.
-  const response = await fetch(`http://127.0.0.1:${Number(process.env.PORT)||3001}/api${value}`, {signal:AbortSignal.timeout(8000),redirect:'error',headers:require('node:net').isIP(clientIp||'')?{'X-Forwarded-For':clientIp}:{}});
+  const response = await fetch(`http://127.0.0.1:${Number(process.env.PORT)||3001}/api${value}`, {signal:AbortSignal.timeout(8000),redirect:'error',headers:{'X-Mooncci-Document':documentToken,...(require('node:net').isIP(clientIp||'')?{'X-Forwarded-For':clientIp}:{})}});
   if(!response.ok) throw Object.assign(Error('Public document resource unavailable'),{status:response.status});
   const result=await response.json();
   if(/^\/posts\/\d+$/.test(value) && result.status!=='published') throw Object.assign(Error('Unpublished document'),{status:404});
   return result;
+}
+function isDocumentResourceRequest(req) {
+  // Only this process's anonymous SSR reads avoid double-counting the outer page request.
+  const token=req.headers['x-mooncci-document'];
+  return req.method==='GET' && ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress) &&
+    req.originalUrl.startsWith('/api/') && isPublicResource(req.originalUrl.slice(4)) &&
+    typeof token==='string' && Buffer.byteLength(token)===documentToken.length &&
+    timingSafeEqual(Buffer.from(token),Buffer.from(documentToken));
 }
 let runtime;
 async function renderDocument(url, loader=loadPublicResource,status=200) {
@@ -48,4 +58,4 @@ async function injectDocument(template, rendered) {
   return (template.slice(0,start).replace(/<html\b/, '<html data-document-hydrating="true"')+`<div id="root">${rendered.html}</div>\n<script id="mooncci-document-data" type="application/json">${serialize(rendered.data)}</script>\n`+template.slice(rootScript))
     .replace('</head>',css.map(url=>`<link rel="stylesheet" href="${url}">`).join('')+js.map(url=>`<link rel="modulepreload" href="${url}">`).join('')+'</head>');
 }
-module.exports={publicRoutes,privateRoutes,isPublicResource,loadPublicResource,renderDocument,injectDocument,serialize};
+module.exports={publicRoutes,privateRoutes,isPublicResource,isDocumentResourceRequest,loadPublicResource,renderDocument,injectDocument,serialize};
