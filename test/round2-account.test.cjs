@@ -19,10 +19,12 @@ async function fixture(name,initial='',options={}){
  function Shell(){const [params,setParams]=React.useState(()=>new URLSearchParams(initial));route=params.toString();const set=React.useCallback((value,options)=>setParams(current=>{const next=typeof value==='function'?value(current):value;routes.push({query:next.toString(),options});return new URLSearchParams(next);}),[]);changeRoute=value=>setParams(new URLSearchParams(value));return React.createElement(Component,{useParams:[params,set]});}
  let activeParams;
  function WithParams(props){activeParams=props.useParams;return React.createElement(Page);}
+ const listQuery=load('src/app/lib/useAdminList.ts',{'react-router-dom':{useLocation:()=>({pathname:'/account/fixture',state:null})},'./usePageSearchParams':{usePageSearchParams:()=>activeParams},'./pageScroll':{paginationSelector:'nav.pagination',paginationState:(_nav,_path,state)=>state},'./api':{api}});
  const imports={
   '../lib/api':{api},'../lib/feedback':{notify:{success:message=>notices.push({kind:'success',message}),error:message=>notices.push({kind:'error',message})}},
   '../lib/useEngagement':{useEngagement:()=>true},'../context/AuthContext':{useAuth:()=>({user:{id:1}})},
   'react-router-dom':{Link:({to,children,...props})=>React.createElement('a',{...props,href:to},children),useSearchParams:()=>activeParams},
+  '../lib/usePageSearchParams':{usePageSearchParams:()=>activeParams},'../lib/useAdminList':listQuery,
   '../components/ThemeSelect':{ThemeSelect:({children,...props})=>React.createElement('select',props,children)},
   '../components/ui/dialog':{Dialog:({open,children,...props})=>open?React.createElement('dialog',props,children):null,DialogContent:'div',DialogTitle:'h2',DialogDescription:'p'},
   '../components/ContentUI':{ContentSkeleton:()=>React.createElement('div',{'data-skeleton':true}),Pagination:({data,onPage})=>React.createElement('button',{'data-page':true,onClick:()=>onPage(data.page+1)},'next')},
@@ -35,6 +37,12 @@ async function fixture(name,initial='',options={}){
   allText:()=>text(root.root),close:async()=>{await act(async()=>root.unmount());for(const [key,descriptor]of saved){if(descriptor)Object.defineProperty(global,key,descriptor);else delete global[key];}},
  };
 }
+
+test('reselecting current notification category and bookmark folder on page two preserves page and requests',async()=>{
+ for(const [name,initial,label,value]of[['NotificationsPage','kind=reply&page=2&keep=1','消息分类','reply'],['BookmarksPage','folder=1&page=2&keep=1','收藏夹','1']]){
+  const f=await fixture(name,initial);try{const before=f.reads.length;await act(async()=>f.select(label).props.onValueChange(value));assert.equal(f.reads.length,before);assert.match(f.route,/page=2/);assert.match(f.route,/keep=1/);}finally{await f.close();}
+ }
+});
 
 test('notification filter follows newest URL intent, aborts the old read and preserves context while loading',async()=>{
  const f=await fixture('NotificationsPage','kind=comment&page=2&keep=1');try{

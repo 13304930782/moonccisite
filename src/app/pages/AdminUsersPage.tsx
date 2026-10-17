@@ -1,19 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAdminList } from '../lib/useAdminList';
 import { AdminPagination } from '../components/AdminPagination';
 import { ThemeSelect } from '../components/ThemeSelect';
 const roles: Record<string,string> = {owner:'站长',admin:'管理员',editor:'编辑',teacher:'教师',user:'普通用户'};
 export default function AdminUsersPage() {
-  const [keyword,setKeyword] = useState('');
-  const [filters,setFilters] = useState({keyword:'',role:'all',status:'all'});
-  const list = useAdminList<any>('/admin/users',filters);
-  const filter = (patch: Partial<typeof filters>) => { list.setPage(1); setFilters(f=>({...f,...patch})); };
+  const list = useAdminList<any>('/admin/users',{keyword:'',role:'all',status:'all'});
+  const filters = list.filters;
+  const [keyword,setKeyword] = useState(filters.keyword);
+  useEffect(() => setKeyword(filters.keyword), [filters.keyword]);
+  const filter = (patch: Record<string,string>, replace = true) => { if (replace && Object.entries(patch).every(([key,value]) => filters[key] === value)) return; list.changeParams({...patch,page:''},{replace}); };
   return <div className="admin-page">
     <h1 className="admin-title">用户管理</h1>
     <p className="text-muted-foreground">查看账号资料、登录方式与权限。进入设置可修改资料或删除账号。</p>
     <div className="admin-toolbar">
-      <form className="admin-search" onSubmit={e=>{e.preventDefault();filter({keyword:keyword.trim()});}}>
+      <form className="admin-search" onSubmit={e=>{e.preventDefault();filter({keyword:keyword.trim()},false);}}>
         <input aria-label="搜索用户" placeholder="搜索用户名或邮箱" value={keyword} onChange={e=>setKeyword(e.target.value)} />
         <button className="neo-button" type="submit">搜索</button>
       </form>

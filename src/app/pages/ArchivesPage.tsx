@@ -1,4 +1,5 @@
-import {Link,useSearchParams} from 'react-router-dom';
+import {Link} from 'react-router-dom';
+import {usePageSearchParams as useSearchParams} from '../lib/usePageSearchParams';
 import {SitePage,PageHeading,ResourceState,Pagination,PageData,useResource,formatDate} from '../components/ContentUI';
 import {EmptyState} from '../components/DetailUI';
 import '../../styles/blog-foundation.css';
@@ -9,5 +10,5 @@ export default function ArchivesPage(){
  return <SitePage><PageHeading eyebrow="ARCHIVES" title="文章归档"><p>按最初发布的时间，回看写过的文章。</p></PageHeading><ResourceState resource={resource}>
  {!groups.size&&<EmptyState>还没有发布文章。</EmptyState>}
  <div className="archive-list">{[...groups].map(([month,posts])=><section key={month}><h2>{month.replace('-',' 年 ')} 月 <small>共 {resource.data?.months.find((m:{month:string;count:number})=>m.month===month)?.count||posts.length} 篇</small></h2>{posts.map(post=><Link className="archive-row" key={post.id} to={`/article/${post.id}`}><time>{formatDate(post.published_at)}</time><span>{post.title}</span></Link>)}</section>)}</div>
- {resource.data&&resource.data.total>0&&<Pagination data={resource.data} onPage={p=>setParams({page:String(p)})}/>}</ResourceState></SitePage>;
+ {resource.data&&resource.data.total>0&&<Pagination data={resource.data} onPage={(p,options)=>setParams(current=>{const next=new URLSearchParams(current);p===1?next.delete('page'):next.set('page',String(p));return next;},options)}/>}</ResourceState></SitePage>;
 }

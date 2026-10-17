@@ -46,8 +46,11 @@ test('mail test responses remain pending until the native-action scenario explic
 
 async function fixture(handle) {
   const calls = [], confirmations = [], answers = [], dirty = [], focus = [], scrolls = [], presentations = [], frames = new Map();
-  let root, frame = 0, user = { id: 7001, role: 'owner' };
-  const browser = { scrollY: 0, addEventListener() {}, removeEventListener() {}, scrollTo(value) { scrolls.push(value); this.scrollY = value.top; }, setInterval, clearInterval };
+  let root, frame = 0, user = { id: 7001, role: 'owner' }, params=new URLSearchParams(),updateRoute;
+  const entries=[''], routes=[];let index=0;
+  const browser = { location:{origin:'https://fixture.invalid'}, scrollY: 0, addEventListener() {}, removeEventListener() {}, scrollTo(value) { scrolls.push(value); this.scrollY = value.top; }, setInterval, clearInterval };
+  const navigate=(target,options={})=>{if(typeof target==='number')index+=target;else {const search=typeof target==='string'?target.split('?')[1]||'':target.search.replace(/^\?/,'');if(options.replace)entries[index]=search;else {entries.splice(index+1);entries.push(search);index++;}routes.push({search,options});}params=new URLSearchParams(entries[index]);updateRoute(value=>value+1);};
+  const setParams=(next,options)=>navigate({search:'?'+(typeof next==='function'?next(new URLSearchParams(params)):new URLSearchParams(next))},options);
   const api = async (path, options = {}) => {
     const call = { path, method: options.method || 'GET', body: options.body && JSON.parse(options.body), signal: options.signal };
     calls.push(call);
@@ -70,7 +73,10 @@ async function fixture(handle) {
     '../lib/feedbackMotion': { feedbackMotion: (element, keyframes, duration) => { const entry = {element,keyframes,duration,stopped:false};presentations.push(entry);return () => { entry.stopped=true; }; } },
     '../lib/motionDesign': { motionDesign: { content: { duration: .22 } } },
     '../context/AuthContext': { useAuth: () => ({ user }) },
-    'react-router-dom': { Link: ({ to, children, ...props }) => React.createElement('a', { ...props, href: to }, children) },
+    'react-router-dom': { Link: ({ to, children, ...props }) => React.createElement('a', { ...props, href: to }, children),useLocation:()=>({pathname:'/account/mailbox',search:'?'+params}),useNavigate:()=>navigate },
+    '../lib/usePageSearchParams':{usePageSearchParams:()=>[params,setParams]},
+    '../components/RoutePosition':{usePreviousSiteVisit:()=>index>0?{path:'/account/mailbox'+(entries[index-1]?'?'+entries[index-1]:'')}:null},
+    '../lib/pageScroll':{pageScrollTop:()=>browser.scrollY,scrollPageTo:top=>browser.scrollTo({top,behavior:'instant'}),paginationState:()=>undefined},
     'lucide-react': Object.fromEntries(['ArrowLeft', 'ArrowUpRight', 'Check', 'Copy', 'Eye', 'EyeOff', 'Inbox', 'KeyRound', 'Mail', 'RefreshCw', 'Send'].map(key => [key, 'svg'])),
   };
   const module = { exports: {} };
@@ -78,12 +84,13 @@ async function fixture(handle) {
     name => name.endsWith('.css') ? {} : mocks[name] || require(name), browser, { pathname: '/account/mailbox' },
     fn => { frames.set(++frame, fn); return frame; }, key => frames.delete(key));
   const Page = module.exports.default;
-  await act(async () => { root = create(React.createElement(Page), { createNodeMock: element => ({
+  function Shell(){[,updateRoute]=React.useState(0);return React.createElement(Page);}
+  await act(async () => { root = create(React.createElement(Shell), { createNodeMock: element => ({
     focus: () => focus.push(element.props['data-mail-uid'] || element.type),
     querySelector: selector => ({ focus: () => focus.push(selector) }),
   }) }); });
   const button = label => { const found = root.root.findAllByType('button').find(node => text(node) === label); assert(found, 'Missing button ' + label); return found; };
-  const click = async (label, trigger = { tagName: 'BUTTON', textContent: label }) => act(async () => button(label).props.onClick({ currentTarget: trigger }));
+  const click = async (label, trigger = { tagName: 'BUTTON', textContent: label,closest:()=>null }) => act(async () => button(label).props.onClick({ currentTarget: trigger }));
   const edit = async (id, value) => act(async () => root.root.findByProps({ id }).props.onChange({ target: { value } }));
   const open = async uid => act(async () => root.root.findByProps({ 'data-mail-uid': uid }).props.onClick());
   const send = async submitter => act(async () => { void root.root.findAllByType('form').find(node => node.props['aria-busy'] !== undefined).props.onSubmit({ preventDefault() {}, nativeEvent: { submitter } }); });
@@ -91,7 +98,8 @@ async function fixture(handle) {
   const flushFrames = async () => act(async () => { for (const [id, fn] of [...frames]) { frames.delete(id); fn(); } });
   return { root, calls, confirmations, answers, dirty, focus, scrolls, presentations, browser, button, click, edit, open, send, draft, flushFrames,
     json: () => text(root.toJSON()), writes: () => calls.filter(call => call.method !== 'GET'),
-    switchAccount: async id => { user = { ...user, id }; await act(async () => root.update(React.createElement(Page))); },
+    routes,navigate:async target=>act(async()=>navigate(target)),get query(){return params.toString();},
+    switchAccount: async id => { user = { ...user, id }; await act(async () => root.update(React.createElement(Shell))); },
     close: async () => act(async () => root.unmount()),
   };
 }
@@ -196,6 +204,27 @@ test('reply never silently overwrites another draft and existing unsaved-leave p
     assert.equal(f.root.root.findByProps({ id: 'mail-body' }).props.value, '');
     assert.equal(f.confirmations.length, 2); assert.equal(f.writes().length, 0);
   } finally { await f.close(); }
+});
+
+test('mail URL distinguishes folder replacement from page/detail history and restores back/forward without losing a draft',async()=>{
+ const f=await fixture();try{
+  await f.click('下一页');assert.match(f.query,/page=2/);assert.equal(f.routes.at(-1).options.replace,false);
+  await f.open(21);assert.match(f.query,/uid=21&uidValidity=123/);assert.equal(f.routes.at(-1).options.replace,false);
+  await f.click('回复');await f.edit('mail-body','保留的内存草稿');
+  await f.navigate(-1);assert.match(f.query,/page=2/);assert.doesNotMatch(f.query,/uid=/);assert(f.root.root.findByProps({'data-mail-uid':21}));
+  await f.navigate(1);assert.match(f.json(),/离线正文 21/);
+  await f.click('写邮件');assert.equal(f.root.root.findByProps({id:'mail-body'}).props.value,'保留的内存草稿');
+  await f.click('已发送');assert.equal(f.routes.at(-1).options.replace,true);assert.match(f.query,/folder=sent/);assert.doesNotMatch(f.query,/uid=/);assert.equal(f.writes().length,0);
+ }finally{await f.close();}
+});
+
+test('an old or absent UIDVALIDITY in a direct mail URL never adopts the new folder epoch',async()=>{
+ const f=await fixture();try{
+  for(const query of ['?uid=11&uidValidity=old&keep=1','?uid=11&keep=1']){
+   await f.navigate(query);assert.match(f.json(),/邮件列表已更新/);assert.equal(f.calls.filter(call=>/\/inbox\/11\?/.test(call.path)).length,0);
+  }
+  await f.click('重试读取列表');assert.doesNotMatch(f.query,/uid=/);assert.match(f.query,/keep=1/);assert(f.root.root.findByProps({'data-mail-uid':11}));
+ }finally{await f.close();}
 });
 
 test('send waits for the actual result, blocks duplicate submits and preserves edits made during the request', async () => {

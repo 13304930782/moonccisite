@@ -1,7 +1,8 @@
+import { AdminBack } from '../components/admin/AdminBack';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { ArrowLeft, ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
 import { api } from '../lib/api';
+import { useAdminListQuery } from '../lib/useAdminList';
 import '../../styles/mailbox.css';
 
 type Status = 'pending' | 'provisioning' | 'active' | 'rejected' | 'revoked' | 'all';
@@ -16,10 +17,10 @@ const tabs: { value: Status; label: string }[] = [
 const label = (status: Status) => tabs.find(tab => tab.value === status)?.label || status;
 
 export default function AdminMailboxRequestsPage() {
-  const [status, setStatus] = useState<Status>('all');
-  const [searchText, setSearchText] = useState('');
-  const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
+  const { filters, page, setPage, pageOptions, changeParams } = useAdminListQuery({ status: 'all', q: '' });
+  const status: Status = tabs.some(tab => tab.value === filters.status) ? filters.status as Status : 'all', query = filters.q;
+  const [searchText, setSearchText] = useState(query);
+  useEffect(() => setSearchText(query), [query]);
   const [result, setResult] = useState<Result | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [confirm, setConfirm] = useState<{ ids: number[]; action: 'approve' | 'reject' | 'revoke' | 'limit' } | null>(null);
@@ -37,8 +38,8 @@ export default function AdminMailboxRequestsPage() {
   }, [status, query, page]);
   useEffect(() => { setLoading(true); load().catch(error => setNotice(error.message || '申请列表加载失败。')).finally(() => setLoading(false)); }, [load]);
   useEffect(() => { if (confirm) confirmRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, [confirm]);
-  const chooseStatus = (next: Status) => { setStatus(next); setPage(1); setConfirm(null); setSelected([]); };
-  const search = (event: FormEvent) => { event.preventDefault(); setQuery(searchText.trim()); setPage(1); setConfirm(null); };
+  const chooseStatus = (next: Status) => { if (next === status) return; changeParams({ status: next, page: '' }); setConfirm(null); setSelected([]); };
+  const search = (event: FormEvent) => { event.preventDefault(); changeParams({ q: searchText.trim(), page: '' }, { replace: false }); setConfirm(null); };
   const toggle = (id: number) => setSelected(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
   const pending = result?.requests.filter(item => item.status === 'pending') || [];
   const allPendingSelected = pending.length > 0 && pending.every(item => selected.includes(item.user_id));
@@ -68,7 +69,7 @@ export default function AdminMailboxRequestsPage() {
   return <main className="mailbox-review-page">
     <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>邮箱申请与权限</h1>
       <p>审核新申请，管理已开通邮箱的发信额度与权限。</p></div>
-      <Link className="mailbox-review-link" to="/admin/mailbox"><ArrowLeft size={16} aria-hidden="true" />返回我的邮箱</Link></header>
+      <AdminBack className="mailbox-review-link" to="/admin/mailbox"><ArrowLeft size={16} aria-hidden="true" />返回我的邮箱</AdminBack></header>
     {notice && <p role="status" aria-live="polite" className="mailbox-notice">{notice}</p>}
     <nav className="mailbox-review-tabs" aria-label="申请状态">{tabs.map(tab => <button key={tab.value} type="button" aria-current={status === tab.value ? 'page' : undefined}
       onClick={() => chooseStatus(tab.value)}>{tab.label}<span>{tab.value === 'all' ? Object.values(result?.counts || {}).reduce((sum, count) => sum + count, 0) : result?.counts?.[tab.value] || 0}</span></button>)}</nav>
@@ -97,8 +98,8 @@ export default function AdminMailboxRequestsPage() {
           <div className="mailbox-review-actions">{item.status === 'pending' && <><button type="button" onClick={() => openApproval([item.user_id])}>批准</button><button type="button" onClick={() => setConfirm({ ids: [item.user_id], action: 'reject' })}>拒绝</button></>}
             {item.status === 'active' && <><button type="button" onClick={() => openLimit(item)}>设置额度</button><button type="button" onClick={() => setConfirm({ ids: [item.user_id], action: 'revoke' })}>停用发信</button></>}</div>
         </article>)}</div></>}
-      {!loading && !!result && result.total > result.limit && <footer className="mailbox-review-pagination"><span>共 {result.total} 项 · 第 {result.page} 页</span><div><button className="mailbox-secondary" disabled={page <= 1} onClick={() => setPage(value => value - 1)}><ChevronLeft size={16} aria-hidden="true" />上一页</button>
-        <button className="mailbox-secondary" disabled={page * result.limit >= result.total} onClick={() => setPage(value => value + 1)}>下一页<ChevronRight size={16} aria-hidden="true" /></button></div></footer>}
+      {!loading && !!result && result.total > result.limit && <footer className="mailbox-review-pagination"><span>共 {result.total} 项 · 第 {result.page} 页</span><div><button className="mailbox-secondary" disabled={page <= 1} onClick={event => setPage(value => value - 1, pageOptions(event?.currentTarget))}><ChevronLeft size={16} aria-hidden="true" />上一页</button>
+        <button className="mailbox-secondary" disabled={page * result.limit >= result.total} onClick={event => setPage(value => value + 1, pageOptions(event?.currentTarget))}>下一页<ChevronRight size={16} aria-hidden="true" /></button></div></footer>}
     </section>
   </main>;
 }

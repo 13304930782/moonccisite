@@ -14,7 +14,6 @@ export default function RssPage() {
     [copyMessage, setCopyMessage] = useState('');
   const address = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    window.scrollTo(0, 0);
     const controller = new AbortController();
     const timer = setTimeout(() => { controller.abort(); setError('加载时间较长，请检查网络后重试。'); setLoading(false); }, 20000);
     setLoading(true);

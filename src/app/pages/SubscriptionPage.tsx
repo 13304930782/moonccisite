@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { CheckCircle2, Mail, CircleAlert } from 'lucide-react';
 import '../../styles/workflow-feedback.css';
 import { api } from '../lib/api';
 import { PageHeading, SitePage } from '../components/ContentUI';
 export default function SubscriptionPage() {
   const { action } = useParams();
-  const location = useLocation();
+  const location = useLocation(), navigate = useNavigate();
   const [token, setToken] = useState(() => window.location.hash.slice(1));
   const [busy, setBusy] = useState(false), [done, setDone] = useState(false), [message, setMessage] = useState('');
   const result = useRef<HTMLHeadingElement>(null);
@@ -14,9 +14,10 @@ export default function SubscriptionPage() {
   const valid = ['confirm', 'unsubscribe'].includes(action || '') && /^[a-f0-9]{64}$/.test(token);
   useEffect(() => {
     if (!location.hash) return;
+    if (!/^[a-f0-9]{64}$/.test(location.hash.slice(1))) {setToken('');return;}
     setToken(location.hash.slice(1)); setDone(false); setMessage('');
-    history.replaceState(history.state, '', window.location.pathname);
-  }, [location.hash]);
+    navigate({pathname:location.pathname,search:location.search,hash:''},{replace:true,state:location.state});
+  }, [location.hash, location.pathname, location.search, location.state, navigate]);
   useEffect(() => { if (done) result.current?.focus(); }, [done]);
   async function submit() {
     if (busy || done) return;

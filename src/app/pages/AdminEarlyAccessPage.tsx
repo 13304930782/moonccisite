@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Search, UserRoundCheck } from 'lucide-react';
 import { api } from '../lib/api';
+import { useAdminListQuery } from '../lib/useAdminList';
 
 const statusText: Record<string, string> = {
   pending: '待审核',
@@ -21,10 +22,10 @@ const occupationText: Record<string, string> = {
 
 export default function AdminEarlyAccessPage() {
   const [items, setItems] = useState<any[]>([]);
-  const [status, setStatus] = useState('pending');
-  const [keyword, setKeyword] = useState('');
-  const [activeKeyword, setActiveKeyword] = useState('');
-  const [page, setPage] = useState(1);
+  const { filters, page, setPage, pageOptions, changeParams } = useAdminListQuery({ status: 'pending', keyword: '' });
+  const status = filters.status, activeKeyword = filters.keyword;
+  const [keyword, setKeyword] = useState(activeKeyword);
+  useEffect(() => setKeyword(activeKeyword), [activeKeyword]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -47,8 +48,7 @@ export default function AdminEarlyAccessPage() {
 
   const search = (event: FormEvent) => {
     event.preventDefault();
-    setPage(1);
-    setActiveKeyword(keyword.trim());
+    changeParams({ keyword: keyword.trim(), page: '' }, { replace: false });
   };
 
   const totalPages = Math.max(1, Math.ceil(total / 30));
@@ -72,7 +72,7 @@ export default function AdminEarlyAccessPage() {
             状态
             <ThemeSelect aria-label="筛选申请状态"
               value={status}
-              onValueChange={(nextValue) => { setStatus(nextValue); setPage(1); }}
+              onValueChange={(status) => { if (status !== filters.status) changeParams({ status, page: '' }); }}
 
             >
               <option value="pending">待审核</option>
@@ -95,7 +95,7 @@ export default function AdminEarlyAccessPage() {
 
       <div className="mt-8 space-y-4">
         {loading && <div className="py-6 text-muted-foreground">正在加载申请…</div>}
-        {!loading && items.length === 0 && <div className="py-6 text-muted-foreground"><p>暂无符合条件的申请。</p><button className="quiet-button" onClick={()=>{setKeyword('');setActiveKeyword('');setStatus('all');setPage(1);}}>清除筛选，查看全部申请</button></div>}
+        {!loading && items.length === 0 && <div className="py-6 text-muted-foreground"><p>暂无符合条件的申请。</p><button className="quiet-button" onClick={()=>{setKeyword('');changeParams({keyword:'',status:'all',page:''});}}>清除筛选，查看全部申请</button></div>}
 
         {items.map((item) => (
           <Link
@@ -129,9 +129,9 @@ export default function AdminEarlyAccessPage() {
 
       {!loading && totalPages > 1 && (
         <div className="admin-pagination mt-6">
-          <button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="neo-button bg-card disabled:opacity-40">上一页</button>
+          <button type="button" disabled={page <= 1} onClick={event => setPage((value) => value - 1, pageOptions(event?.currentTarget))} className="neo-button bg-card disabled:opacity-40">上一页</button>
           <span className="font-mono text-sm font-medium">{page} / {totalPages} · {total} 份申请</span>
-          <button type="button" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)} className="neo-button bg-card disabled:opacity-40">下一页</button>
+          <button type="button" disabled={page >= totalPages} onClick={event => setPage((value) => value + 1, pageOptions(event?.currentTarget))} className="neo-button bg-card disabled:opacity-40">下一页</button>
         </div>
       )}
     </div>

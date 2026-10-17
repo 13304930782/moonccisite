@@ -2,12 +2,14 @@ import {NodeMonitorPermission} from '../components/NodeMonitorPermission';
 import { notify } from '../lib/feedback';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { AccountProfileForm, AccountProfile } from '../components/AccountProfileForm';
+import { AdminBack, useAdminListReturn } from '../components/admin/AdminBack';
 import '../../styles/account.css';
 export default function AdminUserSettingsPage() {
   const { id } = useParams(); const navigate=useNavigate();
+  const { to: backTo } = useAdminListReturn('/admin/users');
   const base=`/admin/users/${id}`;
   const [user,setUser]=useState<AccountProfile|null>(null),[email,setEmail]=useState(''),[confirmation,setConfirmation]=useState(''),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
   const load=()=>api(`${base}/settings`).then(r=>{setUser(r.user);setEmail(r.user.email);setError('');}).catch(e=>setError(e.message));
@@ -17,7 +19,7 @@ export default function AdminUserSettingsPage() {
     try{const r=await api(path,{method,...(body?{body:JSON.stringify(body)}:{})});notify.success(r.message);if(r.user)setUser(r.user);else await load();return true;}
     catch(e:any){setMessage(e.message); notify.error(e.message);return false;}finally{setBusy(false);}
   };
-  return <div className="admin-page"><Link className="text-link" to="/admin/users">返回用户管理</Link><h1 className="admin-title">用户设置</h1>
+  return <div className="admin-page"><AdminBack className="text-link" to="/admin/users">返回用户管理</AdminBack><h1 className="admin-title">用户设置</h1>
     {error?<p role="alert">{error}<button onClick={load}>重试</button></p>:!user?<p role="status">正在加载…</p>:<>
       <p>#{user.id} · {user.username}{user.deleted_at&&<small className="deleted-account-label">已删除</small>}</p>
       <AccountProfileForm key={user.id} user={user} base={base} onSaved={setUser}/>
@@ -30,7 +32,7 @@ export default function AdminUserSettingsPage() {
         </form></section>
         <NodeMonitorPermission key={user.id} userId={user.id}/>
         <section className="account-section"><div><h2>密码</h2><p>重置链接发给用户，管理员不会获得密码。</p></div><button className="neo-button" onClick={()=>void run(`${base}/password-reset`,'POST')}>发送密码重置链接</button></section>
-        <section className="account-section"><div><h2>删除账号</h2><p>保留文章、评论、用户名和头像并标记“已删除”。释放邮箱和第三方绑定，账号无法恢复。</p></div><form className="account-fields" onSubmit={async e=>{e.preventDefault();if(await run(`${base}/account`,'DELETE',{username:confirmation}))navigate('/admin/users');}}><label>输入“{user.username}”确认删除<input value={confirmation} onChange={e=>setConfirmation(e.target.value)} autoComplete="off"/></label><button className="neo-button account-danger" disabled={confirmation!==user.username}>删除账号</button></form></section>
+        <section className="account-section"><div><h2>删除账号</h2><p>保留文章、评论、用户名和头像并标记“已删除”。释放邮箱和第三方绑定，账号无法恢复。</p></div><form className="account-fields" onSubmit={async e=>{e.preventDefault();if(await run(`${base}/account`,'DELETE',{username:confirmation}))navigate(backTo);}}><label>输入“{user.username}”确认删除<input value={confirmation} onChange={e=>setConfirmation(e.target.value)} autoComplete="off"/></label><button className="neo-button account-danger" disabled={confirmation!==user.username}>删除账号</button></form></section>
       </fieldset>}
       {message&&<p role="status" className="account-message">{message}</p>}
     </>}

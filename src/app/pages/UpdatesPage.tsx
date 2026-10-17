@@ -9,7 +9,8 @@ import { Link } from 'react-router-dom';
 import { MessageCircle, FileText, GitBranch } from 'lucide-react';
 import '../../styles/update-journal.css';
 import { CommentSection } from '../components/CommentSection';
-import { useSearchParams, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { usePageSearchParams as useSearchParams } from '../lib/usePageSearchParams';
 import {
   SitePage,
   PageHeading,
@@ -44,7 +45,7 @@ export default function UpdatesPage() {
           <button
             key={key}
             aria-pressed={type === key}
-            onClick={() => {if(key!==type||page!==1)setParams({ type: key, page: '1' });}}
+            onClick={() => setParams(current=>{if((current.get('type')||'')===key)return current;const next=new URLSearchParams(current);key?next.set('type',key):next.delete('type');next.delete('page');return next;},{replace:true})}
           >
             {label}
           </button>
@@ -54,7 +55,7 @@ export default function UpdatesPage() {
         {resource.data && (
           <>
             <UpdateTimeline items={resource.data.items} />
-            <Pagination data={resource.loading || resource.error ? { ...resource.data, page } : resource.data} onPage={(p) => setParams({ type, page: String(p) })} />
+            <Pagination data={resource.loading || resource.error ? { ...resource.data, page } : resource.data} onPage={(p, options) => setParams(current=>{const next=new URLSearchParams(current);p===1?next.delete('page'):next.set('page',String(p));return next;}, options)} />
           </>
         )}
       </ResourceState>
@@ -78,10 +79,10 @@ function UpdateTimeline({items}: {items: any[]}) {
   },[items]);
   // The API orders the complete result before pagination by published_at DESC.
   // Preserve that order here so page boundaries and type filters stay consistent.
-  return <MotionDisclosure open><div ref={feed} className="journal-feed" aria-label="按时间从新到旧排列的更新">
+  return <div ref={feed} className="journal-feed" aria-label="按时间从新到旧排列的更新">
     {!items.length && <p className="quiet-state">暂时没有更新。</p>}
     {items.map(item => <TimelineEntry key={item.activity_id} item={item}/>)}
-  </div></MotionDisclosure>;
+  </div>;
 }
 function TimelineEntry({item}: {item: any}) {
   const [discussion, setDiscussion] = useState(false);

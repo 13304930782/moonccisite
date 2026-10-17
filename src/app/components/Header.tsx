@@ -90,8 +90,16 @@ export function Header() {
   function submit(e: FormEvent) {
     e.preventDefault();
     if (composing.current) return;
-    if (keyword.trim())
-      navigate('/search?q=' + encodeURIComponent(keyword.trim()));
+    const query = keyword.trim();
+    if (!query) return;
+    const samePage = location.pathname === '/search';
+    const params = new URLSearchParams(samePage ? location.search : '');
+    params.set('q', query);
+    for (const name of ['category', 'tag', 'page']) params.delete(name);
+    setSearch(false);
+    searchButton.current?.focus({preventScroll:true});
+    if (samePage && params.toString() === new URLSearchParams(location.search).toString()) return;
+    navigate({pathname:'/search', search:'?' + params, hash:samePage ? location.hash : ''});
   }
   const accountMenu = (user ? (
               <details className="nav-disclosure">

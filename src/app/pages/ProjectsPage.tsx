@@ -1,8 +1,10 @@
 import { EmptyState } from '../components/DetailUI';
 import { SiteBack } from '../components/SiteBack';
+import { useRestoredPagePosition } from '../components/RoutePosition';
 import { ProjectCard } from '../components/ProjectCard';
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { usePageSearchParams as useSearchParams } from '../lib/usePageSearchParams';
 import {
   PageHeading,
   Pagination,
@@ -45,7 +47,7 @@ export default function ProjectsPage() {
             )}
             <Pagination
               data={resource.loading || resource.error ? { ...resource.data, page } : resource.data}
-              onPage={(p) => setParams({ page: String(p) })}
+              onPage={(p,options) => setParams(current=>{const next=new URLSearchParams(current);p===1?next.delete('page'):next.set('page',String(p));return next;},options)}
             />
           </>
         )}
@@ -61,6 +63,12 @@ export function ProjectDetailPage() {
     ),
     p = resource.data;
   const focusedId = params.get("release");
+  const restoringPosition = useRestoredPagePosition();
+  const focusTarget = `${slug}:${focusedId || ''}`;
+  const releaseFocus = useRef({ target: focusTarget, pending: !restoringPosition });
+  if (releaseFocus.current.target !== focusTarget) {
+    releaseFocus.current = { target: focusTarget, pending: !restoringPosition };
+  }
   const articleRef = useRef<HTMLElement>(null);
   const headings = useMemo(() => headingsFor(p?.content || ''), [p?.content]);
   const toc = useMemo(() => [
@@ -88,12 +96,15 @@ export function ProjectDetailPage() {
     return () => observer.disconnect();
   }, [p, toc]);
   useEffect(() => {
-    if (p && focusedId && /^\d+$/.test(focusedId))
+    if (releaseFocus.current.pending && p && focusedId && /^\d+$/.test(focusedId))
       {
         const release = document.getElementById(`release-${focusedId}`);
-        if (release) window.scrollTo({ top: window.scrollY + release.getBoundingClientRect().top - 100 });
+        if (release) {
+          releaseFocus.current.pending = false;
+          window.scrollTo({ top: window.scrollY + release.getBoundingClientRect().top - 100 });
+        }
       }
-  }, [p, focusedId]);
+  }, [p, focusedId, focusTarget]);
   const cover = p ? safeImageSrc(p.cover_image) : '';
   const icon = p ? projectIcon(p) : undefined;
   const renderToc = (compact = false) => (
@@ -171,11 +182,11 @@ export function ProjectDetailPage() {
                   ))}
                   <Pagination
                     data={p.releases}
-                    onPage={(page) => setParams(current => {
+                    onPage={(page,options) => setParams(current => {
                       const next = new URLSearchParams(current);
-                      next.set('page', String(page));
+                      page===1?next.delete('page'):next.set('page', String(page));
                       return next;
-                    })}
+                    },options)}
                   />
                 </section>
               </div>

@@ -1,7 +1,7 @@
 import {isRichText} from '../lib/richText';
 import {RichTextContent,richTextHeadings} from './RichTextContent';
 import {CodeBlock} from './CodeBlock';
-import { createElement } from 'react';
+import { createElement, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from '../lib/remarkGfmRead';
 import remarkParse from 'remark-parse';
@@ -34,7 +34,7 @@ export function headingsFor(content: string) {
   visit(tree);
   return headings;
 }
-export function MarkdownContent({
+export const MarkdownContent = memo(function MarkdownContent({
   content,
   headingPrefix,
   imageDimensions,
@@ -106,4 +106,4 @@ export function MarkdownContent({
       </ReactMarkdown>
     </div></ArticleImagePreview>
   );
-}
+});

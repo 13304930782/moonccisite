@@ -101,8 +101,7 @@ export function AdminShell({ children }: AdminShellProps) {
   const location = useLocation();
   useEffect(() => {
     setMobileOpen(false);
-    mainRef.current?.scrollTo({ top: 0, behavior: 'instant' });
-    setShowTop(false);
+    setShowTop((mainRef.current?.scrollTop || 0) > 320);
   }, [location.pathname]);
   useEffect(() => {
     const media = window.matchMedia('(max-width:760px)');

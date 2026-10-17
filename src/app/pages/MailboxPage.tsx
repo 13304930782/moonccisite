@@ -1,5 +1,8 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { usePageSearchParams } from '../lib/usePageSearchParams';
+import { pageScrollTop, paginationState, scrollPageTo } from '../lib/pageScroll';
+import { usePreviousSiteVisit } from '../components/RoutePosition';
 import { ArrowLeft, ArrowUpRight, Check, Copy, Eye, EyeOff, Inbox, KeyRound, Mail, RefreshCw, Send } from 'lucide-react';
 import { api } from '../lib/api';
 import { visibleDiagnostic } from '../lib/browserDiagnostics';
@@ -26,6 +29,10 @@ export default function MailboxPage() {
 
 function MailboxContent() {
   const { user } = useAuth();
+  const [params,setParams] = usePageSearchParams(), route = useLocation(), navigate = useNavigate(), previous = usePreviousSiteVisit();
+  const folder: Folder = params.get('folder') === 'sent' ? 'sent' : 'inbox';
+  const page = /^[1-9]\d*$/.test(params.get('page') || '') ? Number(params.get('page')) : 1;
+  const uid = /^[1-9]\d*$/.test(params.get('uid') || '') ? Number(params.get('uid')) : 0, uidValidity = params.get('uidValidity') || '';
   const owner = user?.role === 'owner';
   const [access, setAccess] = useState<Access | null>(null);
   const [sent, setSent] = useState<Sent[]>([]);
@@ -49,7 +56,7 @@ function MailboxContent() {
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
-  const [view, setView] = useState<Folder | 'compose'>('inbox');
+  const [view, setView] = useState<Folder | 'compose'>(folder);
   const mailTabs = useRef<HTMLElement>(null), mailSurface = useRef<HTMLElement>(null);
   useMovingIndicator(mailTabs, `${view}:${access?.status}:${loading}`);
   const currentView = useRef(view); currentView.current = view;
@@ -58,14 +65,14 @@ function MailboxContent() {
   const composing = useRef(false);
   const [sendUncertain, setSendUncertain] = useState(false);
   const replyOrigin = useRef<{ folder: Folder; message: Message; scroll: number } | null>(null);
-  const resumeDetail = useRef(false);
   const detailScroll = useRef<number | null>(null);
   const composeInput = useRef<HTMLInputElement>(null);
   const composeBody = useRef<HTMLTextAreaElement>(null);
   const listFocus = useRef<number | null>(null);
   const detailHeading = useRef<HTMLHeadingElement>(null);
   const listElement = useRef<HTMLUListElement>(null);
-  useUnsavedLeave(Boolean(to || subject || content));
+  // Query navigation keeps this keyed component and its in-memory draft mounted.
+  useUnsavedLeave(Boolean(to || subject || content), true);
   const [mailList, setMailList] = useState<MailList | null>(null);
   const [selected, setSelected] = useState<Message | null>(null);
   const previousPresentation = useRef<string | null>(null);
@@ -81,6 +88,7 @@ function MailboxContent() {
   const [pendingMessage, setPendingMessage] = useState<Message | null>(null);
   const [failedMessage, setFailedMessage] = useState<Message | null>(null);
   const [folderRevision, setFolderRevision] = useState(0);
+  const lastFolderRead = useRef<{folder:Folder;revision:number}|null>(null);
   const [historyError, setHistoryError] = useState('');
   const [historyLoading, setHistoryLoading] = useState(false);
   const historyLoaded = useRef(false);
@@ -149,7 +157,7 @@ function MailboxContent() {
       const result = await api(`/mailboxes/folders/${folder}?page=${page}`, { signal: controller.signal });
       if (current()) {
         folders.current[folder] = { list: result, scroll: folders.current[folder]?.scroll || 0 };
-        setMailList(result);
+        setMailList(result); return result as MailList;
       }
     } catch (error: any) { if (current()) {
       if ([401,403,409].includes(error.status)) { folders.current = {}; setMailList(null); setSelected(null); }
@@ -158,13 +166,29 @@ function MailboxContent() {
     finally { if (current()) setMailLoading(false); }
   }, []);
   useEffect(() => {
-    if (resumeDetail.current) { resumeDetail.current = false; return; }
-    if (access?.status === 'active' && !['pending', 'claimed', 'review'].includes(access.password_change_status || '') && view !== 'compose') void loadFolder(view);
-  }, [access?.status, access?.password_change_status, view, loadFolder, folderRevision]);
+    if (access?.status !== 'active' || ['pending', 'claimed', 'review'].includes(access.password_change_status || '')) return;
+    let active = true;
+    setView(folder);
+    const cached = folders.current[folder]?.list, prior = lastFolderRead.current;
+    const refreshFolder = prior && (prior.folder !== folder || prior.revision !== folderRevision);
+    lastFolderRead.current = {folder,revision:folderRevision};
+    const show = async () => {
+      const list = cached?.page === page && !refreshFolder ? cached : await loadFolder(folder,page);
+      if (!active || !list) return;
+      setMailList(list);
+      if (uid) {
+        if (!uidValidity || uidValidity !== list.uidValidity) { setSelected(null); setMailLoading(false); setMailError('邮件列表已更新，请返回列表重新打开邮件。'); return; }
+        const header = list.messages.find(item => item.uid === uid) || {uid,subject:'',from:'',to:'',date:null,unread:false,size:0};
+        await readMessage(header,folder,list);
+      } else clearDetail(list);
+    };
+    void show();
+    return () => { active = false; folderRequest.current?.abort(); folderVersion.current++; };
+  }, [access?.status, access?.password_change_status, folder, page, uid, uidValidity, loadFolder, folderRevision]);
   useEffect(() => {
     if (selected || !mailList || restoreScroll.current === null) return;
     const y = restoreScroll.current;
-    const frame = requestAnimationFrame(() => { window.scrollTo({ top: y, behavior: 'instant' }); restoreScroll.current = null; });
+    const frame = requestAnimationFrame(() => { scrollPageTo(y); restoreScroll.current = null; });
     return () => cancelAnimationFrame(frame);
   }, [selected, mailList, view]);
   useEffect(() => {
@@ -172,7 +196,7 @@ function MailboxContent() {
       detailHeading.current?.focus({ preventScroll: true });
       if (detailScroll.current === null) return;
       const y = detailScroll.current;
-      const frame = requestAnimationFrame(() => { window.scrollTo({ top: y, behavior: 'instant' }); detailScroll.current = null; });
+      const frame = requestAnimationFrame(() => { scrollPageTo(y); detailScroll.current = null; });
       return () => cancelAnimationFrame(frame);
     }
     if (view === 'compose' || listFocus.current === null) return;
@@ -182,19 +206,17 @@ function MailboxContent() {
   useEffect(() => {
     if (view === 'compose') (replyOrigin.current ? composeBody.current : composeInput.current)?.focus();
   }, [view]);
-  const openMessage = async (message: Message) => {
-    if (view === 'compose' || !mailList?.uidValidity) return;
-    folders.current[view] = { list: mailList, scroll: window.scrollY };
+  async function readMessage(message: Message, folder: Folder, list: MailList) {
     folderRequest.current?.abort();
     const controller = new AbortController(); folderRequest.current = controller;
     const version = ++folderVersion.current;
     const current = () => mounted.current && version === folderVersion.current && !controller.signal.aborted;
-    setMailLoading(true); setMailError(''); setPendingMessage(message); setFailedMessage(null);
+    setMailLoading(true); setMailError(''); setSelected(null); setPendingMessage(message); setFailedMessage(null);
     try {
-      const result = await api(`/mailboxes/folders/${view}/${message.uid}?uidValidity=${mailList.uidValidity}`, { signal: controller.signal });
+      const result = await api(`/mailboxes/folders/${folder}/${message.uid}?uidValidity=${encodeURIComponent(list.uidValidity || '')}`, { signal: controller.signal });
       if (!current()) return;
       setSelected(result.message);
-      if (view === 'inbox') setMailList(previous => {
+      if (folder === 'inbox') setMailList(previous => {
         if (!previous) return previous;
         const list = { ...previous, messages: previous.messages.map(item => item.uid === message.uid ? { ...item, unread: result.message.unread } : item) };
         folders.current.inbox = { list, scroll: folders.current.inbox?.scroll || 0 }; return list;
@@ -205,20 +227,42 @@ function MailboxContent() {
       setMailError(error.message || '暂时无法读取邮件。');
     } }
     finally { if (current()) { setMailLoading(false); setPendingMessage(null); } }
+  }
+  const query = (values: Record<string,string>, replace = false, state?: unknown) => setParams(current => {
+    const next = new URLSearchParams(current);
+    for (const [key,value] of Object.entries(values)) { if(value)next.set(key,value);else next.delete(key); }
+    return next;
+  }, {replace,state});
+  const openMessage = (message: Message) => {
+    if (view === 'compose' || !mailList?.uidValidity) return;
+    folders.current[view] = {list:mailList,scroll:pageScrollTop()};
+    if (uid === message.uid && uidValidity === mailList.uidValidity) return readMessage(message,view,mailList);
+    query({uid:String(message.uid),uidValidity:mailList.uidValidity},false,{...route.state,preserveScroll:route.pathname});
   };
-  const returnToList = () => {
+  function clearDetail(loaded?: MailList) {
     folderRequest.current?.abort(); folderVersion.current++;
-    if (view !== 'compose') restoreScroll.current = folders.current[view]?.scroll || 0;
     listFocus.current = selected?.uid ?? pendingMessage?.uid ?? failedMessage?.uid ?? null;
-    setMailLoading(false); setPendingMessage(null); setFailedMessage(null); setMailError(mailList ? '' : '读取已取消，可以重新加载。'); setSelected(null);
+    setMailLoading(false); setPendingMessage(null); setFailedMessage(null); setMailError(loaded || mailList ? '' : '读取已取消，可以重新加载。'); setSelected(null);
+  }
+  const returnToList = () => {
+    if (view !== 'compose') restoreScroll.current = folders.current[view]?.scroll || 0;
+    if (!uid) { if(view!=='compose')restoreScroll.current=folders.current[view]?.scroll || 0; clearDetail(); return; }
+    const source = previous && new URL(previous.path,window.location.origin);
+    if (source && source.pathname === route.pathname && !source.searchParams.has('uid') && (source.searchParams.get('folder') || 'inbox') === folder && Number(source.searchParams.get('page') || 1) === page) navigate(-1);
+    else query({uid:'',uidValidity:''},true);
   };
   const changeView = (next: Folder | 'compose') => {
     if (next === view) { if (view !== 'compose') returnToList(); return; }
-    if (view !== 'compose' && mailList && !selected) folders.current[view] = { list: mailList, scroll: window.scrollY };
+    if (view !== 'compose' && mailList && !selected) folders.current[view] = { list: mailList, scroll: pageScrollTop() };
     folderRequest.current?.abort(); folderVersion.current++;
     const snapshot = next === 'compose' ? undefined : folders.current[next];
     restoreScroll.current = snapshot?.scroll ?? null;
     setMailLoading(false); setMailError(''); setPendingMessage(null); setFailedMessage(null); setSelected(null); setMailList(snapshot?.list || null); setView(next);
+    if (next !== 'compose') {
+      const nextPage = snapshot?.list.page || 1;
+      query({folder:next==='inbox'?'':next,page:nextPage===1?'':String(nextPage),uid:'',uidValidity:''},true);
+      if (folder === next && !uid && page === nextPage) void loadFolder(next,nextPage);
+    }
   };
   const run = async (work: () => Promise<void>) => {
     setBusy(true); setNotice('');
@@ -272,7 +316,7 @@ function MailboxContent() {
       if (!await confirmAction('已有未发送的草稿。替换为这封邮件的回复？', '替换草稿', trigger)) return;
       if (!mounted.current || currentView.current !== folder || folderVersion.current !== replyVersion) return;
     }
-    replyOrigin.current = { folder, message, scroll: window.scrollY };
+    replyOrigin.current = { folder, message, scroll: pageScrollTop() };
     draftVersion.current++;
     setTo(message.replyTo || ''); setSubject(/^Re:/i.test(message.subject) ? message.subject : `Re: ${message.subject}`); setContent('');
     changeView('compose');
@@ -281,7 +325,6 @@ function MailboxContent() {
     const origin = replyOrigin.current;
     if (!origin) { changeView('inbox'); return; }
     folderRequest.current?.abort(); folderVersion.current++;
-    resumeDetail.current = true;
     detailScroll.current = origin.scroll;
     setMailLoading(false); setMailError(''); setMailList(folders.current[origin.folder]?.list || null);
     setView(origin.folder); setSelected(origin.message);
@@ -359,8 +402,8 @@ function MailboxContent() {
         </nav>}
         {!['pending','claimed','review'].includes(access.password_change_status || '') && view !== 'compose' && <section className="mailbox-panel mailbox-letters" aria-labelledby="mail-folder-title" aria-busy={mailLoading}>
           <div className="mailbox-folder-head"><div><h2 id="mail-folder-title">{view === 'inbox' ? '收件箱' : '已发送'}</h2><p role="status">{mailLoading ? pendingMessage ? '正在打开邮件…' : '正在读取邮件…' : mailList ? `${mailList.total} 封邮件` : mailError ? '读取未完成' : '尚未读取'}</p></div>
-            <button type="button" className="mailbox-secondary" onClick={() => mailLoading ? returnToList() : void loadFolder(view, mailList?.page || 1)}><RefreshCw size={16} aria-hidden="true" />{mailLoading ? '取消读取' : '刷新'}</button></div>
-          {mailError && <p className="mailbox-error" role="alert">{mailError} <button type="button" className="mailbox-text-button" disabled={mailLoading} onClick={() => void (failedMessage ? openMessage(failedMessage) : loadFolder(view, mailList?.page || 1))}>重试{failedMessage ? '读取邮件' : '读取列表'}</button></p>}
+            <button type="button" className="mailbox-secondary" onClick={() => {if(mailLoading)returnToList();else {query({uid:'',uidValidity:''},true);setFolderRevision(value=>value+1);}}}><RefreshCw size={16} aria-hidden="true" />{mailLoading ? '取消读取' : '刷新'}</button></div>
+          {mailError && <p className="mailbox-error" role="alert">{mailError} <button type="button" className="mailbox-text-button" disabled={mailLoading} onClick={() => {if(failedMessage&&mailList)void readMessage(failedMessage,view,mailList);else {query({uid:'',uidValidity:''},true);setFolderRevision(value=>value+1);}}}>重试{failedMessage ? '读取邮件' : '读取列表'}</button></p>}
           {selected ? <article className="mailbox-letter-detail"><button type="button" className="mailbox-back" onClick={returnToList}><ArrowLeft size={16} aria-hidden="true" />返回列表</button>
             <h3 ref={detailHeading} tabIndex={-1}>{selected.subject}</h3><dl><div><dt>发件人</dt><dd>{selected.from || '未知'}</dd></div><div><dt>收件人</dt><dd>{selected.to || '未知'}</dd></div><div><dt>时间</dt><dd>{selected.date ? new Date(selected.date).toLocaleString('zh-CN') : '未知'}</dd></div></dl>
             {selected.tooLarge ? <p className="mailbox-empty">这封邮件超过网页阅读上限（2 MB），请使用邮件客户端查看。</p> : <>
@@ -370,7 +413,7 @@ function MailboxContent() {
             {view === 'inbox' && selected.replyTo && <button type="button" className="mailbox-primary" onClick={event => void reply(selected, view, event.currentTarget)}>回复</button>}
           </article> : mailLoading && !mailList ? <p className="mailbox-empty">正在读取邮件…</p> : mailError && !mailList ? null : !mailList?.folderAvailable ? <p className="mailbox-empty">邮局尚未提供已发送文件夹。你仍可正常收发邮件。</p> : !mailList.messages.length ? <p className="mailbox-empty">{view === 'inbox' ? '收件箱里还没有邮件。' : '已发送里还没有邮件。'}</p> : <ul ref={listElement} className="mailbox-letter-list">{mailList.messages.map(item => <li key={item.uid}><button type="button" data-mail-uid={item.uid} aria-busy={pendingMessage?.uid === item.uid} onClick={() => void openMessage(item)} className={item.unread ? 'mailbox-letter-unread' : ''}>
             <span className="mailbox-letter-correspondent">{view === 'inbox' ? item.from : item.to}</span><span className="mailbox-letter-subject">{item.subject}</span><time>{item.date ? new Date(item.date).toLocaleString('zh-CN') : ''}</time></button></li>)}</ul>}
-          {!selected && mailList && mailList.total > mailList.pageSize && <div className="mailbox-list-pages"><span>第 {mailList.page} 页</span><div><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page <= 1} onClick={() => void loadFolder(view, mailList.page - 1)}>上一页</button><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page * mailList.pageSize >= mailList.total} onClick={() => void loadFolder(view, mailList.page + 1)}>下一页</button></div></div>}
+          {!selected && mailList && mailList.total > mailList.pageSize && <div className="mailbox-list-pages"><span>第 {page} 页</span><div><button type="button" className="mailbox-secondary" disabled={mailLoading || page <= 1} onClick={event => query({page:page===2?'':String(page-1),uid:'',uidValidity:''},false,paginationState(event.currentTarget.closest('.mailbox-list-pages'),route.pathname,route.state))}>上一页</button><button type="button" className="mailbox-secondary" disabled={mailLoading || page * mailList.pageSize >= mailList.total} onClick={event => query({page:String(page+1),uid:'',uidValidity:''},false,paginationState(event.currentTarget.closest('.mailbox-list-pages'),route.pathname,route.state))}>下一页</button></div></div>}
         </section>}
         {!['pending','claimed','review'].includes(access.password_change_status || '') && view === 'compose' && <section className="mailbox-panel" aria-labelledby="mail-compose-title"><button type="button" className="mailbox-back" onClick={returnFromCompose}><ArrowLeft size={16} aria-hidden="true" />{replyOrigin.current ? '返回邮件' : '返回收件箱'}</button><div className="mailbox-panel-head"><span className="mailbox-icon"><Send size={20} aria-hidden="true" /></span><div><h2 id="mail-compose-title">写邮件</h2><p>发件人：{access.mailbox_address}</p></div></div>
           {sendUncertain && <p role="alert" className="mailbox-credential-status">上次发送结果待核对，输入内容已保留。<button type="button" className="mailbox-text-button" onClick={() => changeView('sent')}>查看发送记录</button></p>}

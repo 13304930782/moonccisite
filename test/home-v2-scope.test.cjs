@@ -113,8 +113,16 @@ test('shared appearance retains 9884b75 blobs except explicitly approved navigat
    .replace('data: snapshot ?? (keepPrevious ? current.data : null)','data: snapshot')
    .replace('[path, version, enabled, keepPrevious]','[path, version, enabled]')
    .replace('snapshot ?? (keepPrevious ? state.data : null)','snapshot')
-   .replace('<p className="resource-refresh" role="status">正在更新结果…</p>','<p className="sr-only" role="status">正在刷新，当前内容仍可查看。</p>');
+   .replace('<p className="resource-refresh" role="status">正在更新结果…</p>','<p className="sr-only" role="status">正在刷新，当前内容仍可查看。</p>')
+   // The navigation audit changes callbacks/URL state, never the pager's static markup.
+   .replace("import { Link, useLocation, type NavigateOptions } from 'react-router-dom';","import { Link, useLocation } from 'react-router-dom';")
+   .replace("import { paginationState } from '../lib/pageScroll';\n",'')
+   .replace("{ data, onPage, pageParam='page' }: { data: PageData; onPage: (page: number, options?: NavigateOptions) => void; pageParam?: string }",'{ data, onPage }: { data: PageData; onPage: (page: number) => void }')
+   .replace('params.delete(pageParam)',"params.delete('page')").replace('params.set(pageParam,',"params.set('page',")
+   .replace(" + location.hash; };","; };")
+   .replace("\n      event.preventDefault();\n      const nav=event.currentTarget.closest('nav.pagination');\n      onPage(page,{state:paginationState(nav,location.pathname,location.state)});\n    ",'event.preventDefault();onPage(page);');
   if(path==='src/app/components/Header.tsx')source=source
+   .replace("    const query = keyword.trim();\n    if (!query) return;\n    const samePage = location.pathname === '/search';\n    const params = new URLSearchParams(samePage ? location.search : '');\n    params.set('q', query);\n    for (const name of ['category', 'tag', 'page']) params.delete(name);\n    setSearch(false);\n    searchButton.current?.focus({preventScroll:true});\n    if (samePage && params.toString() === new URLSearchParams(location.search).toString()) return;\n    navigate({pathname:'/search', search:'?' + params, hash:samePage ? location.hash : ''});", "    if (keyword.trim())\n      navigate('/search?q=' + encodeURIComponent(keyword.trim()));")
    .replace('  const composing=useRef(false);\n','')
    .replace('    if (composing.current) return;\n','')
    .replace('            onCompositionStart={()=>{composing.current=true;}}\n','')

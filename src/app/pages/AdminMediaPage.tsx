@@ -16,6 +16,7 @@ import {
 import { api } from '../lib/api';
 import { safeImageSrc } from '../lib/safeUrl';
 import { useMovingIndicator } from '../lib/useMovingIndicator';
+import { useAdminListQuery } from '../lib/useAdminList';
 import '../../styles/admin-ui-v2.css';
 import '../../styles/admin-media.css';
 import '../../styles/selection-fold.css';
@@ -85,21 +86,21 @@ function QualityMenu({ value, onChange, upload = false, disabled = false }: { va
 
 export default function AdminMediaPage() {
   const [items, setItems] = useState<MediaItem[]>([]);
-  const [page, setPage] = useState(1);
+  const { filters: query, page, setPage, pageOptions, changeParams } = useAdminListQuery({ q: '', status: 'active' });
+  const search = query.q, status: MediaStatus = query.status === 'trashed' ? 'trashed' : 'active';
   const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState('');
   const requestVersion = useRef(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [loadError, setLoadError] = useState('');
-  const [keyword, setKeyword] = useState('');
+  const [keyword, setKeyword] = useState(search);
+  useEffect(() => setKeyword(search), [search]);
   const [uploading, setUploading] = useState(false);
   const [failedUpload, setFailedUpload] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState('');
   const uploadPending = useRef(false), mounted = useRef(true);
   const [composing, setComposing] = useState(false);
   const [imageQuality, setImageQuality] = useState('medium');
-  const [status, setStatus] = useState<MediaStatus>('active');
   const statusGroup = useRef<HTMLDivElement>(null);
   useMovingIndicator(statusGroup, status);
   const [selected, setSelected] = useState<MediaItem | null>(null);
@@ -115,7 +116,7 @@ export default function AdminMediaPage() {
   const [saving, setSaving] = useState(false);
   const uploadInput = useRef<HTMLInputElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const clearSearch = () => { setKeyword(''); setSearch(''); setPage(1); searchInput.current?.focus(); };
+  const clearSearch = () => { setKeyword(''); changeParams({ q: '', page: '' }); searchInput.current?.focus(); };
 
   useEffect(() => {
     mounted.current = true;
@@ -145,7 +146,7 @@ export default function AdminMediaPage() {
       setItems(data.items);
       setTotal(data.total);
       setSelectedFilenames(current => current.filter(filename => data.items.some((item: MediaItem) => item.filename === filename)));
-      if (data.page !== page) setPage(data.page);
+      if (data.page !== page) setPage(data.page, { replace: true });
     } catch (err: any) {
       if (current()) { setLoadError(err.message || '媒体库加载失败'); }
     } finally { if (current()) setLoading(false); }
@@ -153,10 +154,10 @@ export default function AdminMediaPage() {
   const loadLatest = useRef(load);
   loadLatest.current = load;
   useEffect(() => {
-    if (composing) return;
-    const timer = setTimeout(() => { setPage(1); setSearch(keyword.trim()); }, 300);
+    if (composing || keyword.trim() === search) return;
+    const timer = setTimeout(() => changeParams({ q: keyword.trim(), page: '' }), 300);
     return () => clearTimeout(timer);
-  }, [keyword, composing]);
+  }, [keyword, composing, search, changeParams]);
   useEffect(() => {
     setSelected(null);
     setSelectedFilenames([]);
@@ -480,8 +481,8 @@ export default function AdminMediaPage() {
       <div className="media-page-toolbar">
         <div ref={statusGroup} className="media-status-tabs motion-selection" role="group" aria-label="媒体状态">
           <span data-selection-indicator data-selection-fill className="admin-selection-marker" aria-hidden="true" />
-          <button type="button" aria-pressed={status === 'active'} disabled={saving} onClick={() => { setPage(1); setStatus('active'); }} className="ui-btn ui-btn--ghost">正常文件{status === 'active' && !search && !loading && !loadError && <span>{total}</span>}</button>
-          <button type="button" aria-pressed={status === 'trashed'} disabled={saving} onClick={() => { setPage(1); setStatus('trashed'); }} className="ui-btn ui-btn--ghost">回收站{status === 'trashed' && !search && !loading && !loadError && <span>{total}</span>}</button>
+          <button type="button" aria-pressed={status === 'active'} disabled={saving} onClick={() => { if (status !== 'active') changeParams({ status: 'active', page: '' }); }} className="ui-btn ui-btn--ghost">正常文件{status === 'active' && !search && !loading && !loadError && <span>{total}</span>}</button>
+          <button type="button" aria-pressed={status === 'trashed'} disabled={saving} onClick={() => { if (status !== 'trashed') changeParams({ status: 'trashed', page: '' }); }} className="ui-btn ui-btn--ghost">回收站{status === 'trashed' && !search && !loading && !loadError && <span>{total}</span>}</button>
         </div>
         <div className="media-search-field"><input ref={searchInput} aria-label="搜索媒体文件" value={keyword} onChange={event => setKeyword(event.target.value)} onCompositionStart={() => setComposing(true)} onCompositionEnd={event => { setKeyword(event.currentTarget.value); setComposing(false); }} placeholder="搜索文件名、显示名、Alt" className="ui-input" />{keyword && <button type="button" className="media-search-clear ui-btn ui-btn--ghost ui-btn--icon" aria-label="清除搜索" onClick={clearSearch}><X size={16} aria-hidden="true" /></button>}</div>
         <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" variant="ghost" className="media-sort-trigger ui-btn ui-btn--ghost">最近更新<ChevronDown size={14} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal ui-v2 media-list-menu"><DropdownMenuRadioGroup value="updated"><DropdownMenuRadioItem value="updated">最近更新</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>
@@ -508,7 +509,7 @@ export default function AdminMediaPage() {
         })}
       </div>}
 
-      {(total > 50 || page > 1) ? <nav aria-label="媒体库分页" className="media-pagination"><AdminButton type="button" variant="ghost" disabled={loading || saving || page <= 1} onClick={() => setPage(page - 1)} className="ui-btn ui-btn--ghost">上一页</AdminButton><span>第 {page} / {Math.max(1, Math.ceil(total / 50))} 页</span><AdminButton type="button" variant="ghost" disabled={loading || saving || page * 50 >= total} onClick={() => setPage(page + 1)} className="ui-btn ui-btn--ghost">下一页</AdminButton></nav> : !loading && !loadError && filtered.length > 0 && <p className="media-page-end">已显示 {filtered.length} 个文件</p>}
+      {(total > 50 || page > 1) ? <nav aria-label="媒体库分页" className="media-pagination"><AdminButton type="button" variant="ghost" disabled={loading || saving || page <= 1} onClick={event => setPage(page - 1, pageOptions(event?.currentTarget))} className="ui-btn ui-btn--ghost">上一页</AdminButton><span>第 {page} / {Math.max(1, Math.ceil(total / 50))} 页</span><AdminButton type="button" variant="ghost" disabled={loading || saving || page * 50 >= total} onClick={event => setPage(page + 1, pageOptions(event?.currentTarget))} className="ui-btn ui-btn--ghost">下一页</AdminButton></nav> : !loading && !loadError && filtered.length > 0 && <p className="media-page-end">已显示 {filtered.length} 个文件</p>}
 
       </div>
       {selectedCount > 0 && <div className="media-batch-bar" role="region" aria-label="批量媒体操作">

@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useBlocker } from 'react-router-dom';
-import { hasUnsavedChanges } from '../lib/useUnsavedLeave';
+import { shouldBlockNavigation } from '../lib/useUnsavedLeave';
 import { confirmAction } from '../lib/confirmAction';
 export function NavigationProtection() {
-  const blocker = useBlocker(hasUnsavedChanges);
+  const blocker = useBlocker(shouldBlockNavigation);
   const latest = useRef(blocker); latest.current = blocker;
   const asking = useRef(false);
   useEffect(() => {

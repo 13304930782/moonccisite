@@ -5,8 +5,10 @@ import {api,ApiError} from './api';
 import {readBackup,writeBackup,DraftBackup} from './draftStorage';
 import {useUnsavedLeave} from './useUnsavedLeave';
 import {draftSnapshot,settleDraftSave} from './articleDraftState';
+import {useNavigate} from 'react-router-dom';
 export const emptyArticle={title:'',content:'',slug:'',summary:'',cover_image:'',cover_crop:null,category:'',tags:[] as string[]};
 export function useArticleDraft(userId:number,postId?:string){
+ const navigate=useNavigate();
  const [summaryBusy,setSummaryBusy]=useState(false),[summaryError,setSummaryError]=useState('');const summaryPending=useRef(false);
  const [draft,setDraft]=useState<any>(null),[form,setForm]=useState<any>(emptyArticle),[status,setStatus]=useState('正在加载…'),[error,setError]=useState(''),[recovery,setRecovery]=useState<DraftBackup|null>(null),[busy,setBusy]=useState(false),[localAvailable,setLocalAvailable]=useState(true),[serverCopy,setServerCopy]=useState<any>(null);
  const [errorStatus,setErrorStatus]=useState(0);
@@ -26,7 +28,7 @@ export function useArticleDraft(userId:number,postId?:string){
  useEffect(()=>{alive.current=true;const init=async()=>{try{
    const params=new URLSearchParams(location.search);let id=params.get('draft');
    let d;if(id)d=await api(`/article-drafts/${id}`);else{const key=`article-new:${userId}:${postId||'new'}`;try{id=sessionStorage.getItem(key);}catch{}id ||= crypto.randomUUID();try{sessionStorage.setItem(key,id);}catch{}d=await api('/article-drafts',{method:'POST',body:JSON.stringify({id,post_id:postId?Number(postId):undefined,payload:emptyArticle})});}
-   if(!alive.current)return;try{sessionStorage.removeItem(`article-new:${userId}:${postId||'new'}`);}catch{}apply(d);current.current=d.payload;setForm(d.payload);const url=new URL(location.href);url.searchParams.set('draft',d.id);history.replaceState(history.state,'',url);
+    if(!alive.current)return;try{sessionStorage.removeItem(`article-new:${userId}:${postId||'new'}`);}catch{}apply(d);current.current=d.payload;setForm(d.payload);const url=new URL(location.href);url.searchParams.set('draft',d.id);if(url.href!==location.href)navigate(url.pathname+url.search+url.hash,{replace:true,state:history.state?.usr});
    try{const local=await readBackup(userId,d.id);if(local&&draftSnapshot(local.payload)!==draftSnapshot(d.payload)){setRecovery(local);blocked.current=true;}}catch{setLocalAvailable(false);}
    loading.current=false;setStatus('已保存到服务器');
   }catch(e:any){if(alive.current){setError(e.message);setErrorStatus(e.status||0);setStatus('加载失败，禁止提交');}}};void init();return()=>{alive.current=false;clearTimeout(timer.current);};},[userId,postId]);

@@ -49,14 +49,17 @@ test('the palette defines exactly the UI tokens referenced by the three page sty
  assert.deepEqual([...declared].sort(),[...referenced].sort(),'Referenced UI tokens must all be scoped and defined without unused palette entries');
 });
 
-test('shared shell and theme retain the exact PR101 Git blobs and absent files',()=>{
+test('shared shell and theme retain the exact PR101 appearance except the approved scroll-owner handoff',()=>{
  // Canonical LF Git blobs allow Windows checkouts and shallow CI without old commit history.
  const pins={
   'src/app/components/admin/AdminShell.tsx':'6ed57e24527dca81de179dd69d56424c02443195',
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
  };
  for(const [file,pin] of Object.entries(pins)) {
-  const bytes=Buffer.from(fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n'));
+  let source=fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n');
+  // Only RoutePosition now resets/restores the real scroll owner, including POP.
+  if(file.endsWith('/AdminShell.tsx'))source=source.replace('    setMobileOpen(false);\n    setShowTop((mainRef.current?.scrollTop || 0) > 320);','    setMobileOpen(false);\n    mainRef.current?.scrollTo({ top: 0, behavior: \'instant\' });\n    setShowTop(false);');
+  const bytes=Buffer.from(source);
   assert.equal(crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex'),pin,file);
  }
  for(const file of ['src/styles/admin-shell.css','test/admin-shell.test.cjs'])assert.equal(fs.existsSync(file),false,file+' did not exist in PR101');

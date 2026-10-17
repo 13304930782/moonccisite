@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {useLocation,useNavigate} from 'react-router-dom';
 import {reducedMotion} from '../lib/motionPreference';
 import {MotionDisclosure,MotionChevron} from './MotionDisclosure';
 type Heading={id:string;title:string;level:number};
@@ -11,6 +12,7 @@ export function ReadingSettingsTrigger({compact=false,className=''}:{compact?:bo
  return <button type="button" className={`reading-settings-trigger ${compact?'reading-toolbar-settings':'toc-reading-trigger'} ${className}`} aria-label="阅读设置" aria-expanded={settingsOpen} aria-controls="reading-settings-panel" onClick={event=>window.dispatchEvent(new CustomEvent('mooncci:reading-tools-open',{detail:{trigger:event.currentTarget}}))}><span aria-hidden="true">Aa</span>{!compact&&'阅读设置'}</button>;
 }
 export function ArticleTableOfContents({headings,preview=false,settingsInHeader=false}:{headings:Heading[];preview?:boolean;settingsInHeader?:boolean}){
+ const location=useLocation(),navigate=useNavigate();
  const [active,setActive]=useState(headings[0]?.id||''),[open,setOpen]=useState(false);
  const rail=useRef<HTMLElement>(null);
  const cancelJump=useRef(()=>{});
@@ -42,6 +44,7 @@ export function ArticleTableOfContents({headings,preview=false,settingsInHeader=
   return()=>{changes.disconnect();observer.disconnect();win.removeEventListener('scroll',onScroll);if(frame)win.cancelAnimationFrame(frame);};
  },[headings]);
  const links=<nav aria-label="文章目录">{headings.map(h=><a key={h.id} title={h.title} className={`${h.level>=3?'toc-sub ':''}${active===h.id?'on':''}`} aria-current={active===h.id?'location':undefined} href={`#${h.id}`} onClick={event=>{
+  if(event.button>0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;
   const doc=rail.current?.ownerDocument,node=doc?.getElementById(h.id),win=doc?.defaultView;if(!node||!win)return;
   event.preventDefault();setActive(h.id);setOpen(false);
   cancelJump.current();
@@ -54,7 +57,8 @@ export function ArticleTableOfContents({headings,preview=false,settingsInHeader=
    win.scrollTo({top:win.scrollY+target.getBoundingClientRect().top-closingSpace-header-24,behavior:reducedMotion()?'auto':'smooth'});
   });
   cancelJump.current=()=>win.cancelAnimationFrame(frame);
-  try{win.history.replaceState(win.history.state,'',`#${h.id}`);}catch{/* Embedded editor previews can restrict history. */}
+  if(!preview&&win===window)navigate({pathname:location.pathname,search:location.search,hash:`#${h.id}`},{replace:true,state:location.state});
+  else try{win.history.replaceState(win.history.state,'',`#${h.id}`);}catch{/* Embedded editor previews can restrict history. */}
  }}><span className="toc-entry-title">{h.title}</span></a>)}</nav>;
  const settings=(compact=false)=>!preview&&!settingsInHeader&&<ReadingSettingsTrigger compact={compact}/>;
  if(!headings.length&&(preview||settingsInHeader))return null;

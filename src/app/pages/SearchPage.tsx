@@ -1,6 +1,6 @@
 import { ThemeSelect } from '../components/ThemeSelect';
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { usePageSearchParams as useSearchParams } from '../lib/usePageSearchParams';
 import { PageHeading, SitePage, useResource } from "../components/ContentUI";
 import { PostResults } from "../components/PostResults";
 export default function SearchPage() {
@@ -12,14 +12,16 @@ export default function SearchPage() {
   if(q) query.set('search',q);
   if(category) query.set('category',category);
   if(tag) query.set('tag',tag);
-  function filter(key:string,value:string) { const next=new URLSearchParams(params); value?next.set(key,value):next.delete(key); next.delete('page'); setParams(next); }
+  function filter(key:string,value:string,replace=true) {
+    setParams(current=>{if((current.get(key)||'')===value)return current;const next=new URLSearchParams(current);value?next.set(key,value):next.delete(key);next.delete('page');return next;},{replace});
+  }
   const [keyword, setKeyword] = useState(q);
   const composing = useRef(false);
   useEffect(() => setKeyword(q), [q]);
   function submit(e: FormEvent) {
     e.preventDefault();
     if (composing.current) return;
-    filter('q',keyword.trim());
+    filter('q',keyword.trim(),false);
   }
   return (
     <SitePage>
@@ -52,7 +54,7 @@ export default function SearchPage() {
       {q || category || tag ? (
         <PostResults
           path={`/posts?${query}`}
-          emptyAction={<button className="quiet-button" onClick={()=>{setKeyword('');setParams({});}}>清除搜索，重新查找</button>}
+          emptyAction={<button className="quiet-button" onClick={()=>{setKeyword('');setParams(current=>{const next=new URLSearchParams(current);['q','category','tag','page'].forEach(key=>next.delete(key));return next;},{replace:true});}}>清除搜索，重新查找</button>}
           empty="没有符合当前条件的文章。"
         />
       ) : (

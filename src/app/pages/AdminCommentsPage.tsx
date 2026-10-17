@@ -3,7 +3,7 @@ import { confirmAction } from '../lib/confirmAction';
 import { useAdminList } from '../lib/useAdminList';
 import { AdminPagination } from '../components/AdminPagination';
 import { ThemeSelect } from '../components/ThemeSelect';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { formatCommentTime } from '../lib/commentTime';
 
@@ -24,15 +24,16 @@ const statusClass: Record<string, string> = {
 };
 
 export default function AdminCommentsPage() {
-  const [filters, setFilters] = useState({ status: 'pending', target: 'all', keyword: '' });
-  const [keyword, setKeyword] = useState('');
+  const list = useAdminList<any>('/admin/comments', { status: 'pending', target: 'all', keyword: '' });
+  const filters = list.filters;
+  const [keyword, setKeyword] = useState(filters.keyword);
+  useEffect(() => setKeyword(filters.keyword), [filters.keyword]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const list = useAdminList<any>('/admin/comments', filters);
   const comments = list.items;
   const loadComments = list.reload;
-  const filter = (patch: Partial<typeof filters>) => { list.setPage(1); setFilters(f => ({ ...f, ...patch })); list.reload(); setMessage(''); };
-  const search = () => filter({ keyword: keyword.trim() });
+  const filter = (patch: Record<string, string>, replace = true) => { if (replace && Object.entries(patch).every(([key,value]) => filters[key] === value)) return; list.changeParams({ ...patch, page: '' }, { replace }); setMessage(''); };
+  const search = () => filter({ keyword: keyword.trim() }, false);
 
   const updateStatus = async (id: number, nextStatus: string) => {
     const confirmText =

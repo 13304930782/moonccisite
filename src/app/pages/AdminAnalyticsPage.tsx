@@ -2,14 +2,16 @@ import '../../styles/analytics.css';
 import '../../styles/analytics.css';
 import {useEffect,useState} from 'react';
 import {api} from '../lib/api';
+import {useAdminListQuery} from '../lib/useAdminList';
 const number=(x:any)=>Number(x||0).toLocaleString('zh-CN');
 const labels:Record<string,string>={mobile:'手机',tablet:'平板',desktop:'电脑',direct:'直接访问 / 未提供来源',owner:'站长',admin:'管理员',editor:'编辑',teacher:'教师',user:'普通用户',github:'GitHub',google:'Google',gitee:'Gitee',microsoft:'Microsoft',qq:'QQ',wechat:'微信'};
 function Ranking({title,rows,value='views'}:{title:string;rows:any[];value?:string}){return <section className="analytics-section"><h2>{title}</h2>{rows.length?<ol className="analytics-ranking">{rows.map((row,i)=><li key={`${row.label||row.path}-${i}`}><span>{labels[row.label]||row.label||row.path}</span><strong>{number(row[value])}</strong></li>)}</ol>:<p className="muted">暂无数据</p>}</section>;}
 export default function AdminAnalyticsPage(){
- const [days,setDays]=useState(30),[data,setData]=useState<any>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0);
+ const {filters,changeParams}=useAdminListQuery({days:'30'}),days=[7,30,90].includes(Number(filters.days))?Number(filters.days):30;
+ const [data,setData]=useState<any>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0);
  useEffect(()=>{let active=true;setData(null);setError('');api(`/admin/analytics?days=${days}`).then(x=>{if(active)setData(x);}).catch(e=>{if(active)setError(e.message||'加载失败');});return()=>{active=false;};},[days,attempt]);
  const trend=data?.trend||[],max=Math.max(1,...trend.map((x:any)=>x.views));
- return <div className="admin-page analytics-page"><header className="analytics-heading"><div><p className="eyebrow">mooncci / 网站管理</p><h1 className="admin-title">访问统计</h1><p className="muted">了解阅读趋势、访问来源和用户增长。</p></div><div className="analytics-range" aria-label="统计时间范围">{[7,30,90].map(n=><button key={n} aria-pressed={days===n} onClick={()=>setDays(n)}>近 {n} 天</button>)}</div></header>
+ return <div className="admin-page analytics-page"><header className="analytics-heading"><div><p className="eyebrow">mooncci / 网站管理</p><h1 className="admin-title">访问统计</h1><p className="muted">了解阅读趋势、访问来源和用户增长。</p></div><div className="analytics-range" aria-label="统计时间范围">{[7,30,90].map(n=><button key={n} aria-pressed={days===n} onClick={()=>changeParams({days:String(n)})}>近 {n} 天</button>)}</div></header>
  {error?<div role="alert">{error} <button className="text-link" onClick={()=>setAttempt(x=>x+1)}>重新加载</button></div>:!data?<p role="status">正在加载统计…</p>:<>
  <div className="analytics-metrics">{[['期间浏览量',data.summary.views],['期间去重访客',data.summary.visitors],['新增注册',trend.reduce((sum:number,x:any)=>sum+x.registrations,0)],['累计浏览量',data.summary.totalViews]].map(([label,value])=><div key={label}><span className="muted">{label}</span><strong>{number(value)}</strong></div>)}</div>
  <section className="analytics-section"><div className="analytics-section-title"><h2>访问趋势</h2><span className="muted">{data.start} — {data.end} · UTC</span></div><div className="analytics-chart" role="img" aria-label={`近${days}天浏览量柱状图，下方可查看每日数据`}>

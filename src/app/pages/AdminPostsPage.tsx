@@ -1,3 +1,4 @@
+import { AdminBack } from '../components/admin/AdminBack';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
@@ -12,6 +13,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { useMovingIndicator } from '../lib/useMovingIndicator';
+import { useAdminListQuery } from '../lib/useAdminList';
 import '../../styles/admin-ui-v2.css';
 import '../../styles/admin-posts.css';
 import '../../styles/selection-fold.css';
@@ -30,14 +32,15 @@ export default function AdminPostsPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [draftPage, setDraftPage] = useState(1), [draftTotal, setDraftTotal] = useState(0);
   const [draftsLoaded, setDraftsLoaded] = useState(false);
-  const [filter, setFilter] = useState<Filter>('all');
+  const { filters: query, page, setPage, pageOptions, changeParams } = useAdminListQuery({ status: 'all' });
+  const filter: Filter = ['published', 'draft'].includes(query.status) ? query.status as Filter : 'all';
   const filterGroup = useRef<HTMLDivElement>(null);
   useMovingIndicator(filterGroup, filter);
   const [posts, setPosts] = useState<Post[]>([]);
   const [allPosts, setAllPosts] = useState<Post[] | null>(null);
   const [allTotal, setAllTotal] = useState<number | null>(null);
   const [message, setMessage] = useState('');
-  const [page, setPage] = useState(1), [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(0);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -62,7 +65,7 @@ export default function AdminPostsPage() {
           setAllTotal(data.total);
           setAllPosts(data.page === 1 && items.length === data.total ? items : null);
         }
-        if (data.page !== page) setPage(data.page);
+        if (data.page !== page) setPage(data.page, { replace: true });
       } catch (error: any) {
         if (version === requestVersion.current) setMessage(error.message || '文章加载失败');
       } finally {
@@ -128,7 +131,7 @@ export default function AdminPostsPage() {
   return <div className="admin-page admin-posts-page ui-v2">
     <div className="admin-page-body">
       <header className="admin-posts-header">
-        <div><Link to="/admin" className="admin-posts-back">返回后台</Link><div className="admin-posts-heading"><h1>文章管理</h1>{knownTotal !== null && <span>共 {knownTotal} 篇</span>}</div></div>
+        <div><AdminBack to="/admin" className="admin-posts-back">返回后台</AdminBack><div className="admin-posts-heading"><h1>文章管理</h1>{knownTotal !== null && <span>共 {knownTotal} 篇</span>}</div></div>
         <div className="admin-posts-header-actions">
           {manager && <Dialog>
             <DialogTrigger asChild><AdminButton variant="soft" className="ui-btn ui-btn--soft">从旧站导入</AdminButton></DialogTrigger>
@@ -143,7 +146,7 @@ export default function AdminPostsPage() {
       {manager && importHost && createPortal(<ArticleImport />, importHost)}
       <div ref={filterGroup} className="admin-posts-filters motion-selection" role="group" aria-label="筛选文章状态">
         <span data-selection-indicator data-selection-fill className="admin-selection-marker" aria-hidden="true" />
-        {filters.map(item => <AdminButton key={item.value} variant="ghost" aria-pressed={filter === item.value} onClick={() => { setFilter(item.value); setPage(1); }} className="ui-btn ui-btn--ghost">{item.label}{counts && <span className="admin-posts-filter-count">{counts[item.value]}</span>}</AdminButton>)}
+        {filters.map(item => <AdminButton key={item.value} variant="ghost" aria-pressed={filter === item.value} onClick={() => { if (item.value !== filter) changeParams({ status: item.value, page: '' }); }} className="ui-btn ui-btn--ghost">{item.label}{counts && <span className="admin-posts-filter-count">{counts[item.value]}</span>}</AdminButton>)}
       </div>
       {message && <div className="admin-posts-message" role="alert">{message}</div>}
       {loading ? <div className="admin-posts-skeleton" role="status" aria-label="正在加载文章…">
@@ -171,9 +174,9 @@ export default function AdminPostsPage() {
       </div>}
       {filter !== 'published' && draftPage * 20 < draftTotal && <div className="admin-posts-more"><AdminButton variant="ghost" disabled={loading} onClick={() => setDraftPage(value => value + 1)} className="ui-btn ui-btn--ghost">加载更多草稿</AdminButton></div>}
       {pages > 1 ? <nav className="admin-posts-pagination" aria-label="文章管理分页">
-        <AdminButton variant="ghost" disabled={loading || page <= 1} onClick={() => setPage(value => value - 1)} className="ui-btn ui-btn--ghost">上一页</AdminButton>
+        <AdminButton variant="ghost" disabled={loading || page <= 1} onClick={event => setPage(value => value - 1, pageOptions(event?.currentTarget))} className="ui-btn ui-btn--ghost">上一页</AdminButton>
         <span>共 {total} 条，第 {page} / {pages} 页</span>
-        <AdminButton variant="ghost" disabled={loading || page >= pages} onClick={() => setPage(value => value + 1)} className="ui-btn ui-btn--ghost">下一页</AdminButton>
+        <AdminButton variant="ghost" disabled={loading || page >= pages} onClick={event => setPage(value => value + 1, pageOptions(event?.currentTarget))} className="ui-btn ui-btn--ghost">下一页</AdminButton>
       </nav> : !loading && <p className="admin-posts-shown">已显示 {shown} 篇</p>}
     </div>
   </div>;

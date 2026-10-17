@@ -7,6 +7,7 @@ import { usePublishing } from '../lib/usePublishing';
 import { useArticleDraft } from '../lib/useArticleDraft';
 import { api } from '../lib/api';
 import { notify } from '../lib/feedback';
+import { useAdminListReturn } from '../components/admin/AdminBack';
 import { confirmAction } from '../lib/confirmAction';
 import { safeImageSrc } from '../lib/safeUrl';
 import { isRichText } from '../lib/richText';
@@ -46,7 +47,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   const publishing = usePublishing();
   const contributor = publishing && !['owner', 'admin'].includes(user?.role || '');
   const account = location.pathname.startsWith('/account');
-  const backTo = account ? '/account/submissions' : '/admin/posts';
+  const listReturn = useAdminListReturn(account ? '/account/submissions' : '/admin/posts'), backTo = listReturn.to;
   const d = useArticleDraft(userId, postId);
   const [published, setPublished] = useState(false);
   const [conflictMode, setConflictMode] = useState<'compare' | 'review' | 'edit'>('compare');
@@ -269,7 +270,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   return <div ref={workspace} data-keyboard-open={keyboardToolbar ? 'true' : undefined} style={keyboardToolbar ? { '--writing-keyboard-top': `${keyboardToolbar.top}px`, '--writing-keyboard-left': `${keyboardToolbar.left}px`, '--writing-keyboard-width': `${keyboardToolbar.width}px` } as CSSProperties : undefined} className={`admin-page article-workspace writing-workspace ui-v2${wide && !collapsed && !locked && !showComparison && !preview ? ' writing-with-settings' : ''}`}>
     <div className="writing-main">
       <header className={`writing-topbar${scrolled ? ' is-scrolled' : ''}`}>
-        <div className="writing-topbar-meta"><button type="button" className="writing-back" aria-label={account ? '返回稿件列表' : '返回文章管理'} onClick={() => navigate(backTo)}><ArrowLeft size={15} aria-hidden="true" /><span>{account ? '返回稿件列表' : '文章管理'}</span></button><div className="writing-save-state" role="status" data-state={d.error ? 'error' : !d.ready ? 'loading' : d.busy ? 'saving' : d.dirty ? 'dirty' : 'saved'}><span className="writing-save-dot" aria-hidden="true" /><span className="writing-status-full">{d.status}</span><span className="writing-status-short">{!d.error ? shortStatus : <button type="button" className="writing-retry-short" disabled={d.busy || d.blocked} onClick={() => void save()}>{shortStatus}</button>}</span></div>{d.error && !d.blocked && <AdminButton type="button" variant="ghost" className="writing-retry-desktop ui-btn ui-btn--ghost" disabled={d.busy} onClick={() => void save()}>重试</AdminButton>}</div>
+        <div className="writing-topbar-meta"><button type="button" className="writing-back" aria-label={account ? '返回稿件列表' : '返回文章管理'} onClick={() => listReturn.canBack ? navigate(-1) : navigate(backTo)}><ArrowLeft size={15} aria-hidden="true" /><span>{account ? '返回稿件列表' : '文章管理'}</span></button><div className="writing-save-state" role="status" data-state={d.error ? 'error' : !d.ready ? 'loading' : d.busy ? 'saving' : d.dirty ? 'dirty' : 'saved'}><span className="writing-save-dot" aria-hidden="true" /><span className="writing-status-full">{d.status}</span><span className="writing-status-short">{!d.error ? shortStatus : <button type="button" className="writing-retry-short" disabled={d.busy || d.blocked} onClick={() => void save()}>{shortStatus}</button>}</span></div>{d.error && !d.blocked && <AdminButton type="button" variant="ghost" className="writing-retry-desktop ui-btn ui-btn--ghost" disabled={d.busy} onClick={() => void save()}>重试</AdminButton>}</div>
         <div className="writing-mode-desktop">{modeSwitch}</div>
         <div className="writing-topbar-actions">
           {!locked && <><AdminButton type="button" ref={historyTrigger} variant="ghost" className="writing-history-trigger ui-btn ui-btn--ghost" disabled={!d.ready} onClick={openHistory}>修订历史</AdminButton><AdminButton type="button" variant="soft" className="writing-save-trigger ui-btn ui-btn--soft" aria-busy={d.busy} disabled={locked || !d.ready || d.busy || d.blocked || d.isRestoring} onClick={() => void save()}><span className="control-state-label" data-action-reserve="保存草稿"><span key={d.busy ? 'busy' : 'idle'}>{d.busy ? '保存中…' : '保存草稿'}</span></span></AdminButton></>}

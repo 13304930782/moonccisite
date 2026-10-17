@@ -18,6 +18,7 @@ import {
 import { MarkdownContent } from '../components/MarkdownContent';
 import { safeImageSrc } from '../lib/safeUrl';
 import { projectIcon } from '../lib/projectBrand';
+import { useAdminListQuery } from '../lib/useAdminList';
 import { Image as ImageIcon } from 'lucide-react';
 import '../../styles/project-images.css';
 
@@ -110,8 +111,8 @@ function ImageField({
   </section>;
 }
 export function AdminUpdatesPage() {
-  const [page, setPage] = useState(1),
-    resource = useResource(`/admin/updates?page=${page}`);
+  const { page, setPage } = useAdminListQuery({});
+  const resource = useResource(`/admin/updates?page=${page}`);
   const [dirty,setDirty]=useState(false),[imageBusy,setImageBusy]=useState(false);useUnsavedLeave(dirty);
   const [form, rawSetForm] = useState({
       id: 0,
@@ -247,8 +248,8 @@ export function AdminProjectsPage() {
   const iconBusy = useCallback((value:boolean) => setBusyImages(previous => previous.icon === value ? previous : {...previous,icon:value}), []);
   const { user } = useAuth(),
     owner = user?.role === 'owner';
-  const [page, setPage] = useState(1),
-    resource = useResource(`/admin/projects?page=${page}`),
+  const { page, setPage } = useAdminListQuery({});
+  const resource = useResource(`/admin/projects?page=${page}`),
     [form, rawSetForm] = useState<any>({ ...emptyProject }),
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false),
@@ -459,8 +460,8 @@ export function AdminProjectsPage() {
   );
 }
 function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
-  const [page, setPage] = useState(1),
-    r = useResource(`/admin/projects/${id}/releases?page=${page}`),
+  const { page, setPage } = useAdminListQuery({}, 'releasePage');
+  const r = useResource(`/admin/projects/${id}/releases?page=${page}`),
     [error, setError] = useState(''),
     [busyId, setBusyId] = useState<number | null>(null);
   async function hide(release: any) {
@@ -505,7 +506,7 @@ function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
                 </article>
               ))}
             </div>
-            <Pagination data={r.data} onPage={setPage} />
+            <Pagination data={r.data} onPage={setPage} pageParam="releasePage" />
           </>
         )}
       </ResourceState>
@@ -513,9 +514,9 @@ function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
   );
 }
 export function AdminNewsletterPage() {
-  const [page, setPage] = useState(1),
-    r = useResource(`/admin/newsletter?page=${page}`),
-    [subPage, setSubPage] = useState(1),
+  const { page, setPage } = useAdminListQuery({});
+  const { page: subPage, setPage: setSubPage } = useAdminListQuery({}, 'subscriberPage');
+  const r = useResource(`/admin/newsletter?page=${page}`),
     sub = useResource(`/admin/subscribers?page=${subPage}`),
     preview = useResource('/admin/newsletter/preview'),
     [message, setMessage] = useState(''),
@@ -671,7 +672,7 @@ export function AdminNewsletterPage() {
                 </article>
               ))}
             </div>
-            <Pagination data={sub.data} onPage={setSubPage} />
+            <Pagination data={sub.data} onPage={setSubPage} pageParam="subscriberPage" />
           </>
         )}
       </ResourceState>

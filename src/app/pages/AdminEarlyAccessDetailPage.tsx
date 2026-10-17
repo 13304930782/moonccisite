@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Mail, RotateCcw, Settings, X } from 'lucide-react';
 import { api } from '../lib/api';
+import { AdminBack } from '../components/admin/AdminBack';
 
 const labels: Record<string, string> = {
   student: '学生', teacher: '教师', developer: '开发者', creator: '创作者', enterprise: '企业用户', other: '其他',
@@ -63,13 +64,13 @@ export default function AdminEarlyAccessDetailPage() {
   };
 
   if (loading) return <div className="py-6 text-muted-foreground">正在加载申请…</div>;
-  if (!application) return <div className="py-6 text-muted-foreground" role="alert"><p>{message || '申请不存在。'}</p><div className="inline-actions"><Link className="quiet-button" to="/admin/early-access">返回申请列表</Link>{![403,404].includes(loadStatus)&&<button onClick={load}>重试</button>}</div></div>;
+  if (!application) return <div className="py-6 text-muted-foreground" role="alert"><p>{message || '申请不存在。'}</p><div className="inline-actions"><AdminBack className="quiet-button" to="/admin/early-access">返回申请列表</AdminBack>{![403,404].includes(loadStatus)&&<button onClick={load}>重试</button>}</div></div>;
 
   const features = Array.isArray(application.desired_features) ? application.desired_features : [];
 
   return (
     <div>
-      <Link to="/admin/early-access" className="neo-button bg-card"><ArrowLeft className="h-4 w-4" />返回申请列表</Link>
+      <AdminBack to="/admin/early-access" className="neo-button bg-card"><ArrowLeft className="h-4 w-4" />返回申请列表</AdminBack>
 
       <div className="admin-page-body mt-7">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">

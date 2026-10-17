@@ -15,6 +15,7 @@ test('review dismissal retains manuscript during exit, blocks closing actions an
  const Dialog=props=>React.createElement('dialog-shell',props,props.children);
  const mocks={
   'react-router-dom':{useSearchParams:()=>[new URLSearchParams()]},
+  '../lib/useAdminList':{useAdminListQuery:()=>({filters:{state:'submitted'},page:1,setPage(){},changeParams(){}})},
   'lucide-react':{Inbox:'svg',FileText:'svg',ArrowRight:'svg',CalendarClock:'svg'},
   '../lib/feedback':{notify:{error(){}}},
   '../lib/api':{api:async(path,options)=>{if(options){writes.push(path);return {}}return {total:drafts.length,items:drafts}}},

@@ -9,7 +9,7 @@ test('editor review cancellation sends nothing and an in-flight review disables 
  const api=(path,options)=>options?(writes.push({path,...options}),new Promise((resolve,reject)=>{finish=resolve;fail=reject;})):Promise.resolve([item]);
  const code=ts.transpileModule(fs.readFileSync('src/app/pages/AdminEditorApplicationsPage.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const module={exports:{}};
- new Function('exports','require',code)(module.exports,name=>name.endsWith('/api')?{api}:name.endsWith('/feedback')?{notify:{success:()=>{},error:message=>alerts.push(message)}}:name.endsWith('/ThemeSelect')?{ThemeSelect:()=>null}:name==='react-router-dom'?{Link:'a'}:require(name));
+ new Function('exports','require',code)(module.exports,name=>name.endsWith('/api')?{api}:name.endsWith('/feedback')?{notify:{success:()=>{},error:message=>alerts.push(message)}}:name.endsWith('/AdminBack')?{AdminBack:'a'}:name.endsWith('/useAdminList')?{useAdminListQuery:()=>({filters:{status:'pending'},changeParams(){}})}:name.endsWith('/ThemeSelect')?{ThemeSelect:()=>null}:name==='react-router-dom'?{Link:'a'}:require(name));
  Object.defineProperty(global,'window',{value:{prompt:()=>note},configurable:true});
  let root;
  try{

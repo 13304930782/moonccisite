@@ -4,10 +4,11 @@ import {Link,useNavigate} from 'react-router-dom';
 import {Plus,FileText,ArrowUpRight} from 'lucide-react';
 import {api} from '../lib/api';
 import {usePublishing} from '../lib/usePublishing';
+import {useAdminListQuery} from '../lib/useAdminList';
 export const workflowNames:Record<string,string>={draft:'草稿',submitted:'待审核',approved:'审核通过',rejected:'已退回',scheduled:'已安排发布',published:'已发布',failed:'发布失败'};
 function updated(value:string){const date=new Date(value);return Number.isFinite(date.getTime())?date.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';}
 export default function SubmissionsPage(){
- const navigate=useNavigate();const enabled=usePublishing();const [page,setPage]=useState(1),[data,setData]=useState<any>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ const navigate=useNavigate();const enabled=usePublishing(),{page,setPage,pageOptions}=useAdminListQuery({});const [data,setData]=useState<any>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const load=()=>api('/article-drafts?mine=true&page='+page).then(r=>{setData(r);setError('');}).catch(e=>setError(e.message));
  useEffect(()=>{if(enabled)void load();},[page,enabled]);
  async function cancel(d:any){setBusy(true);try{await api('/publishing/'+d.id+'/cancel',{method:'POST',body:JSON.stringify({version:d.version})});navigate('/account/write?draft='+encodeURIComponent(d.id));}catch(e:any){setError(e.message); notify.error(e.message);}finally{setBusy(false);}}
@@ -19,6 +20,6 @@ export default function SubmissionsPage(){
  <p className="submission-meta">{d.updated_at?'更新于 '+updated(d.updated_at):'稿件已保存'}{d.workflow?.scheduled_at&&' · 计划发布：'+new Date(Number(d.workflow.scheduled_at)).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}</p>
  {d.workflow?.reason&&<p className="submission-reason">{d.workflow.reason}</p>}<div className="submission-row-actions"><Link className="submission-open" to={'/account/write?draft='+d.id}>{locked?'查看稿件':'继续编辑'}<ArrowUpRight size={14}/></Link>{['submitted','approved'].includes(state)&&<button disabled={busy} onClick={()=>void cancel(d)}>撤回审核并编辑</button>}{d.post_id&&<Link to={'/article/'+d.post_id}>查看文章</Link>}</div></div></article>;})}
  {!data.items.length&&<div className="account-empty"><FileText size={28}/><h3>从第一篇草稿开始</h3><p>保存想法，慢慢完善，准备好后提交审核。</p></div>}</div>
- {data.total>20&&<nav className="submission-pagination" aria-label="稿件分页"><button disabled={page===1} onClick={()=>setPage(page-1)}>上一页</button><span>第 {page} / {Math.ceil(data.total/20)} 页</span><button disabled={page*20>=data.total} onClick={()=>setPage(page+1)}>下一页</button></nav>}
+ {data.total>20&&<nav className="submission-pagination" aria-label="稿件分页"><button disabled={page===1} onClick={event=>setPage(page-1,pageOptions(event?.currentTarget))}>上一页</button><span>第 {page} / {Math.ceil(data.total/20)} 页</span><button disabled={page*20>=data.total} onClick={event=>setPage(page+1,pageOptions(event?.currentTarget))}>下一页</button></nav>}
  </>}</section>;
 }

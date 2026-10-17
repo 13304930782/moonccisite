@@ -2,13 +2,14 @@ import { useDocumentResource } from '../context/DocumentData';
 import { readSnapshot, writeSnapshot, snapshotGeneration, deleteSnapshot, subscribeSnapshotInvalidation } from '../lib/publicSnapshots';
 import { notify } from '../lib/feedback';
 import { FormEvent, ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, type NavigateOptions } from 'react-router-dom';
 import { api } from '../lib/api';
 import { publicRead, publicReadPath } from '../lib/publicRead';
 import { Header } from './Header';
 import { SiteFooter } from './SiteFooter';
 import { SiteBack } from './SiteBack';
 import { visibleDiagnostic } from '../lib/browserDiagnostics';
+import { paginationState } from '../lib/pageScroll';
 
 export type PageData<T = any> = { items: T[]; total: number; page: number; pageSize: number };
 // Only published, user-independent endpoints may share an in-memory snapshot.
@@ -189,14 +190,18 @@ export function ActivityList({ items }: { items: any[] }) {
     </div>
   );
 }
-export function Pagination({ data, onPage }: { data: PageData; onPage: (page: number) => void }) {
+export function Pagination({ data, onPage, pageParam='page' }: { data: PageData; onPage: (page: number, options?: NavigateOptions) => void; pageParam?: string }) {
   const location = useLocation();
   const pages = Math.max(1, Math.ceil(data.total / data.pageSize));
   if (pages <= 1) return null;
-  const link = (page: number) => { const params = new URLSearchParams(location.search); if(page===1)params.delete('page');else params.set('page',String(page)); return location.pathname + (params.size ? '?' + params : ''); };
+  const link = (page: number) => { const params = new URLSearchParams(location.search); if(page===1)params.delete(pageParam);else params.set(pageParam,String(page)); return location.pathname + (params.size ? '?' + params : '') + location.hash; };
   const control = (page: number, label: string, disabled: boolean) => disabled
     ? <span className="quiet-button" aria-disabled="true">{label}</span>
-    : <Link className="quiet-button" to={link(page)} onClick={event=>{if(event.button===0&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();onPage(page);}}}>{label}</Link>;
+    : <Link className="quiet-button" to={link(page)} onClick={event=>{if(event.button===0&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){
+      event.preventDefault();
+      const nav=event.currentTarget.closest('nav.pagination');
+      onPage(page,{state:paginationState(nav,location.pathname,location.state)});
+    }}}>{label}</Link>;
   return <nav className="pagination" aria-label="分页">
     {control(data.page-1,'上一页',data.page<=1)}
     <span aria-live="polite" aria-atomic="true">{data.page} / {pages}</span>

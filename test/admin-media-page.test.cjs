@@ -7,7 +7,7 @@ function clock(){let now=0,id=0;const pending=new Map();return {set:(fn,ms)=>{pe
 function load(api,confirm,notices,timers,pointer){
  const box=({children,...props})=>React.createElement('fixture-box',props,children),button=React.forwardRef(({asChild,variant,children,...props},ref)=>asChild?React.cloneElement(children,{...props,ref}):React.createElement('button',{...props,ref},children));
  const mocks={'../lib/api':{api},'../lib/confirmAction':{confirmAction:confirm},'../lib/feedback':{notify:{success:value=>notices.push({kind:'success',value}),error:value=>notices.push({kind:'error',value})}},'../lib/safeUrl':{safeImageSrc:value=>value||''},
-  '../lib/useMovingIndicator':{useMovingIndicator(){}},
+  '../lib/useMovingIndicator':{useMovingIndicator(){}},'../lib/useAdminList':require('./helpers/admin-list-fixture.cjs')(api),
   '../components/admin/AdminButton':{AdminButton:button},'../components/ui/dialog':{Dialog:box,DialogContent:box,DialogDescription:'p',DialogTitle:'h2'},
   '../components/ui/dropdown-menu':{DropdownMenu:box,DropdownMenuTrigger:box,DropdownMenuContent:box,DropdownMenuItem:'menuitem',DropdownMenuRadioGroup:({value,onValueChange,children})=>React.createElement('select',{value,onChange:onValueChange?event=>onValueChange(event.target.value):undefined},children),DropdownMenuRadioItem:({value,children})=>React.createElement('option',{value},children)},
   'lucide-react':Object.fromEntries(['ChevronDown','Image','RefreshCw','RotateCw','Trash2','Undo2','Upload','X','MoreHorizontal','ArrowDownWideNarrow','Check','CheckSquare','Square','ListFilter'].map(name=>[name,'svg']))};
@@ -56,6 +56,13 @@ test('media search debounces for 300ms, resets pagination and ignores stale succ
   await act(async()=>pending[1].resolve({items:[media('new.png')],total:51,page:1}));await act(async()=>pending[0].resolve({items:[media('stale.png')],total:1,page:1}));assert.match(text(f.root.toJSON()),/new.png/);assert.doesNotMatch(text(f.root.toJSON()),/stale.png/);
   await f.click('下一页');assert.equal(new URL(pending[2].url,'https://local.invalid').searchParams.get('page'),'2');await act(async()=>search().props.onChange({target:{value:'另一个搜索'}}));await act(async()=>f.timers.tick(300));query=new URL(pending[3].url,'https://local.invalid').searchParams;assert.equal(query.get('page'),'1');assert.equal(query.get('q'),'另一个搜索');
   await act(async()=>pending[3].resolve({items:[media('final.png')],total:1,page:1}));await act(async()=>pending[2].reject(Error('过期分页错误')));assert.match(text(f.root.toJSON()),/final.png/);assert.doesNotMatch(text(f.root.toJSON()),/过期分页错误|new.png/);assert.equal(f.root.root.findAllByType('nav').length,0);
+ }finally{await f.close();}
+});
+
+test('reselecting the current media status on page two is a no-op',async()=>{
+ const f=await fixture({total:51});try{
+  await f.click('下一页');const before=f.calls.length;
+  await act(async()=>f.root.root.findAllByType('button').find(node=>text(node).startsWith('正常文件')).props.onClick());assert.equal(f.calls.length,before);assert.match(text(f.root.toJSON()),/第 2 \/ 2 页/);
  }finally{await f.close();}
 });
 

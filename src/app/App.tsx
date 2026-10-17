@@ -46,6 +46,7 @@ function PublicWeatherCompanion() {
 
 function RouteLoader() {
   const {pathname} = useLocation();
+  if(/^\/admin(?:\/|$)/.test(pathname))return <div className="min-h-screen flex items-center justify-center text-muted-foreground" role="status">正在加载后台…</div>;
   return <SitePage>{/^\/(login|register)$/.test(pathname) ? <section className="auth-route-skeleton" aria-label="正在加载表单"><ContentSkeleton/></section> : <ContentSkeleton />}</SitePage>;
 }
 

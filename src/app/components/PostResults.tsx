@@ -1,4 +1,5 @@
-import {useSearchParams} from 'react-router-dom';
+import {type NavigateOptions} from 'react-router-dom';
+import {usePageSearchParams as useSearchParams} from '../lib/usePageSearchParams';
 import {Pagination,PageData} from './ContentUI';
 import { BlogCard } from "./BlogCard";
 import { ResourceState, useResource } from "./ContentUI";
@@ -31,7 +32,7 @@ export function PostResults({
       feedbackMotion(row, { opacity: [.75, 1], transform: ['translateY(6px)', 'none'] }, motionDesign.content.duration));
     return () => stops.forEach(stop => stop());
   }, [resource.data, resource.loading]);
-  function changePage(next:number){const p=new URLSearchParams(params);p.set('page',String(next));setParams(p);}
+  function changePage(next:number,options?:NavigateOptions){const p=new URLSearchParams(params);if(next===1)p.delete('page');else p.set('page',String(next));setParams(p,options);}
 
   return (
     <ResourceState resource={resource}>

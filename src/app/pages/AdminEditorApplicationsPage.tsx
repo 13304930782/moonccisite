@@ -1,12 +1,14 @@
+import { AdminBack } from '../components/admin/AdminBack';
 import { notify } from '../lib/feedback';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
+import { useAdminListQuery } from '../lib/useAdminList';
 
 export default function AdminEditorApplicationsPage() {
   const [applications, setApplications] = useState<any[]>([]);
-  const [status, setStatus] = useState('all');
+  const { filters, changeParams } = useAdminListQuery({ status: 'all' });
+  const status = filters.status;
   const [message, setMessage] = useState('');
   const [reviewing, setReviewing] = useState<number | null>(null);
 
@@ -51,7 +53,7 @@ export default function AdminEditorApplicationsPage() {
   return (
     <div className="admin-page">
       <div className="admin-page-body">
-        <Link to="/admin" className="text-sm text-foreground hover:underline">返回后台</Link>
+        <AdminBack to="/admin" className="text-sm text-foreground hover:underline">返回后台</AdminBack>
 
         <div className="mt-2 mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -59,7 +61,7 @@ export default function AdminEditorApplicationsPage() {
             <p className="mt-2 text-sm text-muted-foreground">审核普通用户的写文章权限申请。</p>
           </div>
 
-          <ThemeSelect aria-label="筛选编辑申请状态" value={status} onValueChange={(nextValue) => setStatus(nextValue)} >
+          <ThemeSelect aria-label="筛选编辑申请状态" value={status} onValueChange={(status) => changeParams({ status })} >
             <option value="all">全部</option>
             <option value="pending">待审核</option>
             <option value="approved">已通过</option>

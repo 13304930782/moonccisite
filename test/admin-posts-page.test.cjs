@@ -7,7 +7,8 @@ function load(file,api,role='owner',confirm=async()=>true,extra={}){
   'react-router-dom':{Link:({to,children,...props})=>React.createElement('a',{href:to,...props},children)},
   'lucide-react':{MoreHorizontal:'svg'},'react-dom':{createPortal:children=>React.createElement('import-host',null,children)},
   '../lib/api':{api},'../lib/feedback':{notify:{success(){},error(){}}},'../lib/confirmAction':{confirmAction:confirm},
-  '../lib/useMovingIndicator':{useMovingIndicator(){}},
+  '../lib/useMovingIndicator':{useMovingIndicator(){}},'../lib/useAdminList':require('./helpers/admin-list-fixture.cjs')(api),
+  '../components/admin/AdminBack':{AdminBack:({to,children,...props})=>React.createElement('a',{href:to,...props},children)},
   '../context/AuthContext':{useAuth:()=>({user:{role}})},'../components/ArticleImport':{ArticleImport:()=>React.createElement('details',null,'import fixture')},
   '../components/admin/AdminButton':{AdminButton:button},'../components/ui/skeleton':{Skeleton:'skeleton'},
   '../components/ui/dialog':{Dialog:box,DialogContent:box,DialogTitle:'h3',DialogTrigger:box},
@@ -23,6 +24,15 @@ const draft=(id,post_id=null)=>({id,post_id,version:7,updated_at:'2026-10-15T00:
 const post=(id,status='published',has_unpublished=0)=>({id,title:'文章'+id,summary:'摘要'+id,category:'分类',author_name:'作者',status,has_unpublished});
 const file=process.env.ADMIN_POSTS_TEST_SOURCE||'src/app/pages/AdminPostsPage.tsx';
 function changeFilter(root,value){const button=root.root.findAllByType('button').find(b=>b.props['aria-pressed']!==undefined&&text(b).startsWith(value==='draft'?'草稿':value==='all'?'全部':'已发布'));if(button)button.props.onClick();else root.root.findByType('select').props.onValueChange(value);}
+
+test('reselecting the current post filter on page two preserves the page and makes no request',async()=>{
+ const calls=[],Page=load(file,async url=>{calls.push(url);return url.startsWith('/admin/posts')?{items:[post(1)],total:101,page:url.includes('page=2')?2:1}:{items:[],total:0,page:1};});let root;
+ try{
+  await act(async()=>{root=create(React.createElement(Page));});
+  await act(async()=>root.root.findAllByType('button').find(b=>text(b)==='下一页').props.onClick());const before=calls.length;
+  await act(async()=>changeFilter(root,'all'));assert.equal(calls.length,before);assert.match(text(root.toJSON()),/第 2 \/ 3 页/);
+ }finally{await act(async()=>root?.unmount());}
+});
 
 test('late previous-filter responses cannot replace either posts or drafts',async()=>{
  const pending=[];const Page=load(file,url=>new Promise(resolve=>pending.push({url,resolve})));let root;

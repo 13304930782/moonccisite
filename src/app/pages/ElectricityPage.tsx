@@ -3,7 +3,8 @@ import '../../styles/electricity.css';
 import { reducedMotion } from '../lib/motionPreference';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useAuth } from '../context/AuthContext';
-import { useSearchParams, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { usePageSearchParams as useSearchParams } from '../lib/usePageSearchParams';
 import type { ElectricityRoom } from '../components/AdminElectricityRooms';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -130,6 +131,9 @@ export default function ElectricityPage() {
   }, [user?.id, authLoading]);
   const id = params.get('roomId') || rooms[0]?.id;
   const room = rooms.find((r) => r.id === id);
+  function changeRoom(nextId:string) {
+    setParams(current=>{if((current.get('roomId')||rooms[0]?.id)===nextId)return current;const next=new URLSearchParams(current);next.set('roomId',nextId);return next;},{replace:true});
+  }
   if (authLoading || loading || !user || !room)
     return (
       <div className="electricity-page">
@@ -161,7 +165,7 @@ export default function ElectricityPage() {
               {rooms.length > 0 && (
                 <button
                   className="electricity-button"
-                  onClick={() => setParams({ roomId: rooms[0].id })}
+                  onClick={() => changeRoom(rooms[0].id)}
                 >
                   查看我的宿舍
                 </button>
@@ -177,7 +181,7 @@ export default function ElectricityPage() {
       key={`${user.id}:${room.id}`}
       room={room}
       rooms={rooms}
-      onRoomChange={(id) => setParams({ roomId: id })}
+      onRoomChange={changeRoom}
     />
   );
 }

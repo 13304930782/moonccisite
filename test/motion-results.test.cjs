@@ -3,7 +3,7 @@ test('result handoff only presents added or changed rows and cancels it on the n
  let data={items:[],total:0},loading=false,rows=[],root,cancels=0;const calls=[];
  const code=ts.transpileModule(fs.readFileSync('src/app/components/PostResults.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,exports={};
  new Function('exports','require',code)(exports,name=>({
-  'react-router-dom':{useSearchParams:()=>[new URLSearchParams(),()=>{}]},
+  'react-router-dom':{},'../lib/usePageSearchParams':{usePageSearchParams:()=>[new URLSearchParams(),()=>{}]},
   './ContentUI':{useResource:()=>({data,loading}),ResourceState:({children})=>children,Pagination:()=>null},'./BlogCard':{BlogCard:()=>null},
   '../lib/feedbackMotion':{feedbackMotion:(node,frames)=>{calls.push({node,frames});return()=>cancels++;}},'../lib/motionDesign':{motionDesign:{content:{duration:.22}}},
  }[name]||require(name)));

@@ -1,8 +1,8 @@
+import { AdminBack } from '../components/admin/AdminBack';
 import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 
 export default function AdminBannedWordsPage() {
@@ -59,7 +59,7 @@ export default function AdminBannedWordsPage() {
   return (
     <div className="admin-page">
       <div className="admin-page-body">
-        <Link to="/admin" className="text-sm text-foreground hover:underline">返回后台</Link>
+        <AdminBack to="/admin" className="text-sm text-foreground hover:underline">返回后台</AdminBack>
         <h1 className="admin-title">违禁词设置</h1>
 
         {message && <div className="mb-4 rounded-[6px] bg-muted px-4 py-3 text-foreground">{message}</div>}

@@ -1,6 +1,6 @@
 import { FormInput } from '../components/FormInput';
 import { FormEvent, useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import {authLink,loginDestination} from '../lib/loginDestination';
 import { api } from '../lib/api';
@@ -8,9 +8,15 @@ import { AuthShell } from '../components/AuthShell';
 
 export default function ResetPasswordPage() {
   const [params] = useSearchParams();
+  const navigate=useNavigate(), location=useLocation();
   const destination=loginDestination(params.get('redirect'));
   const [token] = useState(()=>new URLSearchParams(window.location.hash.slice(1)).get('token')||params.get('token')||'');
-  useEffect(()=>{const url=new URL(window.location.href);url.searchParams.delete('token');if(url.hash.startsWith('#token='))url.hash='';window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash);},[]);
+  useEffect(()=>{
+    const url=new URL(window.location.href), fragment=new URLSearchParams(url.hash.slice(1));
+    url.searchParams.delete('token');
+    if(fragment.has('token')){fragment.delete('token');url.hash=fragment.toString();}
+    if(url.search!==location.search||url.hash!==location.hash)navigate({pathname:location.pathname,search:url.search,hash:url.hash},{replace:true,state:location.state});
+  },[location.pathname,location.search,location.hash,location.state,navigate]);
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
