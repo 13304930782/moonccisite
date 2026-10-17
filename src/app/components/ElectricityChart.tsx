@@ -1,6 +1,8 @@
-import { useId, useState } from 'react';
+import { useId, useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { area, line, curveMonotoneX } from 'd3-shape';
+import { observeElectricityReveals } from '../lib/electricityMotion';
 import { ChartViewport } from './ChartViewport';
+const useClientLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 function amount(value: number | null, digits = 2) {
   return value === null || !Number.isFinite(value) ? '—' : value.toFixed(digits);
 }
@@ -8,6 +10,10 @@ type Point = { date: string; total: number | null; usage: number | null; usageSt
 type Props = { plotData: Point[]; chartMode: 'balance' | 'usage'; tooltipTrigger: 'click' | 'hover'; reduceMotion: boolean };
 
 export function Plot({plotData, chartMode, tooltipTrigger, reduceMotion, width, height}: Props & {width: number; height: number}) {
+  const revealRoot = useRef<HTMLDivElement>(null);
+  useClientLayoutEffect(() => {
+    if (revealRoot.current) return observeElectricityReveals(revealRoot.current, reduceMotion);
+  }, [reduceMotion]);
   const id = useId().replace(/:/g, '');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const left = 42, right = Math.max(left + 1, width - 8), top = 12, bottom = Math.max(13, height - 30);
@@ -43,7 +49,7 @@ export function Plot({plotData, chartMode, tooltipTrigger, reduceMotion, width, 
     setSelectedDate(plotData[Math.max(0, Math.min(plotData.length - 1, index))].date);
   };
   const tickEvery = Math.max(1, Math.ceil(plotData.length / Math.max(2, Math.floor((right - left) / 75))));
-  return <div className="elec-v2Chart-plot" data-motion={reduceMotion ? "reduced" : "enabled"} style={{position: 'relative', width, height, animation: reduceMotion ? 'none' : undefined}}>
+  return <div ref={revealRoot} data-elec-reveal="" data-visible={reduceMotion ? true : undefined} className="elec-v2Chart-plot" data-motion={reduceMotion ? "reduced" : "enabled"} style={{position: 'relative', width, height, animation: reduceMotion ? 'none' : undefined}}>
     <svg width={width} height={height} role="application" tabIndex={0} aria-describedby={point ? `${id}-label` : undefined}
       aria-label={`${chartMode === 'balance' ? '总余量' : '日用电'}图表。左右方向键选择日期，Escape 恢复最新日期。`}
       onKeyDown={event => {

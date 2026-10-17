@@ -1,6 +1,6 @@
 /** Electricity-only reveal gate: never spend a row's entrance while scrolling past it. */
 export function observeElectricityReveals(root: HTMLElement, reduceMotion: boolean) {
-  const nodes = [...root.querySelectorAll<HTMLElement>('[data-elec-reveal]')];
+  const nodes = [...(root.matches('[data-elec-reveal]') ? [root] : []), ...root.querySelectorAll<HTMLElement>('[data-elec-reveal]')];
   if (reduceMotion || typeof IntersectionObserver === 'undefined') {
     nodes.forEach(node => {node.dataset.visible = 'true';});
     return () => {};

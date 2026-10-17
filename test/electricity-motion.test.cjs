@@ -5,7 +5,7 @@ test('electricity reveals visible rows only after scroll settles, once, with cle
  t.mock.timers.enable({apis:['setTimeout']});const rows=[{dataset:{}},{dataset:{}}];let callback,scroll,disconnected=false;const unobserved=[];
  t.mock.property(global,'IntersectionObserver',class{constructor(cb){callback=cb}observe(){}unobserve(n){unobserved.push(n)}disconnect(){disconnected=true}});
  t.mock.property(global,'window',{addEventListener(_e,fn){scroll=fn},removeEventListener(_e,fn){if(scroll===fn)scroll=null}});
- const stop=exportsObject.observeElectricityReveals({querySelectorAll:()=>rows},false);
+ const stop=exportsObject.observeElectricityReveals({matches:()=>false,querySelectorAll:()=>rows},false);
  const emit=(n,ratio)=>callback([{target:n,isIntersecting:ratio>0,intersectionRatio:ratio}]);
  emit(rows[0],1);t.mock.timers.tick(150);scroll();t.mock.timers.tick(150);assert.equal(rows[0].dataset.visible,'false');
  emit(rows[0],0);t.mock.timers.tick(200);assert.equal(rows[0].dataset.visible,'false');
@@ -15,5 +15,17 @@ test('electricity reveals visible rows only after scroll settles, once, with cle
 });
 test('reduced motion and unavailable observers reveal immediately',t=>{
  t.mock.property(global,'IntersectionObserver',undefined);
- for(const reduce of [true,false]){const row={dataset:{}};exportsObject.observeElectricityReveals({querySelectorAll:()=>[row]},reduce)();assert.equal(row.dataset.visible,'true');}
+ for(const reduce of [true,false]){const row={dataset:{}};exportsObject.observeElectricityReveals({matches:()=>false,querySelectorAll:()=>[row]},reduce)();assert.equal(row.dataset.visible,'true');}
+});
+
+test('a delayed plot observes itself only when it mounts; its offscreen entrance stays pending',t=>{
+ t.mock.timers.enable({apis:['setTimeout']});let callback;const observed=[];
+ t.mock.property(global,'IntersectionObserver',class{constructor(cb){callback=cb}observe(n){observed.push(n)}unobserve(){}disconnect(){}});
+ t.mock.property(global,'window',{addEventListener(){},removeEventListener(){}});
+ const plot={dataset:{},matches:()=>true,querySelectorAll:()=>[]};
+ t.mock.timers.tick(3000);
+ const stop=exportsObject.observeElectricityReveals(plot,false);
+ assert.deepEqual(observed,[plot]);
+ callback([{target:plot,isIntersecting:false,intersectionRatio:0}]);t.mock.timers.tick(3000);assert.equal(plot.dataset.visible,'false');
+ callback([{target:plot,isIntersecting:true,intersectionRatio:1}]);t.mock.timers.tick(200);assert.equal(plot.dataset.visible,'true');stop();
 });

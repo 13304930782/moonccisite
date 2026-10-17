@@ -176,7 +176,7 @@
 @media (prefers-reduced-motion:no-preference) {
   .elec-v2 .elec-v2Chart-plot[data-motion="enabled"] .elec-curve-reveal { animation:elec-curve-in 1000ms cubic-bezier(.22,1,.36,1); }
   .elec-v2 .elec-v2Chart-plot[data-motion="enabled"] .elec-usage-bar { animation:elec-bars-in 900ms cubic-bezier(.22,1,.36,1); }
-  .elec-v2 .elec-chart-card[data-visible="false"] .elec-v2Chart-plot[data-motion="enabled"] :is(.elec-curve-reveal,.elec-usage-bar) { animation-play-state:paused; animation-fill-mode:backwards; }
+  .elec-v2 .elec-v2Chart-plot[data-visible="false"][data-motion="enabled"] :is(.elec-curve-reveal,.elec-usage-bar) { animation-play-state:paused; animation-fill-mode:backwards; }
 }
 @keyframes elec-curve-in { from { transform:scaleX(0); } to { transform:scaleX(1); } }
 @keyframes elec-bars-in { from { transform:scaleY(0); } to { transform:scaleY(1); } }
