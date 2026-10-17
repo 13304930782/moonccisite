@@ -59,6 +59,7 @@ const { chromium } = require('playwright');
       const path=new URL(route.request().url()).pathname; let json={};
       if(path==='/api/auth/session')json={user:null};
       if(path.includes('/comments'))json=[];
+      if(path==='/api/posts')json={items:[1,2].map(id=>({id,title:'博客前端视觉重构与阅读体验',summary:'阅读测试入口',category:'开发记录与前端设计',tags:[]})),total:2,page:1,pageSize:12};
       if(/^\/api\/posts\/[12]$/.test(path)){const id=Number(path.split('/').at(-1));json={id,title:'博客前端视觉重构与阅读体验',content,summary:'同一套布局，适配不同类型的内容。',...author,cover_image:id===2?'/login-icons/microsoft.svg':null,category:'开发记录与前端设计',tags:['React','移动端适配','长标签测试'.repeat(12)]};}
       if(path.startsWith('/api/projects/'))json={id:1,name:'PromptDock',content,stage:'active',summary:'原生 macOS 提示词管理工具',...author,tech_stack:'SwiftUI · SwiftData · AppKit',demo_url:'https://example.com',repo:'example/project',releases:{items:[],page:1,total:0,pageSize:20}};
       if(path==='/api/updates/1')json={id:1,...author,content:'QQ 和 Google 登录已经开放，欢迎在账号设置中绑定体验。'};
@@ -67,11 +68,19 @@ const { chromium } = require('playwright');
       if(path.startsWith('/api/analytics/'))json={views:123456};
       return route.fulfill({json});
     });
+    await page.goto('http://127.0.0.1:4202/article/1');
+    await page.locator('.detail-title').waitFor();
+    assert.equal(await page.locator('[data-site-back]').count(),0,'direct article does not invent a history source');
     for(const width of [1920,1440,1100,768,375,320]){
       await page.setViewportSize({width,height:900}); let expected;
       for(const [name,path] of [['article','/article/1'],['article-cover','/article/2'],['project','/projects/promptdock']]){
         const isArticle=name.startsWith('article');
-        await page.goto('http://127.0.0.1:4202'+path);
+        if(isArticle){
+          await page.goto('http://127.0.0.1:4202/articles');
+          await page.locator('a[href="'+path+'"]').first().click();
+          await page.waitForURL('**'+path);
+          assert.equal(await page.locator('[data-site-back]').getAttribute('href'),'/articles');
+        }else await page.goto('http://127.0.0.1:4202'+path);
         await page.locator('.detail-title').waitFor();
         if(isArticle)await page.getByLabel('123456 次阅读',{exact:true}).waitFor();
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} ${width} page overflow`);
@@ -121,6 +130,7 @@ const { chromium } = require('playwright');
           assert.equal(await page.locator('.detail-panel-content').evaluate(el=>getComputedStyle(el).paddingRight),'0px');
         }
         if(width<=375){assert.equal(await page.locator('.detail-title').evaluate(el=>getComputedStyle(el).fontSize),isArticle?'28px':'32px');await page.getByRole('button',{name:'打开菜单',exact:true}).click();await page.getByRole('navigation',{name:'手机导航'}).waitFor();await page.keyboard.press('Escape');}
+        if(isArticle){await page.locator('[data-site-back]').click();await page.waitForURL('**/articles');await page.locator('a[href="'+path+'"]').first().click();await page.locator('.detail-title').waitFor();}
         await page.screenshot({path:`.cache/detail-${name}-${width}.png`,fullPage:true});
         if(width===375){await page.evaluate(()=>document.documentElement.classList.add('dark'));await page.screenshot({path:`.cache/detail-${name}-dark.png`,fullPage:true});await page.evaluate(()=>document.documentElement.classList.remove('dark'));}
       }
@@ -143,11 +153,12 @@ const { chromium } = require('playwright');
     for (const width of [1440, 390, 320]) {
       await page.setViewportSize({width,height:900});
       await page.goto('http://127.0.0.1:4202/updates/1');
-      await page.getByRole('heading',{name:'一则近况',exact:true}).waitFor();
-      await page.locator('.update-reading').waitFor();
+      await page.locator('.note-v2-body').getByText('QQ 和 Google 登录已经开放，欢迎在账号设置中绑定体验。',{exact:true}).waitFor();
+      await page.locator('.note-v2-card').waitFor();
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`journal ${width} overflow`);
       assert.equal(await page.locator('.detail-aside').count(),0);
-      await page.getByRole('link',{name:'← 最近更新',exact:true}).waitFor();
+      const back=page.locator('.note-v2-back');await back.waitFor();assert.equal(await back.getAttribute('href'),'/updates?type=update');
+      assert.equal(await page.getByRole('link',{name:'查看全部近况 →',exact:true}).getAttribute('href'),'/updates?type=update');
     }
     require('node:fs').writeFileSync('.cache/centering-measurements.json',JSON.stringify(measurements,null,2)+'\n');
     assert.deepEqual(errors,[]);

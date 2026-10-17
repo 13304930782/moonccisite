@@ -1,4 +1,5 @@
 import { licenseNotices } from './scripts/license-notices.mjs'
+import { compactSyntax } from './scripts/compact-syntax.mjs'
 import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
@@ -21,6 +22,10 @@ function figmaAssetResolver() {
 export default defineConfig({
   plugins: [
     licenseNotices(),
+    compactSyntax(),
+    { name: 'editor-extension-entries', enforce: 'pre', resolveId(id) {
+      if (id === '@tiptap/extensions') return path.resolve(__dirname, 'src/app/lib/tiptapExtensions.ts');
+    } },
     { name: 'router-production', apply: 'build', enforce: 'pre', resolveId(id) {
       if(id==='react-router') return path.resolve(__dirname,'node_modules/react-router/dist/production/index.mjs');
       if(id==='react-router/dom') return path.resolve(__dirname,'node_modules/react-router/dist/production/dom-export.mjs');
@@ -41,7 +46,7 @@ export default defineConfig({
   build: {
     // Keep the existing JS budget while adding the mail setup route.
     minify: 'terser',
-    terserOptions: { ecma: 2020, module: true, format: { comments: false, preamble: '/*! Third-party notices: /THIRD_PARTY_LICENSES.txt */' }, compress: { passes: 3, ecma: 2020 } },
+    terserOptions: { ecma: 2020, module: true, format: { comments: /^! Third-party notices: \/THIRD_PARTY_LICENSES\.txt $/ }, compress: { passes: 3, ecma: 2020 } },
     manifest: 'asset-manifest.json',
     rollupOptions: {
       output: {
@@ -49,7 +54,6 @@ export default defineConfig({
         experimentalMinChunkSize: 10000,
         onlyExplicitManualChunks: true,
         manualChunks(id) {
-          if (id.replace(/\\/g, '/').includes('/node_modules/@tiptap/')) return 'editor-tiptap-core';
           if (id.includes('/node_modules/re2js/') || id.includes('\\node_modules\\re2js\\')) return 'editor-search-engine';
           if (/[\\/]node_modules[\\/](prosemirror-[^\\/]+|orderedmap|rope-sequence|w3c-keyname)[\\/]/.test(id)) return 'editor-engine';
         },

@@ -139,9 +139,11 @@ export default function AdminMediaPage() {
     } finally { if (current()) setLoading(false); }
   };
   useEffect(() => {
-    const timer = setTimeout(() => { setPage(1); setSearch(keyword.trim()); }, 300);
+    const nextSearch = keyword.trim();
+    if (nextSearch === search) return;
+    const timer = setTimeout(() => { setPage(1); setSearch(nextSearch); }, 300);
     return () => clearTimeout(timer);
-  }, [keyword]);
+  }, [keyword, search]);
   useEffect(() => {
     setSelected(null);
     setSelectedFilenames([]);

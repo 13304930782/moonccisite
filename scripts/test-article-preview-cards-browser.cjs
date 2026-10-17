@@ -76,6 +76,37 @@ const images={
       await page.waitForLoadState('networkidle');
       const selector=routePath.startsWith('/series')?'.publishing-card > img.card-cover-image':'.blog-card > img.card-cover-image';
       await page.evaluate(value=>document.documentElement.classList.toggle('dark',value),dark);
+      if(routePath==='/') {
+       const rows=page.locator('.home-post-list .home-post-row');
+       await rows.last().waitFor();
+       assert.equal(await rows.count(),4,'home preserves all article entries');
+       for(let index=0;index<posts.length;index++) {
+        const row=rows.nth(index),entry=posts[index];
+        assert.equal(await row.getAttribute('href'),`/article/${entry.id}`);
+        assert.equal(await row.locator('.home-activity-title').innerText(),entry.title);
+        assert.equal(await row.locator('.home-activity-excerpt').innerText(),entry.summary);
+       }
+       await page.waitForFunction(()=>[...document.querySelectorAll('.home-post-list .home-activity-thumbnail img')].every(img=>img.complete&&img.naturalWidth>0));
+       assert.equal(await rows.locator('.home-activity-thumbnail img').count(),4,'home retains decorative thumbnails');
+       assert.equal(await rows.locator('img:not([alt=""])').count(),0,'thumbnail does not repeat the link title');
+       const thumbnails=await rows.locator('.home-activity-thumbnail').evaluateAll(elements=>elements.map(element=>{
+        const rect=element.getBoundingClientRect(),img=element.querySelector('img'),style=getComputedStyle(img);
+        const scale=style.transform==='none'?1:new DOMMatrix(style.transform).a;
+        return {width:rect.width,height:rect.height,overflow:getComputedStyle(element).overflow,fit:style.objectFit,position:style.objectPosition,scale,imageWidth:parseFloat(style.width),imageHeight:parseFloat(style.height)};
+       }));
+       for(let index=0;index<thumbnails.length;index++) {
+        const image=thumbnails[index],frame=posts[index].cover_crop?.card;
+        assert.equal(image.width,width<=640?96:168,'home thumbnail width');
+        assert.equal(image.height,width<=640?96:105,'home thumbnail height');
+        assert.equal(image.imageWidth,image.width);assert.equal(image.imageHeight,image.height);
+        assert.equal(image.overflow,'hidden');assert.equal(image.fit,'cover');
+        assert.equal(image.position,frame?`${frame.x*100}% ${frame.y*100}%`:'50% 30%','home respects saved crop position');
+        assert.equal(image.scale,frame?.zoom??1,'home respects saved crop zoom');
+       }
+       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'home has no horizontal overflow');
+       await page.screenshot({path:`.cache/article-card-${name}-${width}-${dark}-home.png`,fullPage:true,animations:'disabled'});
+       continue;
+      }
       // Take readiness and measurements in the same event-loop turn: a later
       // React refresh cannot invalidate a previously resolved locator count.
       const handle=await page.waitForFunction(selector=>{
@@ -97,7 +128,7 @@ const images={
     }
     assert.deepEqual(posts[1].cover_crop,legacyCrop,'legacy fixture parameters are never mutated');
     assert.deepEqual(errors,[]);
-    console.log(`PASS ${name}: publication checks; full portrait/landscape/square and legacy-crop cards across home/list/bookmarks/series; 320/390/768/1440 light/dark layouts, no overflow.`);
+    console.log(`PASS ${name}: publication checks; home article titles/summaries/links/thumbnails; full portrait/landscape/square and legacy-crop cards across list/bookmarks/series; 320/390/768/1440 light/dark layouts, no overflow.`);
    } finally {releaseStyles?.();await browser.close();}
   }
  } finally {await new Promise(resolve=>server.httpServer.close(resolve));}

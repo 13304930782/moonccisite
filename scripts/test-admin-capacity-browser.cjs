@@ -39,10 +39,16 @@ async function main() {
     await page.goto('http://127.0.0.1:4194/admin');
     await page.getByText('1001', { exact: true }).waitFor();
     assert.ok(!requests.some(url => /^\/api\/admin\/(users|comments|posts|banned-words)(\?|$)/.test(url)), 'dashboard must not fetch lists for counts');
+    await page.clock.install();
+    await page.clock.pauseAt(new Date());
     await page.goto('http://127.0.0.1:4194/admin/media');
     await page.getByText('media-page-1', { exact: true }).waitFor();
     await page.getByRole('navigation', { name: '媒体库分页' }).getByRole('button', { name: '下一页' }).click();
     await page.getByText('media-page-2', { exact: true }).waitFor();
+    await page.clock.runFor(350);
+    await page.getByText('media-page-2', { exact: true }).waitFor();
+    assert.equal(requests.filter(url => url.startsWith('/api/upload/media?')).length, 2, 'unchanged initial search must not reset pagination');
+    await page.clock.resume();
     const search = page.getByRole('textbox', { name: '搜索媒体文件' });
     await search.fill('slow');
     await page.waitForRequest(r => new URL(r.url()).searchParams.get('q') === 'slow');

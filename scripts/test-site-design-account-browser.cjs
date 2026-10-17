@@ -43,9 +43,9 @@ const {chromium} = require('playwright');
     try { await trigger.waitFor(); } catch (error) { console.error('Local fixture errors:',errors,await page.locator('body').innerText()); throw error; }
     await target(trigger); await trigger.click();
     const menu = page.getByRole('dialog',{name:'后台导航',exact:true}); await menu.waitFor();
-    await page.waitForFunction(() => document.querySelector('.admin-sheet')?.contains(document.activeElement));
-    for(const selector of ['.admin-main','.admin-mobile-bar'])assert.ok(await page.locator(selector).evaluate(element=>!!element.closest('[aria-hidden=true]')),'Radix hides background from accessibility tree');
-    const sheetBox=await menu.boundingBox(),overlayHit=await page.evaluate(x=>document.elementFromPoint(x,200)?.matches('[data-slot=sheet-overlay]'),sheetBox.x+sheetBox.width+(390-sheetBox.x-sheetBox.width)/2);assert.ok(overlayHit,'Overlay must intercept background pointer events');
+    await page.waitForFunction(() => document.querySelector('#admin-mobile-menu')?.contains(document.activeElement));
+    for(const selector of ['.admin-main','.admin-mobile-bar'])assert.ok(await page.locator(selector).evaluate(element=>!!element.closest('[inert]')),'inert excludes background from keyboard and accessibility navigation');
+    const sheetBox=await menu.boundingBox(),overlayHit=await page.evaluate(x=>document.elementFromPoint(x,200)?.matches('.admin-menu-backdrop'),sheetBox.x+sheetBox.width+(390-sheetBox.x-sheetBox.width)/2);assert.ok(overlayHit,'Overlay must intercept background pointer events');
     let blocked=false;try{await page.locator('.admin-main h1').click({trial:true,timeout:400});}catch(error){if(error.name==='TimeoutError')blocked=true;else throw error;}assert.ok(blocked,'Background heading must reject pointer clicks while Sheet is open');
     const limits = await menu.evaluate(element => {
       const items = [...element.querySelectorAll('a[href],button,summary')].filter(item => item.tabIndex >= 0 && !item.matches(':disabled') && item.getClientRects().length);
@@ -61,9 +61,9 @@ const {chromium} = require('playwright');
     await target(menu.getByRole('button',{name:'关闭后台菜单',exact:true}));
     await page.keyboard.press('Escape'); await menu.waitFor({state:'detached'});
     assert.ok(await trigger.evaluate(element => element === document.activeElement));
-    assert.equal(await page.locator('.admin-main').evaluate(element => !!element.closest('[aria-hidden=true]')), false);
+    assert.equal(await page.locator('.admin-main').evaluate(element => !!element.closest('[inert]')), false);
     await trigger.click(); await menu.waitFor(); await page.setViewportSize({width:1440,height:900});
-    await menu.waitFor({state:'detached'}); assert.equal(await page.locator('.admin-main').evaluate(element => !!element.closest('[aria-hidden=true]')), false);
+    await menu.waitFor({state:'detached'}); assert.equal(await page.locator('.admin-main').evaluate(element => !!element.closest('[inert]')), false);
     await page.setViewportSize({width:390,height:844});
 
     await goto('/admin/comments');

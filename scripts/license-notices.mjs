@@ -6,11 +6,12 @@ export function licenseNotices() {
   return {
     name: 'mooncci-license-notices',
     buildStart() { notices.clear(); },
-    renderChunk(code) {
+    renderChunk(code, chunk) {
       for (const match of code.matchAll(/\/\*[\s\S]*?\*\//g)) {
         if (/@license|@preserve|copyright/i.test(match[0])) notices.add(match[0]);
       }
-      return null;
+      // The full notices ship once; only entry bundles need the identical index.
+      return chunk.isEntry ? { code: '/*! Third-party notices: /THIRD_PARTY_LICENSES.txt */\n' + code, map: null } : null;
     },
     generateBundle() {
       if (!notices.size) throw new Error('Third-party license collection unexpectedly empty');
