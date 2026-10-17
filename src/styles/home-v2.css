@@ -382,6 +382,7 @@
 @media (max-width: 640px) {
   .home-v2 .home-hero {
     gap: 28px;
+    padding-top: 36px;
   }
 
   .home-v2 .home-hero .eyebrow {
@@ -389,7 +390,7 @@
   }
 
   .home-v2 .home-hero h1 {
-    font-size: 38px;
+    font-size: 35px;
   }
 
   .home-v2 .hero-description {
@@ -399,6 +400,7 @@
   .home-v2 .home-hero-actions {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    margin-top: 24px;
   }
 
   .home-v2 .home-hero-button {
