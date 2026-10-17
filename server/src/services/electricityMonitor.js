@@ -118,6 +118,11 @@ async function processNotifications(
       status,
       notifyTo: config.notifyTo,
       test: true,
+      report: buildReport({
+        snapshot, forecast: metrics, config, period: 'test', now: new Date(),
+        // Optional mail enrichment must not block the existing report/notification flow.
+        dailyRows: await dailyUsage.getDailyHistory(7).catch(() => undefined),
+      }),
     });
     return results;
   }
@@ -231,12 +236,15 @@ async function runElectricityCycle({
     }
     if (dailySlot) {
       const forecast = await dailyUsage.getForecast(time, snapshot.meterId);
+      // Keep the frozen forecast if the optional mail history query fails.
+      const dailyRows = await dailyUsage.getDailyHistory(7, time).catch(() => undefined);
       report = await reports.saveReport(
         scope,
         buildReport({
           snapshot,
           previous,
           forecast,
+          dailyRows,
           config,
           period: dailySlot,
           now: time,

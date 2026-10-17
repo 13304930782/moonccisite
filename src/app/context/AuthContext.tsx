@@ -1,4 +1,5 @@
 import { clearPublicSnapshots } from '../lib/publicSnapshots';
+import { useDocumentHydration } from './DocumentData';
 import { startTransition, createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api, ApiError } from '../lib/api';
@@ -32,6 +33,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const documentReady = useDocumentHydration();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const previousUser = useRef(user?.id);
@@ -48,6 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const version = authVersion.current;
     try {
       const data = await api('/auth/session', { cache: 'no-store' });
+      // Fetch immediately, but don't invalidate a still-dehydrated public route.
+      await documentReady;
       if (version !== authVersion.current) return null;
       if (!data.user) clearAuthCache();
       startTransition(()=>setUser(data.user));
@@ -63,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    refreshUser().finally(() => startTransition(()=>setLoading(false)));
+    refreshUser().finally(async () => { await documentReady; startTransition(()=>setLoading(false)); });
     const onLogout = (event: StorageEvent) => {
       if (event.key !== 'mooncci:logout' || !event.newValue) return;
       authVersion.current += 1;

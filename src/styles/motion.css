@@ -12,9 +12,10 @@ html[data-navigation-type="PUSH"] :is(.page-content,.home-main,.auth-form-panel)
 html[data-navigation-type="POP"] :is(.page-content,.home-main,.auth-form-panel,.resource-content) { animation:none; }
 html[data-navigation-type="PUSH"] html[data-navigation-type="PUSH"] .resource-content { animation:mooncci-fade var(--motion-content) var(--ease-feedback); }
 :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button) {
-  transition:background-color var(--motion-control) ease-out,border-color var(--motion-control) ease-out,color var(--motion-control) ease-out,opacity var(--motion-control) ease-out,scale var(--motion-control) ease-out;
+  transition:background-color var(--motion-control) ease-out,border-color var(--motion-control) ease-out,color var(--motion-control) ease-out,opacity var(--motion-control) ease-out;
 }
-:is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button):active:not(:disabled) { scale:.98; }
+:is(.neo-button,.quiet-button,.article-button,.icon-button):active:not(:disabled):not([aria-disabled="true"]) { background-color:color-mix(in srgb,var(--foreground) 14%,var(--card)); }
+:is(.neo-button-dark,.account-primary-button,.article-button-primary):active:not(:disabled):not([aria-disabled="true"]) { background-color:color-mix(in srgb,var(--primary) 96%,var(--primary-foreground)); opacity:1; }
 :is(.post-card,.project-card,.activity-row) { transition:background-color var(--motion-control) ease-out,border-color var(--motion-control) ease-out; }
 :is(.post-card,.project-card,.activity-row):hover { scale:1; }
 :is([data-slot="dialog-content"],[data-slot="alert-dialog-content"],.article-media-dialog,.reading-tools-panel)[data-state="open"] { animation:mooncci-panel-in var(--motion-enter) var(--ease-enter); }
@@ -27,10 +28,8 @@ html[data-reduced-motion="true"] { scroll-behavior:auto !important; }
 html[data-reduced-motion="true"] *,html[data-reduced-motion="true"] *::before,html[data-reduced-motion="true"] *::after {
   animation:none !important; transition:none !important; scroll-behavior:auto !important;
 }
-html[data-reduced-motion="true"] :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button):active { scale:1; }
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
-  :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button):active { scale:1; }
 }
 
 .auth-route-skeleton { width:min(100%,440px);margin-inline:auto; min-height:540px; }

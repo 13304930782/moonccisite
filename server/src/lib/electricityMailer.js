@@ -1,7 +1,8 @@
 const { roomContext } = require('./electricityContext');
 const { getMailConfig, sendMail, safeSiteUrl } = require('./mailer');
 const { renderBrandedEmail } = require('./mailTemplate');
-const { reportFields } = require('./electricityReport');
+const { mailFields } = require('./electricityReport');
+const { renderElectricityDailyEmail } = require('./electricityMailTemplate');
 
 function displayNumber(value, digits = 2) {
   return value !== null &&
@@ -59,21 +60,13 @@ async function sendElectricityDailyReport({
   };
   const text = [
     `mooncci 宿舍电量${label}`,
-    ...reportFields(report).map(([label, value]) => `${label}：${value}`),
+    report.collectionStatus,
+    ...mailFields(report).map(([label, value]) => `${label}：${value}`),
     `${siteUrl}/electricity${roomContext() ? '?roomId=' + roomContext().id : ''}`,
   ].join('\n');
-  const html = renderBrandedEmail({
-    eyebrow: `电量监控 / ${label}`,
-    title: test ? '宿舍电量测试邮件' : `今日宿舍电量${label}`,
-    intro: report
-      ? report.collectionStatus
-      : `采集日期 ${snapshot.snapshotDate}，状态为 ${statusText}。`,
-    details: reportFields(report).map(([label, value]) => ({ label, value })),
-    cta: {
-      label: '查看电量监控',
-      url: `${siteUrl}/electricity${roomContext() ? '?roomId=' + roomContext().id : ''}`,
-    },
-    footer: '宿舍电量监控 · 北京时间采集',
+  const html = renderElectricityDailyEmail({
+    report, label, test,
+    url: `${siteUrl}/electricity${roomContext() ? '?roomId=' + roomContext().id : ''}`,
   });
   return sendMail({ channel: 'electricity',
     to: recipient,

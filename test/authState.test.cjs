@@ -6,6 +6,39 @@ const { act, create } = require('react-test-renderer');
 const { buildSync } = require('esbuild');
 const code = buildSync({ entryPoints: ['src/app/context/AuthContext.tsx'], bundle: true, write: false,
   platform: 'node', format: 'cjs', jsx: 'automatic', external: ['react', 'react/jsx-runtime'] }).outputFiles[0].text;
+const hydrationCode=buildSync({stdin:{contents:"export {AuthProvider,useAuth} from './src/app/context/AuthContext'; export {DocumentDataProvider,DocumentReady} from './src/app/context/DocumentData';",resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,platform:'node',format:'cjs',jsx:'automatic',external:['react','react/jsx-runtime']}).outputFiles[0].text;
+
+test('session requests start before SSR hydration, publish after readiness and cannot overwrite newer auth intent',async()=>{
+  for(const mode of ['ssr','csr','logout','login']){
+    const original={id:1,username:'old-session',role:'user'},signedIn={id:2,username:'new-login',role:'user'};
+    const calls=[];
+    const storage={removeItem(){},setItem(){}};
+    const window=new EventTarget();window.setTimeout=setTimeout;window.clearTimeout=clearTimeout;
+    const fetch=async url=>{calls.push(url);return Response.json(url.endsWith('/auth/logout')?{message:'logged out'}:{user:url.endsWith('/auth/session')?original:signedIn});};
+    const module={exports:{}};
+    vm.runInNewContext(hydrationCode,{module,exports:module.exports,require,window,localStorage:storage,sessionStorage:storage,fetch,FormData,Headers,AbortController,AbortSignal,setTimeout,clearTimeout,console});
+    const {AuthProvider,useAuth,DocumentDataProvider,DocumentReady}=module.exports;
+    let auth,root;const ready=()=>{};
+    function Probe(){auth=useAuth();return null;}
+    const seed=mode==='csr'?undefined:{url:'/article/18',resources:{}};
+    const tree=complete=>React.createElement(DocumentDataProvider,{data:seed},React.createElement(AuthProvider,null,React.createElement(Probe),complete?React.createElement(DocumentReady,{onReady:ready}):null));
+    try{
+      await act(async()=>{root=create(tree(false));});
+      assert.equal(calls.filter(url=>url.endsWith('/auth/session')).length,1,'The session request must not wait for hydration');
+      if(mode==='csr'){
+        assert.equal(auth.user.id,1);assert.equal(auth.loading,false,'CSR must not require a hydration marker');
+      }else{
+        assert.equal(auth.user,null);assert.equal(auth.loading,true,'SSR auth publication waits while its DOM is dehydrated');
+        if(mode==='logout')await act(async()=>{assert.equal(await auth.logout(),true);});
+        if(mode==='login')await act(async()=>{await auth.login('test@example.invalid','synthetic-password');});
+        if(mode==='login')assert.equal(auth.user.id,2,'Explicit login must not wait for hydration');
+        await act(async()=>{root.update(tree(true));});
+        assert.equal(auth.loading,false);
+        assert.equal(auth.user?.id??null,mode==='logout'?null:mode==='login'?2:1,'Old session response must respect newer login/logout');
+      }
+    }finally{if(root)await act(async()=>root.unmount());}
+  }
+});
 
 test('auth UI preserves failed logout, rejects HTML success, ignores stale me and synchronizes tabs', async t => {
   const user = { id: 1, username: 'fixture', role: 'owner' };

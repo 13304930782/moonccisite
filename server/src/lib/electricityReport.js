@@ -1,6 +1,6 @@
 const { finiteNumber, classifyElectricity } = require('./electricityMetrics');
 const { getBusinessDate, getBusinessDateTime } = require('./electricityTime');
-const { calculateMidnightForecast } = require('./electricityDailyUsage');
+const { calculateMidnightForecast, shiftDate, dailyStatusText } = require('./electricityDailyUsage');
 const { xml } = require('./contentPlatform');
 
 function number(value, digits = 2) {
@@ -18,6 +18,7 @@ function buildReport({
   snapshot,
   previous,
   forecast = null,
+  dailyRows,
   config,
   period,
   now,
@@ -83,7 +84,20 @@ function buildReport({
       'price',
     ].map((field) => [field, source[field] ?? null]),
   );
+  // Mail can use school totals published after midnight; RSS keeps its frozen forecast.
+  const yesterday = shiftDate(reportDate, -1);
+  const day = dailyRows?.find((row) => row.usageDate === yesterday &&
+    source.meterId && row.meterId === source.meterId);
+  const mailDaily = dailyRows === undefined ? undefined : {
+    date: yesterday,
+    usage: day?.status === 'valid' && finiteNumber(day.usage) !== null && day.usage >= 0
+      ? Number(day.usage) : null,
+    status: day?.status === 'valid' && (finiteNumber(day.usage) === null || day.usage < 0)
+      ? 'missing_value' : day?.status || 'awaiting_school',
+    method: day?.method || null,
+  };
   return {
+    ...(mailDaily ? { mailDaily } : {}),
     reportDate,
     period,
     publishedAt: now.toISOString(),
@@ -142,6 +156,31 @@ function reportFields(report) {
     ['预计可用天数', `${number(m.estimatedDaysRemaining, 1)} 天`],
   ];
 }
+function mailFields(report) {
+  const s = report.snapshot || {}, m = report.metrics || {};
+  const quantity = (value, unit, digits = 2) => finiteNumber(value) === null
+    ? '未提供' : `${number(value, digits)} ${unit}`;
+  // Old saved reports retain their original, frozen data when retried.
+  const day = report.mailDaily || {
+    date: m.completedDayDate,
+    usage: m.completedDayUse,
+    status: m.completedDayStatus,
+  };
+  const missingDay = day.status === 'awaiting_school' || day.status === 'missing_value'
+    ? '学校日用电尚未提供，待结算或同步'
+    : dailyStatusText[day.status] || '完整日数据尚未提供';
+  return [
+    ['总余量', quantity(s.totalRemaining, 'kWh')],
+    ['已购 / 补贴余量', `${quantity(s.purchasedRemaining, 'kWh')} / ${quantity(s.subsidyRemaining, 'kWh')}`],
+    ['今日用电（截至采集时）', quantity(s.todayUse, 'kWh')],
+    [`完整日用电${day.date ? `（${day.date}）` : ''}`,
+      finiteNumber(day.usage) === null ? missingDay : quantity(day.usage, 'kWh')],
+    ['预计可用', finiteNumber(m.estimatedDaysRemaining) === null
+      ? '暂不可估算（需有效零点余量及至少 3 天完整日数据）'
+      : `${number(m.estimatedDaysRemaining, 1)} 天（按零点数据估算）`],
+    ['采集时间', timestamp(s.recordedAt)],
+  ];
+}
 function rssDate(value) {
   return new Date(new Date(value).getTime() + 8 * 3600000)
     .toUTCString()
@@ -166,4 +205,4 @@ function renderElectricityRss(reports, origin, roomId) {
     .join('');
   return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>mooncci 宿舍电量</title><link>${xml(link)}</link><description>私密早晚电量报告；每天早晚更新，实际到达时间取决于阅读器刷新频率。</description><language>zh-cn</language>${items}</channel></rss>`;
 }
-module.exports = { buildReport, reportFields, renderElectricityRss, number };
+module.exports = { buildReport, reportFields, mailFields, renderElectricityRss, number };

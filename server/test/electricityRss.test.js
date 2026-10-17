@@ -147,8 +147,9 @@ test('scheduled mail renders the persisted report fields with the existing butto
     status: report.status,
     period: report.period,
   });
-  assert.match(captured.text, /今日用电（截至采集时）：数据不足/);
-  assert.match(captured.text, /比较基准时间：未知/);
+  assert.match(captured.text, /今日用电（截至采集时）：未提供/);
+  assert.doesNotMatch(captured.text, /比较基准时间/);
+  assert.match(captured.text, /采集完成，部分数据缺失/);
   assert.match(captured.html, /data-mail-button/);
   assert.match(captured.html, /data-mail-fallback/);
   assert.match(captured.html, /采集完成，部分数据缺失/);

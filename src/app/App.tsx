@@ -1,12 +1,12 @@
 import { feedbackStore } from './lib/feedback';
 import { confirmationStore } from './lib/confirmAction';
 import { afterInitialLoad } from './lib/afterInitialLoad';
-import {DocumentDataProvider, useDocumentStatus, type DocumentData} from './context/DocumentData';
+import {DocumentDataProvider, DocumentReady, useDocumentStatus, type DocumentData} from './context/DocumentData';
 import { loadPage } from './lib/preloadPage';
 import { RoutePreload } from './components/RoutePreload';
 import { NavigationProtection } from './components/NavigationProtection';
 import { DiagnosticNavigation } from './components/DiagnosticNavigation';
-import { startTransition, lazy, Suspense, useState, useEffect, useSyncExternalStore } from 'react';
+import { useCallback, lazy, Suspense, useState, useEffect, useSyncExternalStore } from 'react';
 import { RoutePosition } from './components/RoutePosition';
 import '../styles/experience.css';
 const FeedbackHost = lazy(() => import('./components/FeedbackHost').then(m => ({ default: m.FeedbackHost })));
@@ -47,11 +47,11 @@ function SiteRoutes() {
   const status=useDocumentStatus(), location=useLocation();
   const [initialKey]=useState(location.key);
   const [interactive, setInteractive] = useState(false);
-  useEffect(() => { startTransition(()=>setInteractive(true)); }, []);
+  const onReady = useCallback(() => setInteractive(true), []);
   return <RoutePosition><NavigationProtection/><RoutePreload/>
           <SiteMeta /><DeferredFeedbackHost/>
           <PageAnalytics /><DiagnosticNavigation />
-          <Suspense fallback={<RouteLoader />}>{status && status>=400 && location.key===initialKey ? (status===404 ? <NotFoundPage/> : <RouteFailure/>) : (location.pathname==='/'?<HomePage/>:<RoutePages/>)}</Suspense>
+          <Suspense fallback={<RouteLoader />}>{status && status>=400 && location.key===initialKey ? (status===404 ? <NotFoundPage/> : <RouteFailure/>) : (location.pathname==='/'?<HomePage/>:<RoutePages/>)}<DocumentReady onReady={onReady}/></Suspense>
           {interactive && <><PublicWeatherCompanion /><Suspense fallback={null}><ReadingTools /></Suspense></>}
   </RoutePosition>;
 }

@@ -89,12 +89,12 @@ test('only HomePage imports the new stylesheet, with no replacement global style
  }
 });
 
-test('shared shell, content components and theme retain their 9884b75 Git blobs',()=>{
+test('shared shell, content components and theme retain pinned Git blobs (approved press-motion removal only)',()=>{
  // Canonical LF blobs work on Windows and in shallow CI without historical commits.
  const pins={
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
   'src/styles/globals.css':'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391',
-  'src/styles/editorial.css':'ad07336403feaf34628cb8bf9a7b361d89c1ff56',
+  'src/styles/editorial.css':'9f8cedc46f1d2bb7310e77a7934ae122e456215a',
   'src/styles/project-card.css':'08306a6737ea3bbf30b5792d54fe0c43a12421b7',
   'src/app/components/Header.tsx':'d35fbbde833cea0b791a268adc22542186dac074',
   'src/app/components/SiteFooter.tsx':'85bdf27069f292558f00aee14711f76254ea4add',
