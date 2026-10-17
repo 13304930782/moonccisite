@@ -33,3 +33,12 @@ test('electricity redesign CSS stays page scoped and motion respects reduced pre
   assert.ok(allowed,decl.toString());
  });
 });
+
+
+test('electricity hero cannot inherit article cover aspect ratio and negative margin',()=>{
+ const page=fs.readFileSync('src/app/pages/ElectricityPage.tsx','utf8');
+ const css=fs.readFileSync('src/styles/elec-v2.css','utf8');
+ assert.match(page,/elec-hero-card/);
+ assert.doesNotMatch(page,/(?<![\w-])hero-card(?![\w-])/);
+ assert.doesNotMatch(css,/(?<![\w-])hero-card(?![\w-])/);
+});
