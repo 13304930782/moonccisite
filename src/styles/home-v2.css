@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'JetBrains Mono Hero';
+  src: url('../assets/fonts/JetBrainsMono-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 .home-v2 {
   --home-fill: color-mix(in srgb, var(--foreground) 5%, var(--background));
   --home-hover: color-mix(in srgb, var(--foreground) 8%, var(--background));
@@ -45,11 +53,20 @@
   margin: 0;
   max-width: none;
   font-size: 56px;
-  font-weight: 600;
+  font-family: 'JetBrains Mono Hero', 'Inter Variable', Inter, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  font-weight: 700;
+  font-synthesis: none;
   line-height: 1.1;
   letter-spacing: -.02em;
   text-wrap: initial;
   overflow-wrap: anywhere;
+}
+
+@media (min-width: 901px) {
+  .home-v2 .hero-copy { container-type: inline-size; }
+  .home-v2 .home-hero h1 {
+    font-size: min(56px, 7.15cqi);
+  }
 }
 
 .home-v2 .hero-description {

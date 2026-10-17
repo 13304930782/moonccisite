@@ -24,7 +24,19 @@ const paintWords=new Set('none solid dashed dotted double hidden groove ridge in
 
 function assertScope(source){
  const css=postcss.parse(source);
- css.walkAtRules(rule=>assert.ok(['media','supports','container'].includes(rule.name),`Global at-rule: @${rule.name}`));
+ css.walkAtRules(rule=>{
+  if(rule.name==='font-face'){
+   assert.equal(rule.params,'');
+   assert.equal(rule.nodes.length,5);
+   const declarations={};
+   for(const node of rule.nodes){assert.equal(node.type,'decl');assert.equal(Object.hasOwn(declarations,node.prop),false);declarations[node.prop]=node.value;}
+   assert.deepEqual(declarations,{
+    'font-family': "'JetBrains Mono Hero'",
+    src: "url('../assets/fonts/JetBrainsMono-Bold.woff2') format('woff2')",
+    'font-weight':'700','font-style':'normal','font-display':'swap',
+   });
+  }else assert.ok(['media','supports','container'].includes(rule.name),`Global at-rule: @${rule.name}`);
+ });
  css.walkRules(rule=>{
   for(const selector of postcss.list.comma(rule.selector)){
    assert.doesNotMatch(selector,/:root\b/,selector);
@@ -75,8 +87,24 @@ test('scope guard rejects leaked selectors, shared tokens and hard-coded neutral
   '.home-v2{--home-fill:gray}',
   '.home-v2{border:1px solid rgb(0 0 0 / .1)}',
   '@import "./theme.css";',
+  "@font-face{font-family:'Global';src:url(https://example.com/font.woff2)}",
  ])assert.throws(()=>assertScope(source),source);
  assert.doesNotThrow(()=>assertScope('.home-v2{--home-fill:color-mix(in srgb,var(--foreground) 4%,var(--background));color:var(--foreground);border:1px solid var(--border)}@media(max-width:760px){.home-v2 .child{background:var(--home-fill)}}'));
+});
+
+test('the local licensed Bold face is only applied to the homepage headline',()=>{
+ const css=assertScope(fs.readFileSync(file,'utf8'));
+ let faces=0,uses=0;
+ css.walkAtRules('font-face',()=>faces++);
+ css.walkDecls('font-family',decl=>{
+  if(decl.parent.type==='atrule')return;
+  assert.equal(decl.parent.selector,'.home-v2 .home-hero h1');
+  assert.match(decl.value,/^'JetBrains Mono Hero',/);
+  uses++;
+ });
+ assert.equal(faces,1);assert.equal(uses,1);
+ assert.equal(fs.readFileSync('src/assets/fonts/JetBrainsMono-Bold.woff2').subarray(0,4).toString(),'wOF2');
+ assert.match(fs.readFileSync('src/assets/fonts/JetBrainsMono-OFL.txt','utf8'),/SIL OPEN FONT LICENSE/);
 });
 
 test('only HomePage imports the new stylesheet, with no replacement global stylesheet',()=>{
