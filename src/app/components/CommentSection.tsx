@@ -82,12 +82,16 @@ function getCommentRule(role?: string) {
   return '评论审核通过后公开，待审核内容仅你自己可见。';
 }
 
-type CommentSectionProps = { postId?: number | string; updateId?: number | string; compact?: boolean };
-export function CommentSection({ postId, updateId, compact = false }: CommentSectionProps) {
+type CommentSectionProps = { postId?: number | string; updateId?: number | string; compact?: boolean; variant?: 'note'; onCountChange?: (count: number) => void };
+export function CommentSection({ postId, updateId, compact = false, variant, onCountChange }: CommentSectionProps) {
   const { user } = useAuth();
-  return <CommentThread key={`${updateId ? 'update' : 'post'}:${updateId || postId}:${user?.id || 'guest'}`} postId={postId} updateId={updateId} compact={compact} />;
+  return <CommentThread key={`${updateId ? 'update' : 'post'}:${updateId || postId}:${user?.id || 'guest'}`} postId={postId} updateId={updateId} compact={compact} variant={variant} onCountChange={onCountChange} />;
 }
-function CommentThread({ postId, updateId, compact = false }: CommentSectionProps) {
+function CommentThread({ postId, updateId, compact = false, variant, onCountChange }: CommentSectionProps) {
+  const note = variant === 'note';
+  const composeRef = useRef<HTMLTextAreaElement>(null);
+  const [newCommentId, setNewCommentId] = useState<number | null>(null);
+  const [likeMotion, setLikeMotion] = useState<{ id: number; version: number } | null>(null);
   const targetId = updateId || postId;
   const location = useLocation();
   const threadId = `comments-${updateId ? 'update' : 'post'}-${targetId}`;
@@ -110,11 +114,38 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
   const [replyContent, setReplyContent] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
 
-  const loadComments = () => {
+  useEffect(() => {
+    if (note) onCountChange?.(comments.length);
+  }, [note, comments.length, onCountChange]);
+
+  useEffect(() => {
+    const input = composeRef.current;
+    if (!note || !input) return;
+    const resize = () => {
+      const styles = getComputedStyle(input);
+      const lineHeight = parseFloat(styles.lineHeight) || 24;
+      const padding = parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, lineHeight * 6 + padding) + 'px';
+      input.style.overflowY = input.scrollHeight > lineHeight * 6 + padding ? 'auto' : 'hidden';
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, [note, content, user?.id]);
+
+  const loadComments = (submitted?: { content: string; knownIds: Set<number> }) => {
     const version = ++requestVersion.current;
     setCommentsLoading(true);
     api(endpoint + '?sort=' + sort)
-      .then(rows => { if (version === requestVersion.current) setComments(rows); })
+      .then(rows => { if (version === requestVersion.current) {
+        setComments(rows);
+        if (note && submitted) {
+          // The API returns no ID; animate only a new matching comment by this account.
+          const added = rows.find((row: Comment) => !submitted.knownIds.has(row.id) && Number(row.user_id) === Number(user?.id) && row.content.trim() === submitted.content.trim());
+          if (added) setNewCommentId(added.id);
+        }
+      } })
       .catch((err) => { if (version === requestVersion.current) setMessage(err.message || '评论加载失败'); })
       .finally(() => { if (version === requestVersion.current) setCommentsLoading(false); });
   };
@@ -158,7 +189,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
 
       notify.success(res.message || '评论已提交');
       setContent('');
-      loadComments();
+      loadComments(note ? { content, knownIds: new Set(comments.map(item => item.id)) } : undefined);
     } catch (err: any) {
       setMessage(err.message || '评论提交失败'); notify.error(err.message || '评论提交失败');
     } finally {
@@ -192,7 +223,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
       notify.success(res.message || '回复已提交');
       setReplyContent('');
       setReplyingTo(null);
-      loadComments();
+      loadComments(note ? { content: replyContent, knownIds: new Set(comments.map(item => item.id)) } : undefined);
     } catch (err: any) {
       setMessage(err.message || '回复提交失败'); notify.error(err.message || '回复提交失败');
     } finally {
@@ -211,6 +242,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
       return;
     }
 
+    if (note) setLikeMotion(previous => ({ id: comment.id, version: (previous?.version || 0) + 1 }));
     try {
       if (comment.liked_by_me) {
         await api('/comments/' + comment.id + '/like', { method: 'DELETE' });
@@ -242,7 +274,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
   const renderCommentItem = (item: Comment, isReply: boolean = false) => {
     return (
       <div key={item.id} className={`comment-thread${isReply?' comment-reply ml-5 md:ml-10 mt-3':''}`}>
-        <div className={`comment-item comment-item--${item.status}`}>
+        <div className={`comment-item comment-item--${item.status}${note ? ' note-comment-item' + (item.author_role === 'owner' ? ' note-comment-owner' : '') + (newCommentId === item.id ? ' note-comment-new' : '') : ''}`} onAnimationEnd={note ? event => { if (event.target === event.currentTarget && newCommentId === item.id) setNewCommentId(null); } : undefined}>
           <div className="comment-meta flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
             <span className="font-medium text-foreground flex items-center gap-2">{item.author_avatar?<img src={item.author_avatar} alt="" width="28" height="28" className="rounded-full object-cover"/>:<span className="comment-avatar-fallback" aria-hidden="true">{item.author_name.slice(0,1)}</span>}
               {item.author_name}{item.author_deleted && <small className="deleted-account-label">已删除</small>}
@@ -257,7 +289,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
             )}
 
             <span>{formatCommentTime(item.created_at)}</span>
-            {item.ip_location && <span>来自 {item.ip_location}</span>}
+            {item.ip_location && <span>来自 {note ? item.ip_location.replace(/^中国\s*(?=\S)/u, '') : item.ip_location}</span>}
 
             {item.status === 'pending' && (
               <span className="rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs text-yellow-700">
@@ -293,6 +325,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
             <button
               onClick={() => toggleLike(item)}
               aria-pressed={item.liked_by_me}
+              aria-label={note ? `${item.liked_by_me ? '取消点赞' : '点赞'}，${item.like_count || 0} 人赞` : undefined}
               disabled={item.status !== 'visible'}
               className={
                 'comment-like inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition ' +
@@ -303,11 +336,13 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
               }
             >
               <Heart
+                key={note && likeMotion?.id === item.id ? likeMotion.version : 'heart'}
+                data-note-like={note && likeMotion?.id === item.id ? 'clicked' : undefined}
                 className={
                   'w-4 h-4 ' + (item.liked_by_me ? 'fill-current' : '')
                 }
               />
-              {item.like_count || 0}
+              {note ? <span className={likeMotion?.id === item.id ? 'note-like-count note-like-count-changed' : 'note-like-count'} key={item.like_count}>{item.like_count || 0}</span> : item.like_count || 0}
             </button>
 
             {user && item.status === 'visible' && (
@@ -347,6 +382,7 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
                 </span>
                 <button
                   type="button"
+                  aria-label={note ? '取消回复' : undefined}
                   onClick={() => {
                     setReplyingTo(null);
                     setReplyContent('');
@@ -389,6 +425,23 @@ function CommentThread({ postId, updateId, compact = false }: CommentSectionProp
       </div>
     );
   };
+
+  if (note) return <section className="comment-section note-discussion" id={threadId} aria-labelledby={`${threadId}-heading`}>
+    <div className="comment-header"><h2 id={`${threadId}-heading`} tabIndex={-1}>讨论 <span className="comment-total">{comments.length}</span></h2>
+      <div className="comment-sort" role="group" aria-label="评论排序">{sortOptions.map(option => <button type="button" key={option.value} aria-pressed={sort === option.value} onClick={() => setSort(option.value)}>{option.label}</button>)}</div>
+    </div>
+    {message && <p role="alert" className="note-comment-message">{message}</p>}
+    <div ref={listRef} id={`${threadId}-list`} className="note-comment-list" aria-busy={commentsLoading}>
+      {commentsLoading && comments.length === 0 && <p role="status" className="note-comment-empty">正在读取评论…</p>}
+      {!commentsLoading && !message && comments.length === 0 && <p className="note-comment-empty">还没有人讨论，来说点什么吧</p>}
+      {commentTree.map(item => renderCommentItem(item))}
+    </div>
+    {user ? <><form onSubmit={submit} className="note-comment-compose" aria-busy={loading}>
+      <textarea ref={composeRef} aria-label="写下你的评论" value={content} onChange={event => setContent(event.target.value)} rows={1} placeholder="说点什么…" />
+      <button type="submit" aria-label={loading ? '正在发表评论' : '发表评论'} disabled={loading || !content.trim()}><Send aria-hidden="true" size={20} /></button>
+    </form><p className="note-comment-posting-rule">以 {user.username}（{getRoleName(user.role)}）发布 · {['owner', 'admin', 'editor'].includes(user.role) ? '发布后直接显示' : '审核通过后公开，待审核内容仅自己可见'}</p></> :
+      <div className="comment-login-prompt"><p>登录后参与讨论。</p><Link className="comment-submit" to={'/login?redirect='+encodeURIComponent((updateId ? '/updates/'+updateId : location.pathname)+'#'+threadId)}>登录参与 ↗</Link></div>}
+  </section>;
 
   return (
     <section

@@ -21,7 +21,7 @@ function figmaAssetResolver() {
 export default defineConfig({
   plugins: [
     licenseNotices(),
-    { name: 'router-production', apply: 'build', resolveId(id) {
+    { name: 'router-production', apply: 'build', enforce: 'pre', resolveId(id) {
       if(id==='react-router') return path.resolve(__dirname,'node_modules/react-router/dist/production/index.mjs');
       if(id==='react-router/dom') return path.resolve(__dirname,'node_modules/react-router/dist/production/dom-export.mjs');
     } },
@@ -45,6 +45,8 @@ export default defineConfig({
     manifest: 'asset-manifest.json',
     rollupOptions: {
       output: {
+        // Merge tiny shared fragments; preserve lazy route and editor boundaries.
+        experimentalMinChunkSize: 10000,
         onlyExplicitManualChunks: true,
         manualChunks(id) {
           if (id.replace(/\\/g, '/').includes('/node_modules/@tiptap/')) return 'editor-tiptap-core';

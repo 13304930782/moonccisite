@@ -1,11 +1,9 @@
-import { notify } from '../lib/feedback';
-import { SiteBack } from '../components/SiteBack';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, FileText, GitBranch } from 'lucide-react';
 import '../../styles/update-journal.css';
 import { CommentSection } from '../components/CommentSection';
-import { useSearchParams, useParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   SitePage,
   PageHeading,
@@ -14,8 +12,6 @@ import {
   useResource,
   formatDate,
 } from '../components/ContentUI';
-import { MarkdownContent } from '../components/MarkdownContent';
-import { safeImageSrc } from '../lib/safeUrl';
 export default function UpdatesPage() {
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get('page')) || 1),
@@ -89,35 +85,4 @@ function TimelineEntry({item}: {item: any}) {
     </article>
   </div>;
 }
-export function UpdateDetailPage() {
-  const { id } = useParams();
-  const resource = useResource(`/updates/${id}`);
-  const item = resource.data;
-  return <SitePage><ResourceState resource={resource}>{item && <UpdateReading key={id} item={item}/>}</ResourceState></SitePage>;
-}
-function UpdateReading({item}: {item: any}) {
-  const [copyMessage, setCopyMessage] = useState('');
-  async function copyLink() {
-    try { await navigator.clipboard.writeText(window.location.origin + window.location.pathname); notify.success('链接已复制'); }
-    catch { setCopyMessage('复制失败，请复制地址栏中的链接。'); notify.error('复制失败，请复制地址栏中的链接。'); }
-  }
-  return <div className="update-reading">
-    <article aria-labelledby="update-reading-title" data-reading-content>
-      <header className="update-reading-header">
-        <div className="update-reading-intro"><SiteBack className="journal-back" /><span className="journal-eyebrow">近况</span></div>
-        <h1 id="update-reading-title">{item.title || '一则近况'}</h1>
-        <div className="update-reading-meta">{item.author_name && <span>{item.author_name}</span>}<time dateTime={item.published_at}>{formatDate(item.published_at)}</time></div>
-      </header>
-      <div className="update-reading-body">
-        <MarkdownContent content={item.content}/>
-        {safeImageSrc(item.image_url) && <img className="content-image" src={safeImageSrc(item.image_url)} alt="动态配图"/>}
-      </div>
-      <div className="journal-actions update-reading-actions" data-reading-ignore>
-        <a href={`#comments-update-${item.id}`}>参与讨论 ↓</a>
-        <button type="button" onClick={() => void copyLink()}>复制链接 ↗</button>
-        <span role="status">{copyMessage}</span>
-      </div>
-    </article>
-    <CommentSection updateId={item.id} compact />
-  </div>;
-}
+export { default as UpdateDetailPage } from './NoteDetailPage';
