@@ -11,6 +11,7 @@
   --article-label-fg: #7fd8bd;
 }
 .blog-card > small:not(:empty) {
+  align-self: start;
   width: fit-content;
   max-width: 100%;
   padding: 3px 10px;

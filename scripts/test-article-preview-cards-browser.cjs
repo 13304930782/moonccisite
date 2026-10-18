@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const {chromium, webkit} = require('playwright');
 
 const portrait = '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect width="600" height="800" fill="#eee"/><rect width="600" height="100" fill="#c55"/><rect y="700" width="600" height="100" fill="#55c"/></svg>';
-const post = {id:1,title:'完整竖图测试',summary:'用完整竖图检查列表展示与发布预览，顶部和底部色条都应可见。',content:'正文内容。',summary_mode:'manual',cover_image:'/api/uploads/portrait.webp',tags:[],published_at:'2026-10-13'};
+const post = {id:1,category:'回归测试',title:'完整竖图测试',summary:'用完整竖图检查列表展示与发布预览，顶部和底部色条都应可见。',content:'正文内容。',summary_mode:'manual',cover_image:'/api/uploads/portrait.webp',tags:[],published_at:'2026-10-13'};
 const legacyCrop={card:{x:.17,y:.91,zoom:2.2},detail:{x:.25,y:.65,zoom:1.4}};
 const posts=[post,{...post,id:2,title:'旧卡片取景也完整显示',cover_crop:legacyCrop},{...post,id:3,title:'完整横图',cover_image:'/api/uploads/landscape.webp',cover_crop:legacyCrop},{...post,id:4,title:'完整方图',cover_image:'/api/uploads/square.webp',cover_crop:legacyCrop}];
 const images={
@@ -121,6 +121,11 @@ const images={
        assert.ok(Math.abs(box.width/box.height-box.ratio)<.01,'all original image edges remain visible: '+routePath);
        if(!routePath.startsWith('/series'))assert.equal(box.width,routePath==='/articles'?(width<=767?88:160):(width<=760?112:180));
       }
+      const labels=await page.locator('.blog-card > small:not(:empty)').evaluateAll(items=>items.map(item=>{
+       const css=getComputedStyle(item);return {height:item.getBoundingClientRect().height,natural:parseFloat(css.lineHeight)+parseFloat(css.paddingTop)+parseFloat(css.paddingBottom)};
+      }));
+      if(!routePath.startsWith('/series'))assert.ok(labels.length>0,'category labels are exercised');
+      for(const label of labels)assert.ok(Math.abs(label.height-label.natural)<1,'portrait images must not stretch category pills');
       assert.equal(measured.legacyContainers,0,'legacy card cropping is never rendered');
       assert.equal(measured.overflow,false,'page must not overflow: '+routePath);
       if(width===390||width===1440)await page.screenshot({path:`.cache/article-card-${name}-${width}-${dark}-${routePath.replace(/\W/g,'-')||'home'}.png`,fullPage:true,animations:'disabled'});
