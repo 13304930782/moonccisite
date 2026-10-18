@@ -118,7 +118,9 @@ const images={
       assert.equal(measured.boxes.length,4,routePath+' has all loaded image shapes');
       for(const box of measured.boxes) {
        assert.equal(box.fit,'contain');assert.equal(box.transform,'none');assert.equal(box.crop,'');
-       assert.ok(Math.abs(box.width/box.height-box.ratio)<.01,'all original image edges remain visible: '+routePath);
+       // Article thumbnails fit the complete image inside a compact fixed box.
+       if(routePath==='/articles')assert.equal(box.height,width<=767?88:100,'article thumbnail height stays compact for every image shape');
+       else assert.ok(Math.abs(box.width/box.height-box.ratio)<.01,'other lists preserve natural image proportions: '+routePath);
        if(!routePath.startsWith('/series'))assert.equal(box.width,routePath==='/articles'?(width<=767?88:160):(width<=760?112:180));
       }
       const labels=await page.locator('.blog-card > small:not(:empty)').evaluateAll(items=>items.map(item=>{
