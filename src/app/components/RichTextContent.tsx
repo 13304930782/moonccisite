@@ -21,7 +21,7 @@ export function RichTextContent({content,headingPrefix,imageDimensions}: {conten
     const videoId = el.getAttribute('data-youtube-id');
     if (tag === 'div' && videoId) return <figure className="rich-youtube" key={key}>
       {playback ? <iframe src={youtubeEmbedUrl(videoId, Number(el.getAttribute('data-youtube-start')) || 0)} title="YouTube 视频" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/> : <div className="youtube-device-placeholder">YouTube 视频 · 请在阅读预览中播放</div>}
-      <figcaption><a href={`https://www.youtube.com/watch?v=${videoId}`} target="_blank" rel="noopener noreferrer">在 YouTube 观看 ↗</a></figcaption>
+      <figcaption><a href={`https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`} target="_blank" rel="noopener noreferrer">在 YouTube 观看 ↗</a></figcaption>
     </figure>;
     if (/^h[1-6]$/.test(tag)) { if(headingPrefix) props.id = `${headingPrefix}-${heading}`; heading++; }
     for (const attr of ['title','start','colspan','rowspan','data-type','data-checked']) if(el.hasAttribute(attr)) props[({colspan:'colSpan',rowspan:'rowSpan'} as Record<string,string>)[attr] || attr] = el.getAttribute(attr);

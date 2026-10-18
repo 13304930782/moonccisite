@@ -5,6 +5,8 @@ const crypto = require('crypto');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const mysql = require('mysql2/promise');
 const baseline = [
+  '202610180001_newsletter_review.sql',
+  '202610180002_article_summary_mode.sql',
   '202610150001_project_icon_image.sql',
   '202610130001_article_cover_crop.sql',
   '202609190001_article_revisions.sql',

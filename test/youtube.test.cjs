@@ -11,6 +11,8 @@ test('YouTube URLs and iframe code extract only a fixed video ID and bounded sta
  const id='s-pZ2TzQb00';
  for(const url of [`https://youtu.be/${id}`,`https://www.youtube.com/watch?v=${id}`,`https://youtube.com/shorts/${id}`])assert.equal(youtube.youtubeVideoId(url),id);
  assert.deepEqual(youtube.parseYoutubeEmbed(`<iframe src="https://www.youtube.com/embed/${id}?si=x&amp;start=27" onload="evil()"></iframe>`),{id,start:27});
+ assert.equal(youtube.parseYoutubeEmbed('<iframe src="javascript:alert(1)"></iframe>'),null);
+ assert.equal(youtube.parseYoutubeEmbed(`&lt;iframe src="https://www.youtube.com/embed/${id}"&gt;&lt;/iframe&gt;`),null);
  for(const url of ['https://youtube.com.evil.test/watch?v='+id,'https://youtube.com@evil.test/watch?v='+id,'javascript:evil()','https://youtube.com/watch?v=bad','<iframe src="https://evil.test"></iframe>'])assert.equal(youtube.parseYoutubeEmbed(url),null);
  assert.equal(youtube.parseYoutubeEmbed(`https://youtu.be/${id}?start=9999999`).start,0);
  assert.equal(youtube.youtubeEmbedUrl(id,27),'https://www.youtube-nocookie.com/embed/'+id+'?playsinline=1&start=27');

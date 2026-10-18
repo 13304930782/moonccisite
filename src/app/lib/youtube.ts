@@ -1,3 +1,5 @@
+import DOMPurify from 'dompurify';
+
 export function youtubeVideoId(value: string): string | null {
   try {
     const url = new URL(value.trim());
@@ -17,9 +19,9 @@ export const youtubeEmbedUrl = (id: string, start = 0) => /^[\w-]{11}$/.test(id)
 export function parseYoutubeEmbed(value: string): {id: string; start: number} | null {
   let source = value.trim();
   if (source.startsWith('<')) {
-    const doc = new DOMParser().parseFromString(source, 'text/html');
-    if (doc.body.children.length !== 1 || doc.body.firstElementChild?.tagName !== 'IFRAME' || doc.body.textContent?.trim()) return null;
-    source = doc.body.firstElementChild.getAttribute('src') || '';
+    const fragment = DOMPurify.sanitize(source, {ALLOWED_TAGS: ['iframe'], ALLOWED_ATTR: ['src'], RETURN_DOM_FRAGMENT: true});
+    if (fragment.children.length !== 1 || fragment.firstElementChild?.tagName !== 'IFRAME' || fragment.textContent?.trim()) return null;
+    source = fragment.firstElementChild.getAttribute('src') || '';
   }
   const id = youtubeVideoId(source);
   if (!id) return null;

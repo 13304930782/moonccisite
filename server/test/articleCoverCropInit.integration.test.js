@@ -5,7 +5,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 
-test('fresh initialization records cover framing and standard migration dry-run skips its DDL', {
+test('fresh initialization records additive fields and standard migrations skip their DDL', {
   skip: process.env.COVER_CROP_INTEGRATION !== 'true',
 }, async t => {
   const name = 'mooncci_qa_cover_init_' + process.pid;
@@ -52,6 +52,20 @@ test('fresh initialization records cover framing and standard migration dry-run 
   assert.match(dryRun.stdout, /\[migrate\] already applied: 202610130001_article_cover_crop\.sql/);
   assert.doesNotMatch(dryRun.stdout, /^\s+- 202610130001_article_cover_crop\.sql$/m,
     'standard upgrades must not attempt to add the already initialized cover column');
+  for (const filename of require('../scripts/migrate-newsletter-summary').files) {
+    const [[record]] = await connection.query('SELECT checksum FROM schema_migrations WHERE filename=?', [filename]);
+    const sql = fs.readFileSync(path.join(__dirname, '../database/migrations', filename), 'utf8').trim();
+    assert.equal(record?.checksum, crypto.createHash('sha256').update(sql).digest('hex'));
+    assert.ok(dryRun.stdout.includes('[migrate] already applied: ' + filename));
+  }
+  successful(script('migrate.js'));
+  const [[summary]] = await connection.query("SHOW COLUMNS FROM posts LIKE 'summary_mode'");
+  assert.equal(summary.Type, "enum('','manual','ai')");
+  assert.equal(summary.Default, '');
+  for (const table of ['newsletter_runs', 'newsletter_exclusions']) {
+    const [[count]] = await connection.query('SELECT COUNT(*) AS total FROM ' + table);
+    assert.equal(Number(count.total), 0);
+  }
   const [[posts]] = await connection.query('SELECT COUNT(*) AS total FROM posts');
   assert.equal(Number(posts.total), 0);
 });
