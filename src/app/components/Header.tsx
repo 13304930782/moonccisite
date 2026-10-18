@@ -80,7 +80,7 @@ export function Header() {
     ['/updates', '最近更新'],
     ['/projects', '作品'],
     ['/electricity', '宿舍电量监控'],
-    ['/early-access', 'Early Access'],
+    ['https://cuegroveapp.com', 'Early Access'],
   ];
   function submit(e: FormEvent) {
     e.preventDefault();

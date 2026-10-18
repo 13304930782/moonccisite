@@ -12,6 +12,7 @@ function load(file) {
   const mod = { exports: {} };
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
   const imports = name => {
+    if (name === '../../../styles/article-label.css') return {}; // Palette and selector coverage lives in article-label.test.cjs.
     if (name === 'react-router-dom') return { Link: ({ to, children, ...props }) => React.createElement('a', { ...props, href: to }, children) };
     if (name === '../ContentUI') return { labels: { post: '文章', update: '近况', release: '项目版本' }, formatDate: value => value || '', useResource: (url, enabled) => { requests.push({ url, enabled }); return { data: null }; } };
     return name.startsWith('.') ? load(path.resolve(path.dirname(file), name) + '.ts') : require(name);

@@ -1,12 +1,10 @@
 .updates-v2 {
   --updates-muted: var(--muted-foreground);
   --updates-soft: color-mix(in srgb, var(--foreground) 6%, var(--background));
-  --updates-post-bg: rgba(15,110,86,.10); --updates-post-fg: #0F6E56;
   --updates-note-bg: #eeedfe; --updates-note-fg: #534ab7;
   --updates-release-bg: #faeeda; --updates-release-fg: #854f0b;
 }
 .updates-v2:where(.dark *) {
-  --updates-post-bg: rgba(79,195,161,.16); --updates-post-fg: #7fd8bd;
   --updates-note-bg: rgba(175,169,236,.16); --updates-note-fg: #c7c2f5;
   --updates-release-bg: rgba(250,199,117,.16); --updates-release-fg: #fac775;
 }
@@ -34,7 +32,7 @@
 .updates-v2 .updates-copy { min-width: 0; flex: 1; }
 .updates-v2 .updates-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--updates-muted); font-size: 13px; line-height: 1.5; }
 .updates-v2 .updates-badge, .updates-v2 .updates-prerelease { display: inline-flex; flex: 0 0 auto; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
-.updates-v2 .updates-badge[data-type="post"] { background: var(--updates-post-bg); color: var(--updates-post-fg); }
+.updates-v2 .updates-badge[data-type="post"] { background: var(--article-label-bg); color: var(--article-label-fg); }
 .updates-v2 .updates-badge[data-type="update"] { background: var(--updates-note-bg); color: var(--updates-note-fg); }
 .updates-v2 .updates-badge[data-type="release"] { background: var(--updates-release-bg); color: var(--updates-release-fg); }
 .updates-v2 .updates-prerelease { background: var(--updates-soft); color: var(--updates-release-fg); }

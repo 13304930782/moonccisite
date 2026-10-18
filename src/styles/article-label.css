@@ -1,0 +1,20 @@
+.home-v2,
+.updates-v2,
+.blog-card {
+  --article-label-bg: rgba(15, 110, 86, .10);
+  --article-label-fg: #0f6e56;
+}
+.home-v2:where(.dark *),
+.updates-v2:where(.dark *),
+.blog-card:where(.dark *) {
+  --article-label-bg: rgba(79, 195, 161, .16);
+  --article-label-fg: #7fd8bd;
+}
+.blog-card > small:not(:empty) {
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--article-label-bg);
+  color: var(--article-label-fg);
+}

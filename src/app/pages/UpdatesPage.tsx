@@ -10,6 +10,7 @@ import { responsiveImage } from '../lib/responsiveImage';
 import { groupUpdates, updateText, type UpdateActivity } from './updates-v2-data';
 import '../../styles/update-journal.css';
 import '../../styles/updates-v2.css';
+import '../../styles/article-label.css';
 
 const filters = [['', '全部'], ['post', '文章'], ['update', '近况'], ['release', '项目版本']] as const;
 const activityPath = (page: number, type: string) => `/activity?page=${page}&type=${encodeURIComponent(type)}`;

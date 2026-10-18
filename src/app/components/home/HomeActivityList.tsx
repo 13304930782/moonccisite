@@ -4,6 +4,7 @@ import { coverFrame } from '../../lib/coverCrop';
 import { safeImageSrc, safeRoutePath } from '../../lib/safeUrl';
 import { responsiveImage } from '../../lib/responsiveImage';
 import { homeActivityText } from './activityText';
+import '../../../styles/article-label.css';
 
 type Activity = {
   activity_id: string;

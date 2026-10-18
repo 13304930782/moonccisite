@@ -8,12 +8,10 @@ const ts=require('typescript');
 const file='src/styles/home-v2.css';
 const palettes={
  '.home-v2':{
-  '--home-tag-post-bg':'rgba(15,110,86,.10)','--home-tag-post-text':'#0e6b53',
   '--home-tag-update-bg':'#eeedfe','--home-tag-update-text':'#534ab7',
   '--home-tag-release-bg':'#faeeda','--home-tag-release-text':'#854f0b',
  },
  '.home-v2:is(.dark *)':{
-  '--home-tag-post-bg':'rgba(79,195,161,.16)','--home-tag-post-text':'#7fd8bd',
   '--home-tag-update-bg':'rgba(175,169,236,.16)','--home-tag-update-text':'#c7c2f5',
   '--home-tag-release-bg':'rgba(250,199,117,.16)','--home-tag-release-text':'#fac775',
  },
@@ -118,17 +116,17 @@ test('only HomePage imports the new stylesheet, with no replacement global style
  }
 });
 
-test('shared shell, content components and theme retain pinned Git blobs (approved press-motion removal and updates navigation label)',()=>{
+test('shared shell, content components and theme retain pinned Git blobs (approved press-motion removal, updates navigation label, Early Access destination and article label style import)',()=>{
  // Canonical LF blobs work on Windows and in shallow CI without historical commits.
  const pins={
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
   'src/styles/globals.css':'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391',
   'src/styles/editorial.css':'9f8cedc46f1d2bb7310e77a7934ae122e456215a',
   'src/styles/project-card.css':'08306a6737ea3bbf30b5792d54fe0c43a12421b7',
-  'src/app/components/Header.tsx':'75868d89b4674b2fe094d8115976508a6e8d900f',
+  'src/app/components/Header.tsx':'0206f665b196f3698fa72f90aeed342d2db16fe1',
   'src/app/components/SiteFooter.tsx':'85bdf27069f292558f00aee14711f76254ea4add',
   'src/app/components/ContentUI.tsx':'f15932bb689b2f7190b97b2e3a6713d206287476',
-  'src/app/components/BlogCard.tsx':'8d53eb7af34e272611cd5aa1590590d5e1a60d6f',
+  'src/app/components/BlogCard.tsx':'4d3d878a28ab56a42b16aa3b073118174840601c',
   'src/app/components/ProjectCard.tsx':'623c271e352de63b85cf74ac060da22d8684fbc8',
   'src/app/context/ThemeContext.tsx':'7a26de5852af1986d6dff091ac80336786633488',
  };

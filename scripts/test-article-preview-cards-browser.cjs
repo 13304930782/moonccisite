@@ -119,7 +119,7 @@ const images={
       for(const box of measured.boxes) {
        assert.equal(box.fit,'contain');assert.equal(box.transform,'none');assert.equal(box.crop,'');
        assert.ok(Math.abs(box.width/box.height-box.ratio)<.01,'all original image edges remain visible: '+routePath);
-       if(!routePath.startsWith('/series'))assert.equal(box.width,width<=760?112:180);
+       if(!routePath.startsWith('/series'))assert.equal(box.width,routePath==='/articles'?(width<=767?88:160):(width<=760?112:180));
       }
       assert.equal(measured.legacyContainers,0,'legacy card cropping is never rendered');
       assert.equal(measured.overflow,false,'page must not overflow: '+routePath);

@@ -9,8 +9,6 @@
 .home-v2 {
   --home-fill: color-mix(in srgb, var(--foreground) 5%, var(--background));
   --home-hover: color-mix(in srgb, var(--foreground) 8%, var(--background));
-  --home-tag-post-bg: rgba(15, 110, 86, .10);
-  --home-tag-post-text: #0e6b53;
   --home-tag-update-bg: #eeedfe;
   --home-tag-update-text: #534ab7;
   --home-tag-release-bg: #faeeda;
@@ -18,8 +16,6 @@
 }
 
 .home-v2:is(.dark *) {
-  --home-tag-post-bg: rgba(79, 195, 161, .16);
-  --home-tag-post-text: #7fd8bd;
   --home-tag-update-bg: rgba(175, 169, 236, .16);
   --home-tag-update-text: #c7c2f5;
   --home-tag-release-bg: rgba(250, 199, 117, .16);
@@ -261,8 +257,8 @@
 }
 
 .home-v2 .home-activity-label[data-type='post'] {
-  background: var(--home-tag-post-bg);
-  color: var(--home-tag-post-text);
+  background: var(--article-label-bg);
+  color: var(--article-label-fg);
 }
 
 .home-v2 .home-activity-label[data-type='update'] {

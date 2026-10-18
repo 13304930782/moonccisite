@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { safeImageSrc } from "../lib/safeUrl";
 import { CardCoverImage } from './CardCoverImage';
 import { type CoverCrop } from '../lib/coverCrop';
+import '../../styles/article-label.css';
 interface BlogCardProps {
   id?: number | string;
   title: string;
