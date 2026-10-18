@@ -7,10 +7,19 @@ type TextNode = { type: string; value?: string; alt?: string | null; children?: 
 
 function nodeText(node: TextNode): string {
   if (node.type === 'html') {
-    const text = (node.value || '')
-      .replace(/<!--[\s\S]*?(?:-->|$)|<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
-      .replace(/<(?:(?:"[^"]*"|'[^']*')|[^'">])*>/g, tag => /^<\/?(?:br|hr|p|div|h[1-6]|li|tr|td|th)\b/i.test(tag) ? ' ' : '');
-    return text === node.value ? '' : nodeText(markdown.parse(text));
+    const source = node.value || '';
+    const markup = /<!--[\s\S]*?(?:-->|$)|<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>|<(?:(?:"[^"]*"|'[^']*')|[^'">])*>/gi;
+    const parts: string[] = [];
+    let offset = 0;
+    // Keep Markdown across spans, but encode angle brackets before parsing so joined text cannot become HTML.
+    for (const match of source.matchAll(markup)) {
+      if (match.index > offset) parts.push(source.slice(offset, match.index));
+      if (/^<\/?(?:br|hr|p|div|h[1-6]|li|tr|td|th)\b/i.test(match[0])) parts.push(' ');
+      offset = match.index + match[0].length;
+    }
+    if (!offset) return '';
+    if (offset < source.length) parts.push(source.slice(offset));
+    return nodeText(markdown.parse(parts.join('').replace(/</g, '&lt;').replace(/>/g, '&gt;')));
   }
   if (node.type === 'image' || node.type === 'imageReference') return node.alt || '';
   if (node.type === 'definition') return '';

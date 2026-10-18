@@ -51,6 +51,12 @@ test('note summaries and relative dates handle Markdown and calendar days',()=>{
   new Function('exports','require',code)(module.exports,()=>({}));
   const {noteText,relativeNoteDate}=module.exports;
   assert.equal(noteText('## 一个标题\n\n[链接](https://example.com) **正文**\n```js\na()\n```'),'一个标题 链接 正文');
+  for (const input of ['<scr<script>ipt>alert(1)</scr<script>ipt>', '<scr![](/image.png)ipt>']) {
+    const text = noteText(input);
+    assert.doesNotMatch(text, /<script/i);
+    const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+    assert.doesNotMatch(renderToStaticMarkup(React.createElement('p',null,text)), /<script/i);
+  }
   const now=Date.parse('2026-10-17T12:00:00+08:00');
   assert.equal(relativeNoteDate('2026-10-17T00:00:00+08:00',now),'今天');
   assert.equal(relativeNoteDate('2026-10-16T23:00:00+08:00',now),'昨天');

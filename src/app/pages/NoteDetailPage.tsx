@@ -11,8 +11,8 @@ import { notify } from '../lib/feedback';
 import '../../styles/note-v2.css';
 
 export function noteText(value: string) {
-  return value.replace(/```[\s\S]*?```/g, ' ').replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/<[^>]*>/g, '')
+  return value.replace(/```[\s\S]*?```/g, ' ').replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/<[^>]*>/g, ' ')
     .replace(/(^|\n)\s{0,3}(?:#{1,6}|>|[-*+] |\d+\. )/g, ' ')
     .replace(/~~/g, '').replace(/[*_`]/g, '').replace(/\s+/g, ' ').trim();
 }

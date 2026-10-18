@@ -28,3 +28,31 @@ test('public project and update have unique initial HTML; unpublished details ar
  }
  for(const path of ['/projects/draft','/updates/3','/category/missing']){const r=await fetch(base+path);assert.equal(r.status,404);assert.match(r.headers.get('x-robots-tag'),/noindex/);assert.doesNotMatch(await r.text(),/管理提示词与版本|今天发布了新版本/);}
 });
+
+
+test('replacing old metadata never joins surrounding fragments into an executable tag',()=>{
+ const {JSDOM}=require('jsdom');
+ const removed=['<title>old</title>','<meta name="description" content="old">','<link rel="canonical" href="/old">','<script type="application/ld+json">{}</script>'];
+ for(const node of removed){
+  const input=`<!doctype html><html><head></head><body><scr${node}ipt>attack()</scr${node}ipt></body></html>`;
+  const output=seo.renderHtml(input,seo.baseMeta('/articles'));
+  assert.ok(!output.includes('<script>attack()'),node);
+  const dom=new JSDOM(output);
+  try{assert.equal(dom.window.document.querySelectorAll('script').length,0,node);}
+  finally{dom.window.close();}
+ }
+});
+
+test('metadata replacement preserves unrelated head elements and exact SSR and module payloads',()=>{
+ const {JSDOM}=require('jsdom');
+ const preserved=['<meta charset="utf-8">','<meta name="viewport" content="width=device-width, initial-scale=1">','<meta name="custom" content="keep">','<link rel="modulepreload" href="/assets/chunk.js">','<script type="module" src="/assets/app.js"></script>','<script id="mooncci-document-data" type="application/json">{"content":"\\u003ctitle\\u003ekeep\\u003c/title\\u003e"}</script>','<div id="root"><main>SSR &amp; content</main></div>'];
+ const old=['<title>old</title>','<meta name="description" content="old">','<meta name="robots" content="none">','<meta property="og:title" content="old">','<meta name="twitter:title" content="old">','<link rel="canonical" href="/old">','<script type="application/ld+json">{"old":true}</script>'];
+ const input='<!doctype html><html><head>'+preserved.slice(0,5).join('')+old.join('')+'</head><body>'+preserved.slice(5).join('')+'</body></html>';
+ const output=seo.renderHtml(input,seo.articleMeta(post));
+ for(const fragment of preserved)assert.ok(output.includes(fragment),fragment);
+ const dom=new JSDOM(output);
+ try{
+  for(const selector of ['title','meta[name="description"]','meta[name="robots"]','meta[property="og:title"]','meta[name="twitter:title"]','link[rel="canonical"]','script[type="application/ld+json"]'])assert.equal(dom.window.document.querySelectorAll(selector).length,1,selector);
+  assert.equal(JSON.parse(dom.window.document.querySelector('#article-jsonld').textContent).headline,post.title);
+ }finally{dom.window.close();}
+});

@@ -53,3 +53,19 @@ test('image-only activity still has a visible title for its link accessible name
   assert.equal(homeActivityText({ type: 'release', title: '' }).title, '查看版本更新');
   assert.equal(homeActivityText({ type: 'unknown', title: '' }).title, '查看更新');
 });
+
+test('HTML text spans preserve Markdown but cannot become HTML after joining', () => {
+  const React = require('react'), {renderToStaticMarkup} = require('react-dom/server');
+  assert.equal(plainActivityText('<div>拼<b>接</b>文本</div>'), '拼接文本');
+  assert.equal(plainActivityText('<div>Hello <b>world</b> again</div>'), 'Hello world again');
+  assert.equal(plainActivityText('<div>A\n<b>B</b>\nC</div>'), 'A B C');
+  assert.equal(plainActivityText('<div>A&nbsp;<b>B</b>&nbsp;C</div>'), 'A B C');
+  assert.equal(plainActivityText('<div>**bold <b>middle</b> end**</div>'), 'bold middle end');
+  for (const input of ['<div><scr<!-- cut -->ipt>alert(1)</scr<!-- cut -->ipt></div>', '<div><scr<b></b>ipt>alert(1)</scr<b></b>ipt></div>', '<div><style>hidden</style>正文<script>hidden</script></div>', '<div>&lt;script&gt;literal&lt;/script&gt;</div>']) {
+    const text = plainActivityText(input);
+    const html = renderToStaticMarkup(React.createElement('p', null, text));
+    assert.doesNotMatch(html, /<script[\s>]/i);
+    assert.doesNotMatch(text, /hidden/);
+  }
+  assert.equal(plainActivityText('<div>&lt;script&gt;literal&lt;/script&gt;</div>'), '<script>literal</script>');
+});
