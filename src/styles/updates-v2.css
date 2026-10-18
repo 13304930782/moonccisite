@@ -8,12 +8,12 @@
   --updates-note-bg: rgba(175,169,236,.16); --updates-note-fg: #c7c2f5;
   --updates-release-bg: rgba(250,199,117,.16); --updates-release-fg: #fac775;
 }
-.updates-v2 > .page-content { width: calc(100% - 48px); max-width: 720px; margin: 0 auto; padding: 48px 0 120px; position: relative; animation: none; }
+.updates-v2 > .page-content { width: calc(100% - 48px); max-width: 720px; margin: 0 auto; padding: 32px 0 120px; position: relative; animation: none; }
 .updates-v2 .updates-back { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 14px; border-radius: 999px; background: var(--updates-soft); font-size: 13px; text-decoration: none; color: var(--foreground); }
-.updates-v2 .updates-heading { margin-top: 32px; }
+.updates-v2 .updates-heading { margin-top: 24px; }
 .updates-v2 .updates-heading h1 { margin: 0; font-size: 44px; font-weight: 600; line-height: 1.15; letter-spacing: -.02em; }
 .updates-v2 .updates-heading p { margin: 10px 0 0; color: var(--updates-muted); font-size: 16px; }
-.updates-v2 .updates-filter-scroll { margin-top: 28px; max-width: 100%; overflow-x: auto; scrollbar-width: none; padding: 3px; margin-left: -3px; }
+.updates-v2 .updates-filter-scroll { margin-top: 20px; max-width: 100%; overflow-x: auto; scrollbar-width: none; padding: 3px; margin-left: -3px; }
 .updates-v2 .updates-filter-scroll::-webkit-scrollbar { display: none; }
 .updates-v2 .updates-filters { position: relative; isolation: isolate; display: flex; width: max-content; padding: 3px; border-radius: 10px; background: color-mix(in srgb, var(--foreground) 8%, var(--background)); }
 .updates-v2 .updates-filters button { position: relative; z-index: 1; display: flex; align-items: center; min-height: 44px; padding: 2px; border: 0; background: transparent; border-radius: 8px; font-size: 14px; color: var(--updates-muted); cursor: pointer; }
@@ -24,10 +24,10 @@
 .updates-v2 .updates-header-column { display: flow-root; min-width: 0; }
 .updates-v2 .updates-feed { position: relative; }
 .updates-v2 .updates-feed-content { min-width: 0; }
-.updates-v2 .updates-month { padding-top: 36px; scroll-margin-top: 52px; }
+.updates-v2 .updates-month { padding-top: 24px; scroll-margin-top: 52px; }
 .updates-v2 .updates-month-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 0 20px; margin: 0 0 6px; font-size: 15px; line-height: 1.6; font-weight: 600; scroll-margin-top: 88px; }
 .updates-v2 .updates-month-heading small { font-size: 13px; font-weight: 400; color: var(--updates-muted); }
-.updates-v2 .updates-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 20px; border-radius: 14px; color: var(--foreground); text-decoration: none; overflow-wrap: anywhere; }
+.updates-v2 .updates-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 20px; border-radius: 14px; color: var(--foreground); text-decoration: none; overflow-wrap: anywhere; }
 .updates-v2 .updates-row + .updates-row { margin-top: 4px; }
 .updates-v2 .updates-copy { min-width: 0; flex: 1; }
 .updates-v2 .updates-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--updates-muted); font-size: 13px; line-height: 1.5; }

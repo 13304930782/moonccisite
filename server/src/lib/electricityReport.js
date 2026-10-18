@@ -1,6 +1,6 @@
 const { finiteNumber, classifyElectricity } = require('./electricityMetrics');
 const { getBusinessDate, getBusinessDateTime } = require('./electricityTime');
-const { calculateMidnightForecast, shiftDate, dailyStatusText } = require('./electricityDailyUsage');
+const { calculateMidnightForecast, shiftDate } = require('./electricityDailyUsage');
 const { xml } = require('./contentPlatform');
 
 function number(value, digits = 2) {
@@ -160,23 +160,12 @@ function mailFields(report) {
   const s = report.snapshot || {}, m = report.metrics || {};
   const quantity = (value, unit, digits = 2) => finiteNumber(value) === null
     ? '未提供' : `${number(value, digits)} ${unit}`;
-  // Old saved reports retain their original, frozen data when retried.
-  const day = report.mailDaily || {
-    date: m.completedDayDate,
-    usage: m.completedDayUse,
-    status: m.completedDayStatus,
-  };
-  const missingDay = day.status === 'awaiting_school' || day.status === 'missing_value'
-    ? '学校日用电尚未提供，待结算或同步'
-    : dailyStatusText[day.status] || '完整日数据尚未提供';
   return [
     ['总余量', quantity(s.totalRemaining, 'kWh')],
     ['已购 / 补贴余量', `${quantity(s.purchasedRemaining, 'kWh')} / ${quantity(s.subsidyRemaining, 'kWh')}`],
     ['今日用电（截至采集时）', quantity(s.todayUse, 'kWh')],
-    [`完整日用电${day.date ? `（${day.date}）` : ''}`,
-      finiteNumber(day.usage) === null ? missingDay : quantity(day.usage, 'kWh')],
     ['预计可用', finiteNumber(m.estimatedDaysRemaining) === null
-      ? '暂不可估算（需有效零点余量及至少 3 天完整日数据）'
+      ? '暂不可估算'
       : `${number(m.estimatedDaysRemaining, 1)} 天（按零点数据估算）`],
     ['采集时间', timestamp(s.recordedAt)],
   ];

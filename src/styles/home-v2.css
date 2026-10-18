@@ -359,9 +359,40 @@
 }
 
 @media (min-width: 1024px) {
+  .home-v2 .subscribe-section {
+    padding-block: 48px 64px;
+  }
+
+  .home-v2 .site-footer {
+    padding-block: 48px 32px;
+  }
+
   .home-v2 .now-panel {
     align-self: center;
   }
+}
+
+@media (min-width: 761px) {
+  .home-v2 .footer-top > .site-brand {
+    position: relative;
+    top: -9px;
+  }
+
+  .home-v2 .footer-top {
+    margin-bottom: 16px;
+  }
+
+  .home-v2 .site-footer > .site-container {
+    position: relative;
+  }
+
+  .home-v2 .footer-status {
+    position: absolute;
+    inset-inline-start: 0;
+    bottom: calc(100% + 51.5px);
+    margin: 0;
+  }
+
 }
 
 @media (max-width: 1023px) {

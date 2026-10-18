@@ -7,14 +7,14 @@ const forecast = { method: 'midnight_daily_v1', completedDayDate: '2026-10-16', 
 const args = { snapshot, forecast, now, period: 'morning', config: {} };
 const row = { usageDate: '2026-10-16', meterId: 'test-meter', usage: 4.2, status: 'valid', method: 'school_daily' };
 
-test('mail uses later settled school total without rewriting frozen RSS forecast', () => {
+test('mail shows captured today usage without changing frozen RSS forecast', () => {
   const old = buildReport(args), current = buildReport({ ...args, dailyRows: [row] });
   assert.equal(current.mailDaily.usage, 4.2);
   assert.equal(current.metrics.completedDayUse, null);
   assert.equal(current.snapshot.cumulativeReading, null);
   assert.equal(renderElectricityRss([old], 'https://example.test'), renderElectricityRss([current], 'https://example.test'));
-  assert.equal(mailFields(current).find(([label]) => label.startsWith('完整日'))[1], '4.20 kWh');
-  assert.equal(mailFields(current).length, 6);
+  assert.doesNotMatch(JSON.stringify(mailFields(current)), /完整日|4\.20|累计读数缺失/);
+  assert.equal(mailFields(current).length, 5);
   assert.equal(mailFields(current).find(([label]) => label.startsWith('今日'))[1], '0.00 kWh');
   assert.doesNotMatch(JSON.stringify(mailFields(current)), /数据不足 kWh|电表累计读数/);
 });
@@ -23,13 +23,15 @@ test('mail preserves genuine missing data, zero and wrong-meter isolation', () =
   for (const candidate of [{ ...row, usage: null, status: 'missing_value' }, { ...row, meterId: 'other-meter' }, { ...row, usageDate: '2026-10-17' }, { ...row, usage: -1 }]) {
     const report = buildReport({ ...args, dailyRows: [candidate] });
     assert.equal(report.mailDaily.usage, null);
-    assert.doesNotMatch(mailFields(report).find(([label]) => label.startsWith('完整日'))[1], /kWh/);
+    assert.doesNotMatch(JSON.stringify(mailFields(report)), /完整日|累计读数缺失/);
   }
   assert.equal(buildReport({ ...args, dailyRows: [{ ...row, usage: 0 }] }).mailDaily.usage, 0);
   const missing = buildReport({ ...args, dailyRows: [] });
-  assert.match(mailFields(missing).find(([label]) => label.startsWith('完整日'))[1], /待结算或同步/);
+  assert.equal(mailFields(missing).find(([label]) => label.startsWith('今日'))[1], '0.00 kWh');
   const legacy = buildReport(args);
-  assert.match(mailFields(legacy).find(([label]) => label.startsWith('完整日'))[1], /累计读数缺失/);
+  assert.doesNotMatch(JSON.stringify(mailFields(legacy)), /完整日|累计读数缺失/);
+  const unavailable = buildReport({ ...args, snapshot: { ...snapshot, todayUse: null } });
+  assert.equal(mailFields(unavailable).find(([label]) => label.startsWith('今日'))[1], '未提供');
   assert.equal(legacy.mailDaily, undefined);
 });
 
@@ -46,15 +48,19 @@ test('real mail HTML and text use compact fields; retry preserves captured total
   delete require.cache[target];
   t.after(() => { if (original) require.cache[mailerPath] = original; else delete require.cache[mailerPath]; delete require.cache[target]; });
   const { sendElectricityDailyReport } = require(target);
-  const report = buildReport({ ...args, forecast: { ...forecast, estimatedDaysRemaining: 10 }, dailyRows: [row] });
+  const report = buildReport({ ...args, snapshot: { ...snapshot, todayUse: 6.15 }, forecast: { ...forecast, estimatedDaysRemaining: 10 }, dailyRows: [row] });
   const saved = JSON.parse(JSON.stringify(report));
   for (const item of [saved, buildReport({ ...args, dailyRows: [] })]) {
     await sendElectricityDailyReport({ snapshot: item.snapshot, report: item, period: 'morning' });
   }
-  assert.match(messages[0].html, /4\.20 kWh/);
-  assert.match(messages[0].text, /4\.20 kWh/);
+  for (const format of ['html', 'text']) {
+    assert.match(messages[0][format], /6\.15 kWh/);
+    assert.equal(messages[0][format].match(/今日用电（截至采集时）/g).length, 1);
+    assert.doesNotMatch(messages[0][format], /完整日|累计读数缺失|4\.20 kWh/);
+  }
   assert.doesNotMatch(messages[0].html, /电表累计读数|比较基准时间/);
-  assert.match(messages[1].html, /待结算或同步/);
+  assert.match(messages[1].html, /0\.00 kWh/);
+  assert.doesNotMatch(messages[1].html, /完整日|待结算或同步/);
   if (process.env.ELECTRICITY_MAIL_PREVIEW_DIR) {
     const fs = require('node:fs'), path = require('node:path');
     fs.mkdirSync(process.env.ELECTRICITY_MAIL_PREVIEW_DIR, { recursive: true });
@@ -111,6 +117,6 @@ test('electricity mail cards escape report text and reject unsafe actions', () =
   const html = renderElectricityDailyEmail({ report, label: '<svg onload=alert(1)>', url: 'javascript:alert(1)' });
   assert.match(html, /data-electricity-total/);
   assert.match(html, /&lt;img/);
-  assert.match(html, /&lt;script/);
+  assert.doesNotMatch(html, /bad\(\)/);
   assert.doesNotMatch(html, /<script|<img|<svg|href="javascript:/);
 });

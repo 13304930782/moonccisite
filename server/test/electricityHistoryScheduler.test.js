@@ -16,6 +16,10 @@ const plan = {
   },
 };
 test('room plans respect midnight window, explicit roles and start after edits', () => {
+  assert.deepEqual(
+    dueEntry(plan, new Date('2026-09-09T00:00:00+08:00')),
+    { hour: 0, type: 'daily' },
+  );
   assert.equal(
     dueEntry(plan, new Date('2026-09-09T00:01:00+08:00')).type,
     'daily',

@@ -114,6 +114,13 @@ test('schedule settings persist through the owner API, validate before writing, 
     400,
   );
   assert.equal(writes, 1);
+  assert.equal(
+    (await request('PUT', {
+      schedule: custom.map((row) => row.hour === 0 ? { ...row, type: 'collect' } : row),
+    })).status,
+    400,
+  );
+  assert.equal(stored, beforeInvalid, 'the fixed midnight task cannot be changed');
   assert.equal((await request('PUT', { dailyNotify: false })).status, 200);
   config = (await (await request('GET')).json()).data.config;
   assert.deepEqual(

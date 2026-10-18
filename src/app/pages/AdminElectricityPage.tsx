@@ -314,7 +314,7 @@ function RoomSettings({ room }: { room: ElectricityRoom }) {
                           00:00
                         </span>
                         <span className="electricity-schedule-fixed">
-                          日统计与历史同步
+                          零点采集
                         </span>
                         <span className="electricity-schedule-lock">固定</span>
                       </>
@@ -403,7 +403,7 @@ function RoomSettings({ room }: { room: ElectricityRoom }) {
                 添加时间
               </button>
               <p className="electricity-manage-help">
-                零点固定保留；早报、晚报每天各最多一次。
+                每天北京时间 00:00 固定采集，保存零点余量并同步历史，用于用电估算；不发送日报。
               </p>
             </section>
 

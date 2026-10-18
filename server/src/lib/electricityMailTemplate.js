@@ -7,7 +7,7 @@ function renderElectricityDailyEmail({ report, label, test = false, url }) {
   const fields = mailFields(report);
   const total = finiteNumber(report.snapshot?.totalRemaining);
   const title = test ? '宿舍电量测试邮件' : `宿舍电量${label}`;
-  const secondary = [fields[4], fields[3]];
+  const secondary = [fields[3], fields[2]];
   const card = ([name, value]) => {
     const split = value.indexOf('（');
     const main = split < 0 ? value : value.slice(0, split);
@@ -27,8 +27,7 @@ function renderElectricityDailyEmail({ report, label, test = false, url }) {
 <p style="margin:14px 0 0;font-size:13px;line-height:1.8;color:#666666;">已购 / 补贴余量 · ${escapeHtml(fields[1][1])}</p>
 </td></tr></table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;table-layout:fixed;"><tr>${secondary.map(card).join('<td width="12" style="width:12px;"></td>')}</tr></table>
-<p style="margin:22px 0 6px;font-size:14px;line-height:1.8;">${escapeHtml(fields[2][0])} · ${escapeHtml(fields[2][1])}</p>
-<p style="margin:0;color:#666666;font-size:12px;line-height:1.8;">采集时间 · ${escapeHtml(fields[5][1])}</p>
+<p style="margin:22px 0 0;color:#666666;font-size:12px;line-height:1.8;">采集时间 · ${escapeHtml(fields[4][1])}</p>
 ${renderAction({ label: '查看电量', url })}
 <p style="margin:24px 0 0;font-size:12px;line-height:1.8;color:#666666;">mooncci · 宿舍电量监控<br>北京时间采集，预测仅供参考。</p>
 </td></tr></table></td></tr></table></body></html>`;
