@@ -26,7 +26,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
   gap: 64px;
   align-items: start;
-  padding: 96px 0 0;
+  padding: 48px 0 0;
   border: 0;
 }
 
@@ -179,7 +179,7 @@
 }
 
 .home-v2 .home-updates {
-  padding: 112px 0 64px;
+  padding: 96px 0 64px;
   border: 0;
 }
 
@@ -367,8 +367,10 @@
 @media (max-width: 1023px) {
   .home-v2 .home-hero {
     grid-template-columns: minmax(0, 1fr);
-    gap: 40px;
+    gap: 32px;
   }
+
+  .home-v2 .home-updates { padding-top: 56px; }
 
   .home-v2 .now-panel {
     max-width: none;
