@@ -66,10 +66,10 @@ async function main() {
     await page.getByRole('heading', { name: '真实配置测试标题' }).waitFor();
     holdSettings = false; releaseSettings?.();
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.locator('.site-header').getByRole('link', { name: '近况', exact: true }).click();
+    await page.locator('.site-header').getByRole('link', { name: '最近更新', exact: true }).click();
     await page.getByRole('heading', { name: '最近更新', exact: true }).waitFor();
     assert.equal(await page.evaluate(() => window.scrollY), 0);
-    await page.getByRole('link', { name: '查看近况', exact: true }).click();
+    await page.locator('.updates-row').getByText('一则记录', { exact: true }).click();
     await page.locator('.note-v2-body').getByText('浏览器测试近况正文', { exact: true }).waitFor();
     assert.equal(await page.locator('.subscribe-section').count(), 0);
     assert.ok(requests.some(url => url.includes('/api/comments/update/1')));
