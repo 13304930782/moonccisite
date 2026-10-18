@@ -28,8 +28,8 @@
 .writing-body { width:100%; max-width:768px; padding:24px 24px 80px; margin-inline:auto; min-width:0; }
 .writing-editor-fields { display:grid; gap:20px; padding:0; margin:0; min-width:0; border:0; }
 .writing-editor-fields[hidden] { display:none; }
-.writing-title input { display:block; width:100%; padding:0; height:auto; min-height:48px; border:0; border-radius:0; background:transparent; color:var(--foreground); font-size:38px; line-height:1.25; font-weight:600; letter-spacing:-.035em; }
-.writing-title input::placeholder { color:var(--ui-text-muted); }
+.writing-title textarea { resize:none; overflow:hidden; overflow-wrap:anywhere; display:block; width:100%; padding:0; height:auto; min-height:48px; border:0; border-radius:0; background:transparent; color:var(--foreground); font-size:38px; line-height:1.25; font-weight:600; letter-spacing:-.035em; }
+.writing-title textarea::placeholder { color:var(--ui-text-muted); }
 .writing-source-toggle { margin-bottom:-12px; }
 .writing-source-toggle button { min-height:44px; padding:0 10px; color:var(--ui-text-muted); font-size:12px; border-radius:8px; background:transparent; }
 .writing-source-toggle button[aria-pressed=true] { background:var(--ui-fill); color:var(--foreground); }
@@ -100,7 +100,7 @@
 .writing-workspace > .article-back-link { padding:16px 24px; }
 .writing-workspace > .article-published { padding:40px 24px; }
 @media(prefers-reduced-motion:no-preference) { .writing-spinner { animation:writing-spin 1s linear infinite; } .writing-ai-switch [data-slot=switch] > span { transition:transform 140ms ease; } @keyframes writing-spin { to { transform:rotate(360deg); } } }
-@media(max-width:900px) { :is(.writing-workspace,.writing-settings-sheet) :is(input:not(#article-title),textarea) { font-size:16px!important; } }
+@media(max-width:900px) { :is(.writing-workspace,.writing-settings-sheet) :is(input:not(#article-title),textarea:not(#article-title)) { font-size:16px!important; } }
 @media(min-width:768px) and (max-width:1000px) { .writing-topbar { display:flex; justify-content:space-between; gap:12px; } .writing-status-full { max-width:70px; } .writing-topbar .admin-button { padding-inline:8px; } }
 @media(max-width:767px) {
  .writing-workspace { --writing-toolbar-top:calc(56px + env(safe-area-inset-top)); }
@@ -116,7 +116,7 @@
  .writing-mode-mobile .writing-segment { display:flex; height:44px; width:100%; }
  .writing-mode-mobile .writing-segment button { flex:1; font-size:13px; }
  .writing-body { padding:0 20px 64px; }
- .writing-title input { font-size:28px!important; }
+ .writing-title textarea { font-size:28px!important; }
  .writing-settings-bottom :is(input,textarea) { font-size:16px!important; }
  .writing-history-dialog { padding:24px 20px; }
  .writing-workspace[data-keyboard-open=true] .article-editor .mooncci-tiptap-editor[data-writing-toolbar=true] .editor-toolbar-frame,
@@ -126,11 +126,11 @@
 }
 
 /* Outrank the shared administration input reset without changing public forms. */
-:is(.admin-frame,.account-shell) .writing-workspace .writing-title input { padding:0; height:auto; min-height:48px; border-radius:0; background:transparent; font-size:38px; }
+:is(.admin-frame,.account-shell) .writing-workspace .writing-title textarea { padding:0; height:auto; min-height:48px; border-radius:0; background:transparent; font-size:38px; }
 .admin-frame .writing-workspace .writing-setting-section :is(input,textarea) { border:0; padding:12px; background:var(--ui-fill); }
 .admin-frame .writing-workspace .writing-tags input { padding:6px 2px; background:transparent; }
 .admin-frame .writing-workspace .writing-slug input { padding-left:4px; background:transparent; }
-@media(max-width:767px) { :is(.admin-frame,.account-shell) .writing-workspace .writing-title input { font-size:28px!important; } }
+@media(max-width:767px) { :is(.admin-frame,.account-shell) .writing-workspace .writing-title textarea { font-size:28px!important; } }
 
 /* The supplied writing reference uses the full canvas, with navigation via the back link. */
 .admin-frame:has(.writing-workspace) { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr); }
@@ -194,4 +194,17 @@
 }
 @media(prefers-reduced-motion:reduce) {
  .admin-portal,[data-slot=dialog-overlay]:has(+.admin-portal),[data-slot=sheet-overlay]:has(+.admin-portal) { animation:none!important; transition:none!important; }
+}
+
+/* Keep setting labels, actions and editable values on one readable type scale. */
+:is(.writing-workspace,.writing-settings-sheet) .writing-settings-fields { font-size:14px; line-height:1.5; }
+:is(.writing-workspace,.writing-settings-sheet) .writing-settings-fields :is(label,h2,p,small,.writing-quality,.writing-summary-label,.writing-ai-help,.writing-ai-receipt,.writing-tag) { font-size:13px; line-height:1.5; }
+:is(.writing-workspace,.writing-settings-sheet) .writing-settings-fields :is(button,.writing-ai-switch) { font-size:14px; line-height:1.5; }
+:is(.writing-workspace,.writing-settings-sheet) .writing-settings-fields .writing-setting-section :is(input,textarea) { font-size:14px; line-height:1.5; }
+.writing-slug > span { flex:none; }
+:is(.writing-workspace,.writing-settings-sheet) .writing-slug input { flex:1; width:0; min-width:0; }
+:is(.writing-workspace,.writing-settings-sheet) :is(.writing-slug,.writing-tags):focus-within { outline:2px solid var(--ui-brand); outline-offset:2px; }
+:is(.writing-workspace,.writing-settings-sheet) .writing-settings-fields :is(.writing-slug,.writing-tags) input:focus { outline:none; box-shadow:none; }
+@media(max-width:900px) {
+ :is(.writing-workspace,.writing-settings-sheet) .writing-settings-fields .writing-setting-section :is(input,textarea) { font-size:16px; }
 }

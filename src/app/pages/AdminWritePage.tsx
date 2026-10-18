@@ -74,6 +74,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   const [keyboardToolbar, setKeyboardToolbar] = useState<{ top: number; left: number; width: number } | null>(null);
   const completion = useRef<HTMLHeadingElement>(null);
   const workspace = useRef<HTMLDivElement>(null);
+  const titleInput = useRef<HTMLTextAreaElement>(null);
   const settingsTrigger = useRef<HTMLButtonElement>(null);
   const settingsClose = useRef<HTMLButtonElement>(null);
   const settingsScroll = useRef<HTMLDivElement>(null);
@@ -89,6 +90,19 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   const showComparison = !!d.serverCopy && conflictMode === 'compare';
   const fieldsDisabled = !d.ready || locked || !!d.recovery || d.isRestoring || d.summaryBusy;
   const historyDisabled = locked || d.busy || d.blocked || d.isRestoring || uploads > 0;
+
+  useEffect(() => {
+    const title = titleInput.current;
+    if (!title || preview || locked || showComparison) return;
+    const resize = () => { title.style.height = '0px'; title.style.height = `${title.scrollHeight}px`; };
+    resize();
+    let width = title.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (title.clientWidth !== width) { width = title.clientWidth; resize(); }
+    });
+    observer.observe(title);
+    return () => observer.disconnect();
+  }, [d.form.title, preview, locked, showComparison]);
 
   useEffect(() => { api('/article-seo/status').then(setAi).catch(() => setAi({ unavailable: true })); }, []);
   useEffect(() => {
@@ -276,7 +290,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
         {locked && <article className="submission-document"><header><span className="account-eyebrow">稿件详情</span><h1>{d.form.title || '未命名稿件'}</h1><p className="submission-document-meta">提交的审核版本 · 仅作者与审核人员可见</p></header><div className="submission-document-body">{cover && (d.form.cover_crop ? <CoverDisplayPreviews src={cover} crop={d.form.cover_crop} /> : <img className="content-image" src={cover} alt="" />)}<MarkdownContent content={d.form.content || ''} headingPrefix="submission-heading" /></div></article>}
         {d.summaryBusy && <p role="status">正在根据正文生成 DeepSeek 简介…</p>}
         <fieldset hidden={preview || locked || showComparison} disabled={fieldsDisabled} className="writing-editor-fields">
-          <label className="writing-title"><span className="sr-only">标题</span><input id="article-title" value={d.form.title} maxLength={255} onChange={event => change('title', event.target.value)} placeholder="未命名草稿" /></label>
+          <label className="writing-title"><span className="sr-only">标题</span><textarea ref={titleInput} id="article-title" rows={1} value={d.form.title} maxLength={255} onChange={event => change('title', event.target.value.replace(/[\r\n]+/g, ' '))} placeholder="未命名草稿" /></label>
           {!isRichText(d.form.content) && !!d.form.content && <div className="writing-source-toggle"><button type="button" aria-pressed={editorMode === 'source'} disabled={fieldsDisabled || uploads > 0} onClick={() => setMode(editorMode === 'source' ? 'visual' : 'source')}>Markdown 源码</button></div>}
           {d.ready && <ArticleEditor writingToolbar mode={editorMode} onModeChange={setMode} hideModeControls onMediaLibrary={() => setPicker('body')} disabled={fieldsDisabled || uploads > 0} registerImageInsert={fn => { insert.current = fn; }} value={d.form.content} onChange={value => change('content', value)} existing={!!postId || !!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={setEditorPending} />}
         </fieldset>

@@ -1,0 +1,6 @@
+.youtube-link-preview { width: 320px; max-width: calc(100vw - 24px); padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--foreground); box-shadow: 0 8px 24px #0002; }
+.youtube-link-preview > img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.youtube-link-preview > div { display: grid; gap: 6px; padding: 14px 16px; }
+.youtube-link-preview small, .youtube-link-preview span { color: var(--muted-foreground); font-size: 12px; }
+.youtube-link-preview strong { font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.youtube-link-preview { z-index: 50; }

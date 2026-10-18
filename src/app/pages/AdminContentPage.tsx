@@ -20,6 +20,7 @@ import { safeImageSrc } from '../lib/safeUrl';
 import { projectIcon } from '../lib/projectBrand';
 import { Image as ImageIcon } from 'lucide-react';
 import '../../styles/project-images.css';
+import { NewsletterPreview } from '../components/admin/NewsletterPreview';
 
 function ImageField({
   value,
@@ -567,27 +568,27 @@ export function AdminNewsletterPage() {
                 ))}
               </div>
             </section>
-            <details className="editor-panel">
-              <summary>查看本期摘要（只预览，不发送）</summary>
+            <section className="newsletter-section" aria-labelledby="newsletter-draft-title">
+              <header><h2 id="newsletter-draft-title">下一期待发送</h2><p>文章、近况与项目版本，逐条选择是否发送。</p></header>
               <ResourceState resource={preview}>
-                {preview.data && (
-                  <>
-                    <p>
-                      {preview.data.period.start} — {preview.data.period.end}{' '}
-                      UTC
-                    </p>
-                    {preview.data.items.map((i: any) => (
-                      <p key={i.activity_id}>
-                        {labels[i.type]} · {i.title}
-                      </p>
-                    ))}
-                    {!preview.data.items.length && (
-                      <p>本期没有新内容，不发送。</p>
-                    )}
-                  </>
-                )}
+                {preview.data && <NewsletterPreview key={preview.data.period.key + ':' + preview.data.editable} data={preview.data} reload={preview.reload} />}
               </ResourceState>
-            </details>
+            </section>
+            <section className="newsletter-section" aria-labelledby="newsletter-runs-title">
+              <header><h2 id="newsletter-runs-title">每周运行</h2><p>显示最近 12 期；未记录的历史不代表未运行。</p></header>
+              <div className="table-scroll"><table>
+                <caption className="sr-only">每周运行结果</caption>
+                <thead><tr><th scope="col">内容周次</th><th scope="col">最近检查（北京时间）</th><th scope="col">结果 / 原因</th></tr></thead>
+                <tbody>
+                  {!r.data.runs?.length && <tr><td colSpan={3}>暂无运行记录，从本次更新后开始记录。</td></tr>}
+                  {r.data.runs?.map((run: any) => <tr key={run.week_start}>
+                    <td>{formatDate(run.week_start)}</td>
+                    <td>{run.last_checked_at ? new Date(run.last_checked_at).toLocaleString('zh-CN', {timeZone:'Asia/Shanghai', hour12:false}) : '—'}</td>
+                    <td>{run.reason}</td>
+                  </tr>)}
+                </tbody>
+              </table></div>
+            </section>
             <section className="newsletter-section" aria-labelledby="delivery-title"><header><h2 id="delivery-title">投递记录</h2><p>查看每期周报的发送状态。</p></header>
             <div className="table-scroll">
               <table><caption className="sr-only">周报投递记录</caption>

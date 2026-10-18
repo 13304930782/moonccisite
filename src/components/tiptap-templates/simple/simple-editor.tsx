@@ -5,7 +5,11 @@ import { EditorContent, EditorContext, useEditor, useEditorState, useCurrentEdit
 
 // --- Tiptap Core Extensions ---
 import { StarterKit } from "@tiptap/starter-kit"
-import { Image } from "@tiptap/extension-image"
+import { EditorImage } from "@/components/tiptap-node/image-node/editor-image"
+import { ImageControls } from "@/components/tiptap-node/image-node/image-controls"
+import { EditorYouTube } from "@/components/tiptap-node/youtube-node"
+import { parseYoutubeEmbed } from "@/app/lib/youtube"
+import "@/components/tiptap-node/youtube-node.scss"
 import { TaskItem, TaskList } from "@tiptap/extension-list"
 import { TextAlign } from "@tiptap/extension-text-align"
 import { Typography } from "@tiptap/extension-typography"
@@ -172,6 +176,7 @@ const MainToolbarContent = ({
       <ToolbarGroup>
         <ImageUploadButton text={isMobile ? undefined : "图片"} />
         <TableMenu />
+        <YouTubeInsert />
       </ToolbarGroup>
 
 
@@ -199,7 +204,7 @@ function WritingMoreTools({compact,disabled,onSearch,searchOpen,triggerRef}:{com
         {compact&&<ToolbarGroup><BlockquoteButton/><CodeBlockButton/></ToolbarGroup>}
         <ToolbarGroup><MarkButton type="superscript"/><MarkButton type="subscript"/></ToolbarGroup>
         <ToolbarGroup><TextAlignButton align="left"/><TextAlignButton align="center"/><TextAlignButton align="right"/><TextAlignButton align="justify"/></ToolbarGroup>
-        <ToolbarGroup><TableMenu disabled={disabled}/><Button disabled={disabled} aria-label="查找替换" tooltip="查找替换" aria-expanded={searchOpen} onClick={()=>{setOpen(false);onSearch();}}><SearchIcon className="tiptap-button-icon"/></Button></ToolbarGroup>
+        <ToolbarGroup><TableMenu disabled={disabled}/><YouTubeInsert disabled={disabled}/><Button disabled={disabled} aria-label="查找替换" tooltip="查找替换" aria-expanded={searchOpen} onClick={()=>{setOpen(false);onSearch();}}><SearchIcon className="tiptap-button-icon"/></Button></ToolbarGroup>
       </Toolbar>
     </PopoverContent>
   </Popover></ToolbarGroup>;
@@ -291,7 +296,8 @@ export function SimpleEditor(props: SimpleEditorProps) {
       TaskList,
       TaskItem.configure({ nested: true }),
       Highlight.configure({ multicolor: true }),
-      Image,
+      EditorImage,
+      EditorYouTube,
       Typography,
       Superscript,
       Subscript,
@@ -377,6 +383,7 @@ export function SimpleEditor(props: SimpleEditorProps) {
       <EditorContext.Provider value={{ editor }}>
         <div className="editor-toolbar-frame" ref={toolbarFrame} data-compact={isMobile} data-view={mobileView} data-overflow={scrollEdges.overflow && !isMobile && mobileView === "main"}>
         {props.writingToolbar!==undefined&&<div className="writing-toolbar-image">{props.writingToolbar}</div>}
+        <ImageControls />
         {props.writingToolbar===undefined&&scrollEdges.overflow&&!isMobile&&mobileView === "main"&&<button type="button" className="editor-scroll-control" aria-label="查看左侧工具" disabled={!scrollEdges.left} onMouseDown={e=>e.preventDefault()} onClick={()=>scrollTools(-1)}><ChevronLeft size={18}/></button>}
         <Toolbar
           ref={toolbarRef}
@@ -436,5 +443,24 @@ function ExitCodeButton({disabled=false}:{disabled?:boolean}){
  const {editor}=useCurrentEditor();
  const active=useEditorState({editor,selector:({editor})=>editor?.isActive('codeBlock')});
  return active ? <Button disabled={disabled} tooltip="退出代码块，继续正文" aria-label="退出代码块" onClick={()=>editor?.chain().focus().exitCode().run()}><CornerDownLeft className="tiptap-button-icon"/></Button> : null;
+}
+
+function YouTubeInsert({disabled=false}:{disabled?:boolean}) {
+  const {editor}=useCurrentEditor();
+  const [open,setOpen]=useState(false);
+  const [url,setUrl]=useState('');
+  const [error,setError]=useState('');
+  return <Popover open={open} onOpenChange={next=>{setOpen(next);setError('');if(next)setUrl('')}}>
+    <PopoverTrigger asChild><Button className="editor-youtube-trigger" disabled={disabled||!editor?.isEditable} aria-label="插入 YouTube 视频" tooltip="插入 YouTube 视频">YouTube</Button></PopoverTrigger>
+    <PopoverContent className="editor-youtube-insert" align="end" collisionPadding={12} onCloseAutoFocus={event=>event.preventDefault()}>
+      <form onSubmit={event=>{event.preventDefault();const video=url.trim().startsWith('<') ? parseYoutubeEmbed(url) : null;if(!video){setError('请粘贴有效的 YouTube iframe 嵌入代码');return}if(editor?.chain().focus().insertContent({type:'youtube',attrs:{videoId:video.id,start:video.start}}).run())setOpen(false)}}>
+        <label htmlFor="editor-youtube-url">YouTube 嵌入代码</label>
+        <textarea id="editor-youtube-url" rows={3} placeholder="<iframe …></iframe>" value={url} onChange={event=>{setUrl(event.target.value);setError('')}} aria-invalid={!!error} required/>
+        <p>粘贴代码嵌入视频；普通链接保持为链接。</p>
+        {error&&<p role="alert">{error}</p>}
+        <Button type="submit" disabled={!url.trim()}>插入视频</Button>
+      </form>
+    </PopoverContent>
+  </Popover>
 }
 

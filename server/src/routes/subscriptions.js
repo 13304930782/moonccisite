@@ -11,11 +11,10 @@ const {
   token,
   hash,
   pagination,
-  previousWeek,
 } = require('../lib/contentPlatform');
 const { sendMail, getMailConfig, isMailEnabled, safeSiteUrl } = require('../lib/mailer');
 const { rss } = require('../services/newsletter');
-const { allActivity } = require('../repositories/activityRepository');
+const { preview, selectItem, recentRuns } = require('../services/newsletterReview');
 const router = require('../lib/asyncRouter')(),
   admin = require('../lib/asyncRouter')();
 const limited = rateLimit({
@@ -130,10 +129,12 @@ admin.get(
       'SELECT d.*,s.email FROM newsletter_deliveries d JOIN subscribers s ON s.id=d.subscriber_id ORDER BY d.id DESC LIMIT ? OFFSET ?',
       [pageSize, offset],
     );
+    const runs = await recentRuns();
     res.json({
       enabled: Boolean(settings?.enabled),
       deliveryConfigured: process.env.NEWSLETTER_DELIVERY_ENABLED === 'true',
       counts,
+      runs,
       deliveries: { items, total: Number(total), page, pageSize },
     });
   }),
@@ -151,10 +152,12 @@ admin.put(
 admin.get(
   '/newsletter/preview',
   a(async (_req, res) => {
-    const period = previousWeek();
-    res.json({ period, items: await allActivity(period) });
+    res.json(await preview());
   }),
 );
+admin.put('/newsletter/selection', a(async (req, res) => {
+  res.json(await selectItem(req.body));
+}));
 admin.get(
   '/subscribers',
   a(async (req, res) => {

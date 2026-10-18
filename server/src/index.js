@@ -156,6 +156,7 @@ app.use('/api/health/dependencies', require('./routes/dependencyHealth').createR
 app.use('/api/auth', authLimiter, require('./routes/socialLogin'));
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api/youtube-preview', require('./routes/youtubePreview'));
 app.use('/api', require('./routes/analytics'));
 app.use('/api/series', require('./routes/series'));
 app.use('/api/publishing', require('./routes/publishing'));

@@ -14,6 +14,7 @@ import {CoverImage} from './CoverImage';
 import {SiteBack} from './SiteBack';
 import {coverFrame,normalizeCoverCrop} from '../lib/coverCrop';
 import '../../styles/article-detail.css';
+import {ArticleAiSummary} from './ArticleAiSummary';
 export function ArticlePresentation({ post, preview = false, views = null,progress }: { post: any; preview?: boolean; views?: number | null;progress?:ReactNode }) {
   const content=stripLegacyAgeNotice(post?.content);
   const summary=distinctArticleSummary(stripLegacyAgeNotice(post?.summary),content);
@@ -53,7 +54,10 @@ export function ArticlePresentation({ post, preview = false, views = null,progre
     <div className="article-after"><div className="article-reading-wrap">
       <div className="detail-body">
         {old&&<p className="article-age-notice" role="note">提醒：本文距最后更新已满半年，部分信息可能已发生变化，请结合最新情况参考。</p>}
-        {summary&&<p className="article-summary">{summary}</p>}
+        {summary&&(post.summary_mode==='ai'&&!preview ? <ArticleAiSummary key={post.id} summary={summary}/> : <p className={`article-summary${post.summary_mode==='ai'?' article-summary--ai':''}`}>
+          {post.summary_mode==='ai'&&<span className="article-summary-source"><span className="article-summary-deepseek" aria-hidden="true"/>DeepSeek · AI 简介</span>}
+          {summary}
+        </p>)}
         <MarkdownContent content={content} headingPrefix="heading" imageDimensions={post.image_dimensions}/>
         {tags.length>0&&<SingleLine className="detail-tags" label="文章标签">{tags.map(tag=><Link key={tag} to={`/tag/${encodeURIComponent(tag)}`}>{tag}</Link>)}</SingleLine>}
       </div>

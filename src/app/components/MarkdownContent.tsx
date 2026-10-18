@@ -1,6 +1,8 @@
 import {isRichText} from '../lib/richText';
 import {RichTextContent,richTextHeadings} from './RichTextContent';
 import {CodeBlock} from './CodeBlock';
+import {YouTubeLink} from './YouTubeLink';
+import {youtubeVideoId} from '../lib/youtube';
 import { createElement } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from '../lib/remarkGfmRead';
@@ -69,6 +71,7 @@ export function MarkdownContent({
           h6: heading(6),
           a: ({ href, children }) => {
             const safe = safeHref(href);
+            if (safe && youtubeVideoId(safe)) return <YouTubeLink href={safe}>{children}</YouTubeLink>;
             return safe ? (
               <a
                 href={safe}

@@ -1,0 +1,57 @@
+const {createFixture,launch}=require('./fixtures/admin-redesign.cjs');
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const out='.cache/ai-summary-acceptance';
+const base=process.env.PREVIEW_URL||'http://127.0.0.1:5324';
+const sentence='本文补写都市天际线2基础Mod推荐，介绍三款：Anarchy可无视原版提示强制放置物体；Move It能移动已放置的道路、建筑、树木和摆件；Better Bulldozer可删除默认推土机无法删除的建筑内结构、桥墩、地皮和隐形道路。';
+(async()=>{
+ const browser=await launch(),results=[];fs.mkdirSync(out,{recursive:true});
+ try{for(const width of [1440,390])for(const theme of ['light','dark']){
+  const page=await browser.newPage({viewport:{width,height:1000},reducedMotion:'reduce'}),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.addInitScript(t=>localStorage.setItem('mooncci-theme',t),theme);
+  await createFixture().install(page);
+  await page.route('**/api/series/article/*',r=>r.fulfill({json:null}));
+  await page.route('**/api/comments/post/*',r=>r.fulfill({json:[]}));
+  let summary='介绍都市天际线 2 的三款基础 Mod 与使用方法。',mode='ai';
+  await page.route('**/api/posts/summary-demo',r=>r.fulfill({json:{id:42,title:'都市天际线 2 · 基础 Mod 推荐',summary,summary_mode:mode,content:'<!--mooncci-richtext:v1--><h2>1. Anarchy</h2><p>安装与使用说明，以及推荐的适用场景。</p>',author_name:'mooncci',created_at:'2026-10-18T12:00:00Z',category:'游戏',tags:[]}}));
+  await page.goto(`${base}/article/summary-demo`);
+  const card=page.locator('section[aria-label="AI 简介"]'),body=card.locator('.article-ai-summary-body'),button=card.getByRole('button');
+  await card.waitFor();await page.evaluate(()=>document.fonts.ready);
+  assert.equal(await button.count(),0,'Short summary has no toggle');
+  await page.screenshot({path:`${out}/${width}-${theme}-short.png`,fullPage:true});
+  summary=sentence.repeat(3);await page.reload();await button.waitFor();
+  assert.equal(await button.getAttribute('aria-expanded'),'false');
+  assert.equal(await button.getAttribute('aria-controls'),await body.getAttribute('id'));
+  const metrics=await card.evaluate(e=>{
+   const b=e.querySelector('.article-ai-summary-body'),s=getComputedStyle(b),icon=e.querySelector('.article-ai-summary-icon'),i=getComputedStyle(icon),button=e.querySelector('button');
+   const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const c=canvas.getContext('2d');
+   const rgba=color=>{c.clearRect(0,0,1,1);c.fillStyle=color;c.fillRect(0,0,1,1);return [...c.getImageData(0,0,1,1).data];};
+   const bg=rgba(getComputedStyle(e).backgroundColor);
+   const luminance=rgb=>rgb.slice(0,3).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((a,v,n)=>a+v*[.2126,.7152,.0722][n],0);
+   const contrast=el=>{const a=luminance(rgba(getComputedStyle(el).color)),z=luminance(bg);return(Math.max(a,z)+.05)/(Math.min(a,z)+.05);};
+   return {height:b.clientHeight,lineHeight:parseFloat(s.lineHeight),clamp:s.webkitLineClamp,scroll:b.scrollHeight,icon:[i.width,i.height,i.maskImage],buttonHeight:button.getBoundingClientRect().height,contrast:[b,e.querySelector('.article-ai-summary-title'),e.querySelector('.article-ai-summary-provider'),e.querySelector('.article-ai-summary-note'),button].map(contrast)};
+  });
+  assert.equal(metrics.clamp,width===390?'4':'3');assert(Math.abs(metrics.height-metrics.lineHeight*Number(metrics.clamp))<2);assert(metrics.scroll>metrics.height);
+  assert.equal(metrics.icon[0],'16px');assert.equal(metrics.icon[1],'16px');assert(metrics.icon[2].includes('/icons/deepseek.svg'));assert(metrics.buttonHeight>=44);
+  for(const ratio of metrics.contrast)assert(ratio>=4.5,`Contrast ${ratio} <4.5`);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.screenshot({path:`${out}/${width}-${theme}-collapsed.png`,fullPage:true});
+  await button.focus();await page.keyboard.press('Tab');await page.keyboard.press('Shift+Tab');
+  const focus=await button.evaluate(e=>({width:getComputedStyle(e).outlineWidth,style:getComputedStyle(e).outlineStyle}));
+  assert.equal(focus.width,'2px');assert.equal(focus.style,'solid');
+  const before=await card.evaluate(e=>({y:window.scrollY,top:e.querySelector('.article-ai-summary-header').getBoundingClientRect().top}));
+  await page.keyboard.press('Enter');assert.equal(await button.getAttribute('aria-expanded'),'true');
+  await page.waitForTimeout(50);
+  const after=await card.evaluate(e=>({y:window.scrollY,top:e.querySelector('.article-ai-summary-header').getBoundingClientRect().top}));
+  assert.deepEqual(after,before,'Expand must preserve scroll and header position');
+  assert(await body.evaluate(e=>e.clientHeight>120));
+  await page.screenshot({path:`${out}/${width}-${theme}-expanded.png`,fullPage:true});
+  await page.keyboard.press('Space');assert.equal(await button.getAttribute('aria-expanded'),'false');
+  await page.setViewportSize({width:width===1440?390:1440,height:1000});await page.waitForTimeout(80);assert.equal(await button.count(),1);
+  await page.setViewportSize({width,height:1000});
+  mode='manual';await page.reload();await page.locator('.article-summary').waitFor();assert.equal(await card.count(),0);
+  mode='ai';summary='';await page.reload();await page.getByRole('heading',{level:1}).waitFor();assert.equal(await card.count(),0);
+  assert.deepEqual(errors,[]);results.push({width,theme,...metrics,keyboard:true,stableScroll:true,manualAndEmptyHidden:true});await page.close();
+ }}finally{await browser.close()}
+ fs.writeFileSync(`${out}/report.json`,JSON.stringify(results,null,2));console.log(JSON.stringify(results,null,2));
+})().catch(e=>{console.error(e);process.exitCode=1});

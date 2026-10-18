@@ -7,12 +7,24 @@ const tags = ['p','br','h1','h2','h3','h4','h5','h6','strong','b','em','i','s','
 export function richTextFragment(value: string): DocumentFragment {
   const fragment = DOMPurify.sanitize(isRichText(value) ? value.slice(RICH_TEXT_MARKER.length) : value, {
     ALLOWED_TAGS: tags,
-    ALLOWED_ATTR: ['href','src','alt','title','style','start','colspan','rowspan','colwidth','data-type','data-checked','type','checked','class'],
+    ALLOWED_ATTR: ['href','src','alt','title','style','start','colspan','rowspan','colwidth','data-type','data-checked','type','checked','class','width','data-image-align','data-image-layout','data-image-caption'],
+    ADD_ATTR: ['data-youtube-id', 'data-youtube-start'],
     ALLOW_DATA_ATTR: false, RETURN_DOM_FRAGMENT: true,
   });
   for (const el of Array.from(fragment.querySelectorAll('*'))) {
+    if (el.tagName !== 'DIV' || !/^[\w-]{11}$/.test(el.getAttribute('data-youtube-id') || '')) el.removeAttribute('data-youtube-id');
+    const start = el.getAttribute('data-youtube-start');
+    if (!el.hasAttribute('data-youtube-id') || !start || !/^\d{1,5}$/.test(start) || Number(start) > 86400) el.removeAttribute('data-youtube-start');
     if (el.hasAttribute('href')) { const url = safeHref(el.getAttribute('href')); if(url) el.setAttribute('href',url); else el.removeAttribute('href'); }
     if (el.hasAttribute('src')) { const url = safeImageSrc(el.getAttribute('src')); if(url) el.setAttribute('src',url); else el.removeAttribute('src'); }
+    const width = el.getAttribute('width');
+    if (el.tagName !== 'IMG' || !width || !/^\d{2,4}$/.test(width) || Number(width) < 32 || Number(width) > 1600) el.removeAttribute('width');
+    else el.setAttribute('width', String(Number(width)));
+    if (el.tagName !== 'IMG' || !['left','center','right'].includes(el.getAttribute('data-image-align') || '')) el.removeAttribute('data-image-align');
+    if (el.tagName !== 'IMG' || !['block','heading'].includes(el.getAttribute('data-image-layout') || '')) el.removeAttribute('data-image-layout');
+    const caption = el.getAttribute('data-image-caption')?.trim().slice(0, 300);
+    if (el.tagName === 'IMG' && caption) el.setAttribute('data-image-caption', caption);
+    else el.removeAttribute('data-image-caption');
     const style = (el as HTMLElement).style;
     const align = style.textAlign, color = style.backgroundColor;
     el.removeAttribute('style');
@@ -33,5 +45,5 @@ export function sanitizeRichText(value: string): string {
 export function richTextHasContent(value: string): boolean {
   if (!isRichText(value)) return !!value.trim();
   const fragment = richTextFragment(value);
-  return !!fragment.textContent?.trim() || !!fragment.querySelector('img[src],table,hr');
+  return !!fragment.textContent?.trim() || !!fragment.querySelector('img[src],table,hr,div[data-youtube-id]');
 }

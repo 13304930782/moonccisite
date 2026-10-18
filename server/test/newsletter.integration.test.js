@@ -27,9 +27,13 @@ test(
     };
     delete require.cache[require.resolve('../src/services/newsletter')];
     const { deliverWeek } = require('../src/services/newsletter');
+    const { selectItem, preview } = require('../src/services/newsletterReview');
     const now = new Date('2026-09-07T01:00:00Z');
-    let subscriberId, updateId;
+    const beforeSend = new Date('2026-09-06T12:00:00Z');
+    let subscriberId, updateId, excludedId;
     try {
+      await db.query("DELETE FROM newsletter_runs WHERE week_start='2026-08-31'");
+      await db.query("DELETE FROM newsletter_exclusions WHERE week_start='2026-08-31'");
       await db.query("UPDATE subscribers SET status='unsubscribed'");
       await db.query('UPDATE newsletter_settings SET enabled=1 WHERE id=1');
       const [s] = await db.query(
@@ -41,11 +45,20 @@ test(
         "INSERT INTO updates (content,status,author_id,published_at) VALUES ('Newsletter QA','published',1,'2026-09-02')",
       );
       updateId = u.insertId;
+      const [excluded] = await db.query("INSERT INTO updates (content,status,author_id,published_at) VALUES ('Excluded newsletter QA','published',1,'2026-09-02')");
+      excludedId = excluded.insertId;
+      await selectItem({ weekStart: '2026-08-31', type: 'update', id: excludedId, included: false }, beforeSend);
+      assert.equal((await preview(beforeSend)).items.find((item) => item.type === 'update' && item.id === excludedId).included, false);
       assert.equal((await deliverWeek(new Date('2026-09-07T00:59:59Z'))).skipped, true);
       assert.equal(calls.length, 0);
       await deliverWeek(now);
       assert.equal(calls.length, 1);
       assert.match(calls[0].text, /Newsletter QA/);
+      assert.doesNotMatch(calls[0].text, /Excluded newsletter QA/);
+      const [[run]] = await db.query("SELECT * FROM newsletter_runs WHERE week_start='2026-08-31'");
+      assert.equal(run.status, 'completed');
+      assert.ok(run.started_at);
+      await assert.rejects(selectItem({ weekStart: '2026-08-31', type: 'update', id: excludedId, included: true }, beforeSend), /不能再修改/);
       assert.ok(!calls[0].text.includes('v1'));
       assert.match(calls[0].html, /取消订阅/);
       await deliverWeek(now);
@@ -118,6 +131,9 @@ test(
       if (subscriberId)
         await db.query("UPDATE subscribers SET status='unsubscribed' WHERE id=?", [subscriberId]);
       if (updateId) await db.query("UPDATE updates SET status='draft' WHERE id=?", [updateId]);
+      if (excludedId) await db.query("UPDATE updates SET status='draft' WHERE id=?", [excludedId]);
+      await db.query("DELETE FROM newsletter_exclusions WHERE week_start='2026-08-31'");
+      await db.query("DELETE FROM newsletter_runs WHERE week_start='2026-08-31'");
       await db.query('UPDATE newsletter_settings SET enabled=0 WHERE id=1');
       await db.end();
       await legacy.end();

@@ -5,6 +5,7 @@ import {ThemeSelect} from './ThemeSelect';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {ArticlePresentation} from './ArticlePresentation';
+import {EmbeddedPlayback} from './RichTextContent';
 import {checkArticleImage} from '../lib/checkArticleImage';
 type ImageIssue = {url:string; index:number; result:'failed'|'timeout'};
 const srcDoc='<!doctype html><html lang="zh-CN"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="preview-root" class="neo-page"></div></body></html>';
@@ -61,7 +62,7 @@ export function ArticleReview({post,onPublish,busy,disabled=false,publishLabel='
   </div></div>
   <div className="article-preview-label"><h2>文章预览</h2><p>独立设备视口 · 窄屏可横向查看大尺寸预览</p></div>
   {previewFailed&&!root&&<div role="alert" className="article-review-result"><div><p>文章预览未能加载，请重新加载后再检查。</p><button className="article-button" onClick={()=>{setPreviewFailed(false);setPreviewAttempt(value=>value+1);}}>重新加载预览</button></div></div>}
-  <div className="article-review-scroll"><iframe key={previewAttempt} title="文章设备预览" ref={frame} srcDoc={srcDoc} sandbox="allow-same-origin" onLoad={ready} style={{width,height:620}}/>{root&&createPortal(preview,root)}</div>
+  <div className="article-review-scroll"><iframe key={previewAttempt} title="文章设备预览" ref={frame} srcDoc={srcDoc} sandbox="allow-same-origin" onLoad={ready} style={{width,height:620}}/>{root&&createPortal(<EmbeddedPlayback.Provider value={false}>{preview}</EmbeddedPlayback.Provider>,root)}</div>
   <div className="article-review-footer"><p>{checking?'检查完成后即可继续。':!current?'请先完成发布前检查。':!passed?'加载超时可重新检查；内容问题请返回编辑修正。':publishLabel.includes('审核')?'提交后由管理员审核。':'确认后，文章将更新到网站。'}</p><button className="article-review-publish article-button article-button-primary" disabled={disabled||busy||checking||!passed} onClick={onPublish}>{busy?'正在保存…':publishLabel}</button></div>
  </section>;
 }

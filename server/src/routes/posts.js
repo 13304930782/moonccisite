@@ -76,6 +76,10 @@ function normalizePostInput(body, oldPost = null) {
     status: Object.prototype.hasOwnProperty.call(input, 'status') ? cleanString(input.status) : cleanString(oldPost?.status || 'draft'),
   };
   next.cover_crop = coverCropForInput(input, next.cover_image, oldPost);
+  const summaryUnchanged = oldPost && next.summary === cleanString(oldPost.summary);
+  const generated = input.summary_mode === 'ai' && require('../lib/articleSummaryProof').valid({ ...next, summary_receipt: input.summary_receipt });
+  next.summary_mode = generated ? 'ai' : input.summary_mode === 'manual' || !summaryUnchanged ? 'manual' : (oldPost.summary_mode || '');
+  next.summary_receipt = generated ? input.summary_receipt : '';
 
   if (!next.title) return { error: '文章标题不能为空' };
   if (!next.slug) return { error: '文章 slug 不能为空' };
@@ -208,13 +212,13 @@ const prepareSummary=async(req,res,next)=>{try{
  let old=null;if(req.params.id){const [[row]]=await db.query('SELECT * FROM posts WHERE id=?',[req.params.id]);if(!row||!canManagePost(req.user,row))throw writeError('文章不存在或无权限。',404);if(req.body.version!==row.version)throw writeError('文章已变化，请刷新。',409);old=row;}
  const normalized=normalizePostInput(req.body,old);if(normalized.error)throw writeError(normalized.error,400);
  const p=normalized.value;
- if(p.status==='published'){const prepared=await require('../services/articleSummary').prepare(db,{...p,summary_mode:req.body.summary_mode||'',summary_receipt:req.body.summary_receipt||''},req.user.id);require('../lib/articleSummaryProof').assertReady(prepared);req.body={...req.body,summary:prepared.summary};}
+ if(p.status==='published'){const prepared=await require('../services/articleSummary').prepare(db,{...p,summary_mode:req.body.summary_mode||'',summary_receipt:req.body.summary_receipt||''},req.user.id);require('../lib/articleSummaryProof').assertReady(prepared);req.body={...req.body,summary:prepared.summary,summary_mode:prepared.summary_mode,summary_receipt:prepared.summary_receipt};}
  next();
 }catch(e){if(e.status)return res.status(e.status).json({message:e.message});next(e);}};
 router.post('/',authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHandler(async(c,req)=>{
  const normalized=normalizePostInput(req.body);if(normalized.error)throw writeError(normalized.error,400);
  const p=normalized.value;
- const [r]=await c.query('INSERT INTO posts (title,slug,summary,content,cover_image,cover_crop,category,tags,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',[p.title,p.slug,p.summary,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.status,req.user.id,p.status==='published'?new Date():null]);
+ const [r]=await c.query('INSERT INTO posts (title,slug,summary,content,cover_image,cover_crop,category,tags,summary_mode,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',[p.title,p.slug,p.summary,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.summary_mode,p.status,req.user.id,p.status==='published'?new Date():null]);
  await revisions.record(c,{post_id:r.insertId},p,p.status==='published'?'publish':'manual',req.user.id,p.status==='published'?1:null);
  return {message:'创建成功'};
 }));
@@ -226,7 +230,7 @@ router.put('/:id',authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHa
  const normalized=normalizePostInput(req.body,old);if(normalized.error)throw writeError(normalized.error,400);
  const p=normalized.value;const publishedAt=old.published_at||(p.status==='published'?new Date():null);
  await revisions.baseline(c,old,req.user.id);
- const [updated]=await c.query('UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,cover_crop=?,category=?,tags=?,status=?,published_at=?,updated_at=NOW(),version=version+1 WHERE id=? AND version=?',[p.title,p.slug,p.summary,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.status,publishedAt,req.params.id,old.version]);
+ const [updated]=await c.query('UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,cover_crop=?,category=?,tags=?,summary_mode=?,status=?,published_at=?,updated_at=NOW(),version=version+1 WHERE id=? AND version=?',[p.title,p.slug,p.summary,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.summary_mode,p.status,publishedAt,req.params.id,old.version]);
  if(!updated.affectedRows)throw writeError('文章已被更新，请刷新后重试。',409);
  await revisions.record(c,{post_id:old.id},p,p.status==='published'?'publish':'manual',req.user.id,p.status==='published'?old.version+1:null);
  return {message:'更新成功'};

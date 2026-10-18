@@ -60,6 +60,9 @@
 .article-presentation .markdown-body :is(blockquote,thead) { background:var(--fill); }
 .article-presentation .markdown-body img { max-width:100%; height:auto; border:0; border-radius:10px; }
 .article-presentation .article-summary { margin:0 0 24px; color:var(--muted-foreground); }
+.neo-page .article-presentation .article-summary--ai { color:var(--muted-foreground); font-size:15px; line-height:1.8; }
+.article-summary-source { display:inline; font:inherit; color:inherit; letter-spacing:inherit; margin-right:.5em; white-space:nowrap; vertical-align:baseline; }
+.article-summary-deepseek { display:inline-block; width:1.1em; height:1.1em; margin-right:.35em; vertical-align:-.16em; background:currentColor; mask:url('/icons/deepseek.svg') center / contain no-repeat; }
 .article-presentation .article-age-notice { border:0; border-radius:8px; background:var(--fill); color:var(--muted-foreground); }
 .article-rail { position:absolute; left:calc(100% + 48px); top:0; bottom:0; width:200px; }
 .toc-in { position:sticky; top:calc(var(--nav-h) + 24px); border-left:1px solid var(--hair); padding-left:16px; font-size:13.5px; max-height:calc(100dvh - var(--nav-h) - 48px); overflow:auto; }

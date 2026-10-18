@@ -46,4 +46,18 @@
 .newsletter-section table{margin:0}.newsletter-section th{white-space:nowrap}
 .newsletter-section .admin-records article{gap:16px;align-items:center}
 .newsletter-section .admin-records article p{overflow-wrap:anywhere;min-width:0}
+.newsletter-draft-summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 24px;color:var(--muted-foreground);font-size:14px}
+.newsletter-save-status{min-height:24px;font-size:14px;margin:8px 0;color:var(--muted-foreground)}
+.newsletter-draft-list article{display:flex;align-items:center;gap:24px;padding:24px 0;border-top:1px solid var(--border)}
+.newsletter-draft-copy{flex:1;min-width:0;overflow-wrap:anywhere}
+.newsletter-draft-copy small{color:var(--muted-foreground);font-size:13px}
+.newsletter-draft-copy h3{font-size:18px;line-height:1.5;font-weight:600;margin:8px 0}
+.newsletter-draft-copy h3 a:hover{text-decoration:underline;text-underline-offset:4px}
+.newsletter-draft-copy p{font-size:14px;line-height:1.7;color:var(--muted-foreground);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.newsletter-include{display:flex;align-items:center;justify-content:center;gap:8px;min-width:88px;min-height:44px;cursor:pointer;font-size:14px}
+.newsletter-include input[type=checkbox]{width:18px;height:18px;min-height:0;margin:0;accent-color:var(--foreground)}
+.newsletter-include:has(input:disabled){cursor:default;color:var(--muted-foreground)}
+.newsletter-include input:focus-visible{outline:2px solid var(--foreground);outline-offset:4px}
+.newsletter-excluded .newsletter-draft-copy h3{color:var(--muted-foreground)}
+@media(max-width:600px){.newsletter-draft-list article{flex-wrap:wrap;gap:8px;padding:20px 0}.newsletter-draft-copy{flex-basis:100%}.newsletter-include{justify-content:flex-start}}
 @media(max-width:700px){.settings-heading{flex-wrap:wrap;gap:20px}.settings-heading>div{flex:1 1 100%}.settings-workspace h1{font-size:28px}.settings-panel,.newsletter-section{padding:20px 16px}.settings-section-heading,.settings-link-heading{flex-wrap:wrap;gap:12px}.settings-workspace .settings-fields{grid-template-columns:minmax(0,1fr);gap:20px}.settings-link-card .settings-link-heading>strong{flex-basis:100%}.settings-workspace .settings-link-card{padding:16px 12px}.settings-form-footer{flex-wrap:wrap}.newsletter-section .admin-records article{flex-wrap:wrap}.newsletter-section .admin-records article p{flex-basis:100%}}

@@ -1,5 +1,11 @@
 # 宝塔部署说明
 
+### 周报运行记录与内容筛选（2026-10-18）
+
+此次后端依赖 `202610180001_newsletter_review.sql`，新增 `newsletter_runs` 和 `newsletter_exclusions`，不改历史投递或订阅数据。按范围限定后端发布流程备份数据库、单独审核并执行这一个迁移，再更新 API 与 worker 代码；前端部署包不能代替迁移。离线包须包含新增 `server/src/services/newsletterReview.js`。API 与 worker 都需重启，配置、上传目录及历史 SQL 保留。
+
+运行记录从部署后开始，旧周次显示“无运行记录”，不补造历史。下一期预览按北京时间周一 09:00 切换；取消发送仅作用于该周该条内容。筛选与发送共用数据库锁，开始发送后锁定本期选择。验收使用隔离数据库和模拟邮件；不要通过手动执行投递任务验证线上效果。
+
 2026-10-13 DeepSeek 自动文章简介、SEO 修复与范围限定离线部署见 [DeepSeek 文章 SEO](docs/DEEPSEEK-ARTICLE-SEO.md)。密钥在站长后台配置；无需数据库迁移。
 
 2026-09-09 近况评论与前端体验升级见 [UPDATES-UX-2026-09-09.md](docs/UPDATES-UX-2026-09-09.md)。升级只增加新的评论迁移，保留线上历史迁移文件。
@@ -1280,3 +1286,7 @@ An uncertain COMMIT retains a private recovery record. Trash/restore retries may
 After the exact PR head passes the complete CI, merge and build from the clean merged commit. Capture fresh main/reader entry, renderer, source, backend, environment, process and Nginx hashes. Use separate reviewed scopes for paired frontend/SSR archives and the media backend correction. If reader code and security headers already match the reviewed commit, pin their hashes and preserve them. No production GitHub download, dependency installation, SQL migration or frontend build is needed.
 
 Verify actual archive members, checksum sidecars and LF scripts before upload. Stage missing overseas hashed assets, install the scoped backend correction under its temporary upload gate, then install the main frontend/SSR while holding the new media mutation lock, and finally switch the overseas frontend. Execute deployment and rollback scripts with `nohup bash` in child shells. Preserve uploads, historical SQL, `.env`, worker state and process memory settings. The backend installer must exclude active media mutations while replacing code and restart only API. Record each backup and exit code, and verify the installed source hashes, public pages/assets and security headers on both nodes. The frontend/SSR package pins the installed corrected backend hashes. For a combined release rollback, restore the frontend/SSR scope first while holding its media mutation lock, then restore the backend scope under its temporary upload gate.
+
+### AI summary provenance
+
+This change requires the scoped backend package and migration server/database/migrations/202610180002_article_summary_mode.sql before enabling new article writes. Existing summaries retain unknown origin; only verified AI summaries receive the DeepSeek label. Keep the new column during rollback. The YouTube preview endpoint also requires the backend package and outbound HTTPS access to www.youtube.com; failed metadata requests leave ordinary links usable.

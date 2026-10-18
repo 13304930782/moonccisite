@@ -1,0 +1,19 @@
+.mooncci-tiptap-editor .editor-youtube {
+  margin: 24px 0;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--tt-gray-light-a-100);
+  iframe { display: block; width: 100%; height: 100%; border: 0; }
+  &.ProseMirror-selectednode { outline: 2px solid var(--tt-brand-color-500); }
+}
+.tiptap-button.editor-youtube-trigger { min-width: 44px; min-height: 44px; }
+.editor-youtube-insert {
+  width: min(360px, calc(100vw - 24px));
+  padding: 16px;
+  form { display: grid; gap: 12px; }
+  label { font-size: 14px; font-weight: 600; }
+  textarea { width: 100%; min-width: 0; min-height: 88px; resize: vertical; padding: 10px 12px; border: 1px solid var(--tt-border-color); border-radius: 8px; background: transparent; color: inherit; font: inherit; }
+  p { margin: 0; font-size: 13px; line-height: 1.5; }
+  button { min-height: 44px; justify-content: center; }
+}
