@@ -21,8 +21,8 @@ export function ArticleAiSummary({summary}: {summary: string}) {
   }, [summary]);
   return <section className="article-ai-summary" aria-label="AI 简介">
     <div className="article-ai-summary-header">
-      <span className="article-ai-summary-icon" aria-hidden="true"/>
       <span className="article-ai-summary-title">AI 简介</span>
+      <span className="article-ai-summary-icon" aria-hidden="true"/>
       <span className="article-ai-summary-provider"><span>由 </span>DeepSeek<span> 生成</span></span>
       <span className="article-ai-summary-spacer"/>
       {overflow && <button type="button" aria-expanded={expanded} aria-controls={id} onClick={() => setExpanded(value => !value)}>{expanded ? '收起' : '展开'}</button>}
