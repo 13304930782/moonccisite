@@ -53,7 +53,24 @@ export default defineConfig({
         // Merge tiny shared fragments; preserve lazy route and editor boundaries.
         experimentalMinChunkSize: 10000,
         onlyExplicitManualChunks: true,
-        manualChunks(id) {
+        manualChunks(id, { getModuleInfo, getModuleIds }) {
+          // Keep public dependencies out, and include overlay helpers to avoid circular chunks.
+          const initial = (key: string, seen = new Set<string>()): boolean => {
+            if (seen.has(key)) return false;
+            seen.add(key);
+            const info = getModuleInfo(key);
+            return !!info?.isEntry || (info?.importers || []).some(parent => initial(parent, seen));
+          };
+          const overlay = new Set<string>();
+          const include = (key: string) => {
+            if (overlay.has(key) || initial(key)) return;
+            overlay.add(key);
+            for (const dep of getModuleInfo(key)?.importedIds || []) include(dep);
+          };
+          for (const key of getModuleIds()) if (/[\\/]node_modules[\\/](@radix-ui|@floating-ui)[\\/]/.test(key)) include(key);
+          if (overlay.has(id)) return 'lazy-overlays';
+          // Keep settings pages separate: their CSS relies on route-local loading order.
+          if (/[\\/]pages[\\/](Admin(?!WritePage|LoginPage|ContentPage|BlogPages|AiSettingsPage|SiteSettingsPage)[^\\/]+|OperationsPage|PublishingQueuePage)\.tsx$/.test(id)) return 'admin-management';
           if (/[\\/]components[\\/]Festivals[\\/](Runtime|lifecycle)\.tsx?$/.test(id)) return 'festival-runtime';
           // Share tiny navigation icons without pulling editor icons into the entry.
           if (/[\\/]lucide-react[\\/]dist[\\/]esm[\\/]icons[\\/](chevron-(down|up|left|right)|arrow-(left|up-right)|circle-(check|alert)|copy)\.js$/.test(id)) return 'navigation-icons';
