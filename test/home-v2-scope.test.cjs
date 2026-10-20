@@ -134,6 +134,12 @@ test('shared shell, content components and theme retain pinned Git blobs (approv
   let source=fs.readFileSync(path,'utf8').replace(/\r\n/g,'\n');
   // The only approved shared presentation change is the source-return entry.
   if(path==='src/app/components/ContentUI.tsx')source=source.replace("import { SiteBack } from './SiteBack';\n",'').replace('      <SiteBack />\n','');
+  if(path==='src/app/components/ContentUI.tsx') {
+   assert.equal((source.match(/<FestivalSlot name="page"\/>/g)||[]).length,2);
+   source=source.replace("import {FestivalSlot} from './Festivals/Entry';\n",'').replace('<div className="page-reading-column"><FestivalSlot name="page"/>{children}</div> : <><FestivalSlot name="page"/>{children}</>','<div className="page-reading-column">{children}</div> : children');
+  }
+  // Approved seasonal slots add no markup outside the season; retain the original shell pins.
+  if(path==='src/app/components/Header.tsx'||path==='src/app/components/SiteFooter.tsx')source=source.replace("import { FestivalSlot } from './Festivals/Entry';\n",'').replace(path.endsWith('Header.tsx')?'          <FestivalSlot name="logo" />\n':'        <FestivalSlot name="footer" />\n','');
   const bytes=Buffer.from(source);
   assert.equal(crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex'),pin,path);
  }

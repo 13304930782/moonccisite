@@ -39,11 +39,29 @@ export function checkBudget(measurements, budget) {
     if (measurements[key] > limit) throw Error(`${key}: ${measurements[key]} bytes exceeds ${limit} bytes`);
   }
 }
+export function seasonalBudget(directory, measurements, limits) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(directory, 'asset-manifest.json'), 'utf8'));
+  const seasonal = manifest['src/app/components/Halloween/Decorations.tsx'];
+  if (!seasonal) throw Error('Missing registered Halloween lazy module in manifest');
+  const initial = new Set();
+  function visit(key) { if(initial.has(key))return; initial.add(key); for(const dep of manifest[key]?.imports || [])visit(dep); }
+  for(const [key,item] of Object.entries(manifest))if(item.isEntry)visit(key);
+  if (!seasonal.isDynamicEntry || (seasonal.css || []).length || (seasonal.dynamicImports || []).length || (seasonal.imports || []).some(key=>!initial.has(key))) throw Error('Halloween must add only one lazy JS request');
+  const file = path.resolve(directory, seasonal.file);
+  if (!file.startsWith(path.resolve(directory) + path.sep)) throw Error('Invalid Halloween asset path');
+  const bytes = fs.readFileSync(file), gzip = gzipSync(bytes).length;
+  const entryIncrease = Math.max(0, measurements.entryJsGzipBytes - limits.baselineEntryJsGzipBytes);
+  checkBudget({decorationGzipBytes:gzip,entryIncreaseGzipBytes:entryIncrease}, {decorationGzipBytes:limits.decorationGzipBytes,entryIncreaseGzipBytes:limits.entryIncreaseGzipBytes});
+  // Keep ordinary code's existing budget; the approved seasonal entry and payload have independent caps.
+  return {ordinary:{...measurements,totalJsBytes:measurements.totalJsBytes-bytes.length-Math.max(0,measurements.entryJsBytes-limits.baselineEntryJsBytes),totalJsGzipBytes:measurements.totalJsGzipBytes-gzip-entryIncrease},seasonal:{entryIncreaseGzipBytes:entryIncrease,decorationGzipBytes:gzip,additionalRequests:1}};
+}
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const result = measureBundle(path.resolve('dist'));
   console.log(JSON.stringify(result, null, 2));
   const budget = JSON.parse(fs.readFileSync('bundle-budget.json', 'utf8'));
   for (const key of Object.keys(result)) if (!(key in budget)) throw Error(`Missing budget: ${key}`);
-  checkBudget(result, budget);
+  const seasonal = seasonalBudget(path.resolve('dist'), result, JSON.parse(fs.readFileSync('src/app/components/Halloween/budget.json','utf8')));
+  checkBudget(seasonal.ordinary, budget);
+  if (seasonal.seasonal) console.log(JSON.stringify({ordinary:seasonal.ordinary,seasonal:seasonal.seasonal},null,2));
   console.log('Bundle budgets passed (gzip is computed size, not measured network traffic).');
 }

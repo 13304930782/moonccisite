@@ -43,6 +43,7 @@ export interface GrokBallCreateOptions {
   color?: `#${string}`;
   eyeColor?: `#${string}`;
   eyeScale?: number;
+  pointerTracking?: boolean;
   shape?: BodyShape;
   label?: string;
   fallbackId?: EmotionId;

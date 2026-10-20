@@ -1,0 +1,41 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+test('festival config persists through fresh router, admin-only preview never writes or leaks to public cache', async t => {
+  process.env.JWT_SECRET = 'festival-test-secret-at-least-32-characters';
+  const db = require('../src/db'), jwt = require('jsonwebtoken'), express = require('express');
+  const { defaults } = require('../src/lib/festivals');
+  let stored = null, writes = 0, broken = false;
+  t.mock.method(db, 'query', async (sql, params) => {
+    if (sql.includes('FROM users')) return [[{ id:params[0],role:params[0]===1?'owner':params[0]===3?'admin':'user',status:params[0]===4?'disabled':'active' }]];
+    if (broken) throw new Error('database offline');
+    if (sql.startsWith('SELECT setting_value')) return [stored ? [{setting_value:stored}] : []];
+    if (sql.startsWith('INSERT INTO site_settings')) { stored = params[1]; writes++; return [{}]; }
+    throw new Error(sql);
+  });
+  const app = express(); app.use(express.json()); app.use('/festivals',require('../src/routes/festivals'));
+  const server = app.listen(0,'127.0.0.1'); await new Promise(r=>server.once('listening',r));
+  t.after(async()=>{await new Promise(r=>server.close(r));await db.end();});
+  const request = (path='',method='GET',id,body) => fetch(`http://127.0.0.1:${server.address().port}/festivals${path}`,{method,headers:{'Content-Type':'application/json',...(id?{Authorization:`Bearer ${jwt.sign({id},process.env.JWT_SECRET)}`}:{})},...(body?{body:JSON.stringify(body)}:{})});
+  assert.equal((await request()).status,401);
+  assert.equal((await request('','PUT',2,defaults())).status,403);
+  assert.equal((await request('','PUT',4,defaults())).status,403);
+  assert.equal((await request('/preview','POST',undefined,{festivalId:'halloween',at:'2026-10-26T00:00:00+08:00'})).status,401);
+  const c=defaults(); c.mode='off';
+  assert.equal((await request('','PUT',1,c)).status,200);
+  assert.equal(writes,1);
+  assert.equal((await (await request('','GET',3)).json()).config.mode,'off');
+  delete require.cache[require.resolve('../src/routes/festivals')];
+  const fresh = require('../src/routes/festivals'); assert.ok(fresh);
+  app.use('/fresh',fresh);
+  const persisted = await fetch(`http://127.0.0.1:${server.address().port}/fresh`, { headers: { Authorization: `Bearer ${jwt.sign({id:1},process.env.JWT_SECRET)}` } });
+  assert.equal((await persisted.json()).config.mode, 'off');
+  const preview=await request('/preview','POST',1,{festivalId:'halloween',at:'2026-02-01T12:00:00+08:00',config:c});
+  assert.equal(preview.status,200); assert.match(preview.headers.get('cache-control'),/no-store/);
+  assert.equal((await preview.json()).active.id,'halloween'); assert.equal(writes,1);
+  const publicState=await request('/active?festivalId=halloween&at=2026-10-31');
+  assert.equal((await publicState.json()).active,null); assert.equal(publicState.headers.get('cache-control'),'no-store');
+  const invalid=defaults(); invalid.modules['army-day']={};
+  assert.equal((await request('','PUT',1,invalid)).status,400); assert.equal(writes,1);
+  assert.equal((await request('/preview','POST',1,{festivalId:'christmas',at:'2026-02-01T00:00:00+08:00'})).status,400);
+  broken=true; assert.equal((await (await request('/active')).json()).active,null);
+});

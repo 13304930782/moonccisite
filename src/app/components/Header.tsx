@@ -10,6 +10,7 @@ import { safeImageSrc } from '../lib/safeUrl';
 import { preloadPage } from '../lib/preloadPage';
 import {focusableWithin,loopFocus} from '../lib/focusLoop';
 import '../../styles/navigation.css';
+import { FestivalSlot } from './Festivals/Entry';
 export function Header() {
   const header = useRef<HTMLElement>(null);
   const menuButton=useRef<HTMLButtonElement>(null),menuPanel=useRef<HTMLDivElement>(null);
@@ -111,6 +112,7 @@ export function Header() {
             <img {...responsiveImage(safeImageSrc(brand.logo_url), true)} width={26} height={26} alt="" />
           )}
           <span>mooncci</span>
+          <FestivalSlot name="logo" />
         </Link>
         <nav className="desktop-nav" aria-label="主导航">
           {links.map(([to, label]) => (

@@ -54,6 +54,7 @@ export default defineConfig({
         experimentalMinChunkSize: 10000,
         onlyExplicitManualChunks: true,
         manualChunks(id) {
+          if (/[\\/]components[\\/]Festivals[\\/](Runtime|lifecycle)\.tsx?$/.test(id)) return 'festival-runtime';
           // Share tiny navigation icons without pulling editor icons into the entry.
           if (/[\\/]lucide-react[\\/]dist[\\/]esm[\\/]icons[\\/](chevron-(down|up|left|right)|arrow-(left|up-right)|circle-(check|alert)|copy)\.js$/.test(id)) return 'navigation-icons';
           if (id.includes('/node_modules/re2js/') || id.includes('\\node_modules\\re2js\\')) return 'editor-search-engine';

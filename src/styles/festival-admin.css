@@ -1,0 +1,20 @@
+.festival-admin .festival-current { padding: 20px 22px; border-radius: 16px; background: var(--muted); margin: 24px 0; }
+.festival-admin .festival-current p { margin: 8px 0; }
+.festival-admin small, .festival-admin summary span { color: var(--muted-foreground); font-size: 13px; }
+.festival-admin select { min-height: 44px; width: 100%; max-width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; color: var(--foreground); background: var(--card); font: inherit; }
+.festival-admin .festival-module { border-bottom: 1px solid var(--border); padding: 12px 0; }
+.festival-admin summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
+.festival-admin summary strong { margin-right: 16px; }
+.festival-admin fieldset { min-width: 0; border: 0; margin: 0; padding: 0; display: grid; gap: 20px; }
+.festival-admin .festival-module fieldset { padding: 12px 0 24px; }
+.festival-admin .festival-check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; }
+.festival-admin .festival-check input { width: 18px; height: 18px; flex: none; accent-color: var(--primary); }
+.festival-admin .festival-three-columns, .festival-admin .festival-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.festival-admin h3 { font-size: 14px; font-weight: 600; margin: 8px 0; }
+.festival-admin .festival-exception { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.festival-admin .festival-exception input[type=date] { min-width: 0; max-width: 100%; min-height: 44px; background: var(--card); color: var(--foreground); border: 1px solid var(--border); padding: 8px; border-radius: 6px; }
+.festival-admin .settings-save { padding: 24px 0; }
+.festival-admin button { min-height: 44px; }
+.festival-admin :is(button,input,select,summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.festival-admin .festival-error { color: var(--foreground); border-left: 3px solid var(--destructive); padding-left: 12px; }
+@media(max-width:600px) { .festival-admin .festival-three-columns, .festival-admin .festival-options { grid-template-columns: 1fr; } .festival-admin summary span { display: block; margin-top: 6px; } }
