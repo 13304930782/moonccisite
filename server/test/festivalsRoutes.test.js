@@ -37,5 +37,13 @@ test('festival config persists through fresh router, admin-only preview never wr
   const invalid=defaults(); invalid.modules['army-day']={};
   assert.equal((await request('','PUT',1,invalid)).status,400); assert.equal(writes,1);
   assert.equal((await request('/preview','POST',1,{festivalId:'christmas',at:'2026-02-01T00:00:00+08:00'})).status,400);
+  for (let i=0;i<18;i++) assert.equal((await request('','PUT',1,c)).status,200);
+  const writesBeforeLimit = writes;
+  const limited = await request('','PUT',1,c);
+  assert.equal(limited.status,429);
+  assert.ok(limited.headers.get('retry-after'));
+  assert.equal(writes,writesBeforeLimit);
+  assert.equal((await request('','GET',1)).status,200);
+  assert.equal((await request('/preview','POST',1,{festivalId:'halloween',at:'2026-02-01T12:00:00+08:00'})).status,200);
   broken=true; assert.equal((await (await request('/active')).json()).active,null);
 });

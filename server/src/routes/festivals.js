@@ -1,6 +1,7 @@
 const { catalog, defaults, validate, evaluate, instant } = require('../lib/festivals');
 const { authRequired, adminOnly } = require('../middleware/auth');
 const db = require('../db');
+const rateLimit = require('express-rate-limit');
 const router = require('../lib/asyncRouter')();
 async function read() {
   const [[row]] = await db.query('SELECT setting_value FROM site_settings WHERE setting_key=? LIMIT 1', ['festivals']);
@@ -19,7 +20,7 @@ router.use(authRequired, adminOnly);
 router.get('/', async (_req, res) => {
   const config = await read(); res.json({ config, catalog, state: evaluate(config) });
 });
-router.put('/', async (req, res) => {
+router.put('/', rateLimit({ windowMs: 60000, limit: 20, standardHeaders: true, legacyHeaders: false }), async (req, res) => {
   const config = validate(req.body);
   await db.query('INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)', ['festivals', JSON.stringify(config)]);
   res.json({ config, catalog, state: evaluate(config) });
