@@ -1,6 +1,9 @@
 import { FormInput } from '../components/FormInput';
 import {authLink, loginDestination} from '../lib/loginDestination';
-import { ArrowRight, Lock, Mail, User } from 'lucide-react';
+import { ArrowRight, Mail, User } from 'lucide-react';
+import { PasswordField, PasswordRules } from '../components/PasswordField';
+import { passwordProblem } from '../lib/passwordRules';
+import { notify } from '../lib/feedback';
 import { FormEvent, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthShell } from '../components/AuthShell';
@@ -19,26 +22,24 @@ export default function RegisterPage() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [confirmTouched, setConfirmTouched] = useState(false);
+  const mismatch = confirmTouched && confirmPassword !== '' && password !== confirmPassword;
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!username || !email || !password || !confirmPassword) {
+    if (!username.trim() || !email.trim() || !password || !confirmPassword) {
       return setMessage('请完整填写用户名、邮箱、密码和确认密码');
     }
-    if (
-      password.length < 8 ||
-      !/[A-Za-z]/.test(password) ||
-      !/\d/.test(password)
-    ) {
-      return setMessage('密码至少 8 位，并且需要同时包含字母和数字');
-    }
-    if (password !== confirmPassword) return setMessage('两次输入的密码不一致');
+    const problem = passwordProblem(password);
+    if (problem) return setMessage(problem);
+    if (password !== confirmPassword) { setConfirmTouched(true); return setMessage('两次输入的密码不一致'); }
 
     setLoading(true);
     setMessage('');
 
     try {
-      await register(username, email, password);
-      setMessage('注册成功，即将跳转登录页');
+      await register(username.trim(), email.trim(), password);
+      notify.success('注册成功，请使用新账号登录。');
       navigate(authLink('/login', destination), {replace:true});
     } catch (err: any) {
       setMessage(err.message || '注册失败');
@@ -90,11 +91,7 @@ export default function RegisterPage() {
       alternateTo={authLink('/login', destination)}
     >
       {message && (
-        <div
-          className={`auth-message ${message.includes('成功') ? 'is-success' : ''}`}
-          role="status"
-          aria-live="polite"
-        >
+        <div className="auth-message is-error" role="alert">
           {message}
         </div>
       )}
@@ -110,6 +107,9 @@ export default function RegisterPage() {
               type="text"
               name="username"
               id="username"
+              required
+              minLength={2}
+              maxLength={30}
               autoComplete="username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
@@ -128,6 +128,8 @@ export default function RegisterPage() {
               type="email"
               name="email"
               id="register-email"
+              required
+              maxLength={254}
               autoComplete="email"
               inputMode="email"
               value={email}
@@ -138,40 +140,31 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label htmlFor="new-password" className="auth-field-label">
-            密码
-          </label>
-          <div className="auth-field-control">
-            <Lock aria-hidden="true" />
-            <FormInput
-              type="password"
-              name="password"
-              id="new-password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="至少 8 位，包含字母和数字"
-            />
-          </div>
+          <PasswordField
+            id="new-password"
+            name="password"
+            label="密码"
+            required
+            autoComplete="new-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="至少 8 位，包含字母和数字"
+          />
+          <PasswordRules password={password} />
         </div>
 
-        <div>
-          <label htmlFor="confirm-password" className="auth-field-label">
-            确认密码
-          </label>
-          <div className="auth-field-control">
-            <Lock aria-hidden="true" />
-            <FormInput
-              type="password"
-              name="confirmPassword"
-              id="confirm-password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              placeholder="再次输入密码"
-            />
-          </div>
-        </div>
+        <PasswordField
+          id="confirm-password"
+          name="confirmPassword"
+          label="确认密码"
+          required
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={(event) => setConfirmPassword(event.target.value)}
+          onBlur={() => setConfirmTouched(true)}
+          error={mismatch ? '两次输入的密码不一致。' : undefined}
+          placeholder="再次输入密码"
+        />
 
         <button
           type="submit"

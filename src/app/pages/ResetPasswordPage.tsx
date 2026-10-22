@@ -1,10 +1,10 @@
-import { FormInput } from '../components/FormInput';
 import { FormEvent, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Lock } from 'lucide-react';
 import {authLink,loginDestination} from '../lib/loginDestination';
 import { api } from '../lib/api';
 import { AuthShell } from '../components/AuthShell';
+import { PasswordField, PasswordRules } from '../components/PasswordField';
+import { passwordProblem } from '../lib/passwordRules';
 
 export default function ResetPasswordPage() {
   const [params] = useSearchParams();
@@ -14,9 +14,11 @@ export default function ResetPasswordPage() {
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [confirmTouched, setConfirmTouched] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [done,setDone] = useState(false);
+  const mismatch = confirmTouched && confirmPassword !== '' && password !== confirmPassword;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -31,12 +33,14 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-      setMessage('新密码至少 8 位，并且需要同时包含字母和数字');
+    const problem = passwordProblem(password);
+    if (problem) {
+      setMessage(problem);
       return;
     }
 
     if (password !== confirmPassword) {
+      setConfirmTouched(true);
       setMessage('两次输入的密码不一致');
       return;
     }
@@ -63,7 +67,7 @@ export default function ResetPasswordPage() {
     <AuthShell formTitle="重置密码" formDescription="请设置一个新密码。"
       alternatePrompt="" alternateLabel="返回登录" alternateTo={authLink('/login',destination)}>
         {message && (
-          <div className={`auth-message${done ? '' : ' is-error'}`} role={done ? 'status' : 'alert'}>
+          <div className={`auth-message${done ? ' is-success' : ' is-error'}`} role={done ? 'status' : 'alert'}>
             {message}
           </div>
         )}
@@ -72,37 +76,25 @@ export default function ResetPasswordPage() {
         {(!token || (message && !done)) && <Link className="text-link block mt-4" to={authLink('/forgot-password',destination)}>重新获取重置链接 →</Link>}
         {done && <Link className="auth-submit mt-6" to={authLink('/login',destination)}>使用新密码登录 →</Link>}
         {token && !done && <form onSubmit={submit} className="auth-form">
-          <div className="auth-field">
-            <label htmlFor="new-password" className="block mb-2">
-              新密码
-            </label>
-            <div className="auth-field-control">
-              <Lock className="w-5 h-5 text-muted-foreground" />
-              <FormInput
-                id="new-password" autoComplete="new-password" value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                placeholder="至少 8 位，并包含字母和数字"
-              />
-            </div>
+          <div>
+            <PasswordField
+              id="new-password" name="password" label="新密码" required autoComplete="new-password" value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="至少 8 位，并包含字母和数字"
+            />
+            <PasswordRules password={password} />
           </div>
 
-          <div className="auth-field">
-            <label htmlFor="confirm-password" className="block mb-2">
-              确认新密码
-            </label>
-            <div className="auth-field-control">
-              <Lock className="w-5 h-5 text-muted-foreground" />
-              <FormInput
-                id="confirm-password" autoComplete="new-password" value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                type="password"
-                placeholder="再次输入新密码"
-              />
-            </div>
-          </div>
+          <PasswordField
+            id="confirm-password" name="confirmPassword" label="确认新密码" required autoComplete="new-password" value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            onBlur={() => setConfirmTouched(true)}
+            error={mismatch ? '两次输入的密码不一致。' : undefined}
+            placeholder="再次输入新密码"
+          />
 
           <button
+            type="submit"
             disabled={loading}
             className="auth-submit disabled:opacity-60"
           >

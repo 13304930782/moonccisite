@@ -220,3 +220,43 @@ html.auth-touch-page,
 .auth-google-local:hover { filter: brightness(.95); }
 .auth-google-local:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 .auth-google-local:disabled { opacity: .5; cursor: wait; }
+
+/* Show/hide password: a full 44px target inside the field, keyboard and screen-reader friendly. */
+.auth-field-control--reveal input { padding-right: 52px; }
+.auth-reveal {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.auth-reveal:hover { color: var(--foreground); background: var(--muted); }
+.auth-reveal:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.auth-reveal svg { width: 18px; height: 18px; }
+
+/* Live password requirements. State is carried by icon + text, not colour. */
+.password-rules { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted-foreground); }
+.password-rules li { display: inline-flex; align-items: center; gap: 6px; }
+.password-rules svg { width: 14px; height: 14px; flex: none; }
+.password-rules li[data-ok="true"] { color: var(--foreground); }
+
+.auth-field > .auth-form-error { margin-top: 8px; }
+.auth-message.is-success { color: var(--foreground); border-bottom-color: var(--foreground); }
+
+/* Confirmation panel shown after a recovery email is requested. */
+.auth-sent { display: grid; gap: 12px; padding: 20px; border: 1px solid var(--border); border-radius: var(--panel-radius, 16px); background: var(--muted); }
+.auth-sent h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.auth-sent p { margin: 0; font-size: 14px; line-height: 1.7; color: var(--muted-foreground); }
+.auth-sent strong { color: var(--foreground); overflow-wrap: anywhere; }
+.auth-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px; border: 1px solid var(--border); border-radius: var(--control-radius, 10px); background: var(--card); color: var(--foreground); font-size: 14px; }
+.auth-secondary:hover:not(:disabled) { background: var(--muted); }
+.auth-secondary:disabled { opacity: .55; cursor: not-allowed; }
+.auth-submit:disabled { cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .auth-reveal { transition: none; } }

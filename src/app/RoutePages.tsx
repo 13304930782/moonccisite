@@ -1,5 +1,3 @@
-const NodeMonitorPage=lazy(()=>import('./pages/NodeMonitorPage'));
-const AdminNodeMonitorPage=lazy(()=>import('./pages/AdminNodeMonitorPage'));
 import { feedbackStore } from './lib/feedback';
 import { confirmationStore } from './lib/confirmAction';
 import { afterInitialLoad } from './lib/afterInitialLoad';
@@ -11,6 +9,8 @@ import { DiagnosticNavigation } from './components/DiagnosticNavigation';
 import { startTransition, lazy, Suspense, useState, useEffect, useSyncExternalStore } from 'react';
 import { RoutePosition } from './components/RoutePosition';
 import '../styles/experience.css';
+const NodeMonitorPage=lazy(()=>import('./pages/NodeMonitorPage'));
+const AdminNodeMonitorPage=lazy(()=>import('./pages/AdminNodeMonitorPage'));
 const SessionsPage=lazy(()=>import('./pages/SessionsPage'));
 const OperationsPage=lazy(()=>import('./pages/OperationsPage'));
 const NotificationsPage=lazy(()=>import('./pages/NotificationsPage'));
@@ -118,9 +118,9 @@ function Guard({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
-        正在恢复登录状态...
-      </div>
+      <main className="site-container page-content">
+        <p className="quiet-state" role="status" aria-live="polite">正在确认登录状态…</p>
+      </main>
     );
   }
 

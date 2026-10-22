@@ -206,3 +206,8 @@
 .settings-save .button-primary:disabled {
   cursor: wait;
 }
+
+/* Unsaved-change and failure cues beside each section's save button. */
+.settings-save .settings-dirty { color: var(--foreground); font-weight: 500; }
+.settings-save .settings-dirty::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 8px; border-radius: 50%; background: var(--foreground); vertical-align: middle; }
+.settings-save .settings-error { color: var(--destructive); }

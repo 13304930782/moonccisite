@@ -2,6 +2,7 @@ import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { UploadCloud } from 'lucide-react';
 import { api } from '../lib/api';
+import { useUnsavedLeave } from '../lib/useUnsavedLeave';
 import { safeImageSrc } from '../lib/safeUrl';
 import { MarkdownContent } from '../components/MarkdownContent';
 import '../../styles/site-settings.css';
@@ -130,6 +131,14 @@ export default function AdminSiteSettingsPage() {
   const [saving, setSaving] = useState(''),
     [uploading, setUploading] = useState(false);
   const [messages, setMessages] = useState<Record<string, string>>({});
+  const [failed, setFailed] = useState<Record<string, boolean>>({});
+  // Last loaded/saved snapshot per section, so unsaved edits can be flagged and protected.
+  const [baseline, setBaseline] = useState<Record<string, string>>({});
+  const snapshot = (id: string, value: any) => JSON.stringify(id === 'now' ? value?.content ?? '' : value);
+  const current: Record<string, any> = { brand, hero, footer, now };
+  const dirtySections: Record<string, boolean> = {};
+  for (const id of Object.keys(baseline)) dirtySections[id] = baseline[id] !== snapshot(id, current[id]);
+  useUnsavedLeave(Object.values(dirtySections).some(Boolean));
   async function load() {
     setLoading(true);
     setError('');
@@ -138,16 +147,23 @@ export default function AdminSiteSettingsPage() {
         api('/settings/site'),
         api('/now'),
       ]);
-      setBrand(site.brand);
-      setFooter(site.footer);
-      setHero({
+      const loadedHero = {
         ...site.hero,
         title:
           site.hero.title ||
           `${site.hero.title_before || ''}${site.hero.title_highlight || ''}${site.hero.title_after || ''}`,
         eyebrow: site.hero.eyebrow ?? 'mooncci / 个人技术手记',
-      });
+      };
+      setBrand(site.brand);
+      setFooter(site.footer);
+      setHero(loadedHero);
       setNow(current);
+      setBaseline({
+        brand: snapshot('brand', site.brand),
+        hero: snapshot('hero', loadedHero),
+        footer: snapshot('footer', site.footer),
+        now: snapshot('now', current),
+      });
     } catch (e: any) {
       setError(e.message || '站点设置加载失败');
     } finally {
@@ -161,13 +177,16 @@ export default function AdminSiteSettingsPage() {
     e.preventDefault();
     setSaving(section);
     setMessages((prev) => ({ ...prev, [section]: '' }));
+    setFailed((prev) => ({ ...prev, [section]: false }));
     try {
+      let saved: any;
       if (section === 'now') {
         await api('/admin/now', {
           method: 'PUT',
           body: JSON.stringify({ content: now.content }),
         });
-        setNow(await api('/now'));
+        saved = await api('/now');
+        setNow(saved);
       } else {
         const result = await api('/settings/site', {
           method: 'PUT',
@@ -175,16 +194,19 @@ export default function AdminSiteSettingsPage() {
             [section]: ({ brand, hero, footer } as any)[section],
           }),
         });
+        saved = result[section];
         if (section === 'brand') setBrand(result.brand);
         if (section === 'hero') setHero(result.hero);
         if (section === 'footer') setFooter(result.footer);
         window.dispatchEvent(new Event('site-settings-updated'));
       }
+      setBaseline((prev) => ({ ...prev, [section]: snapshot(section, saved) }));
       setMessages((prev) => ({
         ...prev,
         [section]: '已保存，刷新公开页面即可看到。',
       }));
     } catch (e: any) {
+      setFailed((prev) => ({ ...prev, [section]: true }));
       setMessages((prev) => ({
         ...prev,
         [section]: e.message || '保存失败，请重试',
@@ -208,10 +230,11 @@ export default function AdminSiteSettingsPage() {
         <fieldset disabled={loading || !!error || !!saving || uploading}>
           {content}
           <div className="settings-save">
-            <button className="button-primary" type="submit">
+            <button className="button-primary" type="submit" disabled={saving === id}>
               {saving === id ? '保存中…' : `保存${title}`}
             </button>
-            <span role="status">{messages[id]}</span>
+            {dirtySections[id] && !saving && <span className="settings-dirty">有未保存的修改</span>}
+            <span role={failed[id] ? 'alert' : 'status'} className={failed[id] ? 'settings-error' : undefined}>{messages[id]}</span>
           </div>
         </fieldset>
       </form>

@@ -1,0 +1,44 @@
+/* Shared admin states: quiet, token-based, readable in both themes. */
+.admin-state { display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:20px 0; color:var(--muted-foreground); font-size:14px; line-height:1.6; }
+.admin-state p { margin:0; }
+.admin-state--error { padding:16px; border:1px solid var(--border); border-radius:var(--panel-radius,16px); background:var(--muted); color:var(--foreground); justify-content:space-between; }
+.admin-state--error p { flex:1 1 220px; min-width:0; overflow-wrap:anywhere; }
+.admin-state--empty { flex-direction:column; align-items:flex-start; padding:32px 0; }
+.admin-state-title { color:var(--foreground); font-size:16px; font-weight:500; }
+.admin-state-hint { max-width:46ch; }
+.admin-state-spinner { width:16px; height:16px; flex:none; border:2px solid var(--border); border-top-color:var(--foreground); border-radius:50%; animation:admin-state-spin .8s linear infinite; }
+@keyframes admin-state-spin { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .admin-state-spinner { animation:none; border-top-color:var(--border); } }
+
+.admin-notice { margin:0 0 16px; padding:12px 16px; border:1px solid var(--border); border-radius:var(--control-radius,10px); background:var(--muted); color:var(--foreground); font-size:14px; line-height:1.6; overflow-wrap:anywhere; }
+.admin-notice--error { border-color:color-mix(in srgb,var(--destructive) 45%,var(--border)); }
+
+/* Overview stat placeholders keep the layout steady while counts load. */
+.admin-stats strong[data-pending="true"] { color:var(--muted-foreground); }
+
+/* Row actions on review lists: one consistent, 44px-tall rhythm. */
+.admin-row-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.admin-row-actions > button { min-height:44px; padding:0 16px; border-radius:var(--control-radius,10px); font-size:14px; border:1px solid var(--border); background:var(--card); color:var(--foreground); }
+.admin-row-actions > button:hover:not(:disabled) { background:var(--muted); }
+.admin-row-actions > button:disabled { opacity:.5; cursor:not-allowed; }
+.admin-row-actions > button[data-tone="primary"] { background:var(--primary); border-color:var(--primary); color:var(--primary-foreground); }
+.admin-row-actions > button[data-tone="primary"]:hover:not(:disabled) { background:var(--primary); opacity:.88; }
+.admin-row-actions > button[data-tone="danger"] { color:var(--destructive); }
+.dark .admin-row-actions > button[data-tone="danger"] { color:var(--destructive-foreground,var(--foreground)); }
+.admin-row-actions > button:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+
+.admin-status-chip { display:inline-flex; align-items:center; gap:6px; min-height:24px; padding:0 10px; border-radius:999px; background:var(--muted); color:var(--foreground); font-size:12px; line-height:1; }
+.admin-status-chip::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.55; }
+.admin-status-chip[data-status="pending"]::before { background:var(--ui-warn-text,#854f0b); opacity:1; }
+.admin-status-chip[data-status="visible"]::before,.admin-status-chip[data-status="approved"]::before { background:var(--ui-ok,#1D9E75); opacity:1; }
+.admin-status-chip[data-status="rejected"]::before { background:var(--destructive); opacity:1; }
+
+.admin-filter-chips { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+.admin-filter-chips button { min-height:44px; padding:0 16px; border:0; border-radius:999px; background:transparent; color:var(--foreground); font-size:14px; }
+.admin-filter-chips button:hover { background:var(--muted); }
+.admin-filter-chips button[aria-pressed="true"] { background:var(--muted); font-weight:600; }
+.admin-filter-chips button:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+
+.admin-note-dialog textarea { width:100%; min-height:96px; margin-top:12px; padding:12px; border:1px solid var(--border); border-radius:var(--control-radius,10px); background:var(--card); color:var(--foreground); font:inherit; font-size:16px; resize:vertical; }
+.admin-note-dialog .inline-actions { margin-top:16px; justify-content:flex-end; }
+.admin-stats + .admin-state { margin-bottom: 32px; }

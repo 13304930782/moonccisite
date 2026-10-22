@@ -1,6 +1,7 @@
 import { FormInput } from '../components/FormInput';
 import {authLink, loginDestination, rememberedDestination} from '../lib/loginDestination';
-import { ArrowRight, CircleX, Lock, Mail } from 'lucide-react';
+import { ArrowRight, CircleX, Mail } from 'lucide-react';
+import { PasswordField } from '../components/PasswordField';
 import { ApiError } from '../lib/api';
 import { notify } from '../lib/feedback';
 import { FormEvent, useState } from 'react';
@@ -117,26 +118,22 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <div className="auth-field-label">
-            <label htmlFor="password">密码</label>
-            <Link to={authLink('/forgot-password', destination)} className="auth-inline-link">
-              忘记密码？
-            </Link>
-          </div>
-          <div className="auth-field-control">
-            <Lock aria-hidden="true" />
-            <FormInput
-              type="password"
-              required
-              aria-describedby={formError ? "login-form-error" : undefined}
-              name="password"
-              id="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => { setPassword(event.target.value); setFormError(''); }}
-              placeholder="请输入密码"
-            />
-          </div>
+          <PasswordField
+            id="password"
+            name="password"
+            label="密码"
+            labelAside={
+              <Link to={authLink('/forgot-password', destination)} className="auth-inline-link">
+                忘记密码？
+              </Link>
+            }
+            required
+            aria-describedby={formError ? "login-form-error" : undefined}
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => { setPassword(event.target.value); setFormError(''); }}
+            placeholder="请输入密码"
+          />
           {formError && (
             <p id="login-form-error" className="auth-form-error" role="alert">
               <CircleX size={16} aria-hidden="true" />

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import { useUnsavedLeave } from '../lib/useUnsavedLeave';
 
 const defaultMail = {
   enabled: 'false',
@@ -63,6 +64,8 @@ export default function AdminMailSettingsPage() {
   const [loadAttempt,setLoadAttempt] = useState(0);
   const [loadError,setLoadError] = useState('');
   const dirty = saved !== JSON.stringify(mail);
+  // Leaving with edited, unsaved mail settings should ask first (not while still loading).
+  useUnsavedLeave(Boolean(saved) && dirty);
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);

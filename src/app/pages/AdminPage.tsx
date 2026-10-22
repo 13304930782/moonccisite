@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import { AdminError } from '../components/admin/AdminState';
 
 function getRoleName(role?: string) {
   if (role === 'owner') return '站长';
@@ -60,17 +61,26 @@ export default function AdminPage() {
     comments: 0,
     bannedWords: 0,
   });
+  const [statsState, setStatsState] = useState<'loading' | 'ready' | 'error'>(writer ? 'loading' : 'ready');
+  const [statsError, setStatsError] = useState('');
+  const [statsVersion, setStatsVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadStats() {
+      if (!writer) return;
+      setStatsState('loading');
       try {
-        if (!writer) return;
         const result = await api('/admin/stats');
-        if (!cancelled) setStats(result);
-      } catch {
-        // 不影响页面显示
+        if (cancelled) return;
+        setStats(result);
+        setStatsState('ready');
+      } catch (error: any) {
+        // 统计只是概览信息，失败时仍展示常用操作，但要告诉用户并允许重试。
+        if (cancelled) return;
+        setStatsError(error?.message || '统计数据暂时无法加载。');
+        setStatsState('error');
       }
     }
 
@@ -79,7 +89,7 @@ export default function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [role]);
+  }, [role, statsVersion]);
 
   const statCards = [
     {
@@ -205,14 +215,17 @@ export default function AdminPage() {
         </p>
       </header>
       {statCards.length > 0 && (
-        <section className="admin-stats" aria-label="内容统计">
+        <section className="admin-stats" aria-label="内容统计" aria-busy={statsState === 'loading'}>
           {statCards.map((item) => (
             <div key={item.title}>
-              <strong>{item.value}</strong>
+              <strong data-pending={statsState !== 'ready'}>{statsState === 'ready' ? item.value : '—'}</strong>
               <span>{item.title}</span>
             </div>
           ))}
         </section>
+      )}
+      {statsState === 'error' && (
+        <AdminError message={`${statsError} 下方的常用操作不受影响。`} onRetry={() => setStatsVersion((value) => value + 1)} />
       )}
       <section>
         <h2>常用操作</h2>
