@@ -5,6 +5,9 @@ const { createRouter } = require('../src/routes/mailSetup');
 const valid = "Ada.O'Neil&work+tag@MOONCCI.SITE";
 test('validation preserves local-part, accepts safe XML special chars, rejects invalid input', () => {
   assert.equal(validateEmail(valid), "Ada.O'Neil&work+tag@mooncci.site");
+  assert.equal(validateEmail("Ada.O'Neil&work+tag@MOOONCCI.CN"), "Ada.O'Neil&work+tag@moooncci.cn");
+  assert.match(mobileconfig('Ada@moooncci.cn'), /<string>Ada@moooncci\.cn<\/string>/);
+  assert.equal(validateEmail('a@moooncci.cn.evil'), null);
   for (const value of [null, {}, '', 'x@gmail.com', 'a@mooncci.site.evil', 'x@@mooncci.site', '.x@mooncci.site', 'x..y@mooncci.site', 'x.@mooncci.site', ' x@mooncci.site', 'x@mooncci.site\n', 'x\0@mooncci.site', 'x\x7f@mooncci.site', 'x'.repeat(65)+'@mooncci.site', '<key>Injected</key>@mooncci.site', '"x"@mooncci.site']) assert.equal(validateEmail(value), null, String(value));
 });
 test('Apple profile parses with typed official payload, actual account, UUIDs and no secrets', () => {

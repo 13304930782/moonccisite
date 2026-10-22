@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const BASE_URL = (process.env.SMOKE_BASE_URL || 'https://mooncci.site').replace(/\/$/, '');
+const BASE_URL = (process.env.SMOKE_BASE_URL || 'https://moooncci.cn').replace(/\/$/, '');
 const EMAIL = process.env.SMOKE_EMAIL || '';
 const PASSWORD = process.env.SMOKE_PASSWORD || '';
 const POST_ID = process.env.SMOKE_POST_ID || '';

@@ -47,7 +47,7 @@ function isLockedUntilFuture(value) {
 }
 
 function safeSiteUrl(value) {
-  const fallback = 'https://mooncci.site';
+  const fallback = 'https://moooncci.cn';
   const input = String(value || fallback).trim();
 
   try {

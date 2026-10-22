@@ -21,13 +21,13 @@ export function SiteFooter() {
             <Link to="/rss">RSS 订阅</Link>
             <Link to="/mail-setup">邮箱设置</Link>
             <Link to="/node-monitor">节点监控</Link>
-            <a href="https://status.mooncci.site" target="_blank" rel="noopener noreferrer">服务状态</a>
+            <a href="https://status.moooncci.cn" target="_blank" rel="noopener noreferrer">服务状态</a>
           </nav>
         </div>
         <div className="footer-status">
           <iframe
             title="mooncci 实时服务状态"
-            src={`https://status.mooncci.site/badge?theme=${theme}`}
+            src={`https://status.moooncci.cn/badge?theme=${theme}`}
             width="250"
             height="30"
             loading="lazy"

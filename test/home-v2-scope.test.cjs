@@ -134,6 +134,11 @@ test('shared shell, content components and theme retain pinned Git blobs (approv
   let source=fs.readFileSync(path,'utf8').replace(/\r\n/g,'\n');
   // The only approved shared presentation change is the source-return entry.
   if(path==='src/app/components/ContentUI.tsx')source=source.replace("import { SiteBack } from './SiteBack';\n",'').replace('      <SiteBack />\n','');
+  // The approved domain migration changes only the status link and badge origin.
+  if(path==='src/app/components/SiteFooter.tsx'){
+   assert.equal((source.match(/status\.moooncci\.cn/g)||[]).length,2);
+   source=source.replaceAll('status.moooncci.cn','status.mooncci.site');
+  }
   const bytes=Buffer.from(source);
   assert.equal(crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex'),pin,path);
  }

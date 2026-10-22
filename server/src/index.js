@@ -43,7 +43,7 @@ app.use(helmet({
 
 // CORS 白名单
 app.use(cors({
-  origin: String(process.env.CORS_ORIGINS || 'https://mooncci.site,https://www.mooncci.site').split(',').map(value => value.trim()).filter(Boolean),
+  origin: String(process.env.CORS_ORIGINS || 'https://moooncci.cn,https://www.moooncci.cn,https://mooncci.site,https://www.mooncci.site').split(',').map(value => value.trim()).filter(Boolean),
   credentials: true,
 }));
 
@@ -69,7 +69,7 @@ app.use('/api/uploads', express.static(uploadRoutes.uploadDir, {
 }));
 
 const trustedRequestOrigins = new Set(
-  String(process.env.CSRF_TRUSTED_ORIGINS || process.env.CORS_ORIGINS || 'https://mooncci.site,https://www.mooncci.site')
+  String(process.env.CSRF_TRUSTED_ORIGINS || process.env.CORS_ORIGINS || 'https://moooncci.cn,https://www.moooncci.cn,https://mooncci.site,https://www.mooncci.site')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean)

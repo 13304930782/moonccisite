@@ -19,7 +19,7 @@ import urllib.request
 import urllib.robotparser
 import xml.etree.ElementTree as ET
 
-ORIGIN = 'https://mooncci.site'
+ORIGIN = 'https://moooncci.cn'
 ENDPOINT = 'https://api.indexnow.org/indexnow'
 STATE_DIR = Path('/var/lib/mooncci-indexnow')
 SITEMAP = Path('/www/wwwroot/mooncci.site/sitemap-pages.xml')
@@ -34,9 +34,9 @@ def public_url(value):
     if not isinstance(value, str) or len(value) > 2048 or any(ord(char) > 127 for char in value):
         raise ValueError('Invalid public URL')
     parsed = urllib.parse.urlsplit(value)
-    if (parsed.scheme != 'https' or parsed.netloc != 'mooncci.site' or parsed.query
+    if (parsed.scheme != 'https' or parsed.netloc != 'moooncci.cn' or parsed.query
             or parsed.fragment or value != ORIGIN + parsed.path):
-        raise ValueError('Only canonical HTTPS mooncci.site URLs without parameters are allowed')
+        raise ValueError('Only canonical HTTPS moooncci.cn URLs without parameters are allowed')
     path = parsed.path
     if path in STATIC or re.fullmatch(r'/(article|updates)/[1-9][0-9]*', path):
         return value
@@ -272,7 +272,7 @@ def flush(state, path, key, policy, now):
     if not ready:
         save_state(path, state)
         return {'event': 'no_submission', 'pending': len(state['pending'])}
-    payload = json.dumps({'host': 'mooncci.site', 'key': key,
+    payload = json.dumps({'host': 'moooncci.cn', 'key': key,
                           'keyLocation': ORIGIN + '/' + key + '.txt', 'urlList': ready}).encode('utf-8')
     try:
         code, headers, body = request(ENDPOINT, payload)

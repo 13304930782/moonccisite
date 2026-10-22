@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-const DOMAIN = 'mooncci.site';
+const { domain: DOMAIN } = require('../config/mail-client.json');
 const RESERVED = new Set(['admin', 'administrator', 'abuse', 'contact', 'help', 'info', 'mail', 'mailer-daemon', 'mooncci', 'no-reply', 'noreply', 'postmaster', 'root', 'security', 'support', 'webmaster']);
 
 function localPart(value) {

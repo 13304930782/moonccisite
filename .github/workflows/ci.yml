@@ -10,11 +10,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  build-and-unit:
-    runs-on: ubuntu-latest
+  core-checks:
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Install deployment test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3 nginx rsync
+          command -v python3 nginx rsync openssl
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -50,37 +55,101 @@ jobs:
       - run: bash -n scripts/deploy-offline-frontend.sh
       - run: bash -n scripts/deploy-audit.sh
       - run: bash -n scripts/deploy-media-capacity.sh
-      - run: npx playwright install --with-deps chromium webkit
-      - run: node test/mobile-inputs.browser.cjs
-      - run: node scripts/test-browser.cjs
-      - run: node scripts/test-updates-browser.cjs
-      - run: node scripts/test-google-button-browser.cjs
-      - run: node scripts/test-admin-capacity-browser.cjs
-      - run: node scripts/test-account-browser.cjs
-      - run: node scripts/test-site-design-account-browser.cjs
-      - run: node scripts/test-article-drafts-browser.cjs
-      - run: node scripts/test-article-revisions-browser.cjs
-      - run: node scripts/test-bookmarks-browser.cjs
-      - run: node scripts/test-reading-browser.cjs
-      - run: node scripts/test-detail-browser.cjs
-      - run: node scripts/test-works-browser.cjs
-      - run: node scripts/test-update-journal-browser.cjs
-      - run: node scripts/test-analytics-browser.cjs
-      - run: node scripts/test-ux-unification.cjs
-      - run: node scripts/test-image-retry-browser.cjs
-      - run: node scripts/test-article-preview-cards-browser.cjs
-      - run: node scripts/test-mail-setup-browser.cjs
-      - run: node scripts/test-mailbox-send-feedback.cjs
-      - run: node scripts/test-mailbox-navigation.cjs
-      - run: node scripts/test-browser-diagnostics.cjs
       - run: bash -n scripts/deploy-site-diagnostics.sh scripts/rollback-site-diagnostics.sh
-      - run: sudo apt-get update && sudo apt-get install -y nginx
       - run: python3 ops/mail-setup/test_nginx.py
-      - run: node scripts/test-media-dialog-browser.cjs
-      - run: node scripts/test-article-images-browser.cjs
       - run: bash -n scripts/deploy-article-images.sh scripts/rollback-article-images.sh
       - run: npm audit --audit-level=moderate
       - run: npm audit --prefix server --audit-level=moderate
+      - name: Seal build artifacts
+        run: find dist server/runtime -type f -print0 | sort -z | xargs -0 sha256sum > ci-build.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-build
+          path: |
+            dist/
+            server/runtime/
+            ci-build.sha256
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+  browser-checks:
+    needs: core-checks
+    runs-on: ubuntu-24.04
+    container:
+      # Match package-lock.json; browsers and OS dependencies are already installed.
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+      options: --shm-size=1g
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: account
+            commands: |
+              node test/mobile-inputs.browser.cjs
+              node scripts/test-browser.cjs
+              node scripts/test-google-button-browser.cjs
+              node scripts/test-admin-capacity-browser.cjs
+              node scripts/test-account-browser.cjs
+              node scripts/test-site-design-account-browser.cjs
+              node scripts/test-article-preview-cards-browser.cjs
+              node scripts/test-mailbox-send-feedback.cjs
+          - group: publishing
+            commands: |
+              node scripts/test-article-drafts-browser.cjs
+              node scripts/test-article-revisions-browser.cjs
+              node scripts/test-bookmarks-browser.cjs
+              node scripts/test-reading-browser.cjs
+              node scripts/test-works-browser.cjs
+              node scripts/test-update-journal-browser.cjs
+              node scripts/test-analytics-browser.cjs
+              node scripts/test-mail-setup-browser.cjs
+          - group: visual
+            commands: |
+              node scripts/test-updates-browser.cjs
+              node scripts/test-detail-browser.cjs
+              node scripts/test-ux-unification.cjs
+              node scripts/test-image-retry-browser.cjs
+              node scripts/test-mailbox-navigation.cjs
+              node scripts/test-browser-diagnostics.cjs
+              node scripts/test-media-dialog-browser.cjs
+              node scripts/test-article-images-browser.cjs
+    name: browser-checks (${{ matrix.group }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix server
+      - uses: actions/download-artifact@v4
+        with:
+          name: browser-build
+      - name: Verify exact build artifacts
+        run: sha256sum --strict -c ci-build.sha256
+      - name: Verify bundled browser version
+        run: |
+          node -e "const assert = require('node:assert/strict'); assert.equal(require('playwright/package.json').version, '1.58.2'); for (const name of ['chromium', 'webkit']) assert.ok(require('node:fs').existsSync(require('playwright')[name].executablePath()), name)"
+      - run: mkdir -p .cache/diagnostic-qa
+      - name: Run browser regressions
+        run: ${{ matrix.commands }}
+  # Keep the existing required check; every shard and integration job must succeed.
+  build-and-unit:
+    if: ${{ always() }}
+    needs: [core-checks, browser-checks, mysql-integration]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every check to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: node -e "const assert = require('node:assert/strict'); for (const job of Object.values(JSON.parse(process.env.RESULTS))) assert.equal(job.result, 'success')"
   mysql-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 30

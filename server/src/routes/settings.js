@@ -81,10 +81,10 @@ const defaultHero = {
 const defaultFooter = {
   settings_version: '1',
   copyright: '© 2024–2026 mooncci in LNTU',
-  icp_text: '辽ICP备2024042989号-2',
+  icp_text: '辽ICP备2024042989号-1',
   icp_url: 'https://beian.miit.gov.cn/',
-  police_text: '辽公网安备21041102000446号',
-  police_url: 'https://beian.mps.gov.cn/#/query/webSearch?code=21041102000446',
+  police_text: '辽公网安备21041102000430号',
+  police_url: 'https://beian.mps.gov.cn/#/query/webSearch?code=21041102000430',
   police_icon_url: '/beian.png',
 };
 
@@ -97,7 +97,7 @@ const defaultMail = {
   smtp_pass: process.env.SMTP_PASS || '',
   smtp_from: process.env.SMTP_FROM || '',
   notify_to: process.env.COMMENT_NOTIFY_TO || '',
-  site_url: process.env.SITE_URL || 'https://mooncci.site',
+  site_url: process.env.SITE_URL || 'https://moooncci.cn',
   early_access_download_url: process.env.EARLY_ACCESS_DOWNLOAD_URL || '',
 };
 

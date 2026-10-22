@@ -10,7 +10,7 @@ test('profiles preserve legacy credentials, redact every secret and reject inval
  assert.throws(()=>channels.mergeProfiles({electricity:{address:'new@example.test'}},saved),/密码/);
  assert.throws(()=>channels.mergeProfiles({abuse:{}},old),/业务/);assert.throws(()=>channels.mergeProfiles({support:{reply_to:'x@example.test\r\nBcc: y@example.test'}},old),/邮箱/);
  assert.throws(()=>channels.mergeProfiles({support:{mode:'custom'}},old),/密码/);
- const broken={...saved,channels:{electricity:{mode:'custom',address:'electricity@mooncci.site',password:''}}};assert.equal(channels.resolveConfig(broken,'electricity').smtp_pass,'');
+ const broken={...saved,channels:{electricity:{mode:'custom',address:'electricity@moooncci.cn',password:''}}};assert.equal(channels.resolveConfig(broken,'electricity').smtp_pass,'');
 });
 test('real settings routes route six identities, preserve passwords and enforce permissions',{skip:process.env.MAIL_CHANNELS_INTEGRATION!=='true'},async t=>{
  const name='mooncci_qa_mailchannels_'+process.pid;Object.assign(process.env,{DB_HOST:'127.0.0.1',DB_PORT:'33079',DB_USER:'root',DB_PASSWORD:'',DB_NAME:name,JWT_SECRET:'mail-channels-test-only-32-characters',SITE_URL:'https://mooncci.site',MAIL_ENABLED:'false',ACCOUNT_OPERATIONS_ENABLED:'false',ENGAGEMENT_ENABLED:'false'});
@@ -27,11 +27,11 @@ test('real settings routes route six identities, preserve passwords and enforce 
  r=await call('/mail','PUT',{channels:{news:{password:''}}});assert.equal(r.status,200);r=await call('/mail','PUT',{notify_to:'owner@example.test'});assert.equal(r.status,200);await call('/mail/test','POST',{channel:'news'});assert.equal(captures.at(-1).config.auth.pass,'news-secret');
  r=await call('/mail','PUT',{channels:{news:{address:'changed@example.test'}}});assert.equal(r.status,400);assert.match(r.data.message,/密码/);
  assert.equal((await call('/mail/test','POST',{channel:'abuse'})).status,400);
- await call('/mail/send-custom','POST',{to:'user@example.test',subject:'人工邮件',content:'测试正文'});assert.equal(captures.at(-1).mail.from.address,'support@mooncci.site');
- const mailer=require('../src/lib/mailer');await mailer.sendMail({to:'user@example.test',subject:'验证码',text:'test'});assert.equal(captures.at(-1).mail.from.address,'websiteaccount@mooncci.site');
- await mailer.sendCommentNotification({postTitle:'标题',content:'评论'});assert.equal(captures.at(-1).mail.from.address,'notifications@mooncci.site');
- await mailer.sendEarlyAccessOwnerNotification({id:1,name:'用户'});assert.equal(captures.at(-1).mail.from.address,'promptdock@mooncci.site');
- const count=captures.length;reject=true;await assert.rejects(mailer.sendMail({to:'user@example.test',subject:'test',text:'test',channel:'electricity'}));assert.equal(captures.length,count+1);assert.equal(captures.at(-1).config.auth.user,'electricity@mooncci.site');
+ await call('/mail/send-custom','POST',{to:'user@example.test',subject:'人工邮件',content:'测试正文'});assert.equal(captures.at(-1).mail.from.address,'support@moooncci.cn');
+ const mailer=require('../src/lib/mailer');await mailer.sendMail({to:'user@example.test',subject:'验证码',text:'test'});assert.equal(captures.at(-1).mail.from.address,'websiteaccount@moooncci.cn');
+ await mailer.sendCommentNotification({postTitle:'标题',content:'评论'});assert.equal(captures.at(-1).mail.from.address,'notifications@moooncci.cn');
+ await mailer.sendEarlyAccessOwnerNotification({id:1,name:'用户'});assert.equal(captures.at(-1).mail.from.address,'promptdock@moooncci.cn');
+ const count=captures.length;reject=true;await assert.rejects(mailer.sendMail({to:'user@example.test',subject:'test',text:'test',channel:'electricity'}));assert.equal(captures.length,count+1);assert.equal(captures.at(-1).config.auth.user,'electricity@moooncci.cn');
  const backup=fs.mkdtempSync(path.resolve(__dirname,'../../.cache/mail-channel-rollback-'));
  await require('../../scripts/rollback-mail-channels-config.cjs').prepareRollback(db,backup);
  const [[stored]]=await db.query('SELECT setting_value FROM site_settings WHERE setting_key="mail"');const rolled=JSON.parse(stored.setting_value);assert.equal(rolled.channels,undefined);assert.equal(rolled.smtp_pass,'legacy-secret');

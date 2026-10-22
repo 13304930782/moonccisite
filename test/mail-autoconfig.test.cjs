@@ -5,7 +5,7 @@ test('checked-in public XML is generated from the canonical config and parses', 
   assert.equal(fs.readFileSync('public/mail/config-v1.1.xml', 'utf8'), autoconfig());
   const result = spawnSync(process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3'), ['-c', `import sys,xml.etree.ElementTree as E
 r=E.fromstring(sys.stdin.read());assert r.tag=='clientConfig' and r.attrib['version']=='1.1'
-p=r.find('emailProvider');assert p.attrib['id']=='mooncci.site' and p.findtext('domain')=='mooncci.site'
+p=r.find('emailProvider');assert p.attrib['id']=='moooncci.cn' and [d.text for d in p.findall('domain')]==['moooncci.cn','mooncci.site']
 for tag,kind,port,tls in [('incomingServer','imap','993','SSL'),('outgoingServer','smtp','465','SSL')]:
  s=p.find(tag);assert s.attrib['type']==kind
  assert s.findtext('hostname')=='mail.cuegroveapp.com' and s.findtext('port')==port

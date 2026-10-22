@@ -33,7 +33,7 @@ function shouldUseSecureCookie(req) {
   if (process.env.COOKIE_SECURE === 'false') return false;
   if (process.env.COOKIE_SECURE === 'true') return true;
 
-  const siteUrl = process.env.SITE_URL || 'https://mooncci.site';
+  const siteUrl = process.env.SITE_URL || 'https://moooncci.cn';
   return siteUrl.startsWith('https://') || req.secure || req.headers['x-forwarded-proto'] === 'https';
 }
 

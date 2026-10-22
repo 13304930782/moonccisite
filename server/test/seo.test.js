@@ -24,7 +24,7 @@ test('public project and update have unique initial HTML; unpublished details ar
  }};
  const app=express();app.use(createSeoRouter({db,readTemplate:async()=>template}));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));const base=`http://127.0.0.1:${server.address().port}`;
  for(const [path,title] of [['/projects/promptdock','PromptDock'],['/updates/2','今天发布了新版本'],['/category/%E9%83%BD%E5%B8%82%E5%A4%A9%E9%99%85%E7%BA%BF2','都市天际线2'],['/projects','作品']]){
-  const r=await fetch(base+path);assert.equal(r.status,200);const html=await r.text();assert.match(html,new RegExp(`<title>${title}`));assert.match(html,new RegExp(`rel="canonical" href="https://mooncci.site${path}"`));assert.equal((html.match(/<title>/g)||[]).length,1);
+  const r=await fetch(base+path);assert.equal(r.status,200);const html=await r.text();assert.match(html,new RegExp(`<title>${title}`));assert.match(html,new RegExp(`rel="canonical" href="https://moooncci.cn${path}"`));assert.equal((html.match(/<title>/g)||[]).length,1);
  }
  for(const path of ['/projects/draft','/updates/3','/category/missing']){const r=await fetch(base+path);assert.equal(r.status,404);assert.match(r.headers.get('x-robots-tag'),/noindex/);assert.doesNotMatch(await r.text(),/管理提示词与版本|今天发布了新版本/);}
 });

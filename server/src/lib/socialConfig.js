@@ -26,7 +26,7 @@ function decrypt(value, provider) {
   return Buffer.concat([cipher.update(data), cipher.final()]).toString('utf8');
 }
 function siteOrigin() {
-  const url = new URL(process.env.SITE_URL || 'https://mooncci.site');
+  const url = new URL(process.env.SITE_URL || 'https://moooncci.cn');
   if (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) {
     throw new Error('SITE_URL must use HTTPS');
   }

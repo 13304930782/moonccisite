@@ -171,6 +171,7 @@ test('owner pilot gate excludes other users, mailboxes, workers and disabled fla
     assert.equal(adapter.poolingEnabled(account), true);
     assert.equal(adapter.poolingEnabled({ ...account, role: 'user' }), false);
     assert.equal(adapter.poolingEnabled({ ...account, mailbox_address: 'other@mooncci.site' }), false);
+    assert.equal(adapter.poolingEnabled({ ...account, mailbox_address: 'mooncci@moooncci.cn' }), true);
     process.env.MAILBOX_SMTP_POOL_API_PROCESSES = '2'; assert.equal(adapter.poolingEnabled(account), false);
     process.env.MAILBOX_SMTP_POOL_API_PROCESSES = '1'; process.env.NODE_APP_INSTANCE = '1'; assert.equal(adapter.poolingEnabled(account), false);
     process.env.NODE_APP_INSTANCE = '0'; process.env.MAILBOX_SMTP_POOL_ENABLED = 'false'; assert.equal(adapter.poolingEnabled(account), false);

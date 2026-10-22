@@ -11,7 +11,7 @@ import urllib.robotparser
 spec = importlib.util.spec_from_file_location('indexnow', Path(__file__).with_name('indexnow.py'))
 index = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(index)
-BASE = 'https://mooncci.site'
+BASE = 'https://moooncci.cn'
 KEY = 'a' * 64
 
 
@@ -49,7 +49,7 @@ class IndexNowTest(unittest.TestCase):
     def send(self, url, data=None):
         self.assertEqual(url, index.ENDPOINT)
         payload = json.loads(data.decode())
-        self.assertEqual(payload['host'], 'mooncci.site')
+        self.assertEqual(payload['host'], 'moooncci.cn')
         self.assertEqual(payload['keyLocation'], BASE + '/' + KEY + '.txt')
         self.sent.append(payload['urlList'])
         if isinstance(self.http, Exception):
@@ -188,8 +188,8 @@ class BoundaryTest(unittest.TestCase):
                    '/subscriptions/private', '/article/18?preview=1', '/articles?verify=1',
                    '/article/01', '/article/18#x', '/tag/..',
                    '/tag/%2Fadmin', '/tag/%00', '/tag/%e5%bb%ba', '/tag/%FF']
-        for url in [BASE + path for path in invalid] + ['http://mooncci.site/', 'https://www.mooncci.site/',
-                'https://127.0.0.1/', 'https://mooncci.site:443/', 'https://user@mooncci.site/']:
+        for url in [BASE + path for path in invalid] + ['http://moooncci.cn/', 'https://www.moooncci.cn/',
+                'https://127.0.0.1/', 'https://moooncci.cn:443/', 'https://user@moooncci.cn/']:
             with self.subTest(url=url), self.assertRaises(ValueError):
                 index.public_url(url)
 
@@ -220,7 +220,7 @@ class BoundaryTest(unittest.TestCase):
                     index.fresh_sitemap()
 
     def test_public_http_confirmation(self):
-        good = b'<html><head><link rel="canonical" href="https://mooncci.site/article/18"></head><body><div id="root">body</div></body></html>'
+        good = b'<html><head><link rel="canonical" href="https://moooncci.cn/article/18"></head><body><div id="root">body</div></body></html>'
         for code, headers, body, expected in [(200, {'Content-Type': 'text/html'}, good, 'public'),
                 (404, {}, b'', 'gone'), (410, {}, b'', 'gone'), (503, {}, b'', 'unknown'),
                 (302, {}, b'', 'unknown'), (200, {'Content-Type': 'text/html'}, b'<html>Login</html>', 'unknown'),

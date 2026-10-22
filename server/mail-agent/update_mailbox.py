@@ -22,7 +22,7 @@ def main():
     job = json.load(sys.stdin)
     address = job['address']
     password = job['password']
-    if not isinstance(address, str) or not re.fullmatch(r'[a-z][a-z0-9._-]{2,31}@mooncci\.site', address):
+    if not isinstance(address, str) or not re.fullmatch(r'[a-z][a-z0-9._-]{2,31}@(moooncci\.cn|mooncci\.site)', address):
         raise ValueError('Unexpected mailbox address')
     if not isinstance(password, str) or not 12 <= len(password) <= 128 or not re.fullmatch(r'[!-~]+', password):
         raise ValueError('Invalid new password')

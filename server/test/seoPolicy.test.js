@@ -12,7 +12,7 @@ test('indexing policy validates tag, pagination and unknown URLs without publish
  for(const [pathname,status] of [['/tag/React',200],['/tag/missing',404],['/articles&page=2',200],['/articles&page=4',404],['/articles&page=0',404],['/unknown-path',404]]){
   const r=await fetch(base+'/api/seo?path='+pathname);assert.equal(r.status,status,pathname);const meta=await r.json();
   if(status===404)assert.match(meta.robots,/noindex/);else assert.match(meta.robots,/^index/);
-  if(pathname.includes('page=2'))assert.equal(meta.canonical,'https://mooncci.site/articles?page=2');
+  if(pathname.includes('page=2'))assert.equal(meta.canonical,'https://moooncci.cn/articles?page=2');
  }
  for(const pathname of ['/search','/diagnostics','/login','/account/settings','/admin/write']){
   const r=await fetch(base+pathname);assert.equal(r.status,200);assert.match(r.headers.get('x-robots-tag'),/noindex/);

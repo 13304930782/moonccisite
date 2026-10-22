@@ -27,7 +27,7 @@ systemctl start mooncci-sitemap.service
 install -m 644 sitemap-index.xml /www/wwwroot/mooncci.site/sitemap-index.xml
 systemctl enable --now mooncci-sitemap.timer
 systemctl is-active mooncci-sitemap.timer
-curl -fsS https://mooncci.site/sitemap-pages.xml > "$backup/verified.xml"
+curl -fsS https://moooncci.cn/sitemap-pages.xml > "$backup/verified.xml"
 python3 - "$backup/verified.xml" <<'PY'
 import sys, xml.etree.ElementTree as ET
 root=ET.parse(sys.argv[1]).getroot()

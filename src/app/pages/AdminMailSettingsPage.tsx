@@ -15,7 +15,7 @@ const defaultMail = {
   smtp_pass: '',
   smtp_from: '',
   notify_to: '',
-  site_url: 'https://mooncci.site',
+  site_url: 'https://moooncci.cn',
   early_access_download_url: '',
   has_smtp_pass: false,
   channels: defaultMailProfiles,
@@ -236,7 +236,7 @@ export default function AdminMailSettingsPage() {
                   value={mail.smtp_user}
                   onChange={(e) => update('smtp_user', e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="websiteaccount@mooncci.site"
+                  placeholder="websiteaccount@moooncci.cn"
                 />
               </div>
 
@@ -268,7 +268,7 @@ export default function AdminMailSettingsPage() {
                   value={mail.smtp_from}
                   onChange={(e) => update('smtp_from', e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="mooncci <websiteaccount@mooncci.site>"
+                  placeholder="mooncci <websiteaccount@moooncci.cn>"
                 />
               </div>
 
@@ -290,7 +290,7 @@ export default function AdminMailSettingsPage() {
                   value={mail.site_url}
                   onChange={(e) => update('site_url', e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="https://mooncci.site"
+                  placeholder="https://moooncci.cn"
                 />
               </div>
 
