@@ -22,7 +22,7 @@ function cleanMailHeader(value) {
 }
 
 function safeSiteUrl(value) {
-  const fallback = 'https://mooncci.site';
+  const fallback = 'https://moooncci.cn';
   const url = safeHttpUrl(value, fallback);
 
   try {
@@ -53,7 +53,7 @@ const defaultMail = {
   smtp_pass: process.env.SMTP_PASS || '',
   smtp_from: process.env.SMTP_FROM || '',
   notify_to: process.env.COMMENT_NOTIFY_TO || '',
-  site_url: process.env.SITE_URL || 'https://mooncci.site',
+  site_url: process.env.SITE_URL || 'https://moooncci.cn',
   early_access_download_url: process.env.EARLY_ACCESS_DOWNLOAD_URL || '',
 };
 

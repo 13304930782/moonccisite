@@ -22,7 +22,7 @@ def validate(data):
         loc = row.find(NS + 'loc')
         value = loc.text if loc is not None else ''
         parsed = urllib.parse.urlsplit(value or '')
-        if row.tag != NS + 'url' or parsed.scheme != 'https' or parsed.netloc != 'mooncci.site' or parsed.fragment:
+        if row.tag != NS + 'url' or parsed.scheme != 'https' or parsed.netloc != 'moooncci.cn' or parsed.fragment:
             raise ValueError('Invalid public sitemap URL')
         urls.append(value)
     if not urls or len(urls) > 50000 or len(urls) != len(set(urls)):

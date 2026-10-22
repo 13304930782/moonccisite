@@ -1,5 +1,6 @@
 {
-  "domain": "mooncci.site",
+  "domain": "moooncci.cn",
+  "legacyDomains": ["mooncci.site"],
   "displayName": "mooncci Mail",
   "imap": { "host": "mail.cuegroveapp.com", "port": 993, "socketType": "SSL" },
   "smtp": { "host": "mail.cuegroveapp.com", "port": 465, "socketType": "SSL" },

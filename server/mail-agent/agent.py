@@ -10,7 +10,7 @@ import sys
 import time
 import urllib.request
 
-SITE = os.environ.get('MOONCCI_SITE_ORIGIN', 'https://mooncci.site').rstrip('/')
+SITE = os.environ.get('MOONCCI_SITE_ORIGIN', 'https://moooncci.cn').rstrip('/')
 KEY = os.environ.get('MAILBOX_PROVISION_KEY', '')
 PYTHON = '/www/server/panel/pyenv/bin/python3'
 WORKER = os.path.join(os.path.dirname(__file__), 'create_mailbox.py')

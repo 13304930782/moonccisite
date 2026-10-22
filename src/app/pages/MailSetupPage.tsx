@@ -6,8 +6,8 @@ import '../../styles/mail-setup.css';
 
 function emailAddress(value: string) {
   const parts = value.split('@');
-  if (value.length > 254 || /[\x00-\x20\x7f]/.test(value) || parts.length !== 2 || parts[1].toLowerCase() !== config.domain || parts[0].length > 64 || !new RegExp(config.localPartPattern).test(parts[0])) return '';
-  return `${parts[0]}@${config.domain}`;
+  if (value.length > 254 || /[\x00-\x20\x7f]/.test(value) || parts.length !== 2 || ![config.domain, ...config.legacyDomains].includes(parts[1].toLowerCase()) || parts[0].length > 64 || !new RegExp(config.localPartPattern).test(parts[0])) return '';
+  return `${parts[0]}@${parts[1].toLowerCase()}`;
 }
 export default function MailSetupPage() {
   const [searchParams] = useSearchParams();
@@ -28,7 +28,7 @@ export default function MailSetupPage() {
     catch { setFallback(value); setStatus('自动复制未获允许，请在下方选中的文本中长按复制，或按 Ctrl/Cmd + C。'); }
   }
   async function generate() {
-    if (!email) { setError('请输入有效的 @mooncci.site 完整邮箱地址。'); return; }
+    if (!email) { setError('请输入有效的 @moooncci.cn 或 @mooncci.site 完整邮箱地址。'); return; }
     setBusy(true); setError(''); setDownload('');
     const request = new AbortController(); controller.current = request;
     const timer = window.setTimeout(() => request.abort(), 15000);
@@ -51,10 +51,10 @@ export default function MailSetupPage() {
         <h2 id="mail-address-heading">你的邮箱</h2>
         <label htmlFor="mail-address">完整邮箱地址</label>
         <input id="mail-address" type="email" inputMode="email" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={254}
-          placeholder="mooncci@mooncci.site" value={input} disabled={busy} aria-invalid={invalid} aria-describedby="mail-address-help"
+          placeholder={`mooncci@${config.domain}`} value={input} disabled={busy} aria-invalid={invalid} aria-describedby="mail-address-help"
           onChange={e => { setInput(e.target.value); setDownload(''); setStatus(''); setError(''); setFallback(''); }} />
-        <p id="mail-address-help" className="muted">仅支持 @{config.domain}。保留 @ 前的大小写和字符；不支持带引号或国际化地址。不收集密码，不保存到网站账号、浏览器存储或分析事件。只有生成 Apple 配置时才会提交邮箱，并短暂保留在服务内存中。</p>
-        {invalid && <p role="alert">请输入有效的 @mooncci.site 完整邮箱地址；不支持其他域名或空格。</p>}
+        <p id="mail-address-help" className="muted">支持 @{config.domain} 和旧地址 @{config.legacyDomains.join("、@")}。保留 @ 前的大小写和字符；不支持带引号或国际化地址。不收集密码，不保存到网站账号、浏览器存储或分析事件。只有生成 Apple 配置时才会提交邮箱，并短暂保留在服务内存中。</p>
+        {invalid && <p role="alert">请输入有效的 @moooncci.cn 或 @mooncci.site 完整邮箱地址；不支持其他域名或空格。</p>}
       </section>
       <section aria-labelledby="mail-parameters-heading">
         <h2 id="mail-parameters-heading">连接参数</h2>

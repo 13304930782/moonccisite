@@ -229,13 +229,13 @@ function MailboxContent() {
 
   return <main className="mailbox-page">
     <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>我的邮箱</h1>
-      <p>{access?.status === 'active' ? '在这里收信、读信和发送邮件。' : '申请专属 @mooncci.site 地址，获批后即可收发邮件。'}</p></div>
+      <p>{access?.status === 'active' ? '在这里收信、读信和发送邮件。' : '申请专属 @moooncci.cn 地址，获批后即可收发邮件。'}</p></div>
       {owner && <Link className="mailbox-review-link" to="/admin/mailbox-requests">邮箱申请与权限 <ArrowUpRight size={16} aria-hidden="true" /></Link>}
     </header>
     {notice && <p role="status" aria-live="polite" className="mailbox-notice">{notice}</p>}
     {loading ? <p className="mailbox-empty">正在读取邮箱状态…</p> : <>
       {owner && access?.status !== 'active' && <section className="mailbox-panel" aria-labelledby="mailbox-connect-title">
-        <div className="mailbox-panel-head"><span className="mailbox-icon"><Mail size={20} aria-hidden="true" /></span><div><h2 id="mailbox-connect-title">连接现有邮箱</h2><p>mooncci@mooncci.site</p></div></div>
+        <div className="mailbox-panel-head"><span className="mailbox-icon"><Mail size={20} aria-hidden="true" /></span><div><h2 id="mailbox-connect-title">连接现有邮箱</h2><p>mooncci@moooncci.cn</p></div></div>
         <p className="mailbox-explainer">输入这个邮箱的现有密码，网站会通过加密连接向邮局验证。不会重置宝塔邮箱，也不会把密码显示给其他用户。</p>
         <form onSubmit={connect} className="mailbox-form"><label htmlFor="owner-mail-password">现有邮箱密码</label><div className="mailbox-inline">
           <input id="owner-mail-password" type="password" autoComplete="off" value={password} onChange={event => setPassword(event.target.value)} minLength={8} maxLength={256} required />
@@ -251,7 +251,7 @@ function MailboxContent() {
         {access?.status === 'revoked' && <p className="mailbox-footnote">网页发信权限已停用，请联系站长。</p>}
       </section>}
       {!owner && (!access || access.status === 'rejected') && <section className="mailbox-panel" aria-labelledby="mailbox-apply-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Check size={20} aria-hidden="true" /></span><div><h2 id="mailbox-apply-title">申请邮箱</h2><p>提交后由站长审核。</p></div></div>
-        <form onSubmit={apply} className="mailbox-form"><label htmlFor="mail-local">期望地址</label><div className="mailbox-address"><input id="mail-local" value={localPart} onChange={event => setLocalPart(event.target.value)} autoComplete="off" required maxLength={32} placeholder="your-name" /><span>@mooncci.site</span></div>
+        <form onSubmit={apply} className="mailbox-form"><label htmlFor="mail-local">期望地址</label><div className="mailbox-address"><input id="mail-local" value={localPart} onChange={event => setLocalPart(event.target.value)} autoComplete="off" required maxLength={32} placeholder="your-name" /><span>@moooncci.cn</span></div>
           <p className="mailbox-help">3–32 位，以字母开头；可用小写字母、数字、点、横线和下划线。</p><label htmlFor="mail-reason">申请说明</label>
           <textarea id="mail-reason" rows={4} value={reason} onChange={event => setReason(event.target.value)} minLength={10} maxLength={1000} required placeholder="说明邮箱用途和预计发送对象" />
           <button className="mailbox-primary" disabled={busy}>{busy ? '提交中…' : '提交申请'}</button></form></section>}

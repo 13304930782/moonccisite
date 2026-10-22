@@ -1,6 +1,6 @@
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function plain(value){return String(value||'').replace(/^\s*(?:>\s*)?(?:\*\*)?提醒[：:]\s*本文最后更新于\s*[\d\s/:年月日-]+[，,]\s*文中所关联的信息可能已发生改变[，,]\s*请知悉[！!。.]?(?:\*\*)?\s*/u,'').replace(/```[\s\S]*?```/g,' ').replace(/!\[[^\]]*\]\([^)]*\)/g,' ').replace(/\[([^\]]+)\]\([^)]*\)/g,'$1').replace(/<[^>]*>/g,' ').replace(/[#*_>`~]/g,'').replace(/\s+/g,' ').trim();}
-function origin(){const u=new URL(process.env.SITE_URL||'https://mooncci.site');if(!['https:','http:'].includes(u.protocol)||u.username||u.password)throw Error('Invalid SITE_URL');return u.origin;}
+function origin(){const u=new URL(process.env.SITE_URL||'https://moooncci.cn');if(!['https:','http:'].includes(u.protocol)||u.username||u.password)throw Error('Invalid SITE_URL');return u.origin;}
 function imageUrl(value,base=origin()){try{const u=new URL(String(value||'/default-share.png'),base);if(['http:','https:'].includes(u.protocol)&&!u.username&&!u.password)return u.href;}catch{}return base+'/default-share.png';}
 const descriptions={
  '/':'mooncci 的个人技术博客，记录软件开发、网络与服务器实践，分享技术文章、日常近况以及持续构建的作品。可以按分类、标签或归档浏览文章，也可以通过 RSS 订阅最近更新。',

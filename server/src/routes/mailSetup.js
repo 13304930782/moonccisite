@@ -23,7 +23,7 @@ function createRouter({ now = Date.now, ttl = 120000, capacity = 128, perSourceC
   router.post('/profile', express.text({ type: 'text/plain', limit: 512 }), (req, res) => {
     if (Object.keys(req.query).length || !req.is('text/plain')) return res.status(400).json({ message: '请求格式不正确。' });
     const email = validateEmail(req.body);
-    if (!email) return res.status(400).json({ message: '请输入有效的 @mooncci.site 完整邮箱地址。' });
+    if (!email) return res.status(400).json({ message: '请输入有效的 @moooncci.cn 或 @mooncci.site 完整邮箱地址。' });
     prune();
     // Derive the source from Express's existing trusted proxy policy; group IPv6
     // addresses by subnet. A bounded ticket pool also bounds quota bookkeeping.

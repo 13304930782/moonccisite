@@ -11,7 +11,7 @@ spec.loader.exec_module(refresh)
 
 def xml(paths):
     return ('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ''.join(
-        '<url><loc>https://mooncci.site{}</loc></url>'.format(p) for p in paths) + '</urlset>').encode()
+        '<url><loc>https://moooncci.cn{}</loc></url>'.format(p) for p in paths) + '</urlset>').encode()
 
 
 class SitemapTest(unittest.TestCase):
@@ -21,7 +21,7 @@ class SitemapTest(unittest.TestCase):
             refresh.publish(xml(['/', '/article/18']), target)
             refresh.publish(xml(['/']), target)
             self.assertNotIn(b'article/18', target.read_bytes())
-            for bad in [b'<html>error</html>', xml([]), xml(['/', '/']), xml(['/']).replace(b'mooncci.site', b'other.test')]:
+            for bad in [b'<html>error</html>', xml([]), xml(['/', '/']), xml(['/']).replace(b'moooncci.cn', b'other.test')]:
                 with self.assertRaises(ValueError):
                     refresh.publish(bad, target)
                 self.assertEqual(target.read_bytes(), xml(['/']))

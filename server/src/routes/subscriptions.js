@@ -107,7 +107,7 @@ router.post(
       'SELECT s.id FROM subscribers s JOIN newsletter_tokens t ON t.subscriber_id=s.id WHERE t.token_hash=? AND t.expires_at>UTC_TIMESTAMP()',
       [validToken(req)],
     );
-    if (!existing.length) throw fail('退订链接无效或已过期，请使用最近一封邮件中的链接，或联系 support@mooncci.site。');
+    if (!existing.length) throw fail('退订链接无效或已过期，请使用最近一封邮件中的链接，或联系 support@moooncci.cn。');
     await db.query(
       "UPDATE subscribers s JOIN newsletter_tokens t ON t.subscriber_id=s.id SET s.status='unsubscribed',s.confirm_hash=NULL WHERE t.token_hash=? AND t.expires_at>UTC_TIMESTAMP()",
       [validToken(req)],

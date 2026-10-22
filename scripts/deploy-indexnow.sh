@@ -188,7 +188,7 @@ for path, data in zip(paths, payloads):
         raise ValueError('Installed file verification failed: ' + str(path))
 if output(['systemctl', 'is-enabled', 'mooncci-indexnow.timer']) != 'disabled' or output(['systemctl', 'is-active', 'mooncci-indexnow.timer']) == 'active':
     raise ValueError('IndexNow timer must remain disabled and inactive')
-print('KEY_URL=https://mooncci.site/' + key + '.txt', flush=True)
+print('KEY_URL=https://moooncci.cn/' + key + '.txt', flush=True)
 print('PASS: installed only IndexNow files and the exact main-site key location.', flush=True)
 print('NO URLS SUBMITTED. Timer remains disabled. Verify KEY_URL, run indexnow.py run manually, then systemctl enable --now mooncci-indexnow.timer.', flush=True)
 PY

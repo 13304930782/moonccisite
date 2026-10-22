@@ -4,13 +4,13 @@ const config = require('../config/mail-client.json');
 function validateEmail(value) {
   if (typeof value !== 'string' || value.length > 254 || /[\x00-\x20\x7f]/.test(value)) return null;
   const parts = value.split('@');
-  if (parts.length !== 2 || parts[1].toLowerCase() !== config.domain || parts[0].length > 64 || !new RegExp(config.localPartPattern).test(parts[0])) return null;
-  return `${parts[0]}@${config.domain}`;
+  if (parts.length !== 2 || ![config.domain, ...config.legacyDomains].includes(parts[1].toLowerCase()) || parts[0].length > 64 || !new RegExp(config.localPartPattern).test(parts[0])) return null;
+  return `${parts[0]}@${parts[1].toLowerCase()}`;
 }
 const escapeXml = value => String(value).replace(/[<>&"']/g, char => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[char]);
 function autoconfig() {
   const server = (name, type, settings) => `    <${name} type="${type}">\n      <hostname>${escapeXml(settings.host)}</hostname>\n      <port>${settings.port}</port>\n      <socketType>${settings.socketType}</socketType>\n      <authentication>password-cleartext</authentication>\n      <username>%EMAILADDRESS%</username>\n    </${name}>`;
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<clientConfig version="1.1">\n  <emailProvider id="${config.domain}">\n    <domain>${config.domain}</domain>\n    <displayName>${config.displayName}</displayName>\n    <displayShortName>mooncci</displayShortName>\n${server('incomingServer', 'imap', config.imap)}\n${server('outgoingServer', 'smtp', config.smtp)}\n  </emailProvider>\n</clientConfig>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<clientConfig version="1.1">\n  <emailProvider id="${config.domain}">\n    ${[config.domain, ...config.legacyDomains].map(domain => `<domain>${escapeXml(domain)}</domain>`).join("\n    ")}\n    <displayName>${config.displayName}</displayName>\n    <displayShortName>mooncci</displayShortName>\n${server('incomingServer', 'imap', config.imap)}\n${server('outgoingServer', 'smtp', config.smtp)}\n  </emailProvider>\n</clientConfig>\n`;
 }
 function plist(value) {
   if (typeof value === 'boolean') return value ? '<true/>' : '<false/>';

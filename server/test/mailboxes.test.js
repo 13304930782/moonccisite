@@ -19,7 +19,7 @@ test('mailbox approval waits for signed agent confirmation before outbound SMTP'
   const logs = [];
   const deliveries = [];
   t.mock.method(nodemailer, 'createTransport', options => ({ sendMail: async mail => {
-    assert.equal(options.auth.user, 'reader@mooncci.site');
+    assert.equal(options.auth.user, 'reader@moooncci.cn');
     assert.equal(options.secure, true);
     deliveries.push(mail);
     return { messageId: 'fixture', accepted: [mail.to] };
@@ -90,7 +90,7 @@ test('mailbox approval waits for signed agent confirmation before outbound SMTP'
   assert.equal((await agent('/claim', {}, false)).status, 401);
   const claim = await agent('/claim', {});
   assert.equal(claim.status, 200);
-  assert.equal(claim.body.job.address, 'reader@mooncci.site');
+  assert.equal(claim.body.job.address, 'reader@moooncci.cn');
   assert.ok(claim.body.job.password.length >= 20);
   assert.equal((await agent('/claim', {})).body.job, null);
   assert.equal((await agent('/complete', { requestId: claim.body.job.requestId, address: claim.body.job.address, created: true }, false)).status, 401);
@@ -98,7 +98,7 @@ test('mailbox approval waits for signed agent confirmation before outbound SMTP'
   assert.equal((await agent('/complete', { requestId: claim.body.job.requestId, address: claim.body.job.address, created: true })).status, 200);
   const result = await post('/mailboxes/send', { to: 'outside@example.com', subject: 'Hello', content: 'Body' }, 2);
   assert.equal(result.status, 200);
-  assert.equal(deliveries[0].from, 'reader@mooncci.site');
+  assert.equal(deliveries[0].from, 'reader@moooncci.cn');
   assert.equal(deliveries[0].to, 'outside@example.com');
   assert.equal(logs[0].status, 'accepted');
   access.daily_limit = 1;

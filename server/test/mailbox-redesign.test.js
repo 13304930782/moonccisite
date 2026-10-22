@@ -13,15 +13,15 @@ test('owner can connect an existing mailbox without provisioning it; review stay
   const { open } = require('../src/lib/mailboxSecurity');
   const owner = { id: 1, username: 'owner', email: 'owner@example.invalid', role: 'owner', status: 'active' };
   const reader = { id: 2, username: 'reader', email: 'reader@example.invalid', role: 'user', status: 'active' };
-  let access = { status: 'revoked', mailbox_address: 'codex-test-20261002@mooncci.site' };
+  let access = { status: 'revoked', mailbox_address: 'codex-test-20261002@moooncci.cn' };
   let verified = 0;
   let rejected = false;
   let updatedLimit = null;
   let sent = false;
   let pendingFirst = false;
   t.mock.method(nodemailer, 'createTransport', options => ({
-    verify: async () => { assert.equal(options.auth.user, 'mooncci@mooncci.site'); assert.equal(options.auth.pass, 'ExistingPass9!'); verified++; },
-    sendMail: async mail => { assert.equal(options.auth.user, 'mooncci@mooncci.site'); assert.equal(mail.from, 'mooncci@mooncci.site'); sent = true; return { accepted: [mail.to] }; },
+    verify: async () => { assert.equal(options.auth.user, 'mooncci@moooncci.cn'); assert.equal(options.auth.pass, 'ExistingPass9!'); verified++; },
+    sendMail: async mail => { assert.equal(options.auth.user, 'mooncci@moooncci.cn'); assert.equal(mail.from, 'mooncci@moooncci.cn'); sent = true; return { accepted: [mail.to] }; },
     close: () => {},
   }));
   t.mock.method(db, 'query', async (sql, params = []) => {
@@ -33,6 +33,13 @@ test('owner can connect an existing mailbox without provisioning it; review stay
     if (sql.startsWith('SELECT m.status, COUNT(*)')) return [[{ status: 'pending', count: 2 }]];
     if (sql.startsWith('UPDATE mailbox_access m JOIN users u')) { updatedLimit = params[0]; return [{ affectedRows: 1 }]; }
     if (sql.startsWith('UPDATE mailbox_send_logs')) return [{ affectedRows: 1 }];
+    if (sql.startsWith("UPDATE mailbox_access SET status='revoked'")) {
+      assert.match(sql, /WHERE user_id=\? AND mailbox_address IN \(\?,\?\)/);
+      assert.deepEqual(params, [owner.id, owner.id, 'mooncci@moooncci.cn', 'mooncci@mooncci.site']);
+      assert.equal(access.mailbox_address, 'mooncci@mooncci.site');
+      access.status = 'revoked';
+      return [{ affectedRows: 1 }];
+    }
     throw Error('Unexpected query: ' + sql);
   });
   t.mock.method(db, 'getConnection', async () => ({
@@ -66,7 +73,7 @@ test('owner can connect an existing mailbox without provisioning it; review stay
   assert.equal((await request('/mailboxes/owner/connect', 2, { password: 'ExistingPass9!' })).status, 403);
   assert.equal((await request('/mailboxes/owner/connect', 1, { password: 'ExistingPass9!' })).status, 200);
   assert.equal(verified, 1);
-  assert.equal(access.mailbox_address, 'mooncci@mooncci.site');
+  assert.equal(access.mailbox_address, 'mooncci@moooncci.cn');
   assert.equal((await request('/mailboxes/send', 1, { to: 'recipient@example.com', subject: 'Hello', content: 'Body' })).status, 200);
   assert.equal(sent, true);
   assert.equal((await request('/mailboxes/admin/requests?status=pending&page=1', 2)).status, 403);
@@ -81,4 +88,9 @@ test('owner can connect an existing mailbox without provisioning it; review stay
   assert.equal((await request('/mailboxes/admin/requests/2/limit', 2, { dailyLimit: 0 })).status, 403);
   assert.equal((await request('/mailboxes/admin/requests/2/limit', 1, { dailyLimit: 0 })).status, 200);
   assert.equal(updatedLimit, 0);
+  access.mailbox_address = 'mooncci@mooncci.site';
+  assert.equal((await request('/mailboxes/owner/disconnect', 2, {})).status, 403);
+  assert.equal(access.status, 'active');
+  assert.equal((await request('/mailboxes/owner/disconnect', 1, {})).status, 200);
+  assert.equal(access.status, 'revoked');
 });

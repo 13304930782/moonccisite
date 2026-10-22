@@ -6,7 +6,7 @@ function poolingEnabled(account, protocol, env = process.env) {
     || (env.NODE_APP_INSTANCE && env.NODE_APP_INSTANCE !== '0')) return false;
   if (!account.mailbox_address || !account.smtp_secret || !account.user_id
     || (account.change_status && account.change_status !== 'complete')) return false;
-  if (account.role === 'owner' && account.mailbox_address === 'mooncci@mooncci.site') return true;
+  if (account.role === 'owner' && ['mooncci@moooncci.cn', 'mooncci@mooncci.site'].includes(account.mailbox_address)) return true;
   const ids = String(env.MAILBOX_POOL_TEST_USER_IDS || '').split(',').filter(id => /^\d+$/.test(id));
   if (ids.includes(String(account.user_id))) return true;
   const percent = Number(env.MAILBOX_POOL_ROLLOUT_PERCENT || 0);

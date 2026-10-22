@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <clientConfig version="1.1">
-  <emailProvider id="mooncci.site">
+  <emailProvider id="moooncci.cn">
+    <domain>moooncci.cn</domain>
     <domain>mooncci.site</domain>
     <displayName>mooncci Mail</displayName>
     <displayShortName>mooncci</displayShortName>

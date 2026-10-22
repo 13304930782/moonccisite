@@ -11,11 +11,11 @@ test('homepage title follows the editable site title without an SEO prefix',()=>
  assert.match(html,/property="og:title" content="A &amp; B"/);
  assert.match(html,/name="twitter:title" content="A &amp; B"/);
 });
-test('public landing pages have distinct informative metadata and canonical .site URLs',()=>{
+test('public landing pages have distinct informative metadata and canonical .cn URLs',()=>{
  const metas=Object.keys(seo.titles).map(path=>seo.baseMeta(path));
  assert.equal(new Set(metas.map(m=>m.title)).size,metas.length);
  assert.equal(new Set(metas.map(m=>m.description)).size,metas.length);
- for(const m of metas){assert.ok(m.description.length>=60);assert.ok(m.description.length<=160);assert.equal(new URL(m.canonical).origin,'https://mooncci.site');}
+ for(const m of metas){assert.ok(m.description.length>=60);assert.ok(m.description.length<=160);assert.equal(new URL(m.canonical).origin,'https://moooncci.cn');}
 });
 test('short summaries use real body text without duplicating leading text',()=>{
  const body='这是正文中详细的部署步骤。'.repeat(15);
@@ -37,7 +37,7 @@ test('activity filters and pagination have distinct metadata; public images rema
  const all=await get('path=/updates'),post=await get('path=/updates&type=post'),update=await get('path=/updates&type=update'),release=await get('path=/updates&type=release');
  assert.equal(new Set([all,post,update,release].map(m=>m.title)).size,4);
  assert.equal(new Set([all,post,update,release].map(m=>m.description)).size,4);
- const page=await get('path=/updates&type=post&page=2');assert.equal(page.canonical,'https://mooncci.site/updates?page=2&type=post');assert.notEqual(page.description,post.description);
+ const page=await get('path=/updates&type=post&page=2');assert.equal(page.canonical,'https://moooncci.cn/updates?page=2&type=post');assert.notEqual(page.description,post.description);
  assert.equal((await fetch(base+'/api/seo?path=/updates&type=bad')).status,404);
  const robots=await(await fetch(base+'/robots.txt')).text();assert.match(robots,/Disallow: \/api\/\n/);const rules=robots.split('\n').flatMap(line=>{const m=/^(Allow|Disallow): (.+)$/.exec(line);return m?[{allow:m[1]==='Allow',path:m[2]}]:[];});
  const crawlable=url=>{

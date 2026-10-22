@@ -2,6 +2,7 @@
 """Create one mailbox with the installed BaoTa mail_sys plugin. JSON enters on stdin."""
 import json
 import os
+import re
 import smtplib
 import sys
 
@@ -20,7 +21,7 @@ def main():
     job = json.load(sys.stdin)
     address = job['address']
     password = job['password']
-    if not isinstance(address, str) or not address.endswith('@mooncci.site'):
+    if not isinstance(address, str) or not re.fullmatch(r'[a-z][a-z0-9._-]{2,31}@(moooncci\.cn|mooncci\.site)', address):
         raise ValueError('Unexpected mailbox domain')
     if not isinstance(password, str) or len(password) < 20:
         raise ValueError('Invalid generated password')

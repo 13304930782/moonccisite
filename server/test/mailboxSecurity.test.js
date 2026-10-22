@@ -1,9 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
-const { localPart, email, header, seal, open } = require('../src/lib/mailboxSecurity');
+const { DOMAIN, localPart, email, header, seal, open } = require('../src/lib/mailboxSecurity');
 
 test('mailbox names reject reserved identities and injection', () => {
+  assert.equal(DOMAIN, 'moooncci.cn');
   assert.equal(localPart('Alice.Smith'), 'alice.smith');
   for (const value of ['root', 'postmaster', '.alice', 'a', 'a..b', 'a/b', 'a@mooncci.site']) {
     assert.equal(localPart(value), '', value);
@@ -20,6 +21,10 @@ test('mailbox SMTP secret is authenticated and bound to its address', () => {
   try {
     const cipher = seal('test-pass', 'alice@mooncci.site');
     assert.equal(open(cipher, 'alice@mooncci.site'), 'test-pass');
+    assert.throws(() => open(cipher, 'alice@moooncci.cn'));
+    const migrated = seal(open(cipher, 'alice@mooncci.site'), 'alice@moooncci.cn');
+    assert.equal(open(migrated, 'alice@moooncci.cn'), 'test-pass');
+    assert.throws(() => open(migrated, 'alice@mooncci.site'));
     assert.throws(() => open(cipher, 'bob@mooncci.site'));
     assert.throws(() => open(cipher.slice(0, -2) + 'XX', 'alice@mooncci.site'));
   } finally {

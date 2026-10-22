@@ -1,5 +1,5 @@
 // Read-only production checks; run after API/frontend deployment AND Nginx activation.
-const origin=new URL(process.argv[2]||'https://mooncci.site');
+const origin=new URL(process.argv[2]||'https://moooncci.cn');
 async function get(path){const r=await fetch(new URL(path,origin),{signal:AbortSignal.timeout(15000),redirect:'error'});if(!r.ok)throw Error(`${path}: HTTP ${r.status}`);return r;}
 const posts=await(await get('/api/posts?limit=1')).json();
 if(posts.length){const p=posts[0];const r=await get(`/article/${p.id}`),html=await r.text();if(!html.includes('type="application/ld+json"')||!html.includes('property="og:title"')||!html.includes('article:modified_time'))throw Error('Article HTML lacks server-rendered metadata; check Nginx routes');console.log('PASS article HTML metadata');}
