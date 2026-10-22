@@ -50,7 +50,12 @@ jobs:
       - run: bash -n scripts/deploy-offline-frontend.sh
       - run: bash -n scripts/deploy-audit.sh
       - run: bash -n scripts/deploy-media-capacity.sh
-      - run: npx playwright install --with-deps chromium webkit
+      - name: Install browser dependencies
+        timeout-minutes: 8
+        run: |
+          sudo sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
+          printf 'Acquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::Retries "2";\n' | sudo tee /etc/apt/apt.conf.d/80-mooncci-ci-timeouts >/dev/null
+          npx playwright install --with-deps chromium webkit
       - run: node test/mobile-inputs.browser.cjs
       - run: node scripts/test-browser.cjs
       - run: node scripts/test-updates-browser.cjs
