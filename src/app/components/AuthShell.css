@@ -260,3 +260,63 @@ html.auth-touch-page,
 .auth-secondary:disabled { opacity: .55; cursor: not-allowed; }
 .auth-submit:disabled { cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) { .auth-reveal { transition: none; } }
+
+/* ===== Homepage-aligned layout (hero headline + soft panel) ===== */
+@font-face {
+  font-family: 'JetBrains Mono Hero';
+  src: url('../../assets/fonts/JetBrainsMono-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+.auth-layout {
+  --auth-fill: color-mix(in srgb, var(--foreground) 5%, var(--background));
+  max-width: none;
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  gap: 64px;
+  align-items: start;
+  padding: 48px 0 24px;
+}
+.auth-intro { min-width: 0; overflow-wrap: anywhere; }
+.auth-intro .eyebrow { margin: 0 0 20px; font-size: 13px; line-height: 1.5; letter-spacing: 0; color: var(--muted-foreground); }
+.auth-intro h1 {
+  margin: 0;
+  font-family: 'JetBrains Mono Hero', 'Inter Variable', Inter, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  font-size: clamp(34px, 5.2vw, 56px);
+  font-weight: 700;
+  font-synthesis: none;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+}
+.auth-intro-text { margin: 20px 0 0; max-width: 34ch; font-size: 18px; line-height: 1.6; color: var(--muted-foreground); }
+.auth-panel { min-width: 0; padding: 32px 28px 12px; border: 0; border-radius: 16px; background: var(--auth-fill); }
+.auth-panel-head { margin-bottom: 24px; }
+.auth-panel-head h2 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.4; }
+.auth-panel-head p { margin: 6px 0 0; font-size: 14px; line-height: 1.6; color: var(--muted-foreground); }
+
+/* Controls: filled, borderless, same radii as the homepage buttons. */
+.auth-panel .auth-field-control input {
+  border: 0;
+  border-radius: 10px;
+  background: var(--background);
+  box-shadow: none;
+}
+.auth-panel .auth-field-control input:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.auth-panel .auth-submit { border-radius: 8px; min-height: 46px; font-size: 15px; }
+.auth-panel .auth-social-button { border: 0; border-radius: 8px; background: var(--background); }
+.auth-panel .auth-social-button:hover { background: var(--muted); }
+.auth-panel .auth-google-local { border-radius: 8px; }
+.auth-panel .auth-sent { border: 0; background: var(--background); }
+.auth-panel .auth-secondary { border: 0; background: var(--auth-fill); }
+.auth-panel .auth-secondary:hover:not(:disabled) { background: var(--muted); }
+.auth-panel .auth-reveal:hover { background: var(--auth-fill); }
+.auth-panel .auth-alternate { margin-top: 24px; padding: 8px 0 12px; border-top: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent); }
+.auth-panel .auth-message { padding: 0 0 12px; }
+
+@media (max-width: 900px) {
+  .auth-layout { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 24px; }
+  .auth-intro-text { font-size: 16px; max-width: none; }
+  .auth-panel { padding: 24px 20px 8px; }
+}
