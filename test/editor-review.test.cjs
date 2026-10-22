@@ -45,6 +45,13 @@ test('editor review cancellation sends nothing and an in-flight review disables 
   await act(async()=>{fail(new Error('本地模拟失败'));await pending;});
   assert.ok(reviewButtons().every(node=>!node.props.disabled));
   assert.deepEqual(alerts,['本地模拟失败']);
+  assert.ok(confirm(),'A failed review keeps the dialog open for retry');
+  assert.equal(root.root.findByType('textarea').props.value,'补充理由','A failed review preserves the note');
+  await act(async()=>{pending=confirm().props.onClick();});
+  assert.equal(writes.length,3,'Retry sends one new review request');
+  assert.deepEqual(JSON.parse(writes[2].body),{status:'rejected',review_note:'补充理由'});
+  await act(async()=>{finish({message:'已拒绝'});await pending;});
+  assert.equal(confirm(),undefined,'Successful retry closes the dialog');
  }finally{
   if(root)await act(async()=>root.unmount());
  }

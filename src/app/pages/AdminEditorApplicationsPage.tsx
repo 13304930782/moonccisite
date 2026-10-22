@@ -72,7 +72,6 @@ export default function AdminEditorApplicationsPage() {
       await loadApplications();
     } catch (err: any) {
       setMessage(err.message || '操作失败'); notify.error(err.message || '操作失败');
-      setDecision(null);
     } finally {
       setReviewing(null);
     }
