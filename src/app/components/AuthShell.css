@@ -290,7 +290,7 @@ html.auth-touch-page,
   line-height: 1.1;
   letter-spacing: -.02em;
 }
-.auth-intro-text { margin: 20px 0 0; max-width: 34ch; font-size: 18px; line-height: 1.6; color: var(--muted-foreground); }
+.auth-intro-text { margin: 20px 0 0; max-width: 30em; font-size: 18px; line-height: 1.6; color: var(--muted-foreground); text-wrap: pretty; }
 .auth-panel { min-width: 0; padding: 32px 28px 12px; border: 0; border-radius: 16px; background: var(--auth-fill); }
 .auth-panel-head { margin-bottom: 24px; }
 .auth-panel-head h2 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.4; }
