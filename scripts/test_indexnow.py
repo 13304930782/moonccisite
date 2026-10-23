@@ -78,6 +78,13 @@ class IndexNowTest(unittest.TestCase):
         self.assertEqual(index.run('run')['count'], 3)
         self.assertEqual(index.run('run')['event'], 'no_submission')
 
+    def test_slug_urls_survive_persisted_queue_without_duplicate_submission(self):
+        self.current[BASE + '/article/english-slug'] = None
+        self.current[BASE + '/article/cities%3Askylinesii-basic-mod'] = None
+        self.assertEqual(index.run('run')['count'], 4)
+        self.assertEqual(index.run('run')['event'], 'no_submission')
+        self.assertEqual(set(self.state()['seen']), set(self.current))
+
     def test_missing_still_public_or_timeout_never_implies_delete(self):
         index.run('run')
         del self.current[BASE + '/article/18']
@@ -179,14 +186,20 @@ class IndexNowTest(unittest.TestCase):
 
 class BoundaryTest(unittest.TestCase):
     def test_url_allowlist(self):
-        valid = ['/', '/article/18', '/updates/2', '/projects/demo-v2',
+        valid = ['/', '/article/18', '/article/cities-skylines-2-basic-mods',
+                 '/article/cities%3Askylinesii-basic-mod', '/article/legacy.v1',
+                 '/article/pingu%E4%BC%81%E9%B9%85', '/article/2024-11-13c%25e8%25af%25ad',
+                 '/updates/2', '/projects/demo-v2',
                  '/tag/All%20Aboard', '/category/%E5%BB%BA%E7%AB%99', '/tag/100%25',
                  '/category/100%25', '/tag/%252fadmin', '/tag/path%5Cname']
         for path in valid:
             self.assertEqual(index.public_url(BASE + path), BASE + path)
         invalid = ['/admin', '/account', '/api/posts', '/assets/index.js', '/uploads/a.png',
                    '/subscriptions/private', '/article/18?preview=1', '/articles?verify=1',
-                   '/article/01', '/article/18#x', '/tag/..',
+                   '/article/01', '/article/18#x', '/article/..', '/article/%2Fadmin',
+                   '/article/a%5Cb', '/article/a%3Fb', '/article/a%23b', '/article/%00',
+                   '/article/%FF', '/article/%ZZ', '/article/%61', '/article/' + 'a' * 256,
+                   '/tag/..',
                    '/tag/%2Fadmin', '/tag/%00', '/tag/%e5%bb%ba', '/tag/%FF']
         for url in [BASE + path for path in invalid] + ['http://mooncci.site/', 'https://www.mooncci.site/',
                 'https://127.0.0.1/', 'https://mooncci.site:443/', 'https://user@mooncci.site/']:

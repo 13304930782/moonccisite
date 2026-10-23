@@ -40,6 +40,13 @@ def public_url(value):
     path = parsed.path
     if path in STATIC or re.fullmatch(r'/(article|updates)/[1-9][0-9]*', path):
         return value
+    if re.fullmatch(r'/article/[^/]+', path):
+        part = path.rsplit('/', 1)[1]
+        decoded = urllib.parse.unquote(part, errors='strict')
+        if (0 < len(decoded) <= 255 and not decoded.isdigit() and decoded not in ('.', '..')
+                and not re.search(r'[/\\#?\x00-\x1f\x7f]', decoded)
+                and urllib.parse.quote(decoded, safe="~!*'()-._") == part):
+            return value
     if re.fullmatch(r'/projects/[a-zA-Z0-9_-]+', path):
         return value
     if re.fullmatch(r'/(category|tag|series)/[^/]+', path):
