@@ -1,3 +1,4 @@
+import '../../styles/content-discovery.css';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { FormEvent, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -20,7 +21,7 @@ export default function SearchPage() {
     filter('q',keyword.trim());
   }
   return (
-    <SitePage>
+    <SitePage className="discovery-page">
       <PageHeading eyebrow="SEARCH" title="搜索文章">
         <p>按标题、摘要、正文、分类和标签搜索。</p>
       </PageHeading>

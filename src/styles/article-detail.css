@@ -147,3 +147,6 @@
  .article-route .comment-section:not(.comment-section--compact) .comment-item-actions { gap:16px; }
 }
 @media(hover:none) { .article-route .comment-section:not(.comment-section--compact) .comment-delete { opacity:1; } }
+
+.article-presentation .detail-title,.article-route .article-neighbors a,.article-route .article-related a { overflow-wrap:anywhere; }
+.article-presentation .toc-entry-title { min-width:0; overflow-wrap:anywhere; }

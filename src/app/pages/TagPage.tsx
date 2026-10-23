@@ -1,10 +1,11 @@
+import '../../styles/content-discovery.css';
 import { useParams } from "react-router-dom";
 import { PageHeading, SitePage } from "../components/ContentUI";
 import { PostResults } from "../components/PostResults";
 export default function TagPage() {
   const { tag = "" } = useParams();
   return (
-    <SitePage>
+    <SitePage className="discovery-page">
       <PageHeading eyebrow="TAG" title={tag} />
       <PostResults
         path={`/posts?tag=${encodeURIComponent(tag)}`}

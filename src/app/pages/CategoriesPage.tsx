@@ -1,9 +1,10 @@
+import '../../styles/content-discovery.css';
 import { Link } from 'react-router-dom';
 import { SitePage, PageHeading, ResourceState, useResource } from '../components/ContentUI';
 export default function CategoriesPage() {
   const resource = useResource('/posts/meta/categories');
   return (
-    <SitePage>
+    <SitePage className="discovery-page">
       <PageHeading eyebrow="INDEX" title="内容分类">
         <p>按主题探索文章。</p>
       </PageHeading>

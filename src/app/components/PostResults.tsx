@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import '../../styles/content-discovery.css';
 import { searchExcerpt } from '../lib/searchExcerpt';
 import {useSearchParams} from 'react-router-dom';
 import {Pagination,PageData} from './ContentUI';
@@ -16,16 +18,26 @@ export function PostResults({
   emptyAction?: React.ReactNode;
 }) {
   const [params,setParams]=useSearchParams();
-  const page=Math.max(1,Number(params.get('page'))||1);
+  const requestedPage=Number(params.get('page'));
+  const page=Number.isSafeInteger(requestedPage)&&requestedPage>=1?Math.min(requestedPage,100000):1;
   const resource = useResource<PageData>(`${path}${path.includes('?')?'&':'?'}format=paged&pageSize=12&page=${page}`);
   const posts = resource.data?.items || [];
-  function changePage(next:number){const p=new URLSearchParams(params);p.set('page',String(next));setParams(p);}
+  function changePage(next:number){const p=new URLSearchParams(params);next===1?p.delete('page'):p.set('page',String(next));setParams(p);}
+  useEffect(()=>{
+    if(resource.loading||resource.error||!resource.data)return;
+    const lastPage=Math.max(1,Math.ceil(resource.data.total/resource.data.pageSize));
+    const nextPage=Math.min(page,lastPage);
+    if(params.has('page')&&(nextPage===1||params.get('page')!==String(nextPage))){
+      const next=new URLSearchParams(params);nextPage===1?next.delete('page'):next.set('page',String(nextPage));
+      setParams(next,{replace:true});
+    }
+  },[resource.loading,resource.error,resource.data,page,params,setParams]);
 
   return (
     <ResourceState resource={resource}>
       {resource.data && <p className="muted" role="status">共 {resource.data.total} 篇文章</p>}
       {!posts.length && <div className="quiet-state"><p>{empty}</p>{emptyAction}</div>}
-      <div className="post-grid">
+      <div className="post-grid discovery-results">
         {posts.map((post:any) => {
           let tags: string[] = [];
           try {

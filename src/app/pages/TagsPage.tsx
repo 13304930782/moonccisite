@@ -1,9 +1,10 @@
+import '../../styles/content-discovery.css';
 import { Link } from 'react-router-dom';
 import { SitePage, PageHeading, ResourceState, useResource } from '../components/ContentUI';
 export default function TagsPage() {
   const resource = useResource('/posts/meta/tags');
   return (
-    <SitePage>
+    <SitePage className="discovery-page">
       <PageHeading eyebrow="INDEX" title="标签索引">
         <p>按主题探索文章。</p>
       </PageHeading>

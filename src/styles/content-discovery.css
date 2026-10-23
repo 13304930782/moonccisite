@@ -1,0 +1,4 @@
+.discovery-page .page-heading,.discovery-page .project-card,.discovery-results .blog-card { min-width:0; overflow-wrap:anywhere; }
+.discovery-results > a,.discovery-results .blog-card > * { min-width:0; }
+.discovery-page .search-filters > label { min-width:0; }
+.discovery-page .search-filters button { max-width:100%; }
