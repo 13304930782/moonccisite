@@ -1,3 +1,4 @@
+import { searchExcerpt } from '../lib/searchExcerpt';
 import {useSearchParams} from 'react-router-dom';
 import {Pagination,PageData} from './ContentUI';
 import { BlogCard } from "./BlogCard";
@@ -7,8 +8,10 @@ export function PostResults({
   path,
   empty = "还没有发布文章。",
   emptyAction,
+  searchQuery,
 }: {
   path: string;
+  searchQuery?: string;
   empty?: string;
   emptyAction?: React.ReactNode;
 }) {
@@ -38,7 +41,7 @@ export function PostResults({
               id={post.id}
               slug={post.slug}
               title={post.title}
-              excerpt={post.summary}
+              excerpt={searchQuery ? searchExcerpt(post, searchQuery) : post.summary}
               date={post.updated_at || post.published_at || post.created_at}
               dateLabel="更新于"
               tags={tags}

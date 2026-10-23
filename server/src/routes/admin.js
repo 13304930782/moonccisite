@@ -27,6 +27,7 @@ function maskIp(ip) {
 
 
 router.use(authRequired);
+router.use('/publication-health', require('./publicationHealth'));
 router.get('/runtime', adminOnly, async (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(await require('../lib/runtimeStatus').runtimeStatus(db));

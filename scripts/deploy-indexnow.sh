@@ -29,7 +29,7 @@ finish() {
 }
 trap finish EXIT
 python3 - "$package" "$backup" <<'PY'
-import fcntl, hashlib, json, os, pathlib, re, secrets, shutil, subprocess, sys, tempfile
+import pwd, grp, fcntl, hashlib, json, os, pathlib, re, secrets, shutil, subprocess, sys, tempfile
 
 package, backup = map(pathlib.Path, sys.argv[1:])
 nginx = '/www/server/nginx/sbin/nginx'
@@ -49,7 +49,7 @@ for name, expected in manifest['files'].items():
     if b'\r' in data or digest(data) != expected:
         raise ValueError('Invalid package file: ' + name)
 compile((package / 'indexnow.py').read_text(), 'indexnow.py', 'exec')
-vhost = pathlib.Path('/www/server/panel/vhost/nginx/mooncci.site.conf')
+vhost = pathlib.Path('/www/server/panel/vhost/nginx/moooncci.cn.conf')
 if not re.search(r'^\s*include\s+/www/server/panel/vhost/nginx/extension/mooncci\.site/\*\.conf\s*;', vhost.read_text(), re.MULTILINE):
     raise ValueError('Existing mooncci.site extension include is missing')
 if not extension.is_dir() or extension.resolve() != extension:
@@ -166,6 +166,17 @@ if not key_file.exists() or key_file.read_bytes() != key.encode():
         if os.path.exists(temporary):
             os.unlink(temporary)
 key_file.chmod(0o644)
+admin = pathlib.Path('/var/lib/mooncci-indexnow-admin')
+for directory in [admin, admin / 'requests']:
+    if directory.resolve() != directory or (directory.exists() and not directory.is_dir()):
+        raise ValueError('Unsafe admin bridge directory')
+admin.mkdir(mode=0o750, exist_ok=True)
+os.chown(str(admin), 0, grp.getgrnam('mooncci').gr_gid)
+admin.chmod(0o750)
+inbox = admin / 'requests'
+inbox.mkdir(mode=0o700, exist_ok=True)
+os.chown(str(inbox), pwd.getpwnam('mooncci').pw_uid, grp.getgrnam('mooncci').gr_gid)
+inbox.chmod(0o700)
 code.mkdir(mode=0o755, exist_ok=True)
 for path, data in zip(paths, payloads):
     handle, temporary = tempfile.mkstemp(prefix='.mooncci-indexnow-', dir=str(path.parent))
@@ -188,7 +199,7 @@ for path, data in zip(paths, payloads):
         raise ValueError('Installed file verification failed: ' + str(path))
 if output(['systemctl', 'is-enabled', 'mooncci-indexnow.timer']) != 'disabled' or output(['systemctl', 'is-active', 'mooncci-indexnow.timer']) == 'active':
     raise ValueError('IndexNow timer must remain disabled and inactive')
-print('KEY_URL=https://mooncci.site/' + key + '.txt', flush=True)
+print('KEY_URL=https://moooncci.cn/' + key + '.txt', flush=True)
 print('PASS: installed only IndexNow files and the exact main-site key location.', flush=True)
 print('NO URLS SUBMITTED. Timer remains disabled. Verify KEY_URL, run indexnow.py run manually, then systemctl enable --now mooncci-indexnow.timer.', flush=True)
 PY

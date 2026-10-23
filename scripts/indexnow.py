@@ -5,8 +5,11 @@ from contextlib import contextmanager
 import datetime as dt
 from html.parser import HTMLParser
 import http.client
+import hashlib
+import stat
 import importlib.util
 import json
+import itertools
 import os
 from pathlib import Path
 import re
@@ -19,7 +22,8 @@ import urllib.request
 import urllib.robotparser
 import xml.etree.ElementTree as ET
 
-ORIGIN = 'https://mooncci.site'
+ORIGIN = 'https://moooncci.cn'
+ADMIN_DIR = Path(os.environ.get('MOONCCI_INDEXNOW_ADMIN_DIR', '/var/lib/mooncci-indexnow-admin'))
 ENDPOINT = 'https://api.indexnow.org/indexnow'
 STATE_DIR = Path('/var/lib/mooncci-indexnow')
 SITEMAP = Path('/www/wwwroot/mooncci.site/sitemap-pages.xml')
@@ -34,9 +38,9 @@ def public_url(value):
     if not isinstance(value, str) or len(value) > 2048 or any(ord(char) > 127 for char in value):
         raise ValueError('Invalid public URL')
     parsed = urllib.parse.urlsplit(value)
-    if (parsed.scheme != 'https' or parsed.netloc != 'mooncci.site' or parsed.query
+    if (parsed.scheme != 'https' or parsed.netloc != urllib.parse.urlsplit(ORIGIN).netloc or parsed.query
             or parsed.fragment or value != ORIGIN + parsed.path):
-        raise ValueError('Only canonical HTTPS mooncci.site URLs without parameters are allowed')
+        raise ValueError('Only canonical HTTPS moooncci.cn URLs without parameters are allowed')
     path = parsed.path
     if path in STATIC or re.fullmatch(r'/(article|updates)/[1-9][0-9]*', path):
         return value
@@ -149,7 +153,7 @@ def load_state(path):
     return state
 
 
-def save_state(path, state):
+def save_state(path, state, mode=0o600, group=None):
     handle, temporary = tempfile.mkstemp(prefix='.indexnow-', dir=str(path.parent))
     try:
         with os.fdopen(handle, 'w', encoding='utf-8', newline='\n') as output:
@@ -157,7 +161,9 @@ def save_state(path, state):
             output.write('\n')
             output.flush()
             os.fsync(output.fileno())
-        os.chmod(temporary, 0o600)
+        os.chmod(temporary, mode)
+        if group is not None and os.name != 'nt':
+            os.chown(temporary, -1, group)
         os.replace(temporary, str(path))
         if os.name != 'nt':
             directory = os.open(str(path.parent), os.O_RDONLY)
@@ -279,13 +285,13 @@ def flush(state, path, key, policy, now):
     if not ready:
         save_state(path, state)
         return {'event': 'no_submission', 'pending': len(state['pending'])}
-    payload = json.dumps({'host': 'mooncci.site', 'key': key,
+    payload = json.dumps({'host': urllib.parse.urlsplit(ORIGIN).netloc, 'key': key,
                           'keyLocation': ORIGIN + '/' + key + '.txt', 'urlList': ready}).encode('utf-8')
     try:
         code, headers, body = request(ENDPOINT, payload)
     except (OSError, ValueError) as error:
         code, headers, body = 0, {}, str(error).encode('utf-8')
-    receipt = {'at': dt.datetime.now(dt.timezone.utc).isoformat(), 'count': len(ready), 'http': code}
+    receipt = {'at': dt.datetime.now(dt.timezone.utc).isoformat(), 'count': len(ready), 'http': code, 'urls': ready, 'endpoint': ENDPOINT}
     if code in (200, 202):
         for url in ready:
             del state['pending'][url]
@@ -303,6 +309,90 @@ def flush(state, path, key, policy, now):
     state['receipts'] = (state['receipts'] + [receipt])[-20:]
     save_state(path, state)
     return dict(receipt, pending=len(state['pending']))
+
+
+def iso_time(value):
+    return dt.datetime.fromtimestamp(value, dt.timezone.utc).isoformat() if value else None
+
+
+def export_status(state, ok=True):
+    if not ADMIN_DIR.is_dir():
+        return
+    status = {'version': 1, 'checkedAt': iso_time(time.time()), 'origin': ORIGIN, 'endpoint': ENDPOINT,
+              'lastRun': {'ok': ok, 'error': None if ok else 'Run failed; inspect service journal'},
+              'lastValidSitemapAt': iso_time(state.get('last_valid_sitemap_at')),
+              'pendingCount': len(state.get('pending', {})),
+              'pendingUrls': [{'url': public_url(url), 'kind': item['kind']}
+                              for url, item in itertools.islice(state.get('pending', {}).items(), 100)],
+              'blocked': state.get('blocked'),
+              'nextRetryAt': iso_time(state.get('next_attempt')),
+              'receipts': state.get('receipts', [])[-20:],
+              'requests': [{k: v for k, v in row.items() if k != 'identity'}
+                           for row in state.get('admin_requests', [])[-100:]]}
+    save_state(ADMIN_DIR / 'status.json', status, 0o640, ADMIN_DIR.stat().st_gid)
+
+
+def consume_requests(state, current, now, path):
+    inbox = ADMIN_DIR / 'requests'
+    if not inbox.is_dir() or inbox.is_symlink():
+        return
+    for entry in itertools.islice(inbox.iterdir(), 100):
+        if not re.fullmatch(r'[a-f0-9]{64}\.json', entry.name):
+            continue
+        handle = None
+        try:
+            info = entry.lstat()
+            if not stat.S_ISREG(info.st_mode) or info.st_size > 16384:
+                continue
+            handle = os.open(str(entry), os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
+            opened = os.fstat(handle)
+            if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (info.st_dev, info.st_ino):
+                continue
+            with os.fdopen(handle, 'rb') as source:
+                handle = None
+                raw = source.read(16385)
+            if len(raw) > 16384:
+                continue
+            identity = hashlib.sha256(raw).hexdigest()
+            previous = state.setdefault('admin_requests', [])
+            if not any(row.get('identity') == identity for row in previous):
+                row = {'identity': identity, 'state': 'rejected', 'reason': 'Invalid request'}
+                try:
+                    data = json.loads(raw.decode('utf-8'))
+                    if not isinstance(data, dict) or data.get('version') != 1:
+                        raise ValueError('Invalid schema')
+                    url = public_url(data.get('url'))
+                    if hashlib.sha256(url.encode('utf-8')).hexdigest() + '.json' != entry.name:
+                        raise ValueError('Invalid filename')
+                    action = data.get('action', 'submit')
+                    requested = data.get('requestedAt')
+                    stamp = re.sub(r'([+-]\d\d):(\d\d)$', r'\1\2', requested.replace('Z', '+0000'))
+                    parsed = dt.datetime.strptime(stamp, '%Y-%m-%dT%H:%M:%S' + ('.%f' if '.' in stamp else '') + '%z').timestamp()
+                    actor = data.get('actorId')
+                    if type(actor) is not int or actor < 1 or action not in ('submit', 'retry'):
+                        raise ValueError('Invalid actor/action')
+                    row.update(url=url, requestedAt=requested, actorId=actor, action=action)
+                    if not 0 <= now - parsed <= 86400 or url not in current:
+                        raise ValueError('Expired or unavailable URL')
+                    if action == 'retry':
+                        if url not in state['pending'] or now - state.get('last_admin_retry', 0) < 900:
+                            raise ValueError('Retry requires pending URL and 15 minute cooldown')
+                        state.update(blocked=None, next_attempt=0, last_admin_retry=now)
+                    state['pending'].setdefault(url, {'kind': 'change', 'lastmod': current[url], 'queued_at': now})
+                    row.update(state='queued', reason=None)
+                except (ValueError, TypeError, AttributeError, OverflowError):
+                    row['reason'] = 'Invalid, expired or unavailable public URL; retry requires pending work and 15 minute cooldown'
+                state['admin_requests'] = (previous + [row])[-100:]
+                # Persist intent and consumed identity before removing the file or sending.
+                save_state(path, state)
+            latest = entry.lstat()
+            if stat.S_ISREG(latest.st_mode) and (latest.st_dev, latest.st_ino) == (info.st_dev, info.st_ino):
+                entry.unlink()
+        except (OSError, ValueError):
+            continue
+        finally:
+            if handle is not None:
+                os.close(handle)
 
 
 def run(command, urls=()):
@@ -324,6 +414,7 @@ def run(command, urls=()):
             if url not in current and url not in state['seen'] and url not in state['pending']:
                 raise ValueError('Manual URL is not in the current or previously public sitemap')
         reconcile(state, current, now)
+        consume_requests(state, current, now, path)
         for url in set(urls):
             state['pending'][url] = {'kind': 'change' if url in current else 'remove',
                                      'lastmod': current.get(url), 'queued_at': now}
@@ -331,7 +422,9 @@ def run(command, urls=()):
             state.update(blocked=None, next_attempt=0)
         # Persist intent before I/O: a timeout or process restart cannot lose queued URLs.
         save_state(path, state)
-        return flush(state, path, key, policy, now)
+        result = flush(state, path, key, policy, now)
+        export_status(state)
+        return result
 
 
 def main():
@@ -346,6 +439,10 @@ def main():
     except BlockingIOError:
         print(json.dumps({'event': 'already_running'}))
     except (OSError, ValueError, ET.ParseError, subprocess.SubprocessError) as error:
+        try:
+            export_status(load_state(STATE_DIR / 'state.json'), False)
+        except (OSError, ValueError):
+            pass
         print(json.dumps({'event': 'failed_state_preserved', 'reason': str(error)}))
         return 1
     return 0

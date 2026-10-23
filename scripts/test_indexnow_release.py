@@ -45,7 +45,7 @@ class IndexNowReleaseTest(unittest.TestCase):
                 backup.mkdir(parents=True)
                 extension = path('/www/server/panel/vhost/nginx/extension/mooncci.site')
                 extension.mkdir(parents=True)
-                vhost = path('/www/server/panel/vhost/nginx/mooncci.site.conf')
+                vhost = path('/www/server/panel/vhost/nginx/moooncci.cn.conf')
                 vhost.write_text('include ' + str(extension) + '/*.conf;\n')
                 for name in ['/etc/systemd/system', '/opt', '/var/lib']:
                     path(name).mkdir(parents=True, exist_ok=True)
@@ -96,7 +96,7 @@ class IndexNowReleaseTest(unittest.TestCase):
                     return mapped((package / name).read_text().split("<<'PY'\n", 1)[1].rsplit('\nPY', 1)[0])
 
                 scope = {}
-                with patch.object(subprocess, 'run', side_effect=run), patch.object(sys, 'argv', ['deploy', str(package), str(backup)]):
+                with patch('pwd.getpwnam', return_value=types.SimpleNamespace(pw_uid=0)), patch('grp.getgrnam', return_value=types.SimpleNamespace(gr_gid=0)), patch.object(subprocess, 'run', side_effect=run), patch.object(sys, 'argv', ['deploy', str(package), str(backup)]):
                     try:
                         if existing:
                             with self.assertRaises(subprocess.CalledProcessError):

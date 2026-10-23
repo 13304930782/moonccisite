@@ -1,0 +1,4 @@
+.writing-tags { display:flex; flex-wrap:wrap; align-items:center; min-height:44px; gap:4px 6px; padding:4px 8px; border-radius:10px; background:var(--ui-fill); }
+.writing-tags .writing-tag { display:inline-flex; align-items:center; gap:0; max-width:100%; padding-left:10px; border-radius:999px; background:var(--ui-fill-strong); color:var(--ui-text-body); font-size:12px; overflow-wrap:anywhere; }
+.writing-tag button { display:flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; border:0; background:transparent; border-radius:999px; }
+.writing-tags input{width:100%;flex:1 1 180px;min-width:0}.writing-tags:focus-within{outline:2px solid var(--ui-brand,var(--ring));outline-offset:2px}

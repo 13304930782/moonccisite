@@ -31,6 +31,8 @@ jobs:
       - run: npm run build
       - run: node scripts/test-document.mjs
       - run: npm run check:bundle
+      - run: python3 scripts/test_indexnow.py
+      - run: python3 scripts/test_refresh_sitemap.py
       - run: python3 scripts/test-offline-release.py
       - run: python3 -m py_compile scripts/build-cover-framing-release.py
       - run: python3 scripts/test-cover-focus-release.py
@@ -65,6 +67,8 @@ jobs:
       - run: node scripts/test-admin-capacity-browser.cjs
       - run: node scripts/test-account-browser.cjs
       - run: node scripts/test-site-design-account-browser.cjs
+      - run: node scripts/test-about-browser.cjs
+      - run: node scripts/test-publication-health-browser.cjs
       - run: node scripts/test-article-drafts-browser.cjs
       - run: node scripts/test-article-slug-browser.cjs
       - run: node scripts/test-article-revisions-browser.cjs

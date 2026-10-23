@@ -1298,3 +1298,18 @@ Article pages reserve H1 for the article title. Body H1 headings render as H2 in
 Public article links use `/article/<slug>`. Numeric links and historical slugs redirect to the current published article URL; comments, bookmarks, analytics and reading progress keep numeric post IDs. The editor supports a manual English slug or an explicit DeepSeek suggestion, using the existing AI configuration and request budget. Suggestions only fill the draft and take effect on publication. New slugs must contain a lowercase English letter, use lowercase letters/digits/single hyphens, and be at most 100 characters. Empty drafts can still be saved. Historical link reservations prevent another article from taking an old address.
 
 This is a paired frontend/SSR/backend release with an additive alias-table migration, not a frontend-only package. Build and verify the offline archive locally. Back up the affected post, alias and migration records before applying the scoped migration; preserve all other articles, drafts, historical SQL, uploads and `.env`. The migration normalizes only article 20's specified legacy slug and retains its old address. Rollback retains the additive alias table and reservations. Deploy only to the main host `182.92.179.81`; overseas publishing is disabled. Do not download dependencies or build on production. Run deployment and rollback in a `nohup` child shell, with logs outside the verified package directory.
+
+
+## 发布诊断、IndexNow 后台与 About Me（2026-10）
+
+本版包含前端、配对 SSR 和后端源文件，另有独立 IndexNow 运维包；没有数据库迁移或依赖升级，不能只上传 dist。保留现有环境配置、上传目录、历史 SQL 与后台资料。
+
+- `/api/admin/publication-health` 分页 GET；`/:id/check|submit|retry` 为管理员 POST。页面检查不改变发布状态，文章修订后由管理员手动重检。
+- 检查结果写入 `MOONCCI_PUBLICATION_CHECK_DIR`，未配置时为 server/publication-checks（独立于 SSR 构建目录）；记录文章版本、时间和操作人。部署必须保留此目录。
+- IndexNow 沿用 root 定时任务和私有队列，增加 `/var/lib/mooncci-indexnow-admin/status.json` 与 `requests/`。API 只访问脱敏桥接目录，不读取密钥或执行 root 命令。独立运维包安装目录权限和 systemd 写入路径。
+- 先发布应用，再发布运维包。验证 API 用户可读状态、写入 inbox，但不能读取私有密钥。未连接或超过 15 分钟的状态须明确显示；手动操作只排队，实际结果由后续定时任务记录。
+- 失败重试限当前公开且仍待处理的 URL，15 分钟冷却。HTTP 200/202 不表示 Bing 已收录。
+- About Me 沿用 blog_pages，无迁移；旧资料保留，新模块默认空。标签与技术共用文章标签组件，图片共用媒体选择器；时间线为可排序混合里程碑，不自动写入示例经历。
+- 分别回滚应用与运维文件，保留提交期间变化的队列、密钥、资料和媒体。使用 nohup 子 shell 部署，不在交互 SSH 中执行 set -e 或 exit。
+
+本版新增按路由加载的 About 编辑与发布诊断 UI，首轮构建全站 JS gzip 合计 761277 字节，超过旧总量预算 1277 字节；总量预算从 760000 调至 770000，入口 JS/CSS 和单块上限保持原值，无新依赖。最终发布以重新构建测量为准。

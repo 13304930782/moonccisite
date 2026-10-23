@@ -11,7 +11,7 @@ import urllib.robotparser
 spec = importlib.util.spec_from_file_location('indexnow', Path(__file__).with_name('indexnow.py'))
 index = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(index)
-BASE = 'https://mooncci.site'
+BASE = 'https://moooncci.cn'
 KEY = 'a' * 64
 
 
@@ -26,6 +26,8 @@ class IndexNowTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.directory = Path(self.temp.name)
+        self.admin = self.directory / 'admin'
+        (self.admin / 'requests').mkdir(parents=True)
         (self.directory / 'key').write_text(KEY, encoding='utf-8')
         self.current = {BASE + '/': None, BASE + '/article/18': '2026-10-01T00:00:00+00:00'}
         self.sent = []
@@ -34,6 +36,7 @@ class IndexNowTest(unittest.TestCase):
         policy = urllib.robotparser.RobotFileParser()
         policy.parse(['User-agent: *', 'Disallow: /api/'])
         self.patches = [patch.object(index, 'STATE_DIR', self.directory),
+                        patch.object(index, 'ADMIN_DIR', self.admin),
                         patch.object(index, 'fresh_sitemap', side_effect=lambda: self.current.copy()),
                         patch.object(index, 'robots_policy', return_value=policy),
                         patch.object(index, 'page_status', side_effect=lambda url: self.pages.get(url, 'public')),
@@ -49,7 +52,7 @@ class IndexNowTest(unittest.TestCase):
     def send(self, url, data=None):
         self.assertEqual(url, index.ENDPOINT)
         payload = json.loads(data.decode())
-        self.assertEqual(payload['host'], 'mooncci.site')
+        self.assertEqual(payload['host'], 'moooncci.cn')
         self.assertEqual(payload['keyLocation'], BASE + '/' + KEY + '.txt')
         self.sent.append(payload['urlList'])
         if isinstance(self.http, Exception):
@@ -58,6 +61,111 @@ class IndexNowTest(unittest.TestCase):
 
     def state(self):
         return index.load_state(self.directory / 'state.json')
+
+    def inbox(self, url, action='submit', **extra):
+        data = dict(version=1, url=url, action=action, requestedAt=index.iso_time(index.time.time()-1), actorId=1)
+        data.update(extra)
+        target = self.admin / 'requests' / (index.hashlib.sha256(url.encode()).hexdigest() + '.json')
+        target.write_text(json.dumps(data), encoding='utf-8')
+        return target
+
+    def test_status_pending_urls_contract_is_bounded_and_sanitized(self):
+        self.current.update({BASE + '/updates/' + str(n): None for n in range(1, 151)})
+        self.http = 503
+        index.run('run')
+        status = json.loads((self.admin / 'status.json').read_text())
+        self.assertEqual(status['pendingCount'], 152)
+        self.assertEqual(len(status['pendingUrls']), 100)
+        for item in status['pendingUrls']:
+            self.assertEqual(set(item), {'url', 'kind'})
+            self.assertIn(item['url'], self.current)
+            self.assertEqual(item['kind'], 'change')
+
+    def test_admin_known_url_receipt_and_redacted_status(self):
+        index.run('run')
+        target = self.inbox(BASE + '/')
+        self.assertEqual(index.run('run')['count'], 1)
+        self.assertFalse(target.exists())
+        status = json.loads((self.admin / 'status.json').read_text())
+        self.assertEqual(status['receipts'][-1]['urls'], [BASE + '/'])
+        self.assertEqual(status['receipts'][-1]['endpoint'], index.ENDPOINT)
+        self.assertNotIn(KEY, json.dumps(status))
+        self.assertNotIn('identity', json.dumps(status))
+        self.assertTrue(status['lastRun']['ok'])
+
+    def test_admin_invalid_unknown_expired_and_malformed(self):
+        index.run('run')
+        for url, extras in [('https://evil.example/', {}), (BASE + '/article/9999', {}),
+                            (BASE + '/', {'requestedAt': '2000-01-01T00:00:00Z'}),
+                            (BASE + '/', {'actorId': True})]:
+            target = self.inbox(url, **extras)
+            index.run('run')
+            self.assertFalse(target.exists())
+        target = self.inbox(BASE + '/')
+        target.write_bytes(b'not json')
+        index.run('run')
+        self.assertFalse(target.exists())
+        self.assertEqual(len(self.sent), 1)
+
+    def test_admin_persisted_identity_prevents_crash_replay(self):
+        index.run('run')
+        target = self.inbox(BASE + '/')
+        raw = target.read_bytes()
+        index.run('run')
+        target.write_bytes(raw)
+        index.run('run')
+        self.assertEqual(len(self.sent), 2)
+
+    def test_admin_retry_global_cooldown_and_pending_requirement(self):
+        self.http = 403
+        index.run('run')
+        self.inbox(BASE + '/', 'retry')
+        index.run('run')
+        self.assertEqual(len(self.sent), 2)
+        self.inbox(BASE + '/article/18', 'retry')
+        index.run('run')
+        self.assertEqual(len(self.sent), 2)
+        self.assertEqual(self.state()['admin_requests'][-1]['state'], 'rejected')
+
+    def test_admin_oversized_and_symlink_files_are_not_read(self):
+        index.run('run')
+        target = self.inbox(BASE + '/')
+        target.write_bytes(b'x' * 16385)
+        index.run('run')
+        self.assertTrue(target.exists())
+        self.assertEqual(len(self.sent), 1)
+        target.unlink()
+        secret = self.directory / 'secret'
+        secret.write_text('private', encoding='utf-8')
+        try:
+            target.symlink_to(secret)
+        except OSError:
+            self.skipTest('Symlink creation unavailable on this host')
+        index.run('run')
+        self.assertTrue(target.is_symlink())
+        self.assertEqual(secret.read_text(), 'private')
+        self.assertEqual(len(self.sent), 1)
+        target.unlink()
+
+    def test_admin_stale_sitemap_keeps_request_unconsumed(self):
+        index.run('run')
+        target = self.inbox(BASE + '/')
+        with patch.object(index, 'fresh_sitemap', side_effect=ValueError('stale')):
+            with self.assertRaises(ValueError):
+                index.run('run')
+        self.assertTrue(target.exists())
+        self.assertEqual(len(self.sent), 1)
+
+    def test_bridge_atomic_failure_preserves_previous_status(self):
+        index.run('run')
+        target = self.admin / 'status.json'
+        before = target.read_bytes()
+        with patch.object(index.os, 'replace', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                index.export_status(self.state())
+        self.assertEqual(target.read_bytes(), before)
+        index.export_status(self.state(), False)
+        self.assertFalse(json.loads(target.read_text())['lastRun']['ok'])
 
     def test_initial_backfill_and_unchanged_restart_no_duplicate(self):
         self.assertEqual(index.run('run')['count'], 2)
@@ -201,8 +309,8 @@ class BoundaryTest(unittest.TestCase):
                    '/article/%FF', '/article/%ZZ', '/article/%61', '/article/' + 'a' * 256,
                    '/tag/..',
                    '/tag/%2Fadmin', '/tag/%00', '/tag/%e5%bb%ba', '/tag/%FF']
-        for url in [BASE + path for path in invalid] + ['http://mooncci.site/', 'https://www.mooncci.site/',
-                'https://127.0.0.1/', 'https://mooncci.site:443/', 'https://user@mooncci.site/']:
+        for url in [BASE + path for path in invalid] + ['http://moooncci.cn/', 'https://www.moooncci.cn/',
+                'https://127.0.0.1/', 'https://moooncci.cn:443/', 'https://user@moooncci.cn/']:
             with self.subTest(url=url), self.assertRaises(ValueError):
                 index.public_url(url)
 
@@ -233,7 +341,7 @@ class BoundaryTest(unittest.TestCase):
                     index.fresh_sitemap()
 
     def test_public_http_confirmation(self):
-        good = b'<html><head><link rel="canonical" href="https://mooncci.site/article/18"></head><body><div id="root">body</div></body></html>'
+        good = b'<html><head><link rel="canonical" href="https://moooncci.cn/article/18"></head><body><div id="root">body</div></body></html>'
         for code, headers, body, expected in [(200, {'Content-Type': 'text/html'}, good, 'public'),
                 (404, {}, b'', 'gone'), (410, {}, b'', 'gone'), (503, {}, b'', 'unknown'),
                 (302, {}, b'', 'unknown'), (200, {'Content-Type': 'text/html'}, b'<html>Login</html>', 'unknown'),

@@ -47,6 +47,7 @@ export default function SearchPage() {
       {q || category || tag ? (
         <PostResults
           path={`/posts?${query}`}
+          searchQuery={q}
           emptyAction={<button className="quiet-button" onClick={()=>{setKeyword('');setParams({});}}>清除搜索，重新查找</button>}
           empty="没有符合当前条件的文章。"
         />

@@ -19,7 +19,8 @@ router.get('/article/:id',routeLimiter,guarded(async(req,res)=>{
  if(!row)return res.json(null);
  const [items]=await db.query("SELECT p.id,p.slug,p.title FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? AND p.status='published' ORDER BY sp.position,p.id",[row.id]);
  const index=items.findIndex(x=>String(x.id)===req.params.id);
- res.json({series:row,previous:items[index-1]||null,next:items[index+1]||null});
+ if(index<0)return res.json(null);
+ res.json({series:row,position:index+1,total:items.length,previous:items[index-1]||null,next:items[index+1]||null});
 }));
 router.get('/manage/:id/articles',routeLimiter,authRequired,adminOnly,guarded(async(req,res)=>{
  res.set('Cache-Control','private, no-store');

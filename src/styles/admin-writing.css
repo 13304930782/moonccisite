@@ -58,9 +58,6 @@
 .writing-quality .writing-segment button { min-height:38px; padding-inline:8px; font-size:12px; }
 .writing-quality .writing-segment button[aria-pressed=true] { background:var(--background); }
 .dark .writing-quality .writing-segment button[aria-pressed=true] { background:var(--ui-fill); }
-.writing-tags { display:flex; flex-wrap:wrap; align-items:center; min-height:44px; gap:4px 6px; padding:4px 8px; border-radius:10px; background:var(--ui-fill); }
-.writing-tags .writing-tag { display:inline-flex; align-items:center; gap:0; max-width:100%; padding-left:10px; border-radius:999px; background:var(--ui-fill-strong); color:var(--ui-text-body); font-size:12px; overflow-wrap:anywhere; }
-.writing-tag button { display:flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; border:0; background:transparent; border-radius:999px; }
 :is(.writing-workspace,.writing-settings-sheet) .writing-tags input { width:100%; flex:1 1 180px; padding:6px 2px; background:transparent; font-size:13px; }
 .writing-slug { display:flex; align-items:center; min-width:0; padding-left:12px; background:var(--ui-fill); border-radius:10px; color:var(--ui-text-muted); }
 :is(.writing-workspace,.writing-settings-sheet) .writing-slug input { padding-left:4px; background:transparent; }

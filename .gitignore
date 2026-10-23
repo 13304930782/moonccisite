@@ -26,3 +26,5 @@ __pycache__/
 
 /server/runtime/
 server/data/dbip/*.mmdb
+
+/server/publication-checks/

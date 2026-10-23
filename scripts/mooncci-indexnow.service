@@ -9,6 +9,6 @@ TimeoutStartSec=240
 UMask=0077
 NoNewPrivileges=true
 ProtectSystem=strict
-ReadWritePaths=/var/lib/mooncci-indexnow
+ReadWritePaths=/var/lib/mooncci-indexnow /var/lib/mooncci-indexnow-admin
 ProtectHome=true
 PrivateTmp=true

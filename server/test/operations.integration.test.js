@@ -20,7 +20,7 @@ test('phase 3 real MySQL: session ownership, legacy compatibility, revocation, t
  const [b]=await c.query("INSERT INTO users(username,email,password_hash,role) VALUES ('other','other@example.test','unused','user')");
  const [admin]=await c.query("INSERT INTO users(username,email,password_hash,role) VALUES ('admin','admin@example.test','unused','admin')");
  const jwt=require('jsonwebtoken'),token=(id,extra={})=>jwt.sign({id,jti:crypto.randomUUID(),...extra},process.env.JWT_SECRET,{expiresIn:'7d'}),a1=token(a.insertId),a2=token(a.insertId,{sv:1}),unseen=token(a.insertId),b1=token(b.insertId),ad=token(admin.insertId);
- const app=require('express')();app.use(require('express').json());app.use('/api/account',require('../src/routes/loginSessions'));app.use('/api/auth',require('../src/routes/auth-cookie'));app.use('/api/admin/operations',require('../src/routes/operations'));app.use((e,req,res,next)=>{console.error(e);res.status(500).json({message:'test failure'});});
+ const app=require('express')();app.use(require('express').json());app.use('/api/account',require('../src/routes/loginSessions'));app.use('/api/auth',require('../src/routes/auth-cookie'));app.use('/api/admin/operations',require('../src/routes/operations'));app.use('/api/admin/publication-health',require('../src/routes/publicationHealth'));app.use((e,req,res,next)=>{console.error(e);res.status(500).json({message:'test failure'});});
  db=require('../src/db');server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
  const call=(url,t=a1,method='GET',body)=>fetch('http://127.0.0.1:'+server.address().port+'/api'+url,{method,headers:{Cookie:'mooncci_token='+t,'Content-Type':'application/json','User-Agent':'Mozilla/5.0 Windows Chrome/128.0'},body:body?JSON.stringify(body):undefined});
  let response=await call('/account/sessions');assert.equal(response.status,200);assert.match(response.headers.get('cache-control'),/no-store/);
@@ -44,6 +44,12 @@ test('phase 3 real MySQL: session ownership, legacy compatibility, revocation, t
  await c.query('INSERT INTO article_bookmarks(user_id,post_id) VALUES (?,?)',[a.insertId,post.insertId]);
  await c.query("INSERT INTO analytics_daily(day,page_hash,path,views) VALUES (UTC_DATE(),?, ?,9)",[crypto.createHash('sha256').update('/article/'+post.insertId).digest('hex'),'/article/'+post.insertId]);
  assert.equal((await call('/admin/operations',token(a.insertId,{sessionStartedAt:Date.now()+1}))).status,403);
+ assert.equal((await call('/admin/publication-health',token(a.insertId,{sessionStartedAt:Date.now()+1}))).status,403);
+ assert.equal((await call('/admin/publication-health?page=0',ad)).status,400);
+ const diagnostics=await call('/admin/publication-health',ad);assert.equal(diagnostics.status,200);assert.match(diagnostics.headers.get('cache-control'),/no-store/);
+ const diagnosis=await diagnostics.json();assert.equal(diagnosis.items[0].id,post.insertId);assert.equal(diagnosis.items[0].report,null);
+ assert.equal((await call('/admin/publication-health/1/invalid',ad,'POST',{})).status,400);
+ assert.equal((await call('/admin/publication-health/2147483647/check',ad,'POST',{})).status,404);
  const report=await(await call('/admin/operations?days=7',ad)).json();assert.equal(report.summary.comments,1);assert.equal(report.summary.bookmarks,1);assert.equal(report.summary.views,9);assert.equal(report.articles[0].comments,1);assert.equal(report.articles[0].slug,'ops-test');assert.equal(report.trend.length,7);assert.equal(report.trend[0].views,null);
  assert.equal((await call('/admin/operations?from=2026-02-30&to=2026-03-01',ad)).status,400);assert.equal((await call('/admin/operations?days=91',ad)).status,400);
  process.env.ACCOUNT_OPERATIONS_ENABLED='false';assert.equal((await call('/account/sessions',ad)).status,404);assert.equal((await call('/auth/me',ad)).status,200);assert.equal((await call('/auth/me',a1)).status,401,'global revocation persists with flag off');

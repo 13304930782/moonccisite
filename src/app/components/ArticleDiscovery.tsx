@@ -19,7 +19,7 @@ export function ArticleDiscovery({id,title,slug}:{id:number;title:string;slug?:s
  <div className="inline-actions"><BookmarkButton id={id} slug={slug}/><button className="quiet-button" onClick={()=>void copy()}>复制链接</button>{canShare&&<button className="quiet-button" onClick={()=>void share()}>分享</button>}<span role="status">{message}</span></div>
  {fallback&&<input className="share-fallback" aria-label="文章链接" readOnly value={url} onFocus={e=>e.target.select()}/>}
  {error&&<button className="text-link" onClick={reload}>文章导航加载失败，重试</button>}
- {data&&<><nav className="article-neighbors" aria-label="相邻文章">{[['previous','上一篇'],['next','下一篇']].map(([key,label])=>data[key]?<Link key={key} to={articlePath(data[key])}><small>{label}</small><span>{data[key].title}</span></Link>:<span key={key}/>)}</nav>
+ {data&&<><nav className="article-neighbors" aria-label="相邻文章">{[['previous','较早文章'],['next','较新文章']].map(([key,label])=>data[key]?<Link key={key} to={articlePath(data[key])}><small>{label}</small><span>{data[key].title}</span></Link>:<span key={key}/>)}</nav>
  {!!related.length&&<section className="article-related"><h2>相关文章</h2><ul>{related.map((p:any)=><li key={p.id}><Link to={articlePath(p)}>{p.title}</Link></li>)}</ul></section>}</>}
  </section>;
 }

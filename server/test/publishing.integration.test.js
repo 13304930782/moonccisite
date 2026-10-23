@@ -78,12 +78,12 @@ test('phase 1: ownership, review snapshots, scheduler recovery and series visibi
  assert.equal((await ok('/article-drafts/'+conflict.id)).workflow.state,'failed');
  const own=await draft('owner');await ok('/article-drafts/'+own.id+'/publish','POST',{version:own.version},'owner');
  const ownPublished=await ok('/article-drafts/'+own.id,'GET',null,'owner');
- const mine=await ok('/article-drafts?mine=true','GET',null,'owner');assert.ok(mine.items.every(x=>x.id===own.id));
+ const mine=await ok('/article-drafts?mine=true','GET',null,'owner');assert.equal(mine.items[0].post_slug,own.payload.slug);assert.ok(mine.items.every(x=>x.id===own.id));
  const series=await ok('/series','POST',{title:'Test series',slug:'test-series',description:'Ordered essays'},'admin');
  assert.equal((await request('/series/'+series.id+'/articles','PUT',{post_ids:[d.post_id]})).status,403);
  await ok('/series/'+series.id+'/articles','PUT',{post_ids:[ownPublished.post_id,d.post_id]},'admin');
  const pub=await ok('/series/test-series','GET',null,null);assert.deepEqual(pub.items.map(p=>p.id),[ownPublished.post_id,d.post_id]);
- const nav=await ok('/series/article/'+d.post_id,'GET',null,null);assert.equal(nav.previous.id,ownPublished.post_id);assert.equal(nav.next,null);
+ const nav=await ok('/series/article/'+d.post_id,'GET',null,null);assert.equal(nav.position,2);assert.equal(nav.total,2);assert.equal(nav.previous.id,ownPublished.post_id);assert.equal(nav.next,null);
  await db.query("UPDATE posts SET status='draft' WHERE id=?",[ownPublished.post_id]);
  assert.deepEqual((await ok('/series/test-series','GET',null,null)).items.map(p=>p.id),[d.post_id]);
  assert.equal(await ok('/series/article/'+ownPublished.post_id,'GET',null,null),null);
