@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Ban,
-  Crown,
   FileText,
   AtSign,
   Mailbox,
@@ -12,7 +11,6 @@ import {
   PenLine,
   BellRing,
   Settings,
-  ShieldCheck,
   UserRoundCheck,
   Users,
 } from 'lucide-react';

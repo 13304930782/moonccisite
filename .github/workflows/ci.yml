@@ -68,6 +68,10 @@ jobs:
       - run: node scripts/test-account-browser.cjs
       - run: node scripts/test-site-design-account-browser.cjs
       - run: node scripts/test-about-browser.cjs
+      - run: node scripts/test-admin-workspace-browser.cjs
+      - run: node scripts/test-admin-settings-browser.cjs
+      - run: node scripts/test-content-admin-browser.cjs
+      - run: node scripts/test-content-discovery-browser.cjs
       - run: node scripts/test-publication-health-browser.cjs
       - run: node scripts/test-article-drafts-browser.cjs
       - run: node scripts/test-article-slug-browser.cjs

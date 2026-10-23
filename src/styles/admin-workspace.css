@@ -19,3 +19,10 @@
  .admin-frame :is(.workspace-heading, .analytics-heading, .settings-heading) { flex-wrap:wrap; align-items:flex-start; }
  .admin-frame .admin-search { flex-basis:100%; }
 }
+
+.admin-frame .settings-image-actions { flex-wrap:wrap; gap:12px; }
+.admin-frame .settings-image-actions > :is(button, label),
+.admin-frame .settings-save > button { white-space:nowrap; flex:none; min-height:44px; }
+@media (min-width:761px) and (max-width:1100px) {
+ .admin-frame .site-settings-page .settings-section { grid-template-columns:minmax(0,1fr); gap:20px; }
+}

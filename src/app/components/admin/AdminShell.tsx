@@ -19,7 +19,7 @@ import {
   ChartNoAxesCombined,
   ContactRound,
   FilePenLine,
-  FlaskConical,
+  Code2,
   KeyRound,
   Library,
   AtSign,
@@ -29,7 +29,7 @@ import {
   Radio,
   Server,
   Sparkles,
-  UserRoundCog,
+  UserRound,
   Zap,
   Ban,
   FileText,
@@ -224,7 +224,7 @@ export function AdminShell({ children }: AdminShellProps) {
     {
       title: 'Early Access 审核',
       to: '/admin/early-access',
-      icon: FlaskConical,
+      icon: Code2,
       show: owner,
     },
     {
@@ -327,7 +327,7 @@ export function AdminShell({ children }: AdminShellProps) {
           {label:'站点与系统',paths:['/admin/ai-settings','/admin/node-monitor','/admin/blog-pages','/admin/site-settings','/admin/login-settings','/admin/electricity','/admin/runtime']},
         ].map(group=>{const items=group.paths.map(path=>menus.find(item=>item.to===path)).filter((item):item is MenuItem=>!!item);if(!items.length)return null;return <details className="admin-menu-group" key={group.label+location.pathname} open={group.label==='工作台'||items.some(item=>item.to==='/admin'?location.pathname==='/admin':location.pathname.startsWith(item.to))}><summary>{group.label}</summary>{items.map(item=><NavLink key={item.to} to={item.to} end={item.to==='/admin'} onClick={closeMobile}><item.icon aria-hidden="true"/><span>{item.title}</span></NavLink>)}</details>;})}
         <div className="admin-menu-footer">
-        <Link to="/account/settings" onClick={closeMobile}><UserRoundCog aria-hidden="true"/><span>个人设置</span></Link>
+        <Link to="/account/settings" onClick={closeMobile}><UserRound aria-hidden="true"/><span>个人设置</span></Link>
         <Link to="/" onClick={closeMobile}>
           <Home />
           <span>返回首页</span>
