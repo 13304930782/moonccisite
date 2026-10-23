@@ -92,7 +92,7 @@ export function ResourceState({
     }
   }, [resource.loading, resource.data, location.pathname]);
   const group=location.pathname.startsWith('/admin/')?'/admin':location.pathname.startsWith('/account/')?'/account/settings':location.pathname.startsWith('/projects/')?'/projects':location.pathname.startsWith('/updates/')?'/updates':location.pathname.startsWith('/series/')?'/series':'/articles';
-  if (resource.loading && resource.data === null) return <div className="resource-loading"><p role="status" aria-live="polite">正在加载内容…</p>{resource.cancel && <button type="button" className="resource-cancel" onClick={resource.cancel}>取消加载</button>}</div>;
+  if (resource.loading && resource.data === null) return <div className="resource-loading"><div role="status" aria-label="正在加载内容"><span className="resource-loading-line" aria-hidden="true"/><span className="sr-only">正在加载内容…</span></div>{resource.cancel && <button type="button" className="resource-cancel" onClick={resource.cancel}>取消加载</button>}</div>;
   if (resource.error && resource.data === null)
     return (
       <div className="resource-notice" role="alert">
