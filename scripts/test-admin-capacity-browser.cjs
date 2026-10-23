@@ -80,11 +80,11 @@ async function main() {
     await page.getByText('comment-page-1', { exact: true }).waitFor();
     await page.getByRole('navigation', { name: '评论管理分页' }).getByRole('button', { name: '下一页' }).click();
     await page.getByText('comment-page-2', { exact: true }).waitFor();
-    await page.getByRole('button', { name: '通过', exact: true }).click();
+    await page.getByRole('button', { name: '通过评论 #2', exact: true }).click();
     const confirmation = page.getByRole('alertdialog');
     await confirmation.getByRole('button', { name: '取消', exact: true }).waitFor();
     assert.equal(await confirmation.getByRole('button', { name: '取消', exact: true }).evaluate(el => el === document.activeElement), true);
-    await confirmation.getByRole('button', { name: '确认继续', exact: true }).click();
+    await confirmation.getByRole('button', { name: '通过评论', exact: true }).click();
     await page.getByText('comment-page-1', { exact: true }).waitFor();
     const requestUpdate = page.waitForRequest(r => new URL(r.url()).searchParams.get('target') === 'update');
     await page.getByRole('radiogroup', { name: '筛选评论来源' }).getByRole('radio', { name: '近况评论', exact: true }).click();
