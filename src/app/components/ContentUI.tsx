@@ -5,6 +5,7 @@ import { FormEvent, ReactNode, useCallback, useEffect, useLayoutEffect, useRef, 
 import { Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { publicRead, publicReadPath } from '../lib/publicRead';
+import {FestivalSlot} from './Festivals/Entry';
 import { Header } from './Header';
 import { SiteFooter } from './SiteFooter';
 import { SiteBack } from './SiteBack';
@@ -112,7 +113,7 @@ export function SitePage({ children, narrow = false, detail = false,className=''
     <div className={`neo-page ${className}`}>
       <Header />
       <main onAnimationEnd={event=>{if(event.target===event.currentTarget) visibleDiagnostic(location.pathname,'motion-complete');}} className={`site-container page-content ${narrow ? 'reading-page' : ''} ${detail ? 'detail-container' : ''}`}>
-        {narrow ? <div className="page-reading-column">{children}</div> : children}
+        {narrow ? <div className="page-reading-column"><FestivalSlot name="page"/>{children}</div> : <><FestivalSlot name="page"/>{children}</>}
       </main>
       {footerContent}
       <SiteFooter />

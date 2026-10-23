@@ -3,6 +3,7 @@ import { brandText } from '../lib/brand';
 import { Link } from 'react-router-dom';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { safeHref, safeImageSrc } from '../lib/safeUrl';
+import { FestivalSlot } from './Festivals/Entry';
 export function SiteFooter() {
   const { theme } = useMoonTheme();
   const { data: settings } = useSiteSettings();
@@ -72,6 +73,7 @@ export function SiteFooter() {
             )}
           </div>
         </div>
+        <FestivalSlot name="footer" />
       </div>
     </footer>
   );

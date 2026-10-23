@@ -1,6 +1,7 @@
 import { safeHref, safeRoutePath, isExternalHttpUrl } from '../lib/safeUrl';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
+import { FestivalSlot } from '../components/Festivals/Entry';
 import { SiteFooter } from '../components/SiteFooter';
 import { lazy, Suspense } from 'react';
 const MarkdownContent = lazy(() => import('../components/MarkdownContent').then(m => ({ default: m.MarkdownContent })));
@@ -61,6 +62,7 @@ export default function HomePage() {
         <section className="home-hero">
           <div className="hero-copy">
             <ResourceState resource={settings}>
+              <FestivalSlot name="home" />
               <p className="eyebrow">
                 {hero.eyebrow ?? 'mooncci / 个人技术手记'}
               </p>

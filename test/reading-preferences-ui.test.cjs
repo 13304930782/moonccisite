@@ -38,6 +38,7 @@ test('reading controls apply immediately, persist under the existing key, synchr
   const Link=({to,children,...props})=>React.createElement('a',{...props,href:to},children);
   const focus=loadTs('src/app/lib/focusLoop.ts');
   const Header=loadTs('src/app/components/Header.tsx',{
+   './Festivals/Entry':{FestivalSlot:()=>null},
    'react-router-dom':{useLocation:()=>({pathname:'/article/17',search:''}),useNavigate:()=>()=>{},Link,NavLink:Link},
    '../context/ThemeContext':theme,'../lib/focusLoop':focus,'../lib/responsiveImage':{responsiveImage:src=>({src})},
    '../lib/usePublishing':{usePublishing:()=>false},'../context/AuthContext':{useAuth:()=>({user:null,logout:async()=>true,loggingOut:false,logoutError:''})},

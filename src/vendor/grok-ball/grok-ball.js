@@ -970,6 +970,10 @@ window.EMOTION_SEED = [
         bodyG.setAttribute('transform', bodyTransform);
         curBodyTransform = bodyTransform;
       }
+      if (b.pitch !== undefined) {
+        if (bodyG.getAttribute('data-head-pitch') !== String(r2(b.pitch))) bodyG.setAttribute('data-head-pitch', r2(b.pitch));
+        if (bodyG.getAttribute('data-head-yaw') !== String(r2(b.yaw))) bodyG.setAttribute('data-head-yaw', r2(b.yaw));
+      }
       setBodyColor(b.color);
 
       if (sketch !== curSketch) {
@@ -1477,6 +1481,9 @@ window.EMOTION_SEED = [
     this._seed = Math.random() * 100;
     this._events = {};
     this._gaze = { x: 0, y: 0, tx: 0, ty: 0 };
+    this._pointerTracking = !!opts.pointerTracking;
+    this._pointerAt = -Infinity;
+    this._pointerWeight = 0;
     this._style = { sketch: 0 };
     this._theme = opts.color
       ? { body: opts.color, eyes: opts.eyeColor || '#FFFFFF' }
@@ -1638,13 +1645,15 @@ window.EMOTION_SEED = [
 
     resetIdle: function () { this._lastActivity = performance.now(); },
 
-    /* 注视目标：横向 ±24、纵向 ±15（viewBox 坐标），幅度克制以保持含蓄 */
+    /* 注视目标：默认 ±24/15；站点鼠标跟随实例 ±40/26（viewBox 坐标） */
     setGaze: function (nx, ny) {
-      this._gaze.tx = clamp(nx, -1, 1) * 24;
-      this._gaze.ty = clamp(ny, -1, 1) * 15;
+      this._pointerAt = performance.now();
+      this._gaze.tx = clamp(nx, -1, 1) * (this._pointerTracking ? 40 : 24);
+      this._gaze.ty = clamp(ny, -1, 1) * (this._pointerTracking ? 26 : 15);
       return this;
     },
     clearGaze: function () {
+      this._pointerAt = -Infinity;
       this._gaze.tx = 0;
       this._gaze.ty = 0;
       return this;
@@ -1786,6 +1795,10 @@ window.EMOTION_SEED = [
       pose.body.sketch = Math.max(pose.body.sketch || 0, this._style.sketch || 0);
 
       var dt = this._dt || 1 / 60;
+      if (this._pointerTracking) {
+        var attending = def.gaze !== false && now - this._pointerAt < 1200;
+        this._pointerWeight += ((attending ? 1 : 0) - this._pointerWeight) * (1 - Math.exp(-4 * dt));
+      }
 
       /* ---- 表情池轮换：poolMs 间隔内随机跳到池内另一个眼环 ---- */
       if (this._active && now >= this._poolNext) {
@@ -1809,7 +1822,7 @@ window.EMOTION_SEED = [
       this._open.t = openKey != null ? openKey : (this._blinkQ.length ? this._open.t : def.openness);
 
       /* ---- 待机小动作：9~18s 随机自旋 / 弹跳 ---- */
-      if (this._active && def.antics && now >= this._anticNext) {
+      if (this._active && def.antics && this._pointerWeight < 0.05 && now >= this._anticNext) {
         if (!this._spin && this._bounceAt < 0) {
           var pick = Math.random();
           if (pick < 0.45) this.spin(1);
@@ -1861,16 +1874,20 @@ window.EMOTION_SEED = [
       pose.left.ring = this._ringCur[0];
       pose.right.ring = this._ringCur[1];
 
-      /* 鼠标注视：帧率无关的指数平滑（60fps 基准下每帧收敛约 9%） */
-      var k = 1 - Math.exp(-5.66 * dt);
+      /* 鼠标注视：帧率无关的指数平滑；站点实例响应更柔和 */
+      var k = 1 - Math.exp(-(this._pointerTracking ? 4.2 : 5.66) * dt);
       var gx = def.gaze !== false ? this._gaze.tx : 0;
       var gy = def.gaze !== false ? this._gaze.ty : 0;
+      if (this._pointerTracking) { gx *= this._pointerWeight; gy *= this._pointerWeight; }
       this._gaze.x += (gx - this._gaze.x) * k;
       this._gaze.y += (gy - this._gaze.y) * k;
       pose.left.lookX += this._gaze.x;
       pose.right.lookX += this._gaze.x;
       pose.left.lookY += this._gaze.y;
       pose.right.lookY += this._gaze.y;
+
+      var autonomousX = (pose.left.lookX + pose.right.lookX) / 2 - this._gaze.x;
+      var autonomousY = (pose.left.lookY + pose.right.lookY) / 2 - this._gaze.y;
 
       /* 常驻眼神微漂移：每只眼相位错开，永不完全静止 */
       if (def.gaze !== false) {
@@ -1879,6 +1896,23 @@ window.EMOTION_SEED = [
         pose.right.lookX += 1.4 * Math.sin(0.42 * w + 1) + 0.5 * Math.sin(1.0 * w + 2);
         pose.left.lookY += 0.9 * Math.sin(0.58 * w);
         pose.right.lookY += 0.9 * Math.sin(0.58 * w + 1);
+      }
+
+      // Pointer attention fades out autonomous glances/turns, keeping blink and breath.
+      if (this._pointerTracking) {
+        var rest = 1 - this._pointerWeight;
+        pose.left.lookX = (pose.left.lookX - this._gaze.x) * rest + this._gaze.x;
+        pose.right.lookX = (pose.right.lookX - this._gaze.x) * rest + this._gaze.x;
+        pose.left.lookY = (pose.left.lookY - this._gaze.y) * rest + this._gaze.y;
+        pose.right.lookY = (pose.right.lookY - this._gaze.y) * rest + this._gaze.y;
+        // Shared autonomous glances turn the head, not just the eyes inside its hat.
+        var glanceX = autonomousX * rest;
+        var glanceY = autonomousY * rest + this._gaze.y;
+        pose.left.lookX -= glanceX;
+        pose.right.lookX -= glanceX;
+        pose.body.pitch = clamp(glanceY / 26 * .45, -.45, .45);
+        pose.body.rotate = pose.body.rotate * rest + this._gaze.x * .075;
+        pose.body.yaw = Math.atan2(Math.sin(pose.body.yaw), Math.cos(pose.body.yaw)) * rest + (this._gaze.x + glanceX) * .0075;
       }
 
       /* 小尺寸实例放大眼睛占比，保证 32~48px 下仍可读 */

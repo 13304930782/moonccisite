@@ -17,6 +17,12 @@ const sentence='本文补写都市天际线2基础Mod推荐，介绍三款：Ana
   await page.goto(`${base}/article/summary-demo`);
   const card=page.locator('section[aria-label="AI 简介"]'),body=card.locator('.article-ai-summary-body'),button=card.getByRole('button');
   await card.waitFor();await page.evaluate(()=>document.fonts.ready);
+  const iconResponse=await page.request.get(`${base}/icons/deepseek.svg`);
+  assert.equal(iconResponse.status(),200,'DeepSeek icon must be publicly readable');
+  assert.match(iconResponse.headers()['content-type'],/image\/svg\+xml/);
+  const titleBox=await card.locator('.article-ai-summary-title').boundingBox(),iconBox=await card.locator('.article-ai-summary-icon').boundingBox(),bodyBox=await body.boundingBox();
+  assert.equal(titleBox.x,bodyBox.x,'AI title aligns with body left edge');
+  assert.equal(iconBox.x,titleBox.x+titleBox.width+8,'Icon follows the title with an 8px gap');
   assert.equal(await button.count(),0,'Short summary has no toggle');
   await page.screenshot({path:`${out}/${width}-${theme}-short.png`,fullPage:true});
   summary=sentence.repeat(3);await page.reload();await button.waitFor();

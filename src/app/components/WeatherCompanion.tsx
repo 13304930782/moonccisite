@@ -1,4 +1,5 @@
 import { reducedMotion } from '../lib/motionPreference';
+import { FestivalSlot } from './Festivals/Entry';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { CloudSun, Minus, X, CircleHelp } from 'lucide-react';
@@ -378,6 +379,7 @@ export default function WeatherCompanion() {
     if (!mount.current || collapsed || disabled) return;
     const engine = GrokBall.create(mount.current, {
       emotion: '02',
+      pointerTracking: true,
       color: theme === 'dark' ? '#d9d9d9' : '#292929',
       eyeColor: theme === 'dark' ? '#202020' : '#fafafa',
       label: 'mooncci 天气小球',
@@ -402,8 +404,8 @@ export default function WeatherCompanion() {
       const rect = mount.current.getBoundingClientRect();
       const clamp = (value: number) => Math.max(-1, Math.min(1, value));
       engine.setGaze(
-        clamp((event.clientX - rect.x - rect.width / 2) / (rect.width / 2)),
-        clamp((event.clientY - rect.y - rect.height / 2) / (rect.height / 2)),
+        clamp(event.clientX / window.innerWidth * 2 - 1),
+        clamp(event.clientY / window.innerHeight * 2 - 1),
       );
     };
     const clear = () => engine.clearGaze();
@@ -845,6 +847,7 @@ export default function WeatherCompanion() {
               ref={mount}
               aria-hidden="true"
             />
+            <FestivalSlot name="hat"/>
             <span className="weather-companion-label">
               {GrokBall.EMOTIONS.find(item => item.id === displayedEmotion)?.name || moodName}
             </span>

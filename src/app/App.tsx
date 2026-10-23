@@ -1,4 +1,5 @@
 import { feedbackStore } from './lib/feedback';
+import { FestivalSlot } from './components/Festivals/Entry';
 import { confirmationStore } from './lib/confirmAction';
 import { afterInitialLoad } from './lib/afterInitialLoad';
 import {DocumentDataProvider, DocumentReady, useDocumentStatus, type DocumentData} from './context/DocumentData';
@@ -49,7 +50,7 @@ function SiteRoutes() {
   const [interactive, setInteractive] = useState(false);
   const onReady = useCallback(() => setInteractive(true), []);
   return <RoutePosition><NavigationProtection/><RoutePreload/>
-          <SiteMeta /><DeferredFeedbackHost/>
+          <SiteMeta /><FestivalSlot name="global"/><DeferredFeedbackHost/>
           <PageAnalytics /><DiagnosticNavigation />
           <Suspense fallback={<RouteLoader />}>{status && status>=400 && location.key===initialKey ? (status===404 ? <NotFoundPage/> : <RouteFailure/>) : (location.pathname==='/'?<HomePage/>:<RoutePages/>)}<DocumentReady onReady={onReady}/></Suspense>
           {interactive && <><PublicWeatherCompanion /><Suspense fallback={null}><ReadingTools /></Suspense></>}
