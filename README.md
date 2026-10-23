@@ -156,7 +156,7 @@ docs/         部署专题、维护说明与历史记录
 
 ## 授权与致谢
 
-仓库目前没有项目级 LICENSE 文件，不宣称采用 MIT 等开源许可证。第三方组件与素材说明见 [ATTRIBUTIONS.md](ATTRIBUTIONS.md) 和 [public/licenses](public/licenses)。
+仓库目前没有项目级 LICENSE 文件。第三方组件与素材说明见 [ATTRIBUTIONS.md](ATTRIBUTIONS.md) 和 [public/licenses](public/licenses)。
 
 <p align="right"><a href="#english">English →</a></p>
 
