@@ -54,6 +54,8 @@ jobs:
         timeout-minutes: 8
         run: |
           sudo sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
+          # Hosted runners also select mirrors through this indirection.
+          printf 'https://archive.ubuntu.com/ubuntu/\n' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
           printf 'Acquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::Retries "2";\n' | sudo tee /etc/apt/apt.conf.d/80-mooncci-ci-timeouts >/dev/null
           npx playwright install --with-deps chromium webkit
       - run: node test/mobile-inputs.browser.cjs
