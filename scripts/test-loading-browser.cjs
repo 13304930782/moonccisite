@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chromium}=require('playwright');
+(async()=>{const {preview}=await import('vite');const server=await preview({preview:{host:'127.0.0.1',port:4999,strictPort:true},logLevel:'error'});let browser;try{
+ browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));let pending=[];
+ await page.route('**/api/**',async route=>{const p=new URL(route.request().url()).pathname;if(['/api/now','/api/activity','/api/posts','/api/posts/slow'].includes(p)){pending.push(route);return;}let body={items:[],total:0};if(p==='/api/settings/site')body={brand:{},hero:{title:'mooncci',subtitle:'技术与生活'},footer:{},weather:{enabled:false}};if(p==='/api/auth/session')body={user:null};await route.fulfill({json:body});});
+ await fs.mkdir('.cache/loading-qa',{recursive:true});
+ for(const width of [1440,375])for(const dark of [false,true]){
+ await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:4999/article/slow');await page.locator('.resource-loading').waitFor();await page.evaluate(d=>{document.documentElement.classList.toggle('dark',d);document.documentElement.dataset.moonTheme=d?'dark':'light';},dark);
+ const rect=await page.locator('.resource-loading').boundingBox();assert.ok(rect.x>=19&&rect.width<width-35);assert.ok(rect.height<140);assert.equal(await page.locator('.resource-loading .content-skeleton').count(),0);await page.screenshot({path:`.cache/loading-qa/article-${width}-${dark}.png`});
+ await page.getByRole('button',{name:'取消加载'}).click();await page.getByRole('button',{name:'重试',exact:true}).waitFor();assert.ok((await page.locator('.resource-notice').boundingBox()).x>=19);await page.getByRole('button',{name:'重试',exact:true}).click();await page.locator('.resource-loading').waitFor();
+ await page.goto('http://127.0.0.1:4999/');await page.locator('.now-panel .resource-loading').waitFor();assert.ok((await page.locator('.now-panel .resource-loading').boundingBox()).height<100);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:`.cache/loading-qa/home-${width}-${dark}.png`});
+ }
+ assert.deepEqual(errors,[]);console.log('PASS: article bounded loading/error, cancel/retry, compact home loading, desktop/mobile light/dark.');
+ }finally{if(browser)await browser.close();await new Promise(resolve=>server.httpServer.close(resolve));}})().catch(e=>{console.error(e);process.exitCode=1;});

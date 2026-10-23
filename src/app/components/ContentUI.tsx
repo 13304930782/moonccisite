@@ -9,6 +9,7 @@ import { Header } from './Header';
 import { SiteFooter } from './SiteFooter';
 import { SiteBack } from './SiteBack';
 import { visibleDiagnostic } from '../lib/browserDiagnostics';
+import '../../styles/resource-state.css';
 
 export type PageData<T = any> = { items: T[]; total: number; page: number; pageSize: number };
 // Only published, user-independent endpoints may share an in-memory snapshot.
@@ -91,7 +92,7 @@ export function ResourceState({
     }
   }, [resource.loading, resource.data, location.pathname]);
   const group=location.pathname.startsWith('/admin/')?'/admin':location.pathname.startsWith('/account/')?'/account/settings':location.pathname.startsWith('/projects/')?'/projects':location.pathname.startsWith('/updates/')?'/updates':location.pathname.startsWith('/series/')?'/series':'/articles';
-  if (resource.loading && resource.data === null) return <div><ContentSkeleton />{resource.cancel && <button className="quiet-button" onClick={resource.cancel}>取消加载</button>}</div>;
+  if (resource.loading && resource.data === null) return <div className="resource-loading"><p role="status" aria-live="polite">正在加载内容…</p>{resource.cancel && <button type="button" className="resource-cancel" onClick={resource.cancel}>取消加载</button>}</div>;
   if (resource.error && resource.data === null)
     return (
       <div className="resource-notice" role="alert">
