@@ -7,3 +7,5 @@
 .article-route .page-content>.resource-loading,.article-route .page-content>.resource-notice{width:min(var(--site-width),calc(100% - 2 * var(--site-gutter)));margin:40px auto;min-width:0}
 .now-panel .resource-loading{padding:12px 0;gap:8px;min-height:68px;font-size:13px}
 @media(max-width:560px){.article-route .page-content>.resource-loading,.article-route .page-content>.resource-notice{margin-block:24px}.resource-loading{gap:12px}}
+
+.now-panel .resource-loading-line{background:var(--border)}
