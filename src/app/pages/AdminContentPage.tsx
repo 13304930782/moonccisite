@@ -1,3 +1,4 @@
+import { useContentListQuery } from '../lib/useContentListQuery';
 import '../../styles/admin-settings-layout.css';
 import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
@@ -111,8 +112,8 @@ function ImageField({
   </section>;
 }
 export function AdminUpdatesPage() {
-  const [page, setPage] = useState(1),
-    resource = useResource(`/admin/updates?page=${page}`);
+  const { page, setPage } = useContentListQuery();
+  const resource = useResource(`/admin/updates?page=${page}`);
   const [dirty,setDirty]=useState(false),[imageBusy,setImageBusy]=useState(false);useUnsavedLeave(dirty);
   const [form, rawSetForm] = useState({
       id: 0,
@@ -248,8 +249,8 @@ export function AdminProjectsPage() {
   const iconBusy = useCallback((value:boolean) => setBusyImages(previous => previous.icon === value ? previous : {...previous,icon:value}), []);
   const { user } = useAuth(),
     owner = user?.role === 'owner';
-  const [page, setPage] = useState(1),
-    resource = useResource(`/admin/projects?page=${page}`),
+  const { page, setPage } = useContentListQuery();
+  const resource = useResource(`/admin/projects?page=${page}`),
     [form, rawSetForm] = useState<any>({ ...emptyProject }),
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false),

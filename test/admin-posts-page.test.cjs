@@ -4,7 +4,7 @@ const articleUrl={};new Function('exports',ts.transpileModule(fs.readFileSync('s
 function load(file,api,role='owner',confirm=async()=>true,extra={}){
  const mod={exports:{}},box=({children,...props})=>React.createElement('box',props,children);
  const button=({asChild,children,...props})=>asChild?React.cloneElement(children,props):React.createElement('button',props,children);
- const mocks={
+ const mocks={'../lib/useContentListQuery':require('./helpers/content-list-query.cjs'),
   'react-router-dom':{Link:({to,children,...props})=>React.createElement('a',{href:to,...props},children)},
   'lucide-react':{MoreHorizontal:'svg'},'react-dom':{createPortal:children=>React.createElement('import-host',null,children)},
   '../lib/articleUrl':articleUrl,

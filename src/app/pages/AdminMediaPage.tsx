@@ -1,3 +1,4 @@
+import { useContentListQuery } from '../lib/useContentListQuery';
 import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog';
@@ -83,17 +84,18 @@ function QualityMenu({ value, onChange, upload = false, disabled = false }: { va
 
 export default function AdminMediaPage() {
   const [items, setItems] = useState<MediaItem[]>([]);
-  const [page, setPage] = useState(1);
+  const { params, page, setPage, update: updateQuery } = useContentListQuery();
   const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState('');
+  const search = params.get('q') || '';
+  const status: MediaStatus = params.get('status') === 'trashed' ? 'trashed' : 'active';
   const requestVersion = useRef(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [loadError, setLoadError] = useState('');
-  const [keyword, setKeyword] = useState('');
+  const [keyword, setKeyword] = useState(search);
+  useEffect(() => { setKeyword(search); }, [search]);
   const [uploading, setUploading] = useState(false);
   const [imageQuality, setImageQuality] = useState('medium');
-  const [status, setStatus] = useState<MediaStatus>('active');
   const [selected, setSelected] = useState<MediaItem | null>(null);
   const detailTrigger = useRef<HTMLButtonElement | null>(null);
   const batchMenuTrigger = useRef<HTMLButtonElement | null>(null);
@@ -107,7 +109,7 @@ export default function AdminMediaPage() {
   const [saving, setSaving] = useState(false);
   const uploadInput = useRef<HTMLInputElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const clearSearch = () => { setKeyword(''); setSearch(''); setPage(1); searchInput.current?.focus(); };
+  const clearSearch = () => { setKeyword(''); updateQuery({ q: '', page: '' }); searchInput.current?.focus(); };
 
   useEffect(() => {
     const media = window.matchMedia('(hover: hover) and (pointer: fine)');
@@ -141,7 +143,7 @@ export default function AdminMediaPage() {
   useEffect(() => {
     const nextSearch = keyword.trim();
     if (nextSearch === search) return;
-    const timer = setTimeout(() => { setPage(1); setSearch(nextSearch); }, 300);
+    const timer = setTimeout(() => { updateQuery({ page: '', q: nextSearch }, true); }, 300);
     return () => clearTimeout(timer);
   }, [keyword, search]);
   useEffect(() => {
@@ -462,8 +464,8 @@ export default function AdminMediaPage() {
 
       <div className="media-page-toolbar">
         <div className="media-status-tabs" role="group" aria-label="媒体状态">
-          <button type="button" aria-pressed={status === 'active'} disabled={saving} onClick={() => { setPage(1); setStatus('active'); }} className="ui-btn ui-btn--ghost">正常文件{status === 'active' && !search && !loading && !loadError && <span>{total}</span>}</button>
-          <button type="button" aria-pressed={status === 'trashed'} disabled={saving} onClick={() => { setPage(1); setStatus('trashed'); }} className="ui-btn ui-btn--ghost">回收站{status === 'trashed' && !search && !loading && !loadError && <span>{total}</span>}</button>
+          <button type="button" aria-pressed={status === 'active'} disabled={saving} onClick={() => { updateQuery({ page: '', status: '' }); }} className="ui-btn ui-btn--ghost">正常文件{status === 'active' && !search && !loading && !loadError && <span>{total}</span>}</button>
+          <button type="button" aria-pressed={status === 'trashed'} disabled={saving} onClick={() => { updateQuery({ page: '', status: 'trashed' }); }} className="ui-btn ui-btn--ghost">回收站{status === 'trashed' && !search && !loading && !loadError && <span>{total}</span>}</button>
         </div>
         <div className="media-search-field"><input ref={searchInput} aria-label="搜索媒体文件" value={keyword} onChange={event => setKeyword(event.target.value)} placeholder="搜索文件名、显示名、Alt" className="ui-input" />{keyword && <button type="button" className="media-search-clear ui-btn ui-btn--ghost ui-btn--icon" aria-label="清除搜索" onClick={clearSearch}><X size={16} aria-hidden="true" /></button>}</div>
         <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" variant="ghost" className="media-sort-trigger ui-btn ui-btn--ghost">最近更新<ChevronDown size={14} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal ui-v2 media-list-menu"><DropdownMenuRadioGroup value="updated"><DropdownMenuRadioItem value="updated">最近更新</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>

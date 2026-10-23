@@ -1,3 +1,4 @@
+import { useContentListQuery } from '../lib/useContentListQuery';
 import { articlePath } from '../lib/articleUrl';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -29,12 +30,14 @@ export default function AdminPostsPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [draftPage, setDraftPage] = useState(1), [draftTotal, setDraftTotal] = useState(0);
   const [draftsLoaded, setDraftsLoaded] = useState(false);
-  const [filter, setFilter] = useState<Filter>('all');
+  const { params, page, setPage, update: updateQuery } = useContentListQuery();
+  const filter: Filter = params.get('status') === 'published' ? 'published' : params.get('status') === 'draft' ? 'draft' : 'all';
   const [posts, setPosts] = useState<Post[]>([]);
   const [allPosts, setAllPosts] = useState<Post[] | null>(null);
   const [allTotal, setAllTotal] = useState<number | null>(null);
   const [message, setMessage] = useState('');
-  const [page, setPage] = useState(1), [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(0);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -42,7 +45,7 @@ export default function AdminPostsPage() {
 
   useEffect(() => {
     const version = ++requestVersion.current;
-    setLoading(true); setPosts([]); setMessage('');
+    setLoading(true); setPosts([]); setMessage(''); setLoadError('');
     async function load() {
       try {
         const [data, working] = await Promise.all([
@@ -61,7 +64,7 @@ export default function AdminPostsPage() {
         }
         if (data.page !== page) setPage(data.page);
       } catch (error: any) {
-        if (version === requestVersion.current) setMessage(error.message || '文章加载失败');
+        if (version === requestVersion.current) setLoadError(error.message || '文章加载失败');
       } finally {
         if (version === requestVersion.current) setLoading(false);
       }
@@ -139,9 +142,10 @@ export default function AdminPostsPage() {
       </header>
       {manager && importHost && createPortal(<ArticleImport />, importHost)}
       <div className="admin-posts-filters" role="group" aria-label="筛选文章状态">
-        {filters.map(item => <AdminButton key={item.value} variant="ghost" aria-pressed={filter === item.value} onClick={() => { setFilter(item.value); setPage(1); }} className="ui-btn ui-btn--ghost">{item.label}{counts && <span className="admin-posts-filter-count">{counts[item.value]}</span>}</AdminButton>)}
+        {filters.map(item => <AdminButton key={item.value} variant="ghost" aria-pressed={filter === item.value} onClick={() => updateQuery({ status: item.value === 'all' ? '' : item.value, page: '' })} className="ui-btn ui-btn--ghost">{item.label}{counts && <span className="admin-posts-filter-count">{counts[item.value]}</span>}</AdminButton>)}
       </div>
       {message && <div className="admin-posts-message" role="alert">{message}</div>}
+      {loadError && <div className="admin-posts-message" role="alert">{loadError} <AdminButton disabled={loading} variant="ghost" onClick={() => setRefresh(value => value + 1)}>重试</AdminButton></div>}
       {loading ? <div className="admin-posts-skeleton" role="status" aria-label="正在加载文章…">
         {[0, 1, 2].map(index => <div className="admin-posts-skeleton-row" key={index}><Skeleton className="admin-posts-skeleton-title" /><Skeleton className="admin-posts-skeleton-meta" /><Skeleton className="admin-posts-skeleton-summary" /></div>)}
       </div> : <div className="admin-posts-list">
@@ -163,13 +167,13 @@ export default function AdminPostsPage() {
             </div>
           </article>;
         })}
-        {!message && shown === 0 && <div className="admin-posts-empty"><p>还没有文章，先点击右上角写文章。</p><AdminButton asChild variant="solid" className="ui-btn ui-btn--solid"><Link to="/admin/write">写文章</Link></AdminButton></div>}
+        {!message && !loadError && shown === 0 && <div className="admin-posts-empty"><p>还没有文章，先点击右上角写文章。</p><AdminButton asChild variant="solid" className="ui-btn ui-btn--solid"><Link to="/admin/write">写文章</Link></AdminButton></div>}
       </div>}
       {filter !== 'published' && draftPage * 20 < draftTotal && <div className="admin-posts-more"><AdminButton variant="ghost" disabled={loading} onClick={() => setDraftPage(value => value + 1)} className="ui-btn ui-btn--ghost">加载更多草稿</AdminButton></div>}
       {pages > 1 ? <nav className="admin-posts-pagination" aria-label="文章管理分页">
-        <AdminButton variant="ghost" disabled={loading || page <= 1} onClick={() => setPage(value => value - 1)} className="ui-btn ui-btn--ghost">上一页</AdminButton>
+        <AdminButton variant="ghost" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="ui-btn ui-btn--ghost">上一页</AdminButton>
         <span>共 {total} 条，第 {page} / {pages} 页</span>
-        <AdminButton variant="ghost" disabled={loading || page >= pages} onClick={() => setPage(value => value + 1)} className="ui-btn ui-btn--ghost">下一页</AdminButton>
+        <AdminButton variant="ghost" disabled={loading || page >= pages} onClick={() => setPage(page + 1)} className="ui-btn ui-btn--ghost">下一页</AdminButton>
       </nav> : !loading && <p className="admin-posts-shown">已显示 {shown} 篇</p>}
     </div>
   </div>;

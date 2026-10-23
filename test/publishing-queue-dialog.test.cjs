@@ -13,7 +13,7 @@ test('review dismissal retains manuscript during exit, blocks closing actions an
  const drafts=[{draft_id:1,title:'第一稿',author_name:'作者一',draft_version:3,state:'submitted',snapshot:{content:'第一稿正文',cover_image:'/cover.png',cover_crop:{card:{x:.5,y:.8,zoom:1},detail:{x:.5,y:.7,zoom:1.2}}}},{draft_id:2,title:'第二稿',author_name:'作者二',draft_version:4,state:'submitted',snapshot:{content:'第二稿正文'}}];
  // Keep children mounted after open=false, as Radix Presence does while fading out.
  const Dialog=props=>React.createElement('dialog-shell',props,props.children);
- const mocks={
+ const mocks={'../lib/useContentListQuery':require('./helpers/content-list-query.cjs'),
   'react-router-dom':{useSearchParams:()=>[new URLSearchParams()]},
   'lucide-react':{Inbox:'svg',FileText:'svg',ArrowRight:'svg',CalendarClock:'svg'},
   '../lib/feedback':{notify:{error(){}}},
