@@ -1,3 +1,5 @@
+import { confirmAction } from '../lib/confirmAction';
+import { hasUnsavedChanges } from '../lib/useUnsavedLeave';
 import { notify } from '../lib/feedback';
 import { ThemeSelect } from './ThemeSelect';
 import { ReactNode, useEffect, useState } from 'react';
@@ -19,8 +21,10 @@ const splitNames = (value: string) =>
 export function AdminElectricityRooms({
   children,
 }: {
-  children: (room: ElectricityRoom) => ReactNode;
+  children: (room: ElectricityRoom, onBusyChange: (busy: boolean) => void) => ReactNode;
 }) {
+  const [settingsBusy, setSettingsBusy] = useState(false);
+  const canChangeRoom = async () => !settingsBusy && (!hasUnsavedChanges() || await confirmAction('当前宿舍设置有未保存的更改，继续可能丢失这些修改。', '继续切换'));
   const [rooms, setRooms] = useState<ElectricityRoom[]>([]),
     [selected, setSelected] = useState('');
   const [loading, setLoading] = useState(true),
@@ -66,6 +70,7 @@ export function AdminElectricityRooms({
       .finally(() => setLoading(false));
   }, []);
   const open = async (next: typeof mode) => {
+    if (!(await canChangeRoom())) return;
     setError('');
     setMessage('');
     setPreview(null);
@@ -175,8 +180,9 @@ export function AdminElectricityRooms({
           <ThemeSelect
             aria-label="当前管理的宿舍"
             value={selected}
-            disabled={Boolean(mode) || busy || !rooms.length}
-            onValueChange={(value) => {
+            disabled={Boolean(mode) || busy || settingsBusy || !rooms.length}
+            onValueChange={async (value) => {
+              if (value === selected || !(await canChangeRoom())) return;
               setSelected(value);
               setMessage('');
               setError('');
@@ -194,7 +200,7 @@ export function AdminElectricityRooms({
         <div className="electricity-room-toolbar-actions">
           <button
             className="electricity-button"
-            disabled={busy || Boolean(mode) || !room}
+            disabled={busy || settingsBusy || Boolean(mode) || !room}
             onClick={() => open('edit')}
           >
             <Users />
@@ -202,7 +208,7 @@ export function AdminElectricityRooms({
           </button>
           <button
             className="electricity-button"
-            disabled={busy || Boolean(mode)}
+            disabled={busy || settingsBusy || Boolean(mode)}
             onClick={() => open('add')}
           >
             <Plus />
@@ -210,7 +216,7 @@ export function AdminElectricityRooms({
           </button>
           <button
             className="electricity-button"
-            disabled={busy || Boolean(mode)}
+            disabled={busy || settingsBusy || Boolean(mode)}
             onClick={() => open('import')}
           >
             <Upload />
@@ -447,7 +453,7 @@ export function AdminElectricityRooms({
               查看此宿舍面板 <ArrowUpRight size={14} />
             </a>
           </div>
-          {children(room)}
+          {children(room, setSettingsBusy)}
         </div>
       ) : (
         !mode && (

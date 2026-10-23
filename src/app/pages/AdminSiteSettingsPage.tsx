@@ -221,6 +221,15 @@ export default function AdminSiteSettingsPage() {
       setSaving('');
     }
   }
+  function discard(section: string) {
+    const value = JSON.parse(baseline[section]);
+    if (section === 'brand') setBrand(value);
+    if (section === 'hero') setHero(value);
+    if (section === 'footer') setFooter(value);
+    if (section === 'now') setNow(prev => ({ ...prev, content: value }));
+    setMessages(prev => ({ ...prev, [section]: '' }));
+    setFailed(prev => ({ ...prev, [section]: false }));
+  }
   function section(
     id: string,
     title: string,
@@ -236,9 +245,10 @@ export default function AdminSiteSettingsPage() {
         <fieldset disabled={loading || !!error || !!saving || uploading}>
           {content}
           <div className="settings-save">
-            <button className="button-primary" type="submit" disabled={saving === id}>
+            <button className="button-primary" type="submit" disabled={saving === id || !dirtySections[id]}>
               {saving === id ? '保存中…' : `保存${title}`}
             </button>
+            <button className="quiet-button" type="button" disabled={!dirtySections[id]} onClick={() => discard(id)}>放弃更改</button>
             {dirtySections[id] && !saving && <span className="settings-dirty">有未保存的修改</span>}
             <span role={failed[id] ? 'alert' : 'status'} className={failed[id] ? 'settings-error' : undefined}>{messages[id]}</span>
           </div>

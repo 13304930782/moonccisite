@@ -1,5 +1,5 @@
 import '../../styles/electricity.css';
-import '../../styles/electricity.css';
+import { useUnsavedLeave } from '../lib/useUnsavedLeave';
 import { ThemeSelect } from '../components/ThemeSelect';
 import {
   AdminElectricityRooms,
@@ -91,16 +91,20 @@ const dateTime = (value?: string | null) => {
 export default function AdminElectricityPage() {
   return (
     <AdminElectricityRooms>
-      {(room) => <RoomSettings key={`${room.id}:${room.active}`} room={room} />}
+      {(room, onBusyChange) => <RoomSettings key={`${room.id}:${room.active}`} room={room} onBusyChange={onBusyChange} />}
     </AdminElectricityRooms>
   );
 }
-function RoomSettings({ room }: { room: ElectricityRoom }) {
+function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyChange: (busy: boolean) => void }) {
   const roomApi = (path: string, options?: Parameters<typeof api>[1]) =>
     api(`${path}?roomId=${encodeURIComponent(room.id)}`, options);
   const [data, setData] = useState<SettingsData | null>(null);
   const [form, setForm] = useState<Config>(defaults);
+  const [saved, setSaved] = useState<Config | null>(null);
+  const dirty = saved !== null && JSON.stringify(form) !== JSON.stringify(saved);
+  useUnsavedLeave(dirty);
   const [busy, setBusy] = useState('');
+  useEffect(() => { onBusyChange(Boolean(busy)); return () => onBusyChange(false); }, [busy, onBusyChange]);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [historyMessage, setHistoryMessage] = useState('');
@@ -126,7 +130,11 @@ function RoomSettings({ room }: { room: ElectricityRoom }) {
   const load = async (resetForm = true) => {
     const response = await roomApi('/admin/electricity/settings');
     setData(response.data);
-    if (resetForm) setForm({ ...defaults, ...response.data.config });
+    if (resetForm) {
+      const value = { ...defaults, ...response.data.config };
+      setForm(value);
+      setSaved(value);
+    }
   };
 
   useEffect(() => {
@@ -507,12 +515,14 @@ function RoomSettings({ room }: { room: ElectricityRoom }) {
           <div className="electricity-manage-save">
             <button
               type="submit"
+              disabled={!dirty}
               className="electricity-button electricity-button--primary"
             >
               <Save />
               {busy === 'save' ? '保存中…' : '保存设置'}
             </button>
-            <span>修改后统一保存，运行计划在 30 秒内生效。</span>
+            <button type="button" className="electricity-button" disabled={!dirty} onClick={() => { if (saved) setForm(saved); setError(''); setNotice(''); }}>放弃更改</button>
+            <span role="status">{dirty ? '有未保存的更改' : '已保存'}，运行计划在 30 秒内生效。</span>
           </div>
         </fieldset>
       </form>

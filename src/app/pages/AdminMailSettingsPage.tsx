@@ -345,11 +345,11 @@ export default function AdminMailSettingsPage() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={save}
-              disabled={saving}
+              disabled={saving || !dirty}
               className="workflow-button workflow-primary"
             >
               {saving ? '保存中...' : '保存邮件设置'}
-            </button>
+            </button><button type="button" className="workflow-button" disabled={!dirty} onClick={() => { setMail(JSON.parse(saved)); setMessage(''); }}>放弃更改</button>
 
 
           </div>

@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState,type FormEvent} from 'react';
+import {useUnsavedLeave} from '../lib/useUnsavedLeave';
 import {api} from '../lib/api';
 import {ThemeSelect} from '../components/ThemeSelect';
 import '../../styles/site-settings.css';
@@ -18,7 +19,8 @@ export default function AdminAiSettingsPage(){
    setKey('');setMessage('设置已保存。可在文章编辑页生成简介，验证密钥和余额。');
   }catch(e:any){setError(e.message);}finally{setBusy(false);}
  }
- const changed=!!config&&(key.trim()!==''||config.enabled!==saved.current?.enabled||config.model!==saved.current?.model);
+ const changed=!!config&&(key!==''||config.enabled!==saved.current?.enabled||config.model!==saved.current?.model);
+ useUnsavedLeave(changed);
  return <div className="site-settings-page ai-summary-settings">
   <header className="settings-heading"><h1 className="admin-title">AI 文章简介</h1></header>
   <p>用 DeepSeek 根据正文自动总结，生成结果同时用于文章简介和搜索描述。发布前可以预览或改为手写。</p>
@@ -35,7 +37,7 @@ export default function AdminAiSettingsPage(){
     </label>
     <p className="settings-hint" id="ai-summary-behavior">每个账号每分钟最多生成三次。保存草稿不会调用 AI；正文修改后会在下一次预览或提交时更新简介。</p>
     {error&&<p className="article-summary-error" role="alert">{error}</p>}
-    <div className="settings-save"><button className="button-primary" type="submit" disabled={!changed}>{busy?'保存中…':'保存 AI 设置'}</button><span role="status">{message}</span></div>
+    <div className="settings-save"><button className="button-primary" type="submit" disabled={!changed}>{busy?'保存中…':'保存 AI 设置'}</button><button className="quiet-button" type="button" disabled={!changed} onClick={()=>{setConfig(saved.current);setKey('');setError('');setMessage('');}}>放弃更改</button><span role="status">{changed?'有未保存的更改':message||'已保存'}</span></div>
    </fieldset>
   </form>}
  </div>;
