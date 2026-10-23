@@ -5,6 +5,7 @@
 ## 数据与提交
 
 - 读取现有 `/www/wwwroot/mooncci.site/sitemap-pages.xml`，复用 `/opt/mooncci-sitemap/refresh-sitemap.py` 的 XML 校验，并增加公开路径白名单、真实 lastmod 校验。
+- IndexNow 单元通过 `Requires=mooncci-sitemap.service` 和 `After=network.target mooncci-sitemap.service` 先等待一次 sitemap 刷新成功，再运行提交器，避免两个五分钟 timer 同时触发时读取仍在运行的刷新状态。刷新失败时本轮提交器不启动，后台按状态时间识别过期。
 - 现有 `mooncci-sitemap.service` 最近成功时间必须在 15 分钟内。XML 内容不变时文件 mtime 不更新，因此不能用文件 mtime 判断是否过期。读取失败、过期或校验失败保留全部状态，不执行提交。
 - 首次补提 sitemap 的公开 URL；之后仅新增、真实 lastmod 改变和消失 URL 入队。消失项须匿名 GET 确认 404/410 或 noindex；超时、503、仍公开和重定向都不能当作删除。待提交公开项还会核对 HTML canonical、robots.txt 和 noindex。
 - 每批最多 100 个，验证耗时预算 120 秒，HTTP 超时 15 秒。进程文件锁、原子 JSON、发送前持久化队列。异常重启保留待提交项。

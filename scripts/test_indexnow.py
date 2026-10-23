@@ -293,6 +293,14 @@ class IndexNowTest(unittest.TestCase):
 
 
 class BoundaryTest(unittest.TestCase):
+    def test_service_refreshes_sitemap_before_reading_freshness(self):
+        import configparser
+        unit = configparser.ConfigParser(interpolation=None)
+        unit.read(str(Path(__file__).with_name('mooncci-indexnow.service')))
+        self.assertIn('mooncci-sitemap.service', unit['Unit']['Requires'].split())
+        self.assertIn('mooncci-sitemap.service', unit['Unit']['After'].split())
+        self.assertIn('network.target', unit['Unit']['After'].split())
+
     def test_url_allowlist(self):
         valid = ['/', '/article/18', '/article/cities-skylines-2-basic-mods',
                  '/article/cities%3Askylinesii-basic-mod', '/article/legacy.v1',

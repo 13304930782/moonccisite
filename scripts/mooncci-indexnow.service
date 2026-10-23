@@ -1,6 +1,7 @@
 [Unit]
 Description=Submit changed mooncci public URLs to IndexNow
-After=network.target
+Requires=mooncci-sitemap.service
+After=network.target mooncci-sitemap.service
 
 [Service]
 Type=oneshot
