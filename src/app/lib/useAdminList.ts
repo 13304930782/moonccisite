@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from './api';
 
-export function useAdminList<T>(endpoint: string, filters: Record<string, string>, pagination?: { page: number; setPage: (page: number) => void }) {
+export function useAdminList<T>(endpoint: string, filters: Record<string, string>, pagination?: { page: number; setPage: (page: number, replace?: boolean) => void }) {
   const [localPage, setLocalPage] = useState(1);
   const page = pagination?.page ?? localPage;
   const setPage = pagination?.setPage ?? setLocalPage;
@@ -19,7 +19,7 @@ export function useAdminList<T>(endpoint: string, filters: Record<string, string
     api(query).then(data => {
       if (!active || current.current !== query) return;
       setItems(data.items); setTotal(data.total);
-      if (data.page !== page) setPage(data.page);
+      if (data.page !== page) setPage(data.page, true);
     }).catch(e => {
       if (active && current.current === query) { setError(e.message || '列表加载失败'); setTotal(0); }
     }).finally(() => { if (active && current.current === query) setLoading(false); });

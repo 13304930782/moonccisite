@@ -8,7 +8,8 @@ test('list query restores page, resets filters atomically, preserves other param
  Renderer.act(()=>{tree=Renderer.create(React.createElement(MemoryRouter,{initialEntries:['/?page=3&status=draft&keep=yes']},React.createElement(Probe)));});
  assert.equal(query.page,3);assert.equal(query.params.get('status'),'draft');
  Renderer.act(()=>query.update({status:'published',page:''}));assert.equal(query.page,1);assert.equal(query.params.get('keep'),'yes');assert.equal(query.params.get('status'),'published');
- Renderer.act(()=>query.setPage(2));assert.equal(query.page,2);
+ Renderer.act(()=>query.setPage(99));assert.equal(query.page,99);
+ Renderer.act(()=>query.setPage(2,true));assert.equal(query.page,2);
  Renderer.act(()=>navigate(-1));assert.equal(query.page,1);assert.equal(query.params.get('status'),'published');
  Renderer.act(()=>navigate(-1));assert.equal(query.page,3);assert.equal(query.params.get('status'),'draft');
  for(const value of ['-1','0','1.5','bad','Infinity','9007199254740992']){Renderer.act(()=>navigate('/?page='+value));assert.equal(query.page,1,value);}

@@ -135,7 +135,7 @@ export default function AdminMediaPage() {
       setItems(data.items);
       setTotal(data.total);
       setSelectedFilenames(current => current.filter(filename => data.items.some((item: MediaItem) => item.filename === filename)));
-      if (data.page !== page) setPage(data.page);
+      if (data.page !== page) setPage(data.page, true);
     } catch (err: any) {
       if (current()) { setLoadError(err.message || '媒体库加载失败'); }
     } finally { if (current()) setLoading(false); }

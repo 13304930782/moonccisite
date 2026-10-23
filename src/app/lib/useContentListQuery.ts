@@ -13,6 +13,6 @@ export function useContentListQuery() {
       return next;
     }, { replace });
   }
-  function setPage(value: number) { update({ page: value > 1 ? String(value) : '' }); }
+  function setPage(value: number, replace = false) { update({ page: value > 1 ? String(value) : '' }, replace); }
   return { params, page, setPage, update };
 }

@@ -62,7 +62,7 @@ export default function AdminPostsPage() {
           setAllTotal(data.total);
           setAllPosts(data.page === 1 && items.length === data.total ? items : null);
         }
-        if (data.page !== page) setPage(data.page);
+        if (data.page !== page) setPage(data.page, true);
       } catch (error: any) {
         if (version === requestVersion.current) setLoadError(error.message || '文章加载失败');
       } finally {
