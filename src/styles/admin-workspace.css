@@ -1,0 +1,21 @@
+/* Administration-only rhythm; editor controls and About switches keep their own sizing. */
+.admin-frame .admin-menu-group > summary,
+.admin-frame .admin-menu .admin-menu-group a,
+.admin-frame .admin-menu-footer :is(a, button) { min-height:44px; }
+.admin-frame .admin-menu svg { flex:none; }
+.admin-frame .admin-menu-head-actions .icon-button { width:44px; height:44px; }
+.admin-frame .admin-menu-group > summary:focus-visible { outline:2px solid var(--ring); outline-offset:-2px; border-radius:var(--control-radius); }
+.admin-frame :is(.workspace-heading, .analytics-heading, .settings-heading) { gap:20px; }
+.admin-frame :is(.workspace-heading, .analytics-heading, .settings-heading) > div { min-width:0; }
+.admin-frame :is(.admin-title, .workspace-heading h1, .admin-overview-head h1) { overflow-wrap:anywhere; }
+.admin-frame :is(.admin-toolbar, .admin-row-actions, .admin-pagination) button { min-height:44px; white-space:nowrap; flex-shrink:0; }
+.admin-frame .admin-search button { min-width:44px; }
+.admin-frame .admin-pagination { flex-wrap:wrap; row-gap:12px; }
+.admin-frame .admin-pagination > span { flex:1 1 120px; overflow-wrap:anywhere; }
+.admin-frame .admin-status-chip { white-space:nowrap; flex:none; }
+.admin-frame :is(.admin-state, .admin-notice) button { min-height:44px; white-space:nowrap; }
+.admin-frame .admin-main { padding-bottom:max(80px, env(safe-area-inset-bottom)); }
+@media (max-width:560px) {
+ .admin-frame :is(.workspace-heading, .analytics-heading, .settings-heading) { flex-wrap:wrap; align-items:flex-start; }
+ .admin-frame .admin-search { flex-basis:100%; }
+}

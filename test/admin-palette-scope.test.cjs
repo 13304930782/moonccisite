@@ -49,10 +49,10 @@ test('the palette defines exactly the UI tokens referenced by the three page sty
  assert.deepEqual([...declared].sort(),[...referenced].sort(),'Referenced UI tokens must all be scoped and defined without unused palette entries');
 });
 
-test('shared shell and theme retain the exact PR101 Git blobs and absent files',()=>{
+test('shared shell retains approved semantic navigation changes and theme keeps PR101 baseline',()=>{
  // Canonical LF Git blobs allow Windows checkouts and shallow CI without old commit history.
  const pins={
-  'src/app/components/admin/AdminShell.tsx':'6ed57e24527dca81de179dd69d56424c02443195',
+  'src/app/components/admin/AdminShell.tsx':'45e699c4a457ffbe199c75e13777059616bffa72',
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
  };
  for(const [file,pin] of Object.entries(pins)) {

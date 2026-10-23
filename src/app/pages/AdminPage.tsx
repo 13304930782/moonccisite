@@ -4,10 +4,13 @@ import {
   Ban,
   Crown,
   FileText,
-  Mail,
+  AtSign,
+  Mailbox,
+  KeyRound,
+  FilePenLine,
   MessageCircle,
   PenLine,
-  Send,
+  BellRing,
   Settings,
   ShieldCheck,
   UserRoundCheck,
@@ -172,35 +175,35 @@ export default function AdminPage() {
       title: '第三方登录',
       desc: '管理 GitHub、Google、QQ、微信和 Gitee 登录',
       to: '/admin/login-settings',
-      icon: Settings,
+      icon: KeyRound,
       show: user?.role === 'owner',
     },
     {
       title: '邮件设置',
       desc: '配置 SMTP、评论提醒和审核通知',
       to: '/admin/mail-settings',
-      icon: Mail,
+      icon: AtSign,
       show: manager,
     },
     {
       title: '站点通知',
       desc: '使用站点 SMTP 配置，给已注册用户发送通知',
       to: '/admin/send-mail',
-      icon: Send,
+      icon: BellRing,
       show: manager,
     },
     {
       title: '我的邮箱',
       desc: '申请专属邮箱、发送邮件和查看审批状态',
       to: '/admin/mailbox',
-      icon: Mail,
+      icon: Mailbox,
       show: true,
     },
     {
       title: '申请成为编辑',
       desc: '提交申请，通过后即可写文章',
       to: '/admin/editor-apply',
-      icon: ShieldCheck,
+      icon: FilePenLine,
       show: !writer,
     },
   ].filter((item) => item.show);
@@ -232,7 +235,7 @@ export default function AdminPage() {
         <div className="admin-quick-links">
           {actions.map((item) => (
             <Link key={item.to} to={item.to}>
-              <item.icon />
+              <item.icon aria-hidden="true" />
               <div>
                 <h3>{item.title}</h3>
                 <p>{item.desc}</p>

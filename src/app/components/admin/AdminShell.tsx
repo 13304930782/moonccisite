@@ -2,6 +2,7 @@ import { reducedMotion } from '../../lib/motionPreference';
 import { focusableWithin, loopFocus } from '../../lib/focusLoop';
 import {useOperations} from '../../lib/useOperations';
 import '../../../styles/workspace-polish.css';
+import '../../../styles/admin-workspace.css';
 import {usePublishing} from '../../lib/usePublishing';
 import { useSiteSettings } from '../../context/SiteSettingsContext';
 import { safeImageSrc } from '../../lib/safeUrl';
@@ -11,20 +12,35 @@ import type { ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
   ArrowUp,
+  Activity,
+  BellRing,
+  CalendarClock,
+  ChartColumn,
+  ChartNoAxesCombined,
+  ContactRound,
+  FilePenLine,
+  FlaskConical,
+  KeyRound,
+  Library,
+  AtSign,
+  Mailbox,
+  Newspaper,
+  PanelsTopLeft,
+  Radio,
+  Server,
+  Sparkles,
+  UserRoundCog,
+  Zap,
   Ban,
-  Crown,
   FileText,
-  Gauge,
   Home,
   Image,
   Inbox,
   LayoutDashboard,
   LogOut,
-  Mail,
   Menu,
   MessageCircle,
   PenLine,
-  Send,
   Settings,
   ShieldCheck,
   UserRoundCheck,
@@ -161,20 +177,20 @@ export function AdminShell({ children }: AdminShellProps) {
   }, []);
 
   const menus: MenuItem[] = [
-{title:"节点监控",to:"/admin/node-monitor",icon:Gauge,show:owner},
-{title:'运营概览',to:'/admin/operations',icon:Gauge,show:manager&&operations},
+{title:"节点监控",to:"/admin/node-monitor",icon:Server,show:owner},
+{title:'运营概览',to:'/admin/operations',icon:ChartNoAxesCombined,show:manager&&operations},
 {title:'投稿审核',to:'/admin/reviews',icon:Inbox,show:manager&&publishing},
-{title:'发布计划',to:'/admin/schedules',icon:Send,show:manager&&publishing},
-{title:'专栏管理',to:'/admin/series',icon:FileText,show:manager&&publishing},
-    { title: '访问统计', to: '/admin/analytics', icon: Gauge, show: manager },
+{title:'发布计划',to:'/admin/schedules',icon:CalendarClock,show:manager&&publishing},
+{title:'专栏管理',to:'/admin/series',icon:Library,show:manager&&publishing},
+    { title: '访问统计', to: '/admin/analytics', icon: ChartColumn, show: manager },
     {
       title: '近况与动态',
       to: '/admin/updates',
-      icon: MessageCircle,
+      icon: Radio,
       show: manager,
     },
-    { title: '作品管理', to: '/admin/projects', icon: FileText, show: manager },
-    { title: '订阅与周报', to: '/admin/newsletter', icon: Mail, show: owner },
+    { title: '作品管理', to: '/admin/projects', icon: PanelsTopLeft, show: manager },
+    { title: '订阅与周报', to: '/admin/newsletter', icon: Newspaper, show: owner },
     {
       title: '概览',
       to: '/admin',
@@ -208,13 +224,13 @@ export function AdminShell({ children }: AdminShellProps) {
     {
       title: 'Early Access 审核',
       to: '/admin/early-access',
-      icon: Inbox,
+      icon: FlaskConical,
       show: owner,
     },
     {
       title: '水电监控设置',
       to: '/admin/electricity',
-      icon: Gauge,
+      icon: Zap,
       show: owner,
     },
     {
@@ -236,9 +252,9 @@ export function AdminShell({ children }: AdminShellProps) {
       show: manager,
     },
     {
-      title: '关于与友链', to: '/admin/blog-pages', icon: Settings, show: manager,
+      title: '关于与友链', to: '/admin/blog-pages', icon: ContactRound, show: manager,
     },
-    { to: '/admin/runtime', title: '运行信息', icon: Gauge, show: isManager(role) },
+    { to: '/admin/runtime', title: '运行信息', icon: Activity, show: isManager(role) },
     {
       title: '站点设置',
       to: '/admin/site-settings',
@@ -249,26 +265,26 @@ export function AdminShell({ children }: AdminShellProps) {
       title: '第三方登录',
       desc: '管理 GitHub、Google、QQ、微信和 Gitee 登录',
       to: '/admin/login-settings',
-      icon: Settings,
+      icon: KeyRound,
       show: user?.role === 'owner',
     },
-    {title:'AI 文章简介',to:'/admin/ai-settings',icon:Settings,show:user?.role==='owner'},
+    {title:'AI 文章简介',to:'/admin/ai-settings',icon:Sparkles,show:user?.role==='owner'},
     {
       title: '邮件设置',
       to: '/admin/mail-settings',
-      icon: Mail,
+      icon: AtSign,
       show: manager,
     },
     {
       title: '站点通知',
       to: '/admin/send-mail',
-      icon: Send,
+      icon: BellRing,
       show: manager,
     },
     {
       title: '我的邮箱',
       to: '/admin/mailbox',
-      icon: Mail,
+      icon: Mailbox,
       show: user?.role === 'owner',
     },
     {
@@ -280,7 +296,7 @@ export function AdminShell({ children }: AdminShellProps) {
     {
       title: '编辑申请',
       to: '/admin/editor-apply',
-      icon: ShieldCheck,
+      icon: FilePenLine,
       show: !writer,
     },
   ].filter((item) => item.show);
@@ -309,9 +325,9 @@ export function AdminShell({ children }: AdminShellProps) {
           {label:'用户与互动',paths:['/admin/comments','/admin/users','/admin/editor-applications','/admin/editor-apply','/admin/early-access','/admin/banned-words']},
           {label:'邮件与订阅',paths:['/admin/mailbox','/admin/mailbox-requests','/admin/newsletter','/admin/mail-settings','/admin/send-mail']},
           {label:'站点与系统',paths:['/admin/ai-settings','/admin/node-monitor','/admin/blog-pages','/admin/site-settings','/admin/login-settings','/admin/electricity','/admin/runtime']},
-        ].map(group=>{const items=group.paths.map(path=>menus.find(item=>item.to===path)).filter((item):item is MenuItem=>!!item);if(!items.length)return null;return <details className="admin-menu-group" key={group.label+location.pathname} open={group.label==='工作台'||items.some(item=>item.to==='/admin'?location.pathname==='/admin':location.pathname.startsWith(item.to))}><summary>{group.label}</summary>{items.map(item=><NavLink key={item.to} to={item.to} end={item.to==='/admin'} onClick={closeMobile}><item.icon/><span>{item.title}</span></NavLink>)}</details>;})}
+        ].map(group=>{const items=group.paths.map(path=>menus.find(item=>item.to===path)).filter((item):item is MenuItem=>!!item);if(!items.length)return null;return <details className="admin-menu-group" key={group.label+location.pathname} open={group.label==='工作台'||items.some(item=>item.to==='/admin'?location.pathname==='/admin':location.pathname.startsWith(item.to))}><summary>{group.label}</summary>{items.map(item=><NavLink key={item.to} to={item.to} end={item.to==='/admin'} onClick={closeMobile}><item.icon aria-hidden="true"/><span>{item.title}</span></NavLink>)}</details>;})}
         <div className="admin-menu-footer">
-        <Link to="/account/settings" onClick={closeMobile}><Settings /><span>个人设置</span></Link>
+        <Link to="/account/settings" onClick={closeMobile}><UserRoundCog aria-hidden="true"/><span>个人设置</span></Link>
         <Link to="/" onClick={closeMobile}>
           <Home />
           <span>返回首页</span>
