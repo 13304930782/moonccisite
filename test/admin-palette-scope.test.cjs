@@ -52,7 +52,7 @@ test('the palette defines exactly the UI tokens referenced by the three page sty
 test('shared shell retains approved semantic navigation changes and theme keeps PR101 baseline',()=>{
  // Canonical LF Git blobs allow Windows checkouts and shallow CI without old commit history.
  const pins={
-  'src/app/components/admin/AdminShell.tsx':'eab92ec24eb4f0363ea77bb000d9f6228cca8a1f',
+  'src/app/components/admin/AdminShell.tsx':'f5a2bdd540d558ace48b754b716da2105fde4ef1',
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
  };
  for(const [file,pin] of Object.entries(pins)) {

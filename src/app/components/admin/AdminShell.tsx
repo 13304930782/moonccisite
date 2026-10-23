@@ -13,7 +13,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
   ArrowUp,
   Activity,
-  BellRing,
+  Bell,
   CalendarClock,
   ChartColumn,
   ChartNoAxesCombined,
@@ -278,7 +278,7 @@ export function AdminShell({ children }: AdminShellProps) {
     {
       title: '站点通知',
       to: '/admin/send-mail',
-      icon: BellRing,
+      icon: Bell,
       show: manager,
     },
     {

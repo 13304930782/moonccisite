@@ -9,7 +9,7 @@ import {
   FilePenLine,
   MessageCircle,
   PenLine,
-  BellRing,
+  Bell,
   Settings,
   UserRoundCheck,
   Users,
@@ -187,7 +187,7 @@ export default function AdminPage() {
       title: '站点通知',
       desc: '使用站点 SMTP 配置，给已注册用户发送通知',
       to: '/admin/send-mail',
-      icon: BellRing,
+      icon: Bell,
       show: manager,
     },
     {
