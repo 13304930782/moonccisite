@@ -5,6 +5,8 @@ import { api } from '../lib/api';
 import { useUnsavedLeave } from '../lib/useUnsavedLeave';
 import { safeImageSrc } from '../lib/safeUrl';
 import { MarkdownContent } from '../components/MarkdownContent';
+import { ArticleMediaPicker } from '../components/ArticleMediaPicker';
+import '../../styles/article-workspace.css';
 import '../../styles/site-settings.css';
 import { AdminWeatherCompanionSettings } from '../components/AdminWeatherCompanionSettings';
 
@@ -54,12 +56,14 @@ function ImageSetting({
   onChange,
   onBusy,
   onError,
+  onChoose,
 }: {
   label: string;
   value: string;
   onChange: (url: string) => void;
   onBusy: (busy: boolean) => void;
   onError: (message: string) => void;
+  onChoose?: () => void;
 }) {
   const [uploading, setUploading] = useState(false);
   async function upload(file?: File) {
@@ -91,6 +95,7 @@ function ImageSetting({
       <div>
         <Field label={`${label}地址`} value={value} onChange={onChange} />
         <div className="settings-image-actions">
+          {onChoose && <button type="button" className="quiet-button" style={{ minHeight: 44 }} onClick={onChoose}>从媒体库选择</button>}
           <label className="settings-upload">
             <UploadCloud size={16} />
             {uploading ? '上传中…' : `上传${label}`}
@@ -119,6 +124,7 @@ function ImageSetting({
   );
 }
 export default function AdminSiteSettingsPage() {
+  const [faviconPickerOpen, setFaviconPickerOpen] = useState(false);
   const [brand, setBrand] = useState<any>({});
   const [hero, setHero] = useState<any>({});
   const [footer, setFooter] = useState<any>({});
@@ -312,11 +318,13 @@ export default function AdminSiteSettingsPage() {
           <ImageSetting
             label="网页图标"
             value={brand.favicon_url}
+            onChoose={() => setFaviconPickerOpen(true)}
             onChange={(v) => setBrand({ ...brand, favicon_url: v })}
             {...imageProps}
           />
           <p className="settings-hint">
-            支持 PNG、JPG、WebP、GIF、ICO。上传后保存本区域；清除 Logo
+            网页图标（favicon）用于浏览器标签和搜索结果。建议使用清晰的正方形图片，可从媒体库选择或上传。
+            支持 PNG、JPG、WebP、GIF、ICO。选择或上传后保存本区域；清除 Logo
             后导航显示文字，清除网页图标后恢复浏览器默认显示。
           </p>
         </>,
@@ -456,6 +464,10 @@ export default function AdminSiteSettingsPage() {
           </p>
         </>,
       )}
+      {faviconPickerOpen && <ArticleMediaPicker
+        onClose={() => setFaviconPickerOpen(false)}
+        onSelect={(url) => setBrand((current: any) => ({ ...current, favicon_url: url }))}
+      />}
       <AdminWeatherCompanionSettings />
     </div>
   );

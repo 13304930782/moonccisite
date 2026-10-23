@@ -7,7 +7,7 @@ export function ArticleMediaPicker({onSelect,onClose,uploadImage,restoreFocus=tr
  const [q,setQ]=useState(''),[keyword,setKeyword]=useState(''),[page,setPage]=useState(1),[version,setVersion]=useState(0);
  const [data,setData]=useState<any>({items:[],total:0}),[error,setError]=useState(''),[loading,setLoading]=useState(true),[selected,setSelected]=useState<any>(null),[alt,setAlt]=useState('');
  const [uploading,setUploading]=useState(false),[uploadError,setUploadError]=useState(''),[failedFile,setFailedFile]=useState<File|null>(null);
- const heading=useRef<HTMLHeadingElement>(null);
+ const heading=useRef<HTMLHeadingElement>(null),returnFocus=useRef<HTMLElement|null>(null);
  const alive=useRef(true),chosen=useRef(false),sending=useRef(false);
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
  useEffect(()=>{const controller=new AbortController();let active=true;setLoading(true);setError('');api(`/upload/media?status=active&page=${page}&pageSize=20&q=${encodeURIComponent(keyword)}`,{signal:controller.signal}).then(r=>{if(active)setData(r);}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;controller.abort();};},[keyword,page,version]);
@@ -22,7 +22,7 @@ export function ArticleMediaPicker({onSelect,onClose,uploadImage,restoreFocus=tr
   }catch(e:any){if(alive.current){setUploadError(e.message);setFailedFile(file);}}
   finally{sending.current=false;if(alive.current)setUploading(false);}
  }
- return <Dialog.Root open onOpenChange={v=>{if(!v)onClose();}}><Dialog.Portal><Dialog.Overlay className="article-modal-overlay"/><Dialog.Content className="article-media-dialog" onOpenAutoFocus={e=>{e.preventDefault();heading.current?.focus();}} onCloseAutoFocus={e=>{if(chosen.current&&!restoreFocus)e.preventDefault();}}>
+ return <Dialog.Root open onOpenChange={v=>{if(!v)onClose();}}><Dialog.Portal><Dialog.Overlay className="article-modal-overlay"/><Dialog.Content className="article-media-dialog" onOpenAutoFocus={e=>{e.preventDefault();returnFocus.current=document.activeElement instanceof HTMLElement?document.activeElement:null;heading.current?.focus();}} onCloseAutoFocus={e=>{e.preventDefault();if(!chosen.current||restoreFocus)returnFocus.current?.focus();}}>
  <header className="media-picker-header"><Dialog.Close>取消</Dialog.Close><Dialog.Title ref={heading} tabIndex={-1}>选择图片</Dialog.Title><button className="media-picker-done" aria-label="使用图片" title="使用图片" disabled={!selected||uploading} onClick={()=>{chosen.current=true;onSelect(selected.url,alt);onClose();}}><Check size={22} aria-hidden="true"/></button></header>
  <Dialog.Description className="sr-only">上传或选择图片，填写替代文本后点右上角确认。</Dialog.Description>
  <div className="media-picker-tools"><form onSubmit={e=>{e.preventDefault();setPage(1);setSelected(null);setKeyword(q.trim());}} className="inline-actions"><input aria-label="搜索图片" maxLength={100} value={q} onChange={e=>setQ(e.target.value)}/><button>搜索</button></form><label className="media-upload-control">{uploading?'正在上传…':'上传图片'}<input aria-label="上传图片" type="file" accept="image/*" disabled={uploading} onChange={e=>{const f=e.target.files?.[0];if(f)void upload(f);e.target.value='';}}/></label></div>

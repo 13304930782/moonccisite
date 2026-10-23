@@ -56,3 +56,37 @@ test('metadata replacement preserves unrelated head elements and exact SSR and m
   assert.equal(JSON.parse(dom.window.document.querySelector('#article-jsonld').textContent).headline,post.title);
  }finally{dom.window.close();}
 });
+
+
+test('initial HTML declares only the configured safe favicon and escapes its URL',()=>{
+ const {JSDOM}=require('jsdom');
+ const input=template.replace('</head>', '<link rel="shortcut icon" href="/old.ico"><link rel="icon" href="/old.png"></head>');
+ const icon='/api/uploads/site.ico?size=32&label="current"';
+ const output=seo.renderHtml(input,seo.baseMeta('/',{favicon_url:icon}));
+ const dom=new JSDOM(output);
+ try {
+  const icons=dom.window.document.querySelectorAll('link[rel~="icon"]');
+  assert.equal(icons.length,1);
+  assert.equal(icons[0].getAttribute('href'),new URL(icon,seo.origin()).href);
+  assert.match(output,/&amp;/);
+ }finally{dom.window.close();}
+ for(const favicon_url of ['', 'javascript:alert(1)', 'data:image/svg+xml,<svg></svg>', 'https://user:secret@example.com/icon.png']) {
+  const html=seo.renderHtml(input,seo.baseMeta('/',{favicon_url}));
+  assert.doesNotMatch(html,/<link rel="(?:shortcut )?icon"/);
+ }
+});
+
+test('configured favicon survives public, private, missing and SSR-invalid document responses',async t=>{
+ const db={query:async sql=>sql.includes('site_settings')?[[{setting_value:JSON.stringify({site_title:'mooncci',favicon_url:'/api/uploads/site.ico'})}]]:[[]]};
+ const app=express();app.use(createSeoRouter({db,readTemplate:async()=>template,
+  renderDocument:async(url,load,status)=>({html:'<main>content</main>',data:{resources:{},errors:url==='/articles'&&status!==404?{posts:404}:{}}})
+ }));
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));
+ const base=`http://127.0.0.1:${server.address().port}`;
+ for(const [path,status] of [['/',200],['/login',200],['/unknown',404],['/article/missing',404],['/articles',404]]) {
+  const response=await fetch(base+path,{headers:path==='/article/missing'?{cookie:'session=example'}:{}});
+  assert.equal(response.status,status,path);
+  const html=await response.text();
+  assert.ok(html.includes(`<link rel="icon" href="${seo.origin()}/api/uploads/site.ico">`),path);
+ }
+});

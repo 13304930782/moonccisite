@@ -16,7 +16,7 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
  }
  async function metadata(pathname,query={}) {
   let result=await baseMetadata(pathname);
-  const notFound=()=>({status:404,meta:{...seo.baseMeta(pathname),title:'页面不存在',robots:'noindex, nofollow'}});
+  const notFound=()=>({status:404,meta:{...seo.baseMeta(pathname),favicon:result.meta.favicon,title:'页面不存在',robots:'noindex, nofollow'}});
   if(pathname.startsWith('/updates/')&&!/^\/updates\/[1-9]\d*$/.test(pathname))return notFound();
   if(!documents.publicRoutes.test(pathname)&&!documents.privateRoutes.test(pathname)) return notFound();
   if((pathname==='/series'||pathname.startsWith('/series/'))&&process.env.PUBLISHING_ENABLED!=='true')return notFound();
@@ -97,7 +97,7 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
    let rendered=await renderDocument(renderUrl,load,result.status);
    const invalid=Object.values(rendered.data.resources).some(data=>data&&Number.isFinite(data.total)&&data.page>Math.max(1,Math.ceil(data.total/data.pageSize)));
    if(invalid||Object.values(rendered.data.errors||{}).includes(404)) {
-    result={status:404,meta:{...seo.baseMeta(pathname),title:'页面不存在',robots:'noindex, nofollow'}};
+    result={status:404,meta:{...seo.baseMeta(pathname),favicon:result.meta.favicon,title:'页面不存在',robots:'noindex, nofollow'}};
     rendered=await renderDocument(renderUrl,load,404);
    }
    rendered.data.status=result.status;
