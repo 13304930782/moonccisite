@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePublishing } from '../lib/usePublishing';
 import { useArticleDraft } from '../lib/useArticleDraft';
 import { api } from '../lib/api';
+import { articlePath } from '../lib/articleUrl';
 import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
 import { safeImageSrc } from '../lib/safeUrl';
@@ -48,6 +49,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   const account = location.pathname.startsWith('/account');
   const backTo = account ? '/account/submissions' : '/admin/posts';
   const d = useArticleDraft(userId, postId);
+  const slugReserved = ['archives', 'meta'].includes(String(d.form.slug || '').trim());
   const [published, setPublished] = useState(false);
   const [conflictMode, setConflictMode] = useState<'compare' | 'review' | 'edit'>('compare');
   const [preview, setPreview] = useState(false);
@@ -222,7 +224,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
 
   if (published) return <div className="admin-page article-workspace writing-workspace ui-v2">
     <Link className="article-back-link" to={backTo}><ArrowLeft size={16} aria-hidden="true" />返回稿件列表</Link>
-    <section className="article-published"><CheckCircle2 size={32} aria-hidden="true" /><p className="article-workspace-eyebrow">发布完成</p><h1 ref={completion} tabIndex={-1}>文章已发布</h1><p className="article-published-title">{d.form.title}</p><p className="article-workspace-caption">读者现在可以查看这篇文章。后续修改需再次发布才会更新到网站。</p><div className="article-completion-actions">{d.draft?.post_id && <Link className="article-button article-button-primary" to={`/article/${d.draft.post_id}`}>查看文章 ↗</Link>}<AdminButton type="button" variant="soft" onClick={() => setPublished(false)} className="ui-btn ui-btn--soft">继续编辑</AdminButton><Link className="article-back-link" to={backTo}>返回稿件列表 →</Link></div></section>
+    <section className="article-published"><CheckCircle2 size={32} aria-hidden="true" /><p className="article-workspace-eyebrow">发布完成</p><h1 ref={completion} tabIndex={-1}>文章已发布</h1><p className="article-published-title">{d.form.title}</p><p className="article-workspace-caption">读者现在可以查看这篇文章。后续修改需再次发布才会更新到网站。</p><div className="article-completion-actions">{d.draft?.post_id && <Link className="article-button article-button-primary" to={articlePath({id:d.draft.post_id,slug:d.draft.payload.slug})}>查看文章 ↗</Link>}<AdminButton type="button" variant="soft" onClick={() => setPublished(false)} className="ui-btn ui-btn--soft">继续编辑</AdminButton><Link className="article-back-link" to={backTo}>返回稿件列表 →</Link></div></section>
   </div>;
 
   const openHistory = () => { historyOrigin.current = phone ? moreTrigger.current : historyTrigger.current; setHistoryOpen(true); };
@@ -246,7 +248,13 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
     </section>
     <section className="writing-setting-section"><label htmlFor="article-category">分类<input id="article-category" value={d.form.category} placeholder="选择或输入分类" onChange={event => change('category', event.target.value)} className="ui-input" /></label></section>
     <section className="writing-setting-section"><label htmlFor="article-tags">标签</label><div className="writing-tags">{(d.form.tags || []).map((tag: string, index: number) => <span className="writing-tag" key={`${tag}:${index}`}>{tag}<button type="button" aria-label={`移除标签 ${tag}`} onClick={() => change('tags', d.form.tags.filter((_: string, position: number) => position !== index))}><X size={12} aria-hidden="true" /></button></span>)}<input id="article-tags" value={tagInput} placeholder="输入后按回车添加，用逗号分隔" onChange={event => { const value = event.target.value; if (/[,，]/.test(value) && !(event.nativeEvent as InputEvent).isComposing) commitTags(value); else setTagInput(value); }} onKeyDown={event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); commitTags(); } }} onBlur={() => commitTags()} className="ui-input" /></div></section>
-    <section className="writing-setting-section"><label htmlFor="article-slug">链接别名<span className="writing-slug"><span>/article/</span><input id="article-slug" value={d.form.slug} placeholder="留空时自动生成" onChange={event => change('slug', event.target.value)} className="ui-input" /></span></label></section>
+    <section className="writing-setting-section"><label htmlFor="article-slug">英文链接<span className="writing-slug"><span>/article/</span><input id="article-slug" value={d.form.slug} maxLength={100} autoCapitalize="none" spellCheck={false} aria-describedby={slugReserved ? "article-slug-hint article-slug-error" : "article-slug-hint"} aria-invalid={slugReserved || undefined} placeholder="例如 cities-skylines-2-mods" onChange={event => change('slug', event.target.value)} className="ui-input" /></span></label>
+      <p id="article-slug-hint" className="writing-ai-help">手动输入小写英文字母、数字和短横线，最多 100 个字符；也可以让 DeepSeek 根据文章生成。</p>
+      <AdminButton type="button" variant="soft" className="writing-generate-summary ui-btn ui-btn--soft" disabled={!ai?.enabled || !d.form.title.trim() || d.busy || d.blocked} onClick={() => { commitTags(); void d.generateSlug(); }}>{d.slugBusy && <Loader2 className="writing-spinner" size={14} aria-hidden="true" />}{d.slugBusy ? '生成中…' : 'DeepSeek 生成英文链接'}</AdminButton>
+      {!ai?.enabled && <p className="writing-ai-help">{ai?.unavailable ? 'AI 设置暂时无法读取，可以先手动填写。' : 'AI 尚未启用，可以手动填写英文链接。'}</p>}
+      {slugReserved && <p id="article-slug-error" role="alert">这个英文链接已被系统使用，请换一个名称。</p>}
+      {d.slugError && <p role="alert">{d.slugError} 可重试，或手动填写英文链接。</p>}
+    </section>
     <section className="writing-setting-section writing-summary"><div className="writing-summary-label"><label htmlFor="article-summary">简介</label><span title="建议 80–140 字，搜索引擎可能另选摘要。" className={summaryLength > 140 ? 'writing-summary-warning' : undefined}>{summaryLength} / 140 字</span></div><textarea id="article-summary" rows={4} value={summary} placeholder="介绍文章主题与主要内容" aria-describedby="article-summary-mode-hint" onChange={event => change('summary', event.target.value)} className="ui-input" />
       <div className="writing-summary-actions"><label className="writing-ai-switch"><Switch checked={automatic} aria-label="DeepSeek 自动总结" onCheckedChange={checked => d.update((previous: any) => ({ ...previous, summary_mode: checked ? 'ai' : 'manual', summary_receipt: '' }))} /><span>DeepSeek 自动总结</span></label><AdminButton type="button" variant="soft" className="writing-generate-summary ui-btn ui-btn--soft" disabled={!ai?.enabled || d.busy || d.blocked} onClick={() => { commitTags(); void d.generateSummary(true); }}>{d.summaryBusy && <Loader2 className="writing-spinner" size={14} aria-hidden="true" />}{d.summaryBusy ? '生成中…' : '生成简介'}</AdminButton></div>
       <div className="writing-ai-help" id="article-summary-mode-hint"><span>{ai?.unavailable ? 'AI 设置暂时无法读取，可先填写手写简介。' : '预览或发布前，根据正文生成简介。'}</span>{user?.role === 'owner' && <Link to="/admin/ai-settings">配置 AI</Link>}</div>

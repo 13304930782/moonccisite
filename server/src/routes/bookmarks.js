@@ -26,14 +26,14 @@ router.get('/',async(req,res)=>{
   const total=Number(count.total),pageSize=12;
   const requested=/^[1-9]\d*$/.test(String(req.query.page||''))?Number(req.query.page):1;
   const page=Math.min(Number.isSafeInteger(requested)?requested:1,Math.max(1,Math.ceil(total/pageSize)));
-  const [rows]=await c.query(`SELECT b.id,b.post_id,b.created_at,p.status,p.title,p.summary,p.cover_image,p.cover_crop,p.category,p.tags,p.published_at,p.updated_at${enhanced?",COALESCE(m.folder_id,0) folder_id":""}
+  const [rows]=await c.query(`SELECT b.id,b.post_id,b.created_at,p.status,p.title,p.slug,p.summary,p.cover_image,p.cover_crop,p.category,p.tags,p.published_at,p.updated_at${enhanced?",COALESCE(m.folder_id,0) folder_id":""}
     FROM article_bookmarks b JOIN posts p ON p.id=b.post_id ${join} WHERE ${where}
     ORDER BY b.created_at DESC,b.id DESC LIMIT ? OFFSET ?`,[...args,pageSize,(page-1)*pageSize]);
   const items=rows.map(r=>{
    const base={id:r.id,post_id:r.post_id,created_at:r.created_at,...(enhanced?{folder_id:Number(r.folder_id)}:{}),available:r.status==='published'};
    if(!base.available)return base;
    let tags=[];try{tags=typeof r.tags==='string'?JSON.parse(r.tags):r.tags;}catch{}
-   return {...base,title:r.title,summary:r.summary,cover_image:r.cover_image,cover_crop:readCoverCrop(r.cover_crop,r.cover_image),category:r.category,tags:Array.isArray(tags)?tags:[],published_at:r.published_at,updated_at:r.updated_at};
+   return {...base,title:r.title,slug:r.slug,summary:r.summary,cover_image:r.cover_image,cover_crop:readCoverCrop(r.cover_crop,r.cover_image),category:r.category,tags:Array.isArray(tags)?tags:[],published_at:r.published_at,updated_at:r.updated_at};
   });
   await c.commit();res.json({items,total,page,pageSize});
  }catch(e){await c.rollback();throw e;}finally{c.release();}

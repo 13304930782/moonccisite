@@ -1290,3 +1290,11 @@ Verify actual archive members, checksum sidecars and LF scripts before upload. S
 ### AI summary provenance
 
 This change requires the scoped backend package and migration server/database/migrations/202610180002_article_summary_mode.sql before enabling new article writes. Existing summaries retain unknown origin; only verified AI summaries receive the DeepSeek label. Keep the new column during rollback. The YouTube preview endpoint also requires the backend package and outbound HTTPS access to www.youtube.com; failed metadata requests leave ordinary links usable.
+
+### Article English URLs and one document H1
+
+Article pages reserve H1 for the article title. Body H1 headings render as H2 in both the browser and SSR; stored Markdown/rich text and heading anchors remain unchanged.
+
+Public article links use `/article/<slug>`. Numeric links and historical slugs redirect to the current published article URL; comments, bookmarks, analytics and reading progress keep numeric post IDs. The editor supports a manual English slug or an explicit DeepSeek suggestion, using the existing AI configuration and request budget. Suggestions only fill the draft and take effect on publication. New slugs must contain a lowercase English letter, use lowercase letters/digits/single hyphens, and be at most 100 characters. Empty drafts can still be saved. Historical link reservations prevent another article from taking an old address.
+
+This is a paired frontend/SSR/backend release with an additive alias-table migration, not a frontend-only package. Build and verify the offline archive locally. Back up the affected post, alias and migration records before applying the scoped migration; preserve all other articles, drafts, historical SQL, uploads and `.env`. The migration normalizes only article 20's specified legacy slug and retains its old address. Rollback retains the additive alias table and reservations. Deploy only to the main host `182.92.179.81`; overseas publishing is disabled. Do not download dependencies or build on production. Run deployment and rollback in a `nohup` child shell, with logs outside the verified package directory.

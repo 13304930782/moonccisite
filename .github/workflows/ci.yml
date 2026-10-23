@@ -66,6 +66,7 @@ jobs:
       - run: node scripts/test-account-browser.cjs
       - run: node scripts/test-site-design-account-browser.cjs
       - run: node scripts/test-article-drafts-browser.cjs
+      - run: node scripts/test-article-slug-browser.cjs
       - run: node scripts/test-article-revisions-browser.cjs
       - run: node scripts/test-bookmarks-browser.cjs
       - run: node scripts/test-reading-browser.cjs
@@ -179,4 +180,9 @@ jobs:
       - run: node --test server/test/readerMigrations.integration.test.js
         env:
           READER_MIGRATION_INTEGRATION: "true"
+          TEST_DB_PORT: "3306"
+
+      - run: node --test server/test/articleSlug.integration.test.js
+        env:
+          SLUG_INTEGRATION: "true"
           TEST_DB_PORT: "3306"

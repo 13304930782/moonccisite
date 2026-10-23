@@ -38,7 +38,7 @@ export async function api(path: string, options: ApiOptions = {}) {
       throw new ApiError(writing ? uncertainMessage : '内容暂时无法读取，请重试。', res.status, 'format', writing);
     }
     if (!res.ok) {
-      const summaryMessage = /^\/article-seo\/(generate|settings)$/.test(path) && typeof data?.message === 'string' ? data.message : '';
+      const summaryMessage = /^\/article-seo\/(generate|slug|settings)$/.test(path) && typeof data?.message === 'string' ? data.message : '';
       const uncertain = writing && res.status >= 500 && !summaryMessage;
       // These routes deliberately return safe provider errors, not exception text.
       const cityMessage = readOnly && /^\/weather-mood\/(cities|locate|locate-network)$/.test(path) && typeof data?.code === 'string' && /^(AMAP_|CITY_|WEATHER_UPSTREAM_LIMIT)/.test(data.code) && typeof data?.message === 'string' ? data.message : '';

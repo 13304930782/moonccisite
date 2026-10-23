@@ -1,5 +1,6 @@
 const crypto=require('crypto');
 const db=require('../db');
+const {articlePath}=require('../lib/articleSlug');
 const enabled=()=>process.env.ENGAGEMENT_ENABLED==='true';
 async function transaction(fn){const c=await db.getConnection();try{await c.beginTransaction();const r=await fn(c);await c.commit();return r;}catch(e){await c.rollback();throw e;}finally{c.release();}}
 async function preferences(c,userId,lock=false){
@@ -29,7 +30,7 @@ async function workflowEvent(c,d,state,message='',actorId=null,keySuffix=''){
  await notify(c,{userId:d.author_id,actorId,key:'workflow:'+d.id+':'+d.version+':'+state+':'+(cycle?.cycle||0)+':'+keySuffix,kind:state,draftId:d.id,message});
 }
 async function visible(c,n){
- if(n.comment_id){const [[r]]=await c.query("SELECT c.id,p.title FROM comments c JOIN posts p ON p.id=c.post_id WHERE c.id=? AND c.status='visible' AND p.status='published'",[n.comment_id]);return r?{available:true,title:r.title,url:'/article/'+n.post_id}: {available:false};}
+ if(n.comment_id){const [[r]]=await c.query("SELECT c.id,p.title,p.slug FROM comments c JOIN posts p ON p.id=c.post_id WHERE c.id=? AND c.status='visible' AND p.status='published'",[n.comment_id]);return r?{available:true,title:r.title,url:articlePath({id:n.post_id,slug:r.slug})}: {available:false};}
  if(n.draft_id){const [[r]]=await c.query('SELECT id FROM article_drafts WHERE id=? AND author_id=?',[n.draft_id,n.user_id]);return r?{available:true,url:'/account/write?draft='+n.draft_id}:{available:false};}
  return {available:false};
 }

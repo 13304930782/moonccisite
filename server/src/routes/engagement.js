@@ -70,7 +70,7 @@ router.get('/history',async(req,res)=>{
  const cutoff=Date.now()-180*86400000,pageSize=30;
  const [[count]]=await db.query("SELECT COUNT(*) total FROM article_reading_history h JOIN posts p ON p.id=h.post_id WHERE h.user_id=? AND p.status='published' AND h.updated_at>=?",[req.user.id,cutoff]);
  const page=Math.max(1,Math.min(Math.ceil(Number(count.total)/pageSize)||1,Math.floor(Number(req.query.page))||1));
- const [items]=await db.query("SELECT h.*,p.title FROM article_reading_history h JOIN posts p ON p.id=h.post_id WHERE h.user_id=? AND p.status='published' AND h.updated_at>=? ORDER BY h.updated_at DESC,h.post_id DESC LIMIT ? OFFSET ?",[req.user.id,cutoff,pageSize,(page-1)*pageSize]);res.json({items,total:Number(count.total),page,pageSize});
+ const [items]=await db.query("SELECT h.*,p.title,p.slug FROM article_reading_history h JOIN posts p ON p.id=h.post_id WHERE h.user_id=? AND p.status='published' AND h.updated_at>=? ORDER BY h.updated_at DESC,h.post_id DESC LIMIT ? OFFSET ?",[req.user.id,cutoff,pageSize,(page-1)*pageSize]);res.json({items,total:Number(count.total),page,pageSize});
 });
 router.param('postId',(req,res,next,id)=>{if(!/^[1-9]\d*$/.test(id)||!Number.isSafeInteger(Number(id)))return res.status(400).json({message:'文章编号无效。'});next();});
 router.get('/history/:postId',async(req,res)=>{

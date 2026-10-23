@@ -1,3 +1,4 @@
+import { articlePath } from '../lib/articleUrl';
 import {MailFailureTasks} from '../components/MailFailureTasks';
 import {useEffect,useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -19,7 +20,7 @@ export default function OperationsPage(){
  <div className="operations-chart-label"><span>{data.start}</span><span>{data.end}</span></div><p className="operations-note">阅读沿用现有 30 秒去重口径，排除管理员、机器人和 DNT 请求。{data.partial?'所选范围包含未采集日期，图中以斜线标记，不计为零。':'所选范围位于已有统计区间。'}收藏未采集历史快照，无法提供历史新增量。</p>
  <details className="operations-daily"><summary>查看每日阅读数据</summary><div>{data.trend.map((d:any)=><p key={d.day}><span>{d.day}</span><strong>{d.views===null?'未采集':d.views}</strong></p>)}</div></details></>}
  </section>
- {data&&<><section className="operations-panel"><div className="operations-panel-title"><h2>文章阅读排行</h2><span>最多显示 20 篇公开文章</span></div>{!data.articles.length?<div className="workspace-empty"><BarChart3/><h2>还没有公开文章</h2></div>:<div className="operations-table-wrap"><table><thead><tr><th>文章</th><th>区间阅读</th><th>区间公开评论</th><th>当前收藏</th></tr></thead><tbody>{data.articles.map((p:any)=><tr key={p.id}><td><Link to={'/article/'+p.id}>{p.title}</Link></td><td data-label="区间阅读">{p.views}</td><td data-label="区间公开评论">{p.comments}</td><td data-label="当前收藏">{p.bookmarks}</td></tr>)}</tbody></table></div>}</section>
+ {data&&<><section className="operations-panel"><div className="operations-panel-title"><h2>文章阅读排行</h2><span>最多显示 20 篇公开文章</span></div>{!data.articles.length?<div className="workspace-empty"><BarChart3/><h2>还没有公开文章</h2></div>:<div className="operations-table-wrap"><table><thead><tr><th>文章</th><th>区间阅读</th><th>区间公开评论</th><th>当前收藏</th></tr></thead><tbody>{data.articles.map((p:any)=><tr key={p.id}><td><Link to={articlePath(p)}>{p.title}</Link></td><td data-label="区间阅读">{p.views}</td><td data-label="区间公开评论">{p.comments}</td><td data-label="当前收藏">{p.bookmarks}</td></tr>)}</tbody></table></div>}</section>
  <section className="operations-panel"><div className="operations-panel-title"><h2>需要处理</h2><span>当前状态，不受日期筛选影响</span></div>{data.tasks.length?data.tasks.map((t:any)=><Link className="operations-todo" to={(t.state==='submitted'?'/admin/reviews':'/admin/schedules')+'?state='+t.state} key={t.draft_id}><div><strong>{t.title||'未命名稿件'}</strong>{t.reason&&<p>{t.reason}</p>}{t.scheduled_at&&<p>北京时间 {new Date(Number(t.scheduled_at)).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}</p>}</div><span>{t.state==='failed'?'发布失败':t.state==='submitted'?'待审核':'待发布'} →</span></Link>):<div className="workspace-empty"><Inbox/><h2>目前没有发布待办</h2><p>新的投稿和排期会显示在这里。</p></div>}
  <MailFailureTasks count={data.summary.mailFailed} onQueued={()=>void load()}/></section></>}
  </section>;

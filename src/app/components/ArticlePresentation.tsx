@@ -21,7 +21,7 @@ export function ArticlePresentation({ post, preview = false, views = null,progre
   const [now,setNow]=useState(()=>new Date());
   useEffect(()=>{const timer=setInterval(()=>setNow(new Date()),60000);return()=>clearInterval(timer);},[]);
   const old=isArticleOld(post.updated_at || post.published_at || post.created_at,now);
-  const headings = useMemo(()=>headingsFor(content).filter(h=>h.level===2||h.level===3),[content]);
+  const headings = useMemo(()=>headingsFor(content,2).filter(h=>h.level===2||h.level===3),[content]);
   const cover=safeImageSrc(post.cover_image),[palette,setPalette]=useState<{src:string;value:string}|null>(null);
   useEffect(()=>cover?loadCoverGradient(cover,value=>setPalette({src:cover,value})):undefined,[cover]);
   useEffect(()=>{if(!preview)window.dispatchEvent(new Event('mooncci:article-rail-ready'));return()=>{if(!preview)window.dispatchEvent(new Event('mooncci:article-rail-ready'));};},[preview,headings.length]);
@@ -58,7 +58,7 @@ export function ArticlePresentation({ post, preview = false, views = null,progre
           {post.summary_mode==='ai'&&<span className="article-summary-source"><span className="article-summary-deepseek" aria-hidden="true"/>DeepSeek · AI 简介</span>}
           {summary}
         </p>)}
-        <MarkdownContent content={content} headingPrefix="heading" imageDimensions={post.image_dimensions}/>
+        <MarkdownContent content={content} headingPrefix="heading" minHeadingLevel={2} imageDimensions={post.image_dimensions}/>
         {tags.length>0&&<SingleLine className="detail-tags" label="文章标签">{tags.map(tag=><Link key={tag} to={`/tag/${encodeURIComponent(tag)}`}>{tag}</Link>)}</SingleLine>}
       </div>
       <ArticleTableOfContents headings={headings} preview={preview}/>

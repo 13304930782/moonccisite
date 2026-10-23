@@ -7,10 +7,10 @@ import {YouTubeLink} from './YouTubeLink';
 import {youtubeVideoId} from '../lib/youtube';
 import '../../styles/rich-text.css';
 export const EmbeddedPlayback = createContext(true);
-export function richTextHeadings(content: string) {
-  return Array.from(richTextFragment(content).querySelectorAll('h1,h2,h3,h4,h5,h6')).flatMap((el,index) => Number(el.tagName[1]) <= 3 && el.textContent?.trim() ? [{id:`heading-${index}`,title:el.textContent.trim(),level:Number(el.tagName[1])}] : []);
+export function richTextHeadings(content: string, minHeadingLevel: 1 | 2 = 1) {
+  return Array.from(richTextFragment(content).querySelectorAll('h1,h2,h3,h4,h5,h6')).flatMap((el,index) => Number(el.tagName[1]) <= 3 && el.textContent?.trim() ? [{id:`heading-${index}`,title:el.textContent.trim(),level:Math.max(minHeadingLevel, Number(el.tagName[1]))}] : []);
 }
-export function RichTextContent({content,headingPrefix,imageDimensions}: {content:string;headingPrefix?:string;imageDimensions?:ImageDimensions}) {
+export function RichTextContent({content,headingPrefix,imageDimensions,minHeadingLevel=1}: {content:string;headingPrefix?:string;imageDimensions?:ImageDimensions;minHeadingLevel?:1|2}) {
   const playback = useContext(EmbeddedPlayback);
   let heading = 0;
   function render(node: Node, key: number): ReactNode {
@@ -48,7 +48,7 @@ export function RichTextContent({content,headingPrefix,imageDimensions}: {conten
     if (tag === 'a' && youtubeVideoId(el.getAttribute('href') || '')) return <YouTubeLink key={key} href={el.getAttribute('href')!}>{children}</YouTubeLink>;
     if(tag === 'pre') { const code=el.querySelector('code'); return <CodeBlock key={key}><code className={code?.className}>{code?.textContent || el.textContent}</code></CodeBlock>; }
     if(tag === 'table') return <div className="markdown-table-scroll" key={key} role="region" aria-label="文章表格" tabIndex={0}><table>{children}</table></div>;
-    return createElement(tag,props,children);
+    return createElement(/^h[1-6]$/.test(tag) ? `h${Math.max(minHeadingLevel, Number(tag[1]))}` : tag,props,children);
   }
   function renderNodes(nodes: Node[]): ReactNode[] {
     const output: ReactNode[] = [];

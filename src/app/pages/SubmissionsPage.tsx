@@ -1,3 +1,4 @@
+import { articlePath } from '../lib/articleUrl';
 import { notify } from '../lib/feedback';
 import {useEffect,useState} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
@@ -17,7 +18,7 @@ export default function SubmissionsPage(){
  <div className="submission-list-panel"><div className="submission-list-heading"><h2>全部稿件</h2><span>{data.total} 篇</span></div>
  {data.items.map((d:any)=>{const state=d.workflow?.state||'draft',locked=['submitted','approved','scheduled'].includes(state);return <article className="submission-row" key={d.id}><div className="submission-document-icon" aria-hidden="true"><FileText size={21}/></div><div className="submission-row-content"><div className="submission-row-heading"><h3><Link to={'/account/write?draft='+d.id}>{d.payload.title||'未命名草稿'}</Link></h3><span className={'submission-badge state-'+state}>{workflowNames[state]}</span></div>
  <p className="submission-meta">{d.updated_at?'更新于 '+updated(d.updated_at):'稿件已保存'}{d.workflow?.scheduled_at&&' · 计划发布：'+new Date(Number(d.workflow.scheduled_at)).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}</p>
- {d.workflow?.reason&&<p className="submission-reason">{d.workflow.reason}</p>}<div className="submission-row-actions"><Link className="submission-open" to={'/account/write?draft='+d.id}>{locked?'查看稿件':'继续编辑'}<ArrowUpRight size={14}/></Link>{['submitted','approved'].includes(state)&&<button disabled={busy} onClick={()=>void cancel(d)}>撤回审核并编辑</button>}{d.post_id&&<Link to={'/article/'+d.post_id}>查看文章</Link>}</div></div></article>;})}
+ {d.workflow?.reason&&<p className="submission-reason">{d.workflow.reason}</p>}<div className="submission-row-actions"><Link className="submission-open" to={'/account/write?draft='+d.id}>{locked?'查看稿件':'继续编辑'}<ArrowUpRight size={14}/></Link>{['submitted','approved'].includes(state)&&<button disabled={busy} onClick={()=>void cancel(d)}>撤回审核并编辑</button>}{d.post_id&&<Link to={articlePath({id:d.post_id,slug:d.post_slug})}>查看文章</Link>}</div></div></article>;})}
  {!data.items.length&&<div className="account-empty"><FileText size={28}/><h3>从第一篇草稿开始</h3><p>保存想法，慢慢完善，准备好后提交审核。</p></div>}</div>
  {data.total>20&&<nav className="submission-pagination" aria-label="稿件分页"><button disabled={page===1} onClick={()=>setPage(page-1)}>上一页</button><span>第 {page} / {Math.ceil(data.total/20)} 页</span><button disabled={page*20>=data.total} onClick={()=>setPage(page+1)}>下一页</button></nav>}
  </>}</section>;

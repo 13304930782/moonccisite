@@ -1,4 +1,5 @@
 const revisions=require('./articleRevisions');
+const {validateArticleSlug,claimArticleSlug}=require('./articleSlug');
 const {isAdminLike}=require('../middleware/auth');
 const {coverCropForInput,serializeCoverCrop}=require('./articleCoverCrop');
 const error=(message,status=400)=>Object.assign(new Error(message),{status});
@@ -21,14 +22,17 @@ const fields=p=>[p.title.trim(),p.slug.trim(),p.summary,p.content,p.cover_image,
 async function publish(c,d,user) {
     const p=payload(d.payload);if(!p.title.trim()||!p.content.trim())throw error('发布前请填写标题和正文。');
     require('./articleSummaryProof').assertReady(p);
-    if(!p.slug.trim())p.slug=`article-${d.id}`;
     let postId=d.post_id, nextVersion=1;
-    if(postId){const [[post]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[postId]);if(!post||!allowed(user,post))throw error('无权限发布。',403);if(post.version!==d.base_version)throw error('公开文章已有新版本，请重新加载后编辑。',409);await revisions.baseline(c,post,user.id);nextVersion=post.version+1;await c.query('UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,cover_crop=?,category=?,tags=?,summary_mode=?,status="published",published_at=COALESCE(published_at,NOW()),updated_at=NOW(),version=version+1 WHERE id=?',[...fields(p),postId]);}
-    else {const [r]=await c.query('INSERT INTO posts(title,slug,summary,content,cover_image,cover_crop,category,tags,summary_mode,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,?,?,"published",?,COALESCE(?,NOW()))',[...fields(p),d.author_id,p.published_at||null]);postId=r.insertId;}
+    if(postId){const [[post]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[postId]);if(!post||!allowed(user,post))throw error('无权限发布。',403);if(post.version!==d.base_version)throw error('公开文章已有新版本，请重新加载后编辑。',409);p.slug=validateArticleSlug(p.slug,post.slug);await claimArticleSlug(c,postId,p.slug,post.slug);await revisions.baseline(c,post,user.id);nextVersion=post.version+1;await c.query('UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,cover_crop=?,category=?,tags=?,summary_mode=?,status="published",published_at=COALESCE(published_at,NOW()),updated_at=NOW(),version=version+1 WHERE id=?',[...fields(p),postId]);}
+    else {p.slug=validateArticleSlug(p.slug);const [r]=await c.query('INSERT INTO posts(title,slug,summary,content,cover_image,cover_crop,category,tags,summary_mode,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,?,?,"published",?,COALESCE(?,NOW()))',[...fields(p),d.author_id,p.published_at||null]);postId=r.insertId;await claimArticleSlug(c,postId,p.slug);}
     await c.query('UPDATE article_revisions SET post_id=? WHERE draft_id=? AND post_id IS NULL',[postId,d.id]);
     await revisions.record(c,{id:d.id,post_id:postId},p,'publish',user.id,nextVersion);
     await c.query('UPDATE article_drafts SET post_id=?,base_version=?,dirty=0,published_version=version WHERE id=?',[postId,nextVersion,d.id]);
 await require('../services/engagement').workflowEvent(c,d,'published','',user.id);
 return postId;
 }
-module.exports={payload,publish,error};
+async function validateDraftSlug(c,d,input=d.payload) {
+  const [[post]]=d.post_id?await c.query('SELECT slug FROM posts WHERE id=?',[d.post_id]):[[]];
+  return validateArticleSlug(input.slug,post?.slug);
+}
+module.exports={payload,publish,error,validateDraftSlug};

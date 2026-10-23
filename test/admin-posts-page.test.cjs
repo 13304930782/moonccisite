@@ -1,11 +1,13 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
 const React=require('react'),{act,create}=require('react-test-renderer');
+const articleUrl={};new Function('exports',ts.transpileModule(fs.readFileSync('src/app/lib/articleUrl.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(articleUrl);
 function load(file,api,role='owner',confirm=async()=>true,extra={}){
  const mod={exports:{}},box=({children,...props})=>React.createElement('box',props,children);
  const button=({asChild,children,...props})=>asChild?React.cloneElement(children,props):React.createElement('button',props,children);
  const mocks={
   'react-router-dom':{Link:({to,children,...props})=>React.createElement('a',{href:to,...props},children)},
   'lucide-react':{MoreHorizontal:'svg'},'react-dom':{createPortal:children=>React.createElement('import-host',null,children)},
+  '../lib/articleUrl':articleUrl,
   '../lib/api':{api},'../lib/feedback':{notify:{success(){},error(){}}},'../lib/confirmAction':{confirmAction:confirm},
   '../context/AuthContext':{useAuth:()=>({user:{role}})},'../components/ArticleImport':{ArticleImport:()=>React.createElement('details',null,'import fixture')},
   '../components/admin/AdminButton':{AdminButton:button},'../components/ui/skeleton':{Skeleton:'skeleton'},
@@ -84,5 +86,15 @@ test('import remains mounted with its result when dialog content closes and reop
   await act(async()=>open());await act(async()=>root.root.findAllByType('button').find(b=>text(b)==='待导入').props.onClick());
   await act(async()=>root.root.findByType('dialog-fixture').props.close());await act(async()=>open());
   assert.equal(mounts,1);assert.match(text(root.toJSON()),/导入成功与警告保留/);
+ }finally{root?.unmount();}
+});
+
+
+test('published article actions use public slugs and legacy fallback without exposing draft links',async()=>{
+ const Page=load(file,async url=>url.startsWith('/admin/posts')?{items:[{...post(1),slug:'first-article'},post(2),{...post(3,'draft'),slug:'not-published'}],total:3,page:1}:{items:[],total:0,page:1});let root;
+ try{
+  await act(async()=>{root=create(React.createElement(Page));});
+  const publicLinks=root.root.findAllByType('a').map(a=>a.props.href).filter(href=>href.startsWith('/article/'));
+  assert.deepEqual(publicLinks,['/article/first-article','/article/2']);
  }finally{root?.unmount();}
 });

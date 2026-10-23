@@ -1,4 +1,5 @@
 const revisions=require('../lib/articleRevisions');
+const {articleSlugWriteError}=require('../lib/articleSlug');
 const db = require('../db');
 const {authRequired,editorOrAdmin,isAdminLike,getUserFromRequest,adminOnly}=require('../middleware/auth');
 const router=require('../lib/asyncRouter')();
@@ -7,10 +8,10 @@ const workflow=require('../services/articleWorkflow');
 router.use(authRequired,(req,res,next)=>workflow.enabled()?next():editorOrAdmin(req,res,next),rateLimit({windowMs:60000,limit:120,standardHeaders:true,legacyHeaders:false}));
 const error=(message,status=400)=>Object.assign(new Error(message),{status});
 const allowed=(user,row)=>isAdminLike(user)||Number(user.id)===Number(row.author_id);
-const {payload}=require('../lib/articlePublishing');
+const {payload,validateDraftSlug}=require('../lib/articlePublishing');
 const {withCoverCrop}=require('../lib/articleCoverCrop');
 function present(row){return {...row,payload:withCoverCrop(typeof row.payload==='string'?JSON.parse(row.payload):row.payload)};}
-const run=fn=>async(req,res,next)=>{try{await fn(req,res);}catch(e){if(e.code==='ER_DUP_ENTRY')return res.status(409).json({message:'链接别名或草稿已存在，请重新加载后重试。'});if(e.status)return res.status(e.status).json({message:e.message});next(e);}};
+const run=fn=>async(req,res,next)=>{try{await fn(req,res);}catch(e){e=articleSlugWriteError(e);if(e.code==='ER_DUP_ENTRY')return res.status(409).json({message:'链接别名或草稿已存在，请重新加载后重试。'});if(e.status)return res.status(e.status).json({message:e.message});next(e);}};
 async function transaction(req,fn){const c=await db.getConnection();try{await c.beginTransaction();const user=await getUserFromRequest(req);if(!user||user.status!=='active'||(!workflow.enabled()&&!['owner','admin','editor'].includes(user.role)))throw error('请重新登录。',401);const r=await fn(c,user);await c.commit();return r;}catch(e){await c.rollback();throw e;}finally{c.release();}}
 async function get(c,id,user,lock=false){const [[row]]=await c.query(`SELECT d.*,p.status AS post_status FROM article_drafts d LEFT JOIN posts p ON p.id=d.post_id WHERE d.id=?${lock?' FOR UPDATE':''}`,[id]);if(!row||!allowed(user,row))throw error('草稿不存在或无权限。',404);const result=present(row);if(workflow.enabled()){const [[w]]=await c.query('SELECT state,reason,scheduled_at,draft_version FROM article_workflows WHERE draft_id=?',[id]);result.workflow=w||{state:'draft'};}return result;}
 const fields=p=>[p.title.trim(),p.slug.trim(),p.summary,p.content,p.cover_image,p.category,JSON.stringify(p.tags)];
@@ -46,6 +47,7 @@ router.post('/:id/resolve-conflict',run(async(req,res)=>{
     if(!isAdminLike(req.user)&&(workflow.enabled()||req.user.role!=='editor'))throw error('无直接发布权限。',403);
     if(before.version!==req.body.draft_version)throw error('草稿已变化，请重新对比。',409);
     if(workflow.enabled())await workflow.assertEditable(db,before);
+    await validateDraftSlug(db,before,payload(req.body.payload));
     req.body.payload=await require('../services/articleSummary').prepare(db,payload(req.body.payload),req.user.id);
   }
   res.json(await transaction(req,async(c,user)=>{
@@ -69,6 +71,7 @@ router.post('/:id/publish',(req,res,next)=>workflow.enabled()?adminOnly(req,res,
   const before=await get(db,req.params.id,req.user);
   if(before.version!==req.body.version)throw error('草稿已经变化，请先保存最新内容。',409);
   if(workflow.enabled())await workflow.assertEditable(db,before);
+  await validateDraftSlug(db,before);
   const prepared=before.published_version===req.body.version&&!before.dirty?before.payload:await require('../services/articleSummary').prepare(db,before.payload,req.user.id);
   res.json(await transaction(req,async(c,user)=>{
     const d=await get(c,req.params.id,user,true);if(workflow.enabled())await workflow.assertEditable(c,d);

@@ -15,6 +15,7 @@ test('draft publishing stores verified AI origin and clears it for manual summar
       if (sql.startsWith('INSERT INTO posts')) { saved = values; assert.match(sql, /tags,summary_mode,status/); return [{ insertId: 1 }]; }
       if (sql.startsWith('UPDATE posts SET title=')) { saved = values; assert.match(sql, /tags=\?,summary_mode=\?,status=/); return [{ affectedRows: 1 }]; }
       if (sql.startsWith('SELECT * FROM posts')) return [[{ id: 1, author_id: 1, version: 1 }]];
+      if (sql.startsWith('SELECT post_id FROM article_slug_aliases')) return [[{post_id:1}]];
       if (sql.startsWith('SELECT')) return [[]];
       return [{ insertId: 1 }];
     } };
@@ -35,7 +36,8 @@ test('direct updates retain origin only for unchanged or verified summaries', as
   let row = { id: 1, author_id: 1, version: 1, title: 'Title', slug: 'title', content: 'Body', summary: 'AI summary', summary_mode: 'ai', status: 'draft', tags: '[]' };
   const query = async (sql, values) => {
     if (sql.startsWith('SELECT * FROM posts')) return [[{ ...row }]];
-    if (sql.startsWith('SELECT')) return [[]];
+    if (sql.startsWith('SELECT post_id FROM article_slug_aliases')) return [[{post_id:1}]];
+      if (sql.startsWith('SELECT')) return [[]];
     if (sql.startsWith('UPDATE posts SET title=')) {
       assert.match(sql, /tags=\?,summary_mode=\?,status=/);
       row = { ...row, summary: values[2], summary_mode: values[8], version: row.version + 1 };

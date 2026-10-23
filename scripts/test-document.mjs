@@ -14,9 +14,17 @@ async function load(path) {
 const article=await renderDocument('/article/7',load);
 assert.match(article.html,/正文测试/);assert.match(JSDOM.fragment(article.html).textContent,/const a=1/);assert.match(article.html,/detail-title/);
 assert.ok(!article.html.includes('startup-shell'));
+const articleDom=JSDOM.fragment(article.html);
+assert.equal(articleDom.querySelectorAll('h1').length,1);
+assert.equal(articleDom.querySelector('h2#heading-0').textContent,'标题');
+assert.ok(articleDom.querySelector('nav[aria-label="文章目录"] a[href="#heading-0"]'));
 const list=await renderDocument('/articles',load);
 assert.match(list.html,/href="\/articles\?page=2"/);
-const rich=await renderDocument('/article/7',p=>p==='/posts/7'?Promise.resolve({...post,content:'<!--mooncci-richtext:v1--><h2>富文本</h2><p>安全正文<script>alert(1)</script><img src="javascript:alert(1)" onerror="bad()"></p>'}):load(p));
+const rich=await renderDocument('/article/7',p=>p==='/posts/7'?Promise.resolve({...post,content:'<!--mooncci-richtext:v1--><h1>富文本</h1><p>安全正文<script>alert(1)</script><img src="javascript:alert(1)" onerror="bad()"></p>'}):load(p));
+const richDom=JSDOM.fragment(rich.html);
+assert.equal(richDom.querySelectorAll('h1').length,1);
+assert.equal(richDom.querySelector('h2#heading-0').textContent,'富文本');
+assert.ok(richDom.querySelector('nav[aria-label="文章目录"] a[href="#heading-0"]'));
 assert.match(rich.html,/安全正文/);assert.ok(!rich.html.includes('onerror='));assert.ok(!rich.html.includes('javascript:'));assert.ok(!rich.html.includes('<script>alert'));
 const [a,b]=await Promise.all(['甲','乙'].map(title=>renderDocument('/article/7',p=>p==='/posts/7'?Promise.resolve({...post,title}):load(p))));
 assert.equal(a.data.resources['/posts/7'].title,'甲');assert.equal(b.data.resources['/posts/7'].title,'乙');

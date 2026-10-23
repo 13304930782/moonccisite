@@ -36,6 +36,7 @@ export function PostResults({
             <BlogCard
               key={post.id}
               id={post.id}
+              slug={post.slug}
               title={post.title}
               excerpt={post.summary}
               date={post.updated_at || post.published_at || post.created_at}

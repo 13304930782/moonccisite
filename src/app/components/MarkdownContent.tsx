@@ -16,8 +16,8 @@ function plainText(node: any): string {
     node.value || node.alt || (node.children || []).map(plainText).join('')
   );
 }
-export function headingsFor(content: string) {
-  if(isRichText(content)) return richTextHeadings(content);
+export function headingsFor(content: string, minHeadingLevel: 1 | 2 = 1) {
+  if(isRichText(content)) return richTextHeadings(content, minHeadingLevel);
   const tree = unified()
     .use(remarkParse)
     .use(remarkGfm)
@@ -28,7 +28,7 @@ export function headingsFor(content: string) {
       headings.push({
         id: `heading-${node.position.start.line - 1}`,
         title: plainText(node).trim(),
-        level: node.depth,
+        level: Math.max(minHeadingLevel, node.depth),
       });
     for (const child of node.children || []) visit(child);
   }
@@ -39,17 +39,19 @@ export function MarkdownContent({
   content,
   headingPrefix,
   imageDimensions,
+  minHeadingLevel = 1,
 }: {
   content: string;
   headingPrefix?: string;
   imageDimensions?: ImageDimensions;
+  minHeadingLevel?: 1 | 2;
 }) {
-  if(isRichText(content)) return <RichTextContent content={content} headingPrefix={headingPrefix} imageDimensions={imageDimensions}/>;
+  if(isRichText(content)) return <RichTextContent content={content} headingPrefix={headingPrefix} minHeadingLevel={minHeadingLevel} imageDimensions={imageDimensions}/>;
   const heading =
     (level: number) =>
     ({ node, children }: any) =>
       createElement(
-        `h${level}`,
+        `h${Math.max(minHeadingLevel, level)}`,
         {
           id: headingPrefix
             ? `${headingPrefix}-${(node?.position?.start.line || 1) - 1}`

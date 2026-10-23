@@ -6,6 +6,7 @@ const db = require('../db');
 const { authRequired, editorOrAdmin, isAdminLike, getUserFromRequest } = require('../middleware/auth');
 const {coverCropForInput,withCoverCrop,serializeCoverCrop}=require('../lib/articleCoverCrop');
 
+const {validateArticleSlug,resolveArticle,claimArticleSlug,articleSlugWriteError}=require('../lib/articleSlug');
 const router = require('../lib/asyncRouter')();
 router.use((_req, res, next) => {
   res.setHeader('Cache-Control', 'private, no-store');
@@ -82,7 +83,7 @@ function normalizePostInput(body, oldPost = null) {
   next.summary_receipt = generated ? input.summary_receipt : '';
 
   if (!next.title) return { error: '文章标题不能为空' };
-  if (!next.slug) return { error: '文章 slug 不能为空' };
+  try { next.slug=validateArticleSlug(next.slug,oldPost?.slug); } catch(e) { return {error:e.message}; }
   if (!next.content) return { error: '文章内容不能为空' };
   if (!['draft', 'published'].includes(next.status)) return { error: '文章状态不合法' };
 
@@ -185,10 +186,8 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   const viewer = await optionalUser(req);
-  const [rows] = await db.query(
-    'SELECT p.*,u.username AS author_name, (SELECT deleted_at FROM account_profiles ap WHERE ap.user_id=u.id) AS author_deleted, (SELECT avatar_url FROM account_profiles ap WHERE ap.user_id=u.id) AS author_avatar FROM posts p JOIN users u ON u.id=p.author_id WHERE p.id=?',
-    [req.params.id]
-  );
+  const post=await resolveArticle(db,req.params.id);
+  const rows=post?[post]:[];
 
   if (!rows[0]) return res.status(404).json({ message: '不存在' });
 
@@ -206,7 +205,7 @@ router.get('/:id', async (req, res) => {
 const revisions = require('../lib/articleRevisions');
 const writeError=(message,status)=>Object.assign(new Error(message),{status});
 async function writeTransaction(work){const c=await db.getConnection();try{await c.beginTransaction();const result=await work(c);await c.commit();return result;}catch(e){await c.rollback();throw e;}finally{c.release();}}
-const writeHandler=work=>async(req,res)=>{try{res.json(await writeTransaction(c=>work(c,req)));}catch(e){if(e.status)return res.status(e.status).json({message:e.message});if(e.code==='ER_DUP_ENTRY')return res.status(409).json({message:'链接别名已存在。'});console.error('[posts/write]',e.code||'failed');res.status(500).json({message:'文章保存失败'});}};
+const writeHandler=work=>async(req,res)=>{try{res.json(await writeTransaction(c=>work(c,req)));}catch(e){e=articleSlugWriteError(e);if(e.status)return res.status(e.status).json({message:e.message});if(e.code==='ER_DUP_ENTRY')return res.status(409).json({message:'链接别名已存在。'});console.error('[posts/write]',e.code||'failed');res.status(500).json({message:'文章保存失败'});}};
 const publishGuard=(req,res,next)=>require('../services/articleWorkflow').enabled()&&!isAdminLike(req.user)?res.status(403).json({message:'请通过我的投稿提交审核。'}):next();
 const prepareSummary=async(req,res,next)=>{try{
  let old=null;if(req.params.id){const [[row]]=await db.query('SELECT * FROM posts WHERE id=?',[req.params.id]);if(!row||!canManagePost(req.user,row))throw writeError('文章不存在或无权限。',404);if(req.body.version!==row.version)throw writeError('文章已变化，请刷新。',409);old=row;}
@@ -219,6 +218,7 @@ router.post('/',authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHand
  const normalized=normalizePostInput(req.body);if(normalized.error)throw writeError(normalized.error,400);
  const p=normalized.value;
  const [r]=await c.query('INSERT INTO posts (title,slug,summary,content,cover_image,cover_crop,category,tags,summary_mode,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',[p.title,p.slug,p.summary,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.summary_mode,p.status,req.user.id,p.status==='published'?new Date():null]);
+ await claimArticleSlug(c,r.insertId,p.slug);
  await revisions.record(c,{post_id:r.insertId},p,p.status==='published'?'publish':'manual',req.user.id,p.status==='published'?1:null);
  return {message:'创建成功'};
 }));
@@ -229,6 +229,7 @@ router.put('/:id',authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHa
  if(req.body.version!==old.version)throw writeError('文章版本已变化或缺少版本号，请刷新编辑页后重试。',409);
  const normalized=normalizePostInput(req.body,old);if(normalized.error)throw writeError(normalized.error,400);
  const p=normalized.value;const publishedAt=old.published_at||(p.status==='published'?new Date():null);
+ await claimArticleSlug(c,old.id,p.slug,old.slug);
  await revisions.baseline(c,old,req.user.id);
  const [updated]=await c.query('UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,cover_crop=?,category=?,tags=?,summary_mode=?,status=?,published_at=?,updated_at=NOW(),version=version+1 WHERE id=? AND version=?',[p.title,p.slug,p.summary,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.summary_mode,p.status,publishedAt,req.params.id,old.version]);
  if(!updated.affectedRows)throw writeError('文章已被更新，请刷新后重试。',409);

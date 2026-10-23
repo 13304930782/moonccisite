@@ -47,11 +47,11 @@ function navigationIntent(event: MouseEvent) {
 export function diagnosticPath(value: string): string | null {
   const pathname = value.split(/[?#]/, 1)[0];
   if (/^\/(?:|articles|projects|updates|login|register|search|account\/mailbox|admin\/mailbox|diagnostics)$/.test(pathname)) return pathname;
-  if (/^\/article\/(?:\d+|:id)$/.test(pathname)) return '/article/:id';
+  if (/^\/article\/[^/]+$/.test(pathname)) return '/article/:id';
   if (/^\/projects\/(?:[\w-]+|:slug)$/.test(pathname)) return '/projects/:slug';
   if (/^\/assets\/[^/]+$/.test(pathname)) return '/assets/:asset';
   if (/^\/api\/(?:now|activity|projects|posts|updates|site-settings|settings\/public|auth\/me|auth\/login|auth\/register|auth\/providers|auth\/google|login-settings\/public|posts\/meta\/(?:categories|tags)|seo)$/.test(pathname)) return pathname;
-  if (/^\/api\/posts\/(?:\d+|:id)$/.test(pathname)) return '/api/posts/:id';
+  if (/^\/api\/posts\/[^/]+$/.test(pathname)) return '/api/posts/:id';
   if (/^\/api\/projects\/(?:[\w-]+|:slug)$/.test(pathname)) return '/api/projects/:slug';
   if (/^\/api\/mailboxes\/(?:me|sent|send|folders\/(?:inbox|sent))$/.test(pathname)) return pathname;
   if (/^\/api\/mailboxes\/folders\/(?:inbox|sent)\/(?:\d+|:uid)$/.test(pathname)) return pathname.replace(/\/(?:\d+|:uid)$/, '/:uid');

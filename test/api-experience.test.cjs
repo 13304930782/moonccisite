@@ -8,6 +8,8 @@ test('request timeout, cancellation, response classification, credentials and no
  const original = global.fetch;
  try {
   let calls=0;
+  global.fetch=async()=>Response.json({message:'DeepSeek 余额不足，请站长充值。'},{status:503});
+  await assert.rejects(api('/article-seo/slug',{method:'POST'}),e=>e.message==='DeepSeek 余额不足，请站长充值。'&&!e.uncertain);
   global.fetch=async (_url,options)=>{calls++;assert.equal(options.credentials,'same-origin');assert.equal(options.headers.has('Authorization'),false);return new Response(JSON.stringify({ok:true}),{headers:{'Content-Type':'application/json'}});};
   assert.deepEqual(await api('/test',{headers:{Authorization:'must-not-leak'}}),{ok:true});
   global.fetch=(_url,{signal})=>new Promise((resolve,reject)=>{calls++;signal.addEventListener('abort',()=>reject(new Error('aborted')),{once:true});});
@@ -23,6 +25,8 @@ test('request timeout, cancellation, response classification, credentials and no
   await assert.rejects(api('/read'),e=>e.kind==='format');
   global.fetch=async()=>new Response(JSON.stringify({message:'邮箱格式错误'}),{status:400,headers:{'Content-Type':'application/json'}});
   await assert.rejects(api('/write',{method:'POST'}),e=>e.message==='邮箱格式错误'&&!e.uncertain);
+  global.fetch=async()=>Response.json({message:'DeepSeek 余额不足，请站长充值。'},{status:503});
+  await assert.rejects(api('/article-seo/slug',{method:'POST'}),e=>e.message==='DeepSeek 余额不足，请站长充值。'&&!e.uncertain);
   global.fetch=async (_url,options)=>{assert.equal('readOnly' in options,false);throw new Error('offline');};
   await assert.rejects(api('/weather-mood/cities',{method:'POST',readOnly:true}),e=>e.kind==='network'&&!e.uncertain);
   global.fetch=async()=>Response.json({message:'该位置暂未识别到城市，可手动选择。',code:'AMAP_NO_CITY'},{status:502});

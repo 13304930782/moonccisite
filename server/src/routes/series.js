@@ -17,19 +17,19 @@ router.get('/',routeLimiter,guarded(async(req,res)=>{
 router.get('/article/:id',routeLimiter,guarded(async(req,res)=>{
  const [[row]]=await db.query("SELECT s.* FROM article_series s JOIN article_series_posts sp ON sp.series_id=s.id JOIN posts p ON p.id=sp.post_id WHERE p.id=? AND p.status='published'",[req.params.id]);
  if(!row)return res.json(null);
- const [items]=await db.query("SELECT p.id,p.title FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? AND p.status='published' ORDER BY sp.position,p.id",[row.id]);
+ const [items]=await db.query("SELECT p.id,p.slug,p.title FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? AND p.status='published' ORDER BY sp.position,p.id",[row.id]);
  const index=items.findIndex(x=>String(x.id)===req.params.id);
  res.json({series:row,previous:items[index-1]||null,next:items[index+1]||null});
 }));
 router.get('/manage/:id/articles',routeLimiter,authRequired,adminOnly,guarded(async(req,res)=>{
  res.set('Cache-Control','private, no-store');
- const [items]=await db.query('SELECT p.id,p.title,p.status FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? ORDER BY sp.position,p.id',[req.params.id]);
+ const [items]=await db.query('SELECT p.id,p.slug,p.title,p.status FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? ORDER BY sp.position,p.id',[req.params.id]);
  res.json({items});
 }));
 router.get('/:slug',routeLimiter,guarded(async(req,res)=>{
  const [[series]]=await db.query('SELECT * FROM article_series WHERE slug=?',[req.params.slug]);
  if(!series)throw error('专栏不存在。',404);
- const [items]=await db.query("SELECT p.id,p.title,p.summary,p.cover_image,p.cover_crop,p.published_at FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? AND p.status='published' ORDER BY sp.position,p.id",[series.id]);
+ const [items]=await db.query("SELECT p.id,p.slug,p.title,p.summary,p.cover_image,p.cover_crop,p.published_at FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? AND p.status='published' ORDER BY sp.position,p.id",[series.id]);
  if(!items.length)throw error('专栏暂未公开。',404);
  res.json({series,items:items.map(withCoverCrop)});
 }));

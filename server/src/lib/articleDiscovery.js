@@ -1,4 +1,5 @@
-const columns='id,title,published_at,updated_at,category';
+const {resolveArticle}=require('./articleSlug');
+const columns='id,title,slug,published_at,updated_at,category';
 const pageNumber=value=>Math.min(100000,Math.max(1,Number.isInteger(Number(value))?Number(value):1));
 function tags(value){try{return [...new Set((Array.isArray(value)?value:JSON.parse(value||'[]')).filter(x=>typeof x==='string'))].slice(0,20);}catch{return [];}}
 function attachDiscovery(router,db){
@@ -10,7 +11,7 @@ function attachDiscovery(router,db){
   res.json({items,months,total:months.reduce((n,m)=>n+Number(m.count),0),page,pageSize});
  });
  router.get('/:id/discovery',limiter,async(req,res)=>{
-  const [[post]]=await db.query("SELECT id,tags,category,COALESCE(published_at,created_at) AS date FROM posts WHERE id=? AND status='published'",[req.params.id]);
+  const post=await resolveArticle(db,String(req.params.id),{published:true});
   if(!post)return res.status(404).json({message:'文章不存在'});
   const [[previous]]=await db.query(`SELECT ${columns} FROM posts WHERE status='published' AND (COALESCE(published_at,created_at)<? OR (COALESCE(published_at,created_at)=? AND id<?)) ORDER BY COALESCE(published_at,created_at) DESC,id DESC LIMIT 1`,[post.date,post.date,post.id]);
   const [[next]]=await db.query(`SELECT ${columns} FROM posts WHERE status='published' AND (COALESCE(published_at,created_at)>? OR (COALESCE(published_at,created_at)=? AND id>?)) ORDER BY COALESCE(published_at,created_at),id LIMIT 1`,[post.date,post.date,post.id]);

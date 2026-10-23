@@ -1,5 +1,5 @@
 {
-  "path": "^(?:/electricity|/updates/[1-9]\\d*|/article/[1-9]\\d*|/account/(?:settings|bookmarks|submissions|write|notifications|history|sessions)|/admin(?:/(?:posts(?:/[1-9]\\d*/edit)?|write|media|reviews|schedules|series|operations|analytics|runtime|comments|users(?:/[1-9]\\d*/settings)?|editor-apply|editor-applications|banned-words|site-settings|blog-pages|login-settings|mail-settings|send-mail|updates|projects|newsletter|early-access(?:/[1-9]\\d*)?|electricity))?)$",
+  "path": "^(?:/electricity|/updates/[1-9]\\d*|/article/(?:[A-Za-z0-9_.:-]|%(?!2[fF]|5[cC]|3[fF]|23|[01][0-9A-Fa-f]|7[fF])[A-Fa-f0-9]{2})+|/account/(?:settings|bookmarks|submissions|write|notifications|history|sessions)|/admin(?:/(?:posts(?:/[1-9]\\d*/edit)?|write|media|reviews|schedules|series|operations|analytics|runtime|comments|users(?:/[1-9]\\d*/settings)?|editor-apply|editor-applications|banned-words|site-settings|blog-pages|login-settings|mail-settings|send-mail|updates|projects|newsletter|early-access(?:/[1-9]\\d*)?|electricity))?)$",
   "query": {
     "draft": "^[A-Za-z0-9-]{1,64}$",
     "page": "^[1-9][0-9]{0,5}$",

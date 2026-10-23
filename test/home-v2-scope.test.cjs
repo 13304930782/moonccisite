@@ -116,7 +116,7 @@ test('only HomePage imports the new stylesheet, with no replacement global style
  }
 });
 
-test('shared shell, content components and theme retain pinned Git blobs (approved press-motion removal, updates navigation label, Early Access destination and article label style import)',()=>{
+test('shared shell, content components and theme retain pinned Git blobs (approved press-motion removal, updates navigation label, Early Access destination, article label style import and public slug links)',()=>{
  // Canonical LF blobs work on Windows and in shallow CI without historical commits.
  const pins={
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
@@ -126,7 +126,8 @@ test('shared shell, content components and theme retain pinned Git blobs (approv
   'src/app/components/Header.tsx':'0206f665b196f3698fa72f90aeed342d2db16fe1',
   'src/app/components/SiteFooter.tsx':'85bdf27069f292558f00aee14711f76254ea4add',
   'src/app/components/ContentUI.tsx':'f15932bb689b2f7190b97b2e3a6713d206287476',
-  'src/app/components/BlogCard.tsx':'4d3d878a28ab56a42b16aa3b073118174840601c',
+  // Approved slug URL wiring; card markup and styles are unchanged.
+  'src/app/components/BlogCard.tsx':'e66e6b1d7091170b25ed150548ca1c219559d51c',
   'src/app/components/ProjectCard.tsx':'623c271e352de63b85cf74ac060da22d8684fbc8',
   'src/app/context/ThemeContext.tsx':'7a26de5852af1986d6dff091ac80336786633488',
  };

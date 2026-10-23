@@ -1,12 +1,13 @@
+import { articlePath } from '../lib/articleUrl';
 import { notify } from '../lib/feedback';
 import {useEffect,useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {Bookmark} from 'lucide-react';
 import {useAuth} from '../context/AuthContext';
 import {api} from '../lib/api';
-export function BookmarkButton({id}:{id:number}){
+export function BookmarkButton({id,slug}:{id:number;slug?:string}){
  const {user,loading}=useAuth(),navigate=useNavigate();
- if(!user)return <button className="quiet-button" disabled={loading} onClick={()=>navigate(`/login?redirect=${encodeURIComponent(`/article/${id}`)}`)}><Bookmark size={16} aria-hidden="true"/> 收藏</button>;
+ if(!user)return <button className="quiet-button" disabled={loading} onClick={()=>navigate(`/login?redirect=${encodeURIComponent(articlePath({id,slug}))}`)}><Bookmark size={16} aria-hidden="true"/> 收藏</button>;
  return <SavedButton key={`${user.id}:${id}`} id={id}/>;
 }
 function SavedButton({id}:{id:number}){

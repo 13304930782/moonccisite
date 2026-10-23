@@ -1,5 +1,6 @@
 const db=require('../db');
-const {publish,error,payload}=require('../lib/articlePublishing');
+const {articleSlugWriteError}=require('../lib/articleSlug');
+const {publish,error,payload,validateDraftSlug}=require('../lib/articlePublishing');
 const {isAdminLike}=require('../middleware/auth');
 const enabled=()=>process.env.PUBLISHING_ENABLED==='true';
 const lockedStates=['submitted','approved','scheduled'];
@@ -7,7 +8,7 @@ async function assertEditable(c,d){
  const [[w]]=await c.query('SELECT state FROM article_workflows WHERE draft_id=? FOR UPDATE',[d.id]);
  if(w&&lockedStates.includes(w.state))throw error('请先撤回审核或取消发布计划，再编辑草稿。',409);
 }
-async function transaction(fn){const c=await db.getConnection();try{await c.beginTransaction();const result=await fn(c);await c.commit();return result;}catch(e){await c.rollback();throw e;}finally{c.release();}}
+async function transaction(fn){const c=await db.getConnection();try{await c.beginTransaction();const result=await fn(c);await c.commit();return result;}catch(e){await c.rollback();throw articleSlugWriteError(e);}finally{c.release();}}
 function schedule(value){
  if(typeof value!=='string'||!/(Z|[+-]\d\d:\d\d)$/.test(value))throw error('发布时间必须包含时区。');
  const at=Date.parse(value);if(!Number.isFinite(at)||at<=Date.now())throw error('请选择未来的发布时间。');return at;
@@ -21,6 +22,7 @@ async function change(id,actor,action,input){
   if(row.version!==input.version)throw error('草稿已变化，请刷新。',409);
   await assertEditable(db,row);
   before=typeof row.payload==='string'?JSON.parse(row.payload):row.payload;
+  await validateDraftSlug(db,row,before);
   prepared=await require('./articleSummary').prepare(db,before,user.id);
  }
  return transaction(async c=>{
@@ -59,7 +61,7 @@ async function change(id,actor,action,input){
    if(w.draft_version!==d.version)throw error('已审核版本不一致。',409);
    const [[author]]=await c.query('SELECT status FROM users WHERE id=?',[d.author_id]);
    if(!author||author.status!=='active')throw error('作者账号不可用。',409);
-   if(action==='schedule'){at=schedule(input.scheduled_at);state='scheduled';reviewer=user.id;}
+   if(action==='schedule'){await validateDraftSlug(c,d,data);at=schedule(input.scheduled_at);state='scheduled';reviewer=user.id;}
    else{await publish(c,{...d,payload:payload(typeof w.snapshot==='string'?JSON.parse(w.snapshot):w.snapshot)},user);state='published';}
   }else throw error('无效操作。');
   await c.query('INSERT INTO article_workflows(draft_id,state,draft_version,snapshot,reviewer_id,reason,scheduled_at) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE state=VALUES(state),draft_version=VALUES(draft_version),snapshot=VALUES(snapshot),reviewer_id=VALUES(reviewer_id),reason=VALUES(reason),scheduled_at=VALUES(scheduled_at)',[id,state,d.version,JSON.stringify(data),reviewer,reason,at]);

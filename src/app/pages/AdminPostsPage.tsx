@@ -1,3 +1,4 @@
+import { articlePath } from '../lib/articleUrl';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
@@ -158,7 +159,7 @@ export default function AdminPostsPage() {
             <div className="admin-posts-row-end">
               {Boolean(Number(post.has_unpublished)) && <span className="admin-posts-unpublished">有未发布修改</span>}
               <span className="admin-posts-status" data-status={post.status}><span aria-hidden="true" className="admin-posts-status-dot" />{post.status === 'published' ? '已发布' : '草稿'}</span>
-              {rowActions(edit, post.title, `post-${post.id}`, () => void removePost(post.id), false, post.status === 'published' ? `/article/${post.id}` : undefined)}
+              {rowActions(edit, post.title, `post-${post.id}`, () => void removePost(post.id), false, post.status === 'published' ? articlePath(post) : undefined)}
             </div>
           </article>;
         })}

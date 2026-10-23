@@ -847,3 +847,12 @@ CREATE TABLE IF NOT EXISTS newsletter_exclusions (
   content_id INT NOT NULL,
   PRIMARY KEY (week_start,content_type,content_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Deleted articles retain their old URLs as reservations.
+CREATE TABLE IF NOT EXISTS article_slug_aliases (
+  slug VARCHAR(255) NOT NULL,
+  post_id INT NULL,
+  PRIMARY KEY (slug),
+  KEY idx_article_slug_post (post_id),
+  CONSTRAINT fk_article_slug_post FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

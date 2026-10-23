@@ -1,3 +1,4 @@
+import { articlePath } from '../lib/articleUrl';
 import { formatDate } from "./ContentUI";
 import { Link } from "react-router-dom";
 import { safeImageSrc } from "../lib/safeUrl";
@@ -6,6 +7,7 @@ import { type CoverCrop } from '../lib/coverCrop';
 import '../../styles/article-label.css';
 interface BlogCardProps {
   id?: number | string;
+  slug?: string | null;
   title: string;
   excerpt: string;
   date: string;
@@ -19,6 +21,7 @@ interface BlogCardProps {
 }
 export function BlogCard({
   id,
+  slug,
   title,
   excerpt,
   date,
@@ -41,5 +44,5 @@ export function BlogCard({
       </div>
     </article>
   );
-  return id ? <Link to={`/article/${id}`}>{content}</Link> : content;
+  return id ? <Link to={articlePath({id,slug})}>{content}</Link> : content;
 }

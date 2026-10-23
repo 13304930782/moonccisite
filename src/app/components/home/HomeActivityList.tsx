@@ -1,3 +1,4 @@
+import { articlePath } from '../../lib/articleUrl';
 import { Link } from 'react-router-dom';
 import { formatDate, labels, useResource } from '../ContentUI';
 import { coverFrame } from '../../lib/coverCrop';
@@ -15,7 +16,7 @@ type Activity = {
   published_at: string;
   path: string;
 };
-type PostCover = { id: number; cover_image?: string; cover_crop?: unknown };
+type PostCover = { id: number; slug?: string; cover_image?: string; cover_crop?: unknown };
 type HomePost = PostCover & { title: string; summary?: string; category?: string; tags?: string[]; updated_at?: string; published_at?: string; created_at?: string };
 
 function HomeThumbnail({ post }: { post?: PostCover | null }) {
@@ -36,7 +37,7 @@ function HomeActivityRow({ item, posts, postsLoading }: { item: Activity; posts:
   const post = cached || article.data;
   const text = homeActivityText(item);
   const titleId = `home-activity-${item.activity_id}-title`;
-  return <Link to={safeRoutePath(item.path)} className="home-activity-row" aria-labelledby={titleId}>
+  return <Link to={item.type === 'post' && post ? articlePath(post) : safeRoutePath(item.path)} className="home-activity-row" aria-labelledby={titleId}>
     <div className="home-activity-copy">
       <div className="home-activity-meta">
         <span className="home-activity-label" data-type={item.type}>{labels[item.type] || '更新'}</span>
@@ -63,7 +64,7 @@ export function HomePostList({ posts }: { posts: HomePost[] }) {
       const date = post.updated_at || post.published_at || post.created_at || null;
       const text = homeActivityText({ type: 'post', title: post.title, excerpt: post.summary });
       const titleId = `home-post-${post.id}-title`;
-      return <Link key={post.id} to={`/article/${post.id}`} className="home-activity-row home-post-row" aria-labelledby={titleId}>
+      return <Link key={post.id} to={articlePath(post)} className="home-activity-row home-post-row" aria-labelledby={titleId}>
         <div className="home-activity-copy">
           <div className="home-activity-meta">{post.category || (Array.isArray(post.tags) && post.tags.slice(0, 3).join(' / ')) || '文章'}</div>
           <h3 className="home-activity-title" id={titleId}>{text.title}</h3>

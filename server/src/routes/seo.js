@@ -1,4 +1,5 @@
 const documents=require('../lib/publicDocument');
+const {articlePath,decodeArticleReference,resolveArticle}=require('../lib/articleSlug');
 const fs=require('node:fs/promises');const path=require('node:path');const seo=require('../lib/seo');
 function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocument=documents.injectDocument,loadResource=documents.loadPublicResource,readTemplate=()=>fs.readFile(process.env.SEO_HTML_TEMPLATE||'/www/wwwroot/mooncci.site/index.html','utf8')}={}){
  const router=require('../lib/asyncRouter')();
@@ -6,7 +7,7 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
  const limiter=require('express-rate-limit')({windowMs:60000,limit:120,standardHeaders:true,legacyHeaders:false,message:{message:'Too many requests. Please try again later.'}});
  async function baseMetadata(pathname){
   const [[row]]=await db.query("SELECT setting_value FROM site_settings WHERE setting_key='brand' LIMIT 1");let brand={};try{brand=JSON.parse(row?.setting_value||'{}');}catch{}
-  if(/^\/article\/\d+$/.test(pathname)){const [[post]]=await db.query("SELECT p.*,u.username AS author_name FROM posts p JOIN users u ON u.id=p.author_id WHERE p.id=? AND p.status='published'",[pathname.split('/').pop()]);if(post)return {status:200,meta:seo.articleMeta(post,brand)};return {status:404,meta:{...seo.baseMeta(pathname,brand),title:'文章不存在',description:'这篇文章不存在或未公开。',robots:'noindex, nofollow'}};}
+  if(pathname.startsWith('/article/')){const reference=decodeArticleReference(pathname.slice('/article/'.length));const post=reference?await resolveArticle(db,reference,{published:true}):null;if(post){const canonical=articlePath(post);return {status:200,meta:seo.articleMeta(post,brand),redirect:pathname!==canonical?canonical:null};}return {status:404,meta:{...seo.baseMeta(pathname,brand),title:'文章不存在',description:'这篇文章不存在或未公开。',robots:'noindex, nofollow'}};}
   if(/^\/updates\/[1-9]\d*$/.test(pathname)){const [[update]]=await db.query("SELECT id,content,image_url FROM updates WHERE id=? AND status='published'",[pathname.split('/').pop()]);if(update)return {status:200,meta:seo.updateMeta(update,brand)};return {status:404,meta:{...seo.baseMeta(pathname,brand),title:'近况不存在',robots:'noindex, nofollow'}};}
   if(/^\/projects\/[a-zA-Z0-9_-]+$/.test(pathname)){const [[project]]=await db.query("SELECT slug,name,summary,content,cover_image FROM projects WHERE slug=? AND status='published'",[pathname.split('/').pop()]);if(project)return {status:200,meta:seo.projectMeta(project,brand)};return {status:404,meta:{...seo.baseMeta(pathname,brand),title:'作品不存在',robots:'noindex, nofollow'}};}
   if(pathname.startsWith('/category/')){let category;try{category=decodeURIComponent(pathname.slice('/category/'.length));}catch{}if(category&&category.length<=100&&!/[\/#?]/.test(category)){const [[row]]=await db.query("SELECT category FROM posts WHERE status='published' AND category=? LIMIT 1",[category]);if(row)return {status:200,meta:seo.categoryMeta(row.category,brand)};}return {status:404,meta:{...seo.baseMeta(pathname,brand),title:'分类不存在',robots:'noindex, nofollow'}};}
@@ -16,7 +17,7 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
  async function metadata(pathname,query={}) {
   let result=await baseMetadata(pathname);
   const notFound=()=>({status:404,meta:{...seo.baseMeta(pathname),title:'页面不存在',robots:'noindex, nofollow'}});
-  if(/^\/(article|updates)\//.test(pathname)&&!/^\/(article|updates)\/[1-9]\d*$/.test(pathname))return notFound();
+  if(pathname.startsWith('/updates/')&&!/^\/updates\/[1-9]\d*$/.test(pathname))return notFound();
   if(!documents.publicRoutes.test(pathname)&&!documents.privateRoutes.test(pathname)) return notFound();
   if((pathname==='/series'||pathname.startsWith('/series/'))&&process.env.PUBLISHING_ENABLED!=='true')return notFound();
   if(/^\/(tag|series)\//.test(pathname)) {
@@ -61,21 +62,21 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
   }
   return result;
  }
- router.get('/api/seo',limiter,async(req,res)=>{const pathname=String(req.query.path||'/');if(!/^\/[a-zA-Z0-9/_%.-]*$/.test(pathname)||pathname.length>512)return res.status(400).json({message:'无效页面地址'});const result=await metadata(pathname,req.query);res.set('Cache-Control','no-store');res.status(result.status).json(result.meta);});
+ router.get('/api/seo',limiter,async(req,res)=>{const pathname=String(req.query.path||'/');if(!/^\/[a-zA-Z0-9/_%:.\-]*$/.test(pathname)||pathname.length>512)return res.status(400).json({message:'无效页面地址'});const result=await metadata(pathname,req.query);res.set('Cache-Control','no-store');res.status(result.status).json(result.meta);});
  router.get('/robots.txt',limiter,(_req,res)=>{res.type('text/plain').send(`User-agent: *\nDisallow: /api/\nDisallow: /api/uploads/releases/\nAllow: /api/uploads/*.jpg$\nAllow: /api/uploads/*.jpeg$\nAllow: /api/uploads/*.png$\nAllow: /api/uploads/*.gif$\nAllow: /api/uploads/*.webp$\nAllow: /api/uploads/*.ico$\nAllow: /api/image-variants/\nAllow: /api/posts\nAllow: /api/projects\nAllow: /api/updates/\nAllow: /api/activity\nAllow: /api/now$\nAllow: /api/settings/site$\nAllow: /api/settings/blog-pages$\nAllow: /api/publishing/config$\nAllow: /api/subscriptions/status$\nAllow: /api/series\nAllow: /api/seo?\nSitemap: ${seo.origin()}/sitemap.xml\n`);});
  router.get('/sitemap.xml',limiter,async(_req,res)=>{
-  const [posts]=await db.query("SELECT id,COALESCE(updated_at,published_at,created_at) AS updated_at FROM posts WHERE status='published' ORDER BY id");
+  const [posts]=await db.query("SELECT id,slug,COALESCE(updated_at,published_at,created_at) AS updated_at FROM posts WHERE status='published' ORDER BY id");
   const [updates]=await db.query("SELECT id,updated_at FROM updates WHERE status='published' ORDER BY id");
   const [projects]=await db.query("SELECT slug,updated_at FROM projects WHERE status='published' ORDER BY id");
   const [categories]=await db.query("SELECT DISTINCT category FROM posts WHERE status='published' AND category<>'' ORDER BY category");
   const [tagRows]=await db.query("SELECT tags FROM posts WHERE status='published' AND tags IS NOT NULL");
   const tags=new Set();for(const row of tagRows){try{for(const tag of (Array.isArray(row.tags)?row.tags:JSON.parse(row.tags||'[]')))if(typeof tag==='string'&&tag)tags.add(tag);}catch{}}
   const [series]=await db.query("SELECT s.slug,MAX(p.updated_at) AS updated_at FROM article_series s JOIN article_series_posts sp ON sp.series_id=s.id JOIN posts p ON p.id=sp.post_id AND p.status='published' GROUP BY s.id,s.slug");
-  const rows=[...[...tags].map(tag=>({path:`/tag/${encodeURIComponent(tag)}`})),...series.filter(()=>process.env.PUBLISHING_ENABLED==='true').map(s=>({path:`/series/${encodeURIComponent(s.slug)}`,updated_at:s.updated_at})),...Object.keys(seo.titles).filter(path=>path!=='/series'||process.env.PUBLISHING_ENABLED==='true').map(path=>({path})),...posts.map(p=>({path:`/article/${p.id}`,updated_at:p.updated_at})),...updates.map(p=>({path:`/updates/${p.id}`,updated_at:p.updated_at})),...projects.map(p=>({path:`/projects/${encodeURIComponent(p.slug)}`,updated_at:p.updated_at})),...categories.map(p=>({path:`/category/${encodeURIComponent(p.category)}`}))];
+  const rows=[...[...tags].map(tag=>({path:`/tag/${encodeURIComponent(tag)}`})),...series.filter(()=>process.env.PUBLISHING_ENABLED==='true').map(s=>({path:`/series/${encodeURIComponent(s.slug)}`,updated_at:s.updated_at})),...Object.keys(seo.titles).filter(path=>path!=='/series'||process.env.PUBLISHING_ENABLED==='true').map(path=>({path})),...posts.map(p=>({path:articlePath(p),updated_at:p.updated_at})),...updates.map(p=>({path:`/updates/${p.id}`,updated_at:p.updated_at})),...projects.map(p=>({path:`/projects/${encodeURIComponent(p.slug)}`,updated_at:p.updated_at})),...categories.map(p=>({path:`/category/${encodeURIComponent(p.category)}`}))];
   res.set('Cache-Control','no-store').type('application/xml').send(seo.sitemap(rows));
  });
  router.get('*',(req,res,next)=>{
-  if(req.path.startsWith('/api/')||req.path.startsWith('/assets/')||req.path.startsWith('/uploads/')||/\.[a-z0-9]+$/i.test(req.path))return next('route');
+  if(req.path.startsWith('/api/')||req.path.startsWith('/assets/')||req.path.startsWith('/uploads/')||(!req.path.startsWith('/article/')&&/\.[a-z0-9]+$/i.test(req.path)))return next('route');
   return limiter(req,res,next);
  },require('../lib/anonymousHomeCache').createAnonymousHomeCache(),async(req,res,next)=>{
   const pathname=req.path.replace(/\/$/,'')||'/';
@@ -85,8 +86,9 @@ function createSeoRouter({db,renderDocument=documents.renderDocument,injectDocum
    if(!html.includes('</head>')||!html.includes('id="root"'))throw Error('Invalid HTML template');
    let result=await metadata(pathname,req.query);
    res.set('Cache-Control','private, no-store');
+   if(result.redirect)return res.redirect(301,result.redirect+(req.originalUrl.includes('?')?req.originalUrl.slice(req.originalUrl.indexOf('?')):''));
    // Authenticated draft reads stay on the existing authenticated browser API path.
-   if(result.status===404&&/^\/article\/[1-9]\d*$/.test(pathname)&&req.headers.cookie)return res.status(404).set('X-Robots-Tag','noindex, nofollow').type('html').send(seo.renderHtml(html,result.meta));
+   if(result.status===404&&pathname.startsWith('/article/')&&req.headers.cookie)return res.status(404).set('X-Robots-Tag','noindex, nofollow').type('html').send(seo.renderHtml(html,result.meta));
    if(documents.privateRoutes.test(pathname))return res.status(result.status).set('X-Robots-Tag','noindex, follow').type('html').send(seo.renderHtml(html,result.meta));
    const resources=new Map();
    const load=value=>{if(!resources.has(value))resources.set(value,loadResource(value,req.ip));return resources.get(value);};

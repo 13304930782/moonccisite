@@ -196,7 +196,7 @@ app.use('/api', (_req, res) => res.status(404).json({ message: '接口不存在�
 app.use((error, _req, res, _next) => {
   console.error('[api] Unhandled request error:', error?.code || error?.message);
   if (res.headersSent) return;
-  const status = error.type === 'entity.parse.failed' ? 400 : error.type === 'entity.too.large' ? 413 : 500;
+  const status = error.type === 'entity.parse.failed' || error instanceof URIError && error.status === 400 ? 400 : error.type === 'entity.too.large' ? 413 : 500;
   res.status(status).json({ message: status === 500 ? '服务器暂时无法处理请求，请稍后再试。' : '请求内容格式或大小不合法。' });
 });
 
