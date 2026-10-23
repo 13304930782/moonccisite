@@ -1,6 +1,7 @@
 import {notify} from '../lib/feedback';
 import {FormEvent,useRef,useState} from 'react';
 import {CheckCircle2,CircleAlert,Send} from 'lucide-react';
+import {useUnsavedLeave} from '../lib/useUnsavedLeave';
 import {api,ApiError} from '../lib/api';
 import '../../styles/workflow-feedback.css';
 type Fields={to:string;subject:string;content:string};
@@ -14,6 +15,7 @@ const messages:Record<string,string>={
 };
 export default function AdminSendMailPage(){
  const [form,setForm]=useState<Fields>({to:'',subject:'',content:''}),[errors,setErrors]=useState<Partial<Fields>>({}),[sending,setSending]=useState(false),[result,setResult]=useState<Result|null>(null),[checked,setChecked]=useState(false);
+ useUnsavedLeave(Boolean(form.subject || form.content));
  const pending=useRef(false),formRef=useRef<HTMLFormElement>(null);
  function validate(values:Fields){const e:Partial<Fields>={};if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.to.trim()))e.to='请输入完整的邮箱，例如 name@example.com。';if(!values.subject.trim())e.subject='请填写邮件标题。';else if(values.subject.length>120)e.subject='邮件标题请控制在 120 字以内。';if(!values.content.trim())e.content='请填写邮件内容。';else if(values.content.length>5000)e.content='邮件内容请控制在 5000 字以内。';return e;}
  function change(key:keyof Fields,value:string){const next={...form,[key]:value};setForm(next);if(errors[key])setErrors({...errors,[key]:validate(next)[key]});}

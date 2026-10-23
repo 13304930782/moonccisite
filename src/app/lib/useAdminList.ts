@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from './api';
 
-export function useAdminList<T>(endpoint: string, filters: Record<string, string>) {
-  const [page, setPage] = useState(1);
+export function useAdminList<T>(endpoint: string, filters: Record<string, string>, pagination?: { page: number; setPage: (page: number) => void }) {
+  const [localPage, setLocalPage] = useState(1);
+  const page = pagination?.page ?? localPage;
+  const setPage = pagination?.setPage ?? setLocalPage;
   const [version, setVersion] = useState(0);
   const [items, setItems] = useState<T[]>([]);
   const [total, setTotal] = useState(0);

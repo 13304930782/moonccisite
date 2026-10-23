@@ -1,14 +1,22 @@
-import { useState } from 'react';
+import { AdminEmpty, AdminError, AdminLoading } from '../components/admin/AdminState';
+import { useContentListQuery } from '../lib/useContentListQuery';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAdminList } from '../lib/useAdminList';
 import { AdminPagination } from '../components/AdminPagination';
 import { ThemeSelect } from '../components/ThemeSelect';
 const roles: Record<string,string> = {owner:'站长',admin:'管理员',editor:'编辑',teacher:'教师',user:'普通用户'};
 export default function AdminUsersPage() {
-  const [keyword,setKeyword] = useState('');
-  const [filters,setFilters] = useState({keyword:'',role:'all',status:'all'});
-  const list = useAdminList<any>('/admin/users',filters);
-  const filter = (patch: Partial<typeof filters>) => { list.setPage(1); setFilters(f=>({...f,...patch})); };
+  const query = useContentListQuery();
+  const filters = {
+    keyword: query.params.get('keyword') || '',
+    role: Object.hasOwn(roles, query.params.get('role') || '') ? query.params.get('role')! : 'all',
+    status: ['active','disabled'].includes(query.params.get('status') || '') ? query.params.get('status')! : 'all',
+  };
+  const [keyword,setKeyword] = useState(filters.keyword);
+  useEffect(() => { setKeyword(filters.keyword); }, [filters.keyword]);
+  const list = useAdminList<any>('/admin/users',filters,query);
+  const filter = (patch: Partial<typeof filters>) => { query.update({ ...filters, ...patch, page: '' }); };
   return <div className="admin-page">
     <h1 className="admin-title">用户管理</h1>
     <p className="text-muted-foreground">查看账号资料、登录方式与权限。进入设置可修改资料或删除账号。</p>
@@ -25,8 +33,8 @@ export default function AdminUsersPage() {
       </ThemeSelect>
     </div>
     <AdminPagination label="用户管理分页" page={list.page} total={list.total} disabled={list.loading} onPage={list.setPage}/>
-    {list.error && <p role="alert">{list.error}<button className="text-link" onClick={list.reload}>重试</button></p>}
-    {list.loading && <p role="status">正在加载用户…</p>}
+    {list.error && <AdminError message={list.error} onRetry={list.reload} />}
+    {list.loading && <AdminLoading label="正在加载用户…" />}
     <div>{list.items.map(user=><article className="admin-user-row" key={user.id}>
       <div className="admin-user-info"><strong>{user.username}</strong>{user.deleted_at && <small className="deleted-account-label">已删除</small>}
         <p>{user.deleted_at ? '邮箱与第三方绑定已释放' : user.email}</p>
@@ -34,6 +42,6 @@ export default function AdminUsersPage() {
       </div>
       <Link className="neo-button" to={`/admin/users/${user.id}/settings`}>{user.deleted_at?'查看':'设置'}</Link>
     </article>)}</div>
-    {!list.loading && !list.error && !list.items.length && <div className="quiet-state"><p>没有符合条件的用户。</p><button className="quiet-button" onClick={()=>{setKeyword('');filter({keyword:'',role:'all',status:'all'});}}>清除筛选，查看全部用户</button></div>}
+    {!list.loading && !list.error && !list.items.length && <AdminEmpty title="没有符合条件的用户" action={<button className="quiet-button" onClick={()=>{setKeyword('');filter({keyword:'',role:'all',status:'all'});}}>清除筛选，查看全部用户</button>} />}
   </div>;
 }

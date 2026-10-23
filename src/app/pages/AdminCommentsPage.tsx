@@ -1,10 +1,11 @@
+import { useContentListQuery } from '../lib/useContentListQuery';
 import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
 import { useAdminList } from '../lib/useAdminList';
 import { AdminPagination } from '../components/AdminPagination';
 import { AdminEmpty, AdminError, AdminLoading, AdminNotice } from '../components/admin/AdminState';
 import { ThemeSelect } from '../components/ThemeSelect';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { formatCommentTime } from '../lib/commentTime';
 
@@ -26,12 +27,18 @@ const confirmCopy: Record<string, { text: string; label: string }> = {
 };
 
 export default function AdminCommentsPage() {
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [keyword, setKeyword] = useState('');
+  const query = useContentListQuery();
+  const filters = {
+    status: [...Object.keys(statusText), 'all'].includes(query.params.get('status') || '') ? query.params.get('status')! : DEFAULT_FILTERS.status,
+    target: ['post', 'update'].includes(query.params.get('target') || '') ? query.params.get('target')! : 'all',
+    keyword: query.params.get('keyword') || '',
+  };
+  const [keyword, setKeyword] = useState(filters.keyword);
+  useEffect(() => { setKeyword(filters.keyword); }, [filters.keyword]);
   const [message, setMessage] = useState('');
   const [busyId, setBusyId] = useState<number | null>(null);
   const busy = busyId !== null;
-  const list = useAdminList<any>('/admin/comments', filters);
+  const list = useAdminList<any>('/admin/comments', filters, query);
   const comments = list.items;
 
   // A changed filter already changes the query; only reload when nothing changed so
@@ -43,8 +50,7 @@ export default function AdminCommentsPage() {
       list.reload();
       return;
     }
-    list.setPage(1);
-    setFilters(next);
+    query.update({ ...next, page: '' });
   };
   const search = (event: FormEvent) => { event.preventDefault(); filter({ keyword: keyword.trim() }); };
   const filtered = filters.status !== DEFAULT_FILTERS.status || filters.target !== 'all' || Boolean(filters.keyword);
