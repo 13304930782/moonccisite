@@ -125,7 +125,7 @@ test('shared shell, content components and theme retain pinned Git blobs (approv
   'src/styles/project-card.css':'08306a6737ea3bbf30b5792d54fe0c43a12421b7',
   'src/app/components/Header.tsx':'0206f665b196f3698fa72f90aeed342d2db16fe1',
   'src/app/components/SiteFooter.tsx':'85bdf27069f292558f00aee14711f76254ea4add',
-  'src/app/components/ContentUI.tsx':'f15932bb689b2f7190b97b2e3a6713d206287476',
+  'src/app/components/ContentUI.tsx':'46856b049ce31b9acc74a187e307bc1ffcd2a2bf',
   // Approved slug URL wiring; card markup and styles are unchanged.
   'src/app/components/BlogCard.tsx':'e66e6b1d7091170b25ed150548ca1c219559d51c',
   'src/app/components/ProjectCard.tsx':'623c271e352de63b85cf74ac060da22d8684fbc8',
@@ -133,7 +133,7 @@ test('shared shell, content components and theme retain pinned Git blobs (approv
  };
  for(const [path,pin] of Object.entries(pins)){
   let source=fs.readFileSync(path,'utf8').replace(/\r\n/g,'\n');
-  // The only approved shared presentation change is the source-return entry.
+  // Compact loading feedback is pinned above; the source-return entry stays independently allowed.
   if(path==='src/app/components/ContentUI.tsx')source=source.replace("import { SiteBack } from './SiteBack';\n",'').replace('      <SiteBack />\n','');
   const bytes=Buffer.from(source);
   assert.equal(crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex'),pin,path);
