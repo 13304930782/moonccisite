@@ -1341,3 +1341,5 @@ nohup python3 /www/backup/security-alerts-package/deploy.py /www/backup/mooncci-
 ```
 
 回滚前会拒绝上线后的额外文件修改，并核对备份字节。部署后仍需检查 `/about`、`/links`、上传接口权限、邮件 worker 状态及已登录的节点监控；脚本不会发送真实邮件。包装与回滚回归：`python -X utf8 scripts/test-security-alerts-release.py`。
+
+Security bundle baseline (2026-11-02): re2js 2.8.7 fixes GHSA-gg6h-894w-4m9c. The rebuilt total is 2,303,886 bytes / 771,534 gzip bytes; approved total limits are 2,310,000 / 775,000. Entry JS/CSS and maximum chunk limits are unchanged. No preview feature changes are included.
