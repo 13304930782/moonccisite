@@ -1313,3 +1313,31 @@ This is a paired frontend/SSR/backend release with an additive alias-table migra
 - 分别回滚应用与运维文件，保留提交期间变化的队列、密钥、资料和媒体。使用 nohup 子 shell 部署，不在交互 SSH 中执行 set -e 或 exit。
 
 本版新增按路由加载的 About 编辑与发布诊断 UI，首轮构建全站 JS gzip 合计 761277 字节，超过旧总量预算 1277 字节；总量预算从 760000 调至 770000，入口 JS/CSS 和单块上限保持原值，无新依赖。最终发布以重新构建测量为准。
+# 2026-11-02 安全告警离线修复
+
+提交并通过 CI 后执行 `python -X utf8 scripts/build-security-alerts-release.py`。此专用包重新构建前端与文档 SSR，校验包体，携带 `server/package.json`、锁文件及锁文件中实际变化的纯 JavaScript 模块；不覆盖 `server/src`，因此保留线上节点监控 9443 修复。已审核依赖范围为 multer、body-parser、nodemailer、qs，无 SQL、环境变量、上传目录或 Nginx 修改。SSR 继续使用线上原有隔离 `runtime/node_modules/jsdom`。
+
+归档路径及 SHA256 位于 `.cache/security-alerts-release.json`，所有脚本与校验文件均为 LF。本地 PowerShell 上传示例：
+
+```powershell
+$release = Get-Content .cache/security-alerts-release.json -Raw | ConvertFrom-Json
+scp -i C:/Users/Administrator/.ssh/id_ed25519_mooncci_codex $release.package root@182.92.179.81:/tmp/mooncci-security-alerts.tar.gz
+```
+
+服务器先核对归档 SHA256，再解压至新目录，使用子 shell 部署：
+
+```bash
+sha256sum /tmp/mooncci-security-alerts.tar.gz
+mkdir -p /www/backup/security-alerts-package
+tar -xzf /tmp/mooncci-security-alerts.tar.gz -C /www/backup/security-alerts-package
+nohup bash /www/backup/security-alerts-package/deploy.sh > /www/backup/security-alerts-package/deploy.log 2>&1 < /dev/null &
+tail -f /www/backup/security-alerts-package/deploy.log
+```
+
+部署前核对线上锁文件校验值及依赖旧版本，保留旧哈希资源、所有被覆盖文件与模块备份。由于 API 与邮件 worker 都使用此次修复依赖，部署会重启 `mooncci-api` 和 `mooncci-worker`，随后检查 API 健康与 SSR 导入。任何安装后检查失败都会恢复备份并再次启动这两个进程。手动回滚使用日志中实际备份路径：
+
+```bash
+nohup python3 /www/backup/security-alerts-package/deploy.py /www/backup/mooncci-security-alerts-实际后缀 > /www/backup/security-alerts-package/rollback.log 2>&1 < /dev/null &
+```
+
+回滚前会拒绝上线后的额外文件修改，并核对备份字节。部署后仍需检查 `/about`、`/links`、上传接口权限、邮件 worker 状态及已登录的节点监控；脚本不会发送真实邮件。包装与回滚回归：`python -X utf8 scripts/test-security-alerts-release.py`。

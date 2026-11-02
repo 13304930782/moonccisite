@@ -5,3 +5,12 @@ test.before(async()=>{const bundle=await require('esbuild').build({entryPoints:[
 function icon(row){fixture.links=[{name:'Friend',url:'https://friend.example/blog?q=1',icon:'',description:'',...row}];return new JSDOM(renderToStaticMarkup(React.createElement(LinksPage))).window.document;}
 test('blank friend icons use only the linked origin favicon and preserve custom icons',()=>{assert.equal(icon({}).querySelector('img').getAttribute('src'),'https://friend.example/favicon.ico');assert.equal(icon({icon:'/api/uploads/custom.webp'}).querySelector('img').getAttribute('src'),'/api/uploads/custom.webp');});
 test('unsafe or non-web friend origins keep the initial fallback',()=>{for(const url of ['javascript:alert(1)','mailto:a@example.com','//evil.example','https://user:pass@evil.example']){const d=icon({url});assert.equal(d.querySelector('img'),null);assert.equal(d.querySelector('.blog-info-avatar').textContent,'F');}});
+
+
+test('DOM bootstrap friend icon cannot introduce HTML or event attributes',()=>{
+ const attack='/icon"><svg onload="alert(1)">';const seed=new JSDOM('<script id="seed" type="application/json"></script>');
+ seed.window.document.getElementById('seed').textContent=JSON.stringify({icon:attack});
+ const d=icon(JSON.parse(seed.window.document.getElementById('seed').textContent));
+ assert.equal(d.querySelectorAll('img').length,1);assert.equal(d.querySelector('svg,[onload]'),null);
+ const value=d.querySelector('img').getAttribute('src');assert.doesNotMatch(value,/[<>"']/);assert.equal(decodeURIComponent(value),attack);
+});
