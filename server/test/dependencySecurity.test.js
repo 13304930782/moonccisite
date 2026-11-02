@@ -22,3 +22,44 @@ test('long malformed IPv6 zones are rejected without blocking the process',()=>{
  const result=spawnSync(process.execPath,['-e',source],{cwd:require('node:path').join(__dirname,'..'),timeout:5000,encoding:'utf8'});
  assert.equal(result.status,0,result.error?.message||result.stderr);
 });
+
+test('query serialization handles untrusted non-callable toString values',()=>{
+ const qs=require('qs');
+ for(const data of [JSON.parse('{"a":[{"toString":"untrusted"}]}'),qs.parse('a[0][toString]=untrusted',{allowPrototypes:true}),qs.parse('a[0][b]=c',{plainObjects:true})]){
+  for(const encodeValuesOnly of [false,true])assert.doesNotThrow(()=>qs.stringify(data,{arrayFormat:'comma',encodeValuesOnly}));
+ }
+ assert.equal(qs.stringify({a:['first','second']},{arrayFormat:'comma'}),'a=first%2Csecond');
+});
+
+test('outbound and inbound mail parsers do not turn comments or quoted text into recipients',async()=>{
+ const transport=require('nodemailer').createTransport({jsonTransport:true});
+ const {simpleParser}=require('mailparser');
+ for(const [input,expected,envelope=expected] of [
+  ['Person (outer(inner) <wrong@example.invalid>) <right@example.invalid>','right@example.invalid'],
+  ['Team: (text; <wrong@example.invalid>) <right@example.invalid>;','right@example.invalid'],
+  ['<"part@wrong.invalid>"@right.invalid>','"part@wrong.invalid>"@right.invalid','"part@wrong.invalid "@right.invalid'],
+ ]){
+  const result=await transport.sendMail({from:'sender@example.invalid',to:input,subject:'parser regression',text:'no email is sent'});
+  assert.deepEqual(result.envelope.to,[envelope]);
+  const incoming=await simpleParser('To: '+input+'\r\nSubject: parser regression\r\n\r\nmessage');
+  assert.deepEqual(incoming.to.value.flatMap(value=>value.group||[value]).map(value=>value.address),[expected]);
+ }
+});
+
+test('compressed body teardown survives late trailing bytes',()=>{
+ const {spawnSync}=require('node:child_process');
+ const source=`
+  const assert=require('node:assert/strict'),http=require('node:http'),{gzipSync}=require('node:zlib'),parser=require('body-parser').json();
+  const server=http.createServer((req,res)=>parser(req,res,error=>{assert.ifError(error);assert.deepEqual(req.body,{ok:true});res.end('ok');}));
+  server.listen(0,'127.0.0.1',()=>{
+   const body=Buffer.concat([gzipSync(Buffer.from('{"ok":true}')),Buffer.from([0]),Buffer.alloc(100*1024,88)]);
+   const req=http.request({host:'127.0.0.1',port:server.address().port,method:'POST',agent:false,headers:{'content-type':'application/json','content-encoding':'gzip','content-length':body.length}},res=>{
+    assert.equal(res.statusCode,200);res.resume();
+    // Late decoder errors can arrive after the response has already finished.
+    res.once('end',()=>setTimeout(()=>server.close(()=>process.stdout.write('survived')),200));
+   });req.on('error',error=>{throw error});req.end(body);
+  });
+ `;
+ const result=spawnSync(process.execPath,['-e',source],{cwd:require('node:path').join(__dirname,'..'),timeout:5000,encoding:'utf8'});
+ assert.equal(result.status,0,result.error?.message||result.stderr);assert.equal(result.stdout,'survived');
+});

@@ -10,3 +10,13 @@ test('unsafe image and activity links do not become executable URLs',()=>{const 
 
 test('module ordering is shared by preview and public rendering, with safe legacy fallback',()=>{const a=fixture();Object.assign(a,{technologies:['Linux'],timeline:[{date:'2026',description:'Milestone'}],moduleOrder:['social','timeline','technologies','activities','story']});const order=()=>[...render(a).querySelectorAll('[data-about-module]')].map(x=>x.dataset.aboutModule);assert.deepEqual(order(),['timeline','technologies','story']);a.moduleOrder=['story','story'];assert.deepEqual(order(),['story','technologies','timeline']);});
 test('empty modules stay hidden and avatar initials safely render the name',()=>{const a=fixture();Object.assign(a,{name:'<name>',avatar:'',content:'   ',technologies:[' '],activities:[{title:' ',description:''}],timeline:[{date:'',description:' '}],social:[{name:'',url:'https://example.com'}]});const d=render(a);assert.equal(d.querySelectorAll('[data-about-module]').length,0);assert.equal(d.querySelector('.about-profile-initial').textContent,'<');assert.equal(d.querySelector('name'),null);});
+
+
+test('DOM bootstrap URLs stay URL data in avatar, activity and social attributes',()=>{
+ const attack='/safe"><img src=x onerror="alert(1)">';
+ const source=fixture();Object.assign(source,{avatar:attack,activities:[{title:'Activity',description:'Text',url:attack}],social:[{name:'Social',url:attack}]});
+ const seed=new JSDOM('<script id="seed" type="application/json"></script>');seed.window.document.getElementById('seed').textContent=JSON.stringify(source);
+ const d=render(JSON.parse(seed.window.document.getElementById('seed').textContent));
+ assert.equal(d.querySelectorAll('img').length,1);assert.equal(d.querySelector('[onerror]'),null);
+ for(const value of [d.querySelector('img').getAttribute('src'),...Array.from(d.querySelectorAll('a'),a=>a.getAttribute('href'))]){assert.doesNotMatch(value,/[<>"']/);assert.equal(decodeURIComponent(value),attack);}
+});

@@ -25,7 +25,8 @@ function isRelativeUrl(value: string) {
 }
 
 function safeUrl(input: unknown, allowedProtocols: string[], fallback = '') {
-  const value = cleanUrl(input);
+  // Encode HTML metacharacters without double-encoding existing URL escapes or query separators.
+  const value = cleanUrl(input).replace(/[<>"']/g, character => '%' + character.charCodeAt(0).toString(16));
 
   if (!value) return fallback;
 

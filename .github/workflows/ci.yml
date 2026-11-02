@@ -34,6 +34,7 @@ jobs:
       - run: python3 scripts/test_indexnow.py
       - run: python3 scripts/test_refresh_sitemap.py
       - run: python3 scripts/test-offline-release.py
+      - run: python3 scripts/test-security-alerts-release.py
       - run: python3 -m py_compile scripts/build-cover-framing-release.py
       - run: python3 scripts/test-cover-focus-release.py
       - run: python3 scripts/test-works-release.py
