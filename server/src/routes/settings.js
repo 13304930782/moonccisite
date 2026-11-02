@@ -17,6 +17,7 @@ const {
 } = require('../lib/earlyAccessRelease');
 
 const router = require('../lib/asyncRouter')();
+router.use('/festivals', require('./festivals'));
 const CUSTOM_MAIL_DAILY_LIMIT = Number(process.env.CUSTOM_MAIL_DAILY_LIMIT || 20);
 const configuredEarlyAccessUploadMaxMb = Number(process.env.EARLY_ACCESS_UPLOAD_MAX_MB || 512);
 const EARLY_ACCESS_UPLOAD_MAX_MB = Number.isFinite(configuredEarlyAccessUploadMaxMb) && configuredEarlyAccessUploadMaxMb > 0

@@ -387,10 +387,7 @@
   }
 
   .home-v2 .footer-status {
-    position: absolute;
-    inset-inline-start: 0;
-    bottom: calc(100% + 51.5px);
-    margin: 0;
+    margin-block: 0 16px;
   }
 
 }

@@ -69,6 +69,7 @@ jobs:
       - run: node scripts/test-account-browser.cjs
       - run: node scripts/test-site-design-account-browser.cjs
       - run: node scripts/test-about-browser.cjs
+      - run: node scripts/test-festivals-browser.cjs
       - run: node scripts/test-admin-workspace-browser.cjs
       - run: node scripts/test-admin-settings-browser.cjs
       - run: node scripts/test-content-admin-browser.cjs

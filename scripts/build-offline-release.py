@@ -1,5 +1,6 @@
 """Build and verify a frontend-only offline release. Metadata is always LF bytes."""
 import hashlib
+import argparse
 import io
 import json
 import subprocess
@@ -9,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def make_bundle(root, revision):
+def make_bundle(root, revision, *, with_presentation_assets=False):
     name = f'mooncci-frontend-{revision[:12]}'
     entries = {}
     for file in sorted((root / 'dist').rglob('*')):
@@ -22,6 +23,22 @@ def make_bundle(root, revision):
             entries[relative] = file.read_bytes()
     if not entries.get('dist/index.html'):
         raise ValueError('Missing built index.html')
+    if with_presentation_assets:
+        runtime = root / 'server/runtime'
+        for name in ['styles.json', 'home.css']:
+            source = runtime / name
+            if runtime.is_symlink() or source.is_symlink() or not source.is_file():
+                raise ValueError(f'Missing or unsafe presentation asset: {name}')
+            entries['presentation/' + name] = source.read_bytes().replace(b'\r\n', b'\n')
+            if not entries['presentation/' + name]:
+                raise ValueError(f'Empty presentation asset: {name}')
+        assets = json.loads(entries['presentation/styles.json'])
+        if not isinstance(assets, dict) or not assets.get('index'):
+            raise ValueError('Missing presentation entry assets')
+        for group in assets.values():
+            for file in group.get('css', []) + group.get('js', []):
+                if not file.startswith('/') or 'dist' + file not in entries:
+                    raise ValueError(f'Presentation references missing frontend asset: {file}')
     entries['deploy.sh'] = (root / 'scripts/deploy-offline-frontend.sh').read_bytes().replace(b'\r\n', b'\n')
     entries['verify-live.mjs'] = (root / 'scripts/verify-live.mjs').read_bytes().replace(b'\r\n', b'\n')
     entries['REVISION'] = (revision + '\n').encode('ascii')
@@ -48,6 +65,10 @@ def make_bundle(root, revision):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--with-presentation-assets', action='store_true',
+                        help='Sync styles.json/home.css only; use only when existing server renderer HTML stays compatible. Does not deploy SSR code or restart processes.')
+    options = parser.parse_args()
     def git(*args):
         return subprocess.check_output(['git', *args], cwd=ROOT, text=True).strip()
     if git('status', '--porcelain'):
@@ -56,7 +77,7 @@ def main():
     subprocess.run(['npm.cmd' if __import__('os').name == 'nt' else 'npm', 'run', 'check'], cwd=ROOT, check=True)
     if git('status', '--porcelain') or git('rev-parse', 'HEAD') != revision:
         raise SystemExit('Source changed during build; release aborted.')
-    print(json.dumps(make_bundle(ROOT, revision), indent=2))
+    print(json.dumps(make_bundle(ROOT, revision, with_presentation_assets=options.with_presentation_assets), indent=2))
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@ function render(source, interval) {
       this.children = [];
     }
     setAttribute(name, value) {
+      if (['data-head-pitch', 'data-head-yaw'].includes(name) && !Number.isFinite(Number(value))) throw new Error('Invalid seasonal hat pose');
       this.attrs[name] = String(value);
       writes++;
     }
@@ -36,7 +37,8 @@ function render(source, interval) {
     snapshot() {
       return [
         this.tag,
-        this.attrs,
+        // Hat metadata does not change the upstream drawing; its writes still count.
+        Object.fromEntries(Object.entries(this.attrs).filter(([name]) => !['data-head-pitch', 'data-head-yaw'].includes(name))),
         this.style,
         this.textContent ?? '',
         this.children.map((child) => child.snapshot()),

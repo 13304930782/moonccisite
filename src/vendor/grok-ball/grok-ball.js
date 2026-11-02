@@ -957,6 +957,10 @@ window.EMOTION_SEED = [
     /* ---- 每帧 ---- */
     function applyPose(pose) {
       var b = pose.body;
+      // Let the seasonal hat follow the existing head pose without changing animation.
+      var hatPitch = String(r2(b.pitch || 0)), hatYaw = String(r2(b.yaw || 0));
+      if (bodyG.getAttribute('data-head-pitch') !== hatPitch) bodyG.setAttribute('data-head-pitch', hatPitch);
+      if (bodyG.getAttribute('data-head-yaw') !== hatYaw) bodyG.setAttribute('data-head-yaw', hatYaw);
       var now = performance.now();
       var sketch = b.sketch || 0;
 

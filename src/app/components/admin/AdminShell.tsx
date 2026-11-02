@@ -15,6 +15,7 @@ import {
   Activity,
   Bell,
   CalendarClock,
+  CalendarDays,
   ChartColumn,
   ChartNoAxesCombined,
   ContactRound,
@@ -268,6 +269,7 @@ export function AdminShell({ children }: AdminShellProps) {
       icon: KeyRound,
       show: user?.role === 'owner',
     },
+    {title:'节日管理',to:'/admin/festivals',icon:CalendarDays,show:manager},
     {title:'AI 文章简介',to:'/admin/ai-settings',icon:Sparkles,show:user?.role==='owner'},
     {
       title: '邮件设置',
@@ -324,7 +326,7 @@ export function AdminShell({ children }: AdminShellProps) {
           {label:'内容与发布',paths:['/admin/posts','/admin/write','/admin/reviews','/admin/schedules','/admin/series','/admin/media','/admin/updates','/admin/projects']},
           {label:'用户与互动',paths:['/admin/comments','/admin/users','/admin/editor-applications','/admin/editor-apply','/admin/early-access','/admin/banned-words']},
           {label:'邮件与订阅',paths:['/admin/mailbox','/admin/mailbox-requests','/admin/newsletter','/admin/mail-settings','/admin/send-mail']},
-          {label:'站点与系统',paths:['/admin/ai-settings','/admin/node-monitor','/admin/blog-pages','/admin/site-settings','/admin/login-settings','/admin/electricity','/admin/runtime']},
+          {label:'站点与系统',paths:['/admin/festivals','/admin/ai-settings','/admin/node-monitor','/admin/blog-pages','/admin/site-settings','/admin/login-settings','/admin/electricity','/admin/runtime']},
         ].map(group=>{const items=group.paths.map(path=>menus.find(item=>item.to===path)).filter((item):item is MenuItem=>!!item);if(!items.length)return null;return <details className="admin-menu-group" key={group.label+location.pathname} open={group.label==='工作台'||items.some(item=>item.to==='/admin'?location.pathname==='/admin':location.pathname.startsWith(item.to))}><summary>{group.label}</summary>{items.map(item=><NavLink key={item.to} to={item.to} end={item.to==='/admin'} onClick={closeMobile}><item.icon aria-hidden="true"/><span>{item.title}</span></NavLink>)}</details>;})}
         <div className="admin-menu-footer">
         <Link to="/account/settings" onClick={closeMobile}><UserRound aria-hidden="true"/><span>个人设置</span></Link>

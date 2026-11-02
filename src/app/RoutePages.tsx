@@ -56,6 +56,7 @@ const AdminBannedWordsPage = lazy(() => import('./pages/AdminBannedWordsPage'));
 const EditorApplyPage = lazy(() => import('./pages/EditorApplyPage'));
 const AdminEditorApplicationsPage = lazy(() => import('./pages/AdminEditorApplicationsPage'));
 const AdminSiteSettingsPage = lazy(() => import('./pages/AdminSiteSettingsPage'));
+const AdminFestivalsPage = lazy(() => import('./pages/AdminFestivalsPage'));
 const AdminAiSettingsPage = lazy(() => import('./pages/AdminAiSettingsPage'));
 const AdminLoginSettingsPage = lazy(() => import('./pages/AdminLoginSettingsPage'));
 const BookmarksPage = lazy(() => import('./pages/BookmarksPage'));
@@ -181,6 +182,7 @@ export default function RoutePages(){return <Routes>
           <Route path="/admin/editor-apply" element={<Guard><AdminShell><EditorApplyPage /></AdminShell></Guard>} />
           <Route path="/admin/editor-applications" element={<Guard adminOnly><AdminShell><AdminEditorApplicationsPage /></AdminShell></Guard>} />
           <Route path="/admin/site-settings" element={<Guard adminOnly><AdminShell><AdminSiteSettingsPage /></AdminShell></Guard>} />
+          <Route path="/admin/festivals" element={<Guard adminOnly><AdminShell><AdminFestivalsPage /></AdminShell></Guard>} />
           <Route path="/complete-registration" element={<CompleteRegistrationPage />} />
           <Route path="/account/connections" element={<Navigate to="/account/settings" replace />} />
           <Route path="/account/notifications" element={<Guard><AccountWorkspace><NotificationsPage/></AccountWorkspace></Guard>}/>

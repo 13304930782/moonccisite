@@ -2,6 +2,7 @@ import { responsiveImage } from '../lib/responsiveImage';
 import {usePublishing} from '../lib/usePublishing';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { FestivalSlot } from './Festivals/Entry';
 import { Menu, Search, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ThemeToggle } from '../context/ThemeContext';
@@ -107,6 +108,7 @@ export function Header() {
     <header className={`site-header${scrolled?' is-scrolled':''}`} ref={header}>
       <div className="site-container header-inner">
         <Link className="site-brand" to="/">
+          {location.pathname === '/' && <FestivalSlot name="logo" />}
           {safeImageSrc(brand.logo_url) && (
             <img {...responsiveImage(safeImageSrc(brand.logo_url), true)} width={26} height={26} alt="" />
           )}

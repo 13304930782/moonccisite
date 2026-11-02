@@ -123,7 +123,7 @@ test('shared shell, content components and theme retain pinned Git blobs (approv
   'src/styles/globals.css':'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391',
   'src/styles/editorial.css':'9f8cedc46f1d2bb7310e77a7934ae122e456215a',
   'src/styles/project-card.css':'08306a6737ea3bbf30b5792d54fe0c43a12421b7',
-  'src/app/components/Header.tsx':'0206f665b196f3698fa72f90aeed342d2db16fe1',
+  'src/app/components/Header.tsx':'08c11d83438f429a6e3d5a328c52ba7bc63ff226', // Restore the homepage-only festival logo slot.
   'src/app/components/SiteFooter.tsx':'85bdf27069f292558f00aee14711f76254ea4add',
   'src/app/components/ContentUI.tsx':'46856b049ce31b9acc74a187e307bc1ffcd2a2bf',
   // Approved slug URL wiring; card markup and styles are unchanged.

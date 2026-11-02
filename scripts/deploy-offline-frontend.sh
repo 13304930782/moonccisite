@@ -4,14 +4,25 @@ set -Eeuo pipefail
 package=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 web=${MOONCCI_WEB_ROOT:-/www/wwwroot/mooncci.site}
 backup_root=${MOONCCI_BACKUP_ROOT:-/www/backup}
+runtime=${MOONCCI_PRESENTATION_ROOT:-/www/wwwroot/mooncci-source/server/runtime}
 mkdir -p "$backup_root"
 backup=$(mktemp -d "$backup_root/mooncci-offline.XXXXXX")
 switched=0
+presentation_changed=0
 log() { printf '[%s] %s\n' "$(date '+%F %T')" "$*"; }
 finish() {
   rc=$?
   trap - EXIT
   set +e
+  if [ "$rc" -ne 0 ] && [ "$presentation_changed" = 1 ]; then
+    for file in styles.json home.css; do
+      if cp -p "$backup/presentation/$file" "$runtime/.$file-rollback.tmp" && mv -f "$runtime/.$file-rollback.tmp" "$runtime/$file"; then
+        log "已恢复展示资源：$file"
+      else
+        log "展示资源恢复失败：$backup/presentation/$file"
+      fi
+    done
+  fi
   if [ "$rc" -ne 0 ] && [ "$switched" = 1 ]; then
     log '恢复原页面入口……'
     if cp -p "$backup/index.html" "$web/.index-rollback.tmp" && mv -f "$web/.index-rollback.tmp" "$web/index.html"; then
@@ -37,8 +48,33 @@ test -s "$web/index.html"
 revision=$(cat REVISION)
 [[ "$revision" =~ ^[0-9a-f]{40}$ ]]
 cp -p "$web/index.html" "$backup/index.html"
+if [ -e presentation ] || [ -L presentation ]; then
+  [[ -d presentation && ! -L presentation ]]
+  [[ -d "$runtime" && ! -L "$runtime" ]]
+  # These two files are read per request; never replace cached renderer code here.
+  test -z "$(find presentation -mindepth 1 -maxdepth 1 ! -name styles.json ! -name home.css -print)"
+  mkdir "$backup/presentation"
+  for file in styles.json home.css; do
+    [[ -f "presentation/$file" && -s "presentation/$file" && ! -L "presentation/$file" ]]
+    [[ -f "$runtime/$file" && -s "$runtime/$file" && ! -L "$runtime/$file" ]]
+    [[ ! -e "$runtime/.$file-offline.tmp" && ! -L "$runtime/.$file-offline.tmp" ]]
+    [[ ! -e "$runtime/.$file-rollback.tmp" && ! -L "$runtime/.$file-rollback.tmp" ]]
+    grep -Eq "^[0-9a-f]{64}  presentation/${file//./\\.}$" SHA256SUMS
+    cp -p "$runtime/$file" "$backup/presentation/$file"
+  done
+fi
 log '复制前端资源，保留旧哈希文件……'
 rsync -ac --exclude=index.html dist/ "$web/"
+if [ -d presentation ]; then
+  presentation_changed=1
+  for file in home.css styles.json; do
+    cp -p "$runtime/$file" "$runtime/.$file-offline.tmp"
+    cat "presentation/$file" > "$runtime/.$file-offline.tmp"
+    mv -f "$runtime/.$file-offline.tmp" "$runtime/$file"
+  done
+  sed -n 's|  presentation/|  |p' SHA256SUMS > "$backup/presentation-checksums"
+  (cd "$runtime" && LC_ALL=C sha256sum --strict -c "$backup/presentation-checksums") > "$backup/presentation-verification.log"
+fi
 log '切换页面入口……'
 install -m 644 dist/index.html "$web/.index-offline.tmp"
 switched=1
