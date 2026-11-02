@@ -1,6 +1,7 @@
 import { safeHref, safeRoutePath, isExternalHttpUrl } from '../lib/safeUrl';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
+import { FestivalSlot } from '../components/Festivals/Entry';
 import { SiteFooter } from '../components/SiteFooter';
 import { lazy, Suspense } from 'react';
 const MarkdownContent = lazy(() => import('../components/MarkdownContent').then(m => ({ default: m.MarkdownContent })));
@@ -56,10 +57,12 @@ export default function HomePage() {
   const visibleActivity = (activity.data?.items || []).filter((item: any) => item.activity_id !== fallbackNoteId);
   return (
     <div className="neo-page home-v2">
+      <FestivalSlot name="global" />
       <Header />
       <main className="site-container home-main">
         <section className="home-hero">
           <div className="hero-copy">
+            <FestivalSlot name="home" />
             <ResourceState resource={settings}>
               <p className="eyebrow">
                 {hero.eyebrow ?? 'mooncci / 个人技术手记'}
@@ -163,6 +166,7 @@ export default function HomePage() {
         </section>
       </main>
       <SubscribeForm />
+      <FestivalSlot name="footer" />
       <SiteFooter />
     </div>
   );

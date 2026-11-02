@@ -1,4 +1,5 @@
 import { reducedMotion } from '../lib/motionPreference';
+import { FestivalSlot } from './Festivals/Entry';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { CloudSun, Minus, X, CircleHelp } from 'lucide-react';
@@ -848,6 +849,7 @@ export default function WeatherCompanion() {
             <span className="weather-companion-label">
               {GrokBall.EMOTIONS.find(item => item.id === displayedEmotion)?.name || moodName}
             </span>
+            {pathname === '/' && <FestivalSlot name="hat" />}
           </button>
         </>
       )}

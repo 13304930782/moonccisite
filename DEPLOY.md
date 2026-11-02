@@ -1343,3 +1343,18 @@ nohup python3 /www/backup/security-alerts-package/deploy.py /www/backup/mooncci-
 回滚前会拒绝上线后的额外文件修改，并核对备份字节。部署后仍需检查 `/about`、`/links`、上传接口权限、邮件 worker 状态及已登录的节点监控；脚本不会发送真实邮件。包装与回滚回归：`python -X utf8 scripts/test-security-alerts-release.py`。
 
 Security bundle baseline (2026-11-02): re2js 2.8.7 fixes GHSA-gg6h-894w-4m9c. The rebuilt total is 2,303,886 bytes / 771,534 gzip bytes; approved total limits are 2,310,000 / 775,000. Entry JS/CSS and maximum chunk limits are unchanged. No preview feature changes are included.
+
+## 2026-11-02 恢复节日管理
+
+本次补回节日管理和用户确认的首页效果。生产节日接口已与提交基线逐文件核对一致，后端文件仅补回 Git；发布包不包含后端源码、依赖、SQL、环境配置或 SSR renderer。
+
+前端构建后使用 `python -X utf8 scripts/build-offline-release.py --with-presentation-assets`。显式选项只额外携带 `server/runtime/styles.json` 和 `home.css`，用于同步预加载资源与首页样式。这两个文件逐请求读取，无需重启 PM2。此选项不能用于 SSR HTML 结构改变的发布；本次已用生产原有 HTML 加新客户端验证正常水合与主题切换。
+
+```powershell
+$release = Get-Content .cache/offline-release.json -Raw | ConvertFrom-Json
+scp -i C:/Users/Administrator/.ssh/id_ed25519_mooncci_codex $release.package ($release.package + '.sha256') root@182.92.179.81:/tmp/
+```
+
+服务器核对旁车 SHA256 后，将归档解压至新的 `/www/backup/festival-package-提交前缀`，执行 `nohup bash /www/backup/festival-package-提交前缀/deploy.sh > /www/backup/festival-package-提交前缀/deploy.log 2>&1 < /dev/null &`。查看 `deploy.log` 与日志中的备份目录 `exit-code`，保留旧哈希资源。失败时脚本自动恢复入口、styles.json 和 home.css。手动回滚也必须一起恢复这三项，不改接口或 PM2。
+
+本次用户批准总 JS 上限 2,360,000 字节、gzip 795,000 字节；首页 JS/CSS 和单块上限保持不变。最终实测总量 2,350,235 / 790,510，包含后台懒加载页面与节日组件。旧稿 Markdown 转换复用现有 micromark/GFM，原 HTML 安全清洗仍保留。

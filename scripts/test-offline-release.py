@@ -42,6 +42,70 @@ class OfflineReleaseTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             release.make_bundle(self.root, 'a' * 40)
 
+    def presentation_bundle(self):
+        runtime = self.root / 'server/runtime'
+        runtime.mkdir(parents=True, exist_ok=True)
+        (runtime / 'styles.json').write_bytes(b'{"index":{"js":["/assets/app.js"],"css":[]}}\r\n')
+        (runtime / 'home.css').write_bytes(b'body{color:inherit}\r\n')
+        (runtime / 'document.mjs').write_bytes(b'must not deploy renderer code')
+        return release.make_bundle(self.root, 'b' * 40, with_presentation_assets=True)
+
+    def test_presentation_scope_requires_opt_in_and_valid_assets(self):
+        result = self.presentation_bundle()
+        self.assertEqual(Path(result['package']).name, 'mooncci-frontend-' + 'b' * 12 + '.tar.gz')
+        with tarfile.open(result['package']) as archive:
+            self.assertEqual(set(name for name in archive.getnames() if name.startswith('presentation/')),
+                             {'presentation/styles.json', 'presentation/home.css'})
+            self.assertFalse(any(name.startswith('server/') for name in archive.getnames()))
+            self.assertNotIn(b'\r', archive.extractfile('presentation/styles.json').read())
+        result = release.make_bundle(self.root, 'c' * 40)
+        with tarfile.open(result['package']) as archive:
+            self.assertFalse(any(name.startswith('presentation/') for name in archive.getnames()))
+        (self.root / 'server/runtime/styles.json').write_bytes(b'{"index":{"js":["/missing.js"]}}')
+        with self.assertRaisesRegex(ValueError, 'missing frontend asset'):
+            release.make_bundle(self.root, 'd' * 40, with_presentation_assets=True)
+
+    @unittest.skipUnless(os.name != 'nt' and shutil.which('rsync'), 'Linux deployment test runs in CI')
+    def test_presentation_preflight_and_rollback_without_restart(self):
+        result = self.presentation_bundle()
+        package = self.root / 'presentation-package'
+        with tarfile.open(result['package']) as archive:
+            archive.extractall(package, filter='data')
+        web, runtime, binaries = (self.root / name for name in ['web', 'live-runtime', 'bin'])
+        for directory in [web / 'assets', runtime, binaries]:
+            directory.mkdir(parents=True)
+        (web / 'old-hash.js').write_bytes(b'preserved')
+        (runtime / 'document.mjs').write_bytes(b'preserved renderer')
+        (binaries / 'rsync').write_text('#!/bin/sh\nif [ "$QA_CORRUPT" = 1 ]; then printf corrupt > "$MOONCCI_WEB_ROOT/assets/app.js"; exit 0; fi\nexec /usr/bin/rsync "$@"\n')
+        for name in ['su', 'pm2']:
+            (binaries / name).write_text('#!/bin/sh\necho forbidden >> "$QA_RESTARTS"\nexit 99\n')
+        for path in binaries.iterdir():
+            path.chmod(0o755)
+        env = {**os.environ, 'PATH': str(binaries) + ':' + os.environ['PATH'],
+               'MOONCCI_WEB_ROOT': str(web), 'MOONCCI_PRESENTATION_ROOT': str(runtime),
+               'MOONCCI_BACKUP_ROOT': str(self.root / 'backups'), 'QA_RESTARTS': str(self.root / 'restarts')}
+        for mode in ['extra-file', 'missing-live', 'tamper', 'success', 'corrupt']:
+            with self.subTest(mode=mode):
+                (web / 'index.html').write_bytes(b'old page')
+                (runtime / 'styles.json').write_bytes(b'old styles')
+                (runtime / 'home.css').write_bytes(b'old css')
+                (package / 'presentation/home.css').write_bytes(b'body{color:inherit}\n')
+                extra = package / 'presentation/document.mjs'
+                if mode == 'extra-file': extra.write_bytes(b'forbidden')
+                elif extra.exists(): extra.unlink()
+                if mode == 'missing-live': (runtime / 'home.css').unlink()
+                if mode == 'tamper': (package / 'presentation/home.css').write_bytes(b'tampered')
+                env['QA_CORRUPT'] = '1' if mode == 'corrupt' else '0'
+                run = subprocess.run(['bash', str(package / 'deploy.sh')], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+                self.assertEqual(run.returncode == 0, mode == 'success', run.stdout.decode() + run.stderr.decode())
+                self.assertEqual((web / 'index.html').read_bytes(), b'new page' if mode == 'success' else b'old page')
+                self.assertEqual((runtime / 'styles.json').read_bytes(), b'{"index":{"js":["/assets/app.js"],"css":[]}}\n' if mode == 'success' else b'old styles')
+                if mode != 'missing-live':
+                    self.assertEqual((runtime / 'home.css').read_bytes(), b'body{color:inherit}\n' if mode == 'success' else b'old css')
+                self.assertEqual((runtime / 'document.mjs').read_bytes(), b'preserved renderer')
+                self.assertEqual((web / 'old-hash.js').read_bytes(), b'preserved')
+                self.assertFalse((self.root / 'restarts').exists())
+
     @unittest.skipUnless(os.name != 'nt' and shutil.which('rsync'), 'Linux deployment test runs in CI')
     def test_deploy_tamper_and_rollback(self):
         package = self.root / 'package'
@@ -57,7 +121,7 @@ class OfflineReleaseTests(unittest.TestCase):
         os.utime(web / 'asset-manifest.json', (0, 0))
         env = {**os.environ, 'MOONCCI_WEB_ROOT': str(web), 'MOONCCI_BACKUP_ROOT': str(self.root / 'backups')}
         def run():
-            return subprocess.run(['bash', str(package / 'deploy.sh')], env=env, capture_output=True, timeout=20)
+            return subprocess.run(['bash', str(package / 'deploy.sh')], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
         # Corruption is rejected before the existing page is changed.
         (package / 'dist/assets/app.js').write_bytes(b'tampered')
         self.assertNotEqual(run().returncode, 0)
@@ -118,7 +182,7 @@ class OfflineReleaseTests(unittest.TestCase):
                 (live / 'src/routes/admin.js').write_bytes(b'module.exports = "original";')
                 (self.root / 'pm-count').write_text('0')
                 env['QA_FAIL_ROLLBACK'] = fail_rollback
-                result = subprocess.run(['bash', str(package / 'deploy.sh')], env=env, capture_output=True, timeout=20)
+                result = subprocess.run(['bash', str(package / 'deploy.sh')], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
                 self.assertNotEqual(result.returncode, 0, result.stderr)
                 self.assertEqual((web / 'index.html').read_bytes(), b'original page')
                 self.assertEqual((live / 'src/routes/admin.js').read_bytes(), b'module.exports = "original";')
@@ -186,7 +250,7 @@ class OfflineReleaseTests(unittest.TestCase):
             (live / 'src/index.js').write_text('module.exports = "original";')
             (live / checked_file).write_text('module.exports = "original";')
             (web / 'index.html').write_text('original page')
-            result = subprocess.run(['bash', str(package / 'deploy.sh')], env=env, capture_output=True, timeout=20)
+            result = subprocess.run(['bash', str(package / 'deploy.sh')], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
             with self.subTest(mode=mode):
                 self.assertEqual(result.returncode == 0, mode == 'success', result.stdout.decode() + result.stderr.decode())
                 self.assertEqual((live / '.env').read_text(), 'CF_PROXY=preserve')
