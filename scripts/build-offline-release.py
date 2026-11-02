@@ -25,13 +25,13 @@ def make_bundle(root, revision, *, with_presentation_assets=False):
         raise ValueError('Missing built index.html')
     if with_presentation_assets:
         runtime = root / 'server/runtime'
-        for name in ['styles.json', 'home.css']:
-            source = runtime / name
+        for asset_name in ['styles.json', 'home.css']:
+            source = runtime / asset_name
             if runtime.is_symlink() or source.is_symlink() or not source.is_file():
-                raise ValueError(f'Missing or unsafe presentation asset: {name}')
-            entries['presentation/' + name] = source.read_bytes().replace(b'\r\n', b'\n')
-            if not entries['presentation/' + name]:
-                raise ValueError(f'Empty presentation asset: {name}')
+                raise ValueError(f'Missing or unsafe presentation asset: {asset_name}')
+            entries['presentation/' + asset_name] = source.read_bytes().replace(b'\r\n', b'\n')
+            if not entries['presentation/' + asset_name]:
+                raise ValueError(f'Empty presentation asset: {asset_name}')
         assets = json.loads(entries['presentation/styles.json'])
         if not isinstance(assets, dict) or not assets.get('index'):
             raise ValueError('Missing presentation entry assets')

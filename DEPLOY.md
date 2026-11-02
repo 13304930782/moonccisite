@@ -1357,4 +1357,4 @@ scp -i C:/Users/Administrator/.ssh/id_ed25519_mooncci_codex $release.package ($r
 
 服务器核对旁车 SHA256 后，将归档解压至新的 `/www/backup/festival-package-提交前缀`，执行 `nohup bash /www/backup/festival-package-提交前缀/deploy.sh > /www/backup/festival-package-提交前缀/deploy.log 2>&1 < /dev/null &`。查看 `deploy.log` 与日志中的备份目录 `exit-code`，保留旧哈希资源。失败时脚本自动恢复入口、styles.json 和 home.css。手动回滚也必须一起恢复这三项，不改接口或 PM2。
 
-本次用户批准总 JS 上限 2,360,000 字节、gzip 795,000 字节；首页 JS/CSS 和单块上限保持不变。恢复后实测总量 2,350,084 / 790,349，包含后台懒加载页面与节日组件。旧稿 Markdown 转换复用现有 micromark/GFM，原 HTML 安全清洗仍保留。
+本次用户批准总 JS 上限 2,360,000 字节、gzip 795,000 字节；首页 JS/CSS 和单块上限保持不变。最终实测总量 2,350,235 / 790,510，包含后台懒加载页面与节日组件。旧稿 Markdown 转换复用现有 micromark/GFM，原 HTML 安全清洗仍保留。

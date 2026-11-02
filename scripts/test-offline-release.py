@@ -52,6 +52,7 @@ class OfflineReleaseTests(unittest.TestCase):
 
     def test_presentation_scope_requires_opt_in_and_valid_assets(self):
         result = self.presentation_bundle()
+        self.assertEqual(Path(result['package']).name, 'mooncci-frontend-' + 'b' * 12 + '.tar.gz')
         with tarfile.open(result['package']) as archive:
             self.assertEqual(set(name for name in archive.getnames() if name.startswith('presentation/')),
                              {'presentation/styles.json', 'presentation/home.css'})
