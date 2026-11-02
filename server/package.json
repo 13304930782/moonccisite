@@ -12,7 +12,7 @@
     "@mixmark-io/domino": "^2.2.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-    "dotenv": "^16.6.1",
+    "dotenv": "^18.0.9",
     "express": "^4.21.2",
     "express-rate-limit": "^8.6.2",
     "file-type": "^22.0.2",
