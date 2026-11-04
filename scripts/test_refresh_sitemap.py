@@ -28,7 +28,8 @@ class SitemapTest(unittest.TestCase):
 
     def test_bilingual_routes_keep_private_pages_out(self):
         self.assertEqual(refresh.validate(xml(['/en', '/en/article/hello-world', '/en/projects/demo'])), 3)
-        for path in ['/en/admin', '/en/account/settings', '/api/posts', '/en/article/%2Fsecret', '/en/articles?preview=true']:
+        self.assertEqual(refresh.validate(xml(['/article/2024-11-13c%25e8%25af%25ad'])), 1)
+        for path in ['/en/admin', '/en/account/settings', '/api/posts', '/en/article/%2Fsecret', '/article/%252Fsecret', '/en/articles?preview=true']:
             with self.assertRaises(ValueError):
                 refresh.validate(xml([path]))
 

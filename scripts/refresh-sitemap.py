@@ -33,7 +33,9 @@ def validate(data):
                 raise ValueError('Private or unknown sitemap route')
             part = match.group(2)
             decoded = urllib.parse.unquote(part, errors='strict')
-            if (not decoded or len(decoded) > 255 or decoded in ('.', '..') or re.search(r'[/\\#?%\x00-\x1f\x7f]', decoded)
+            nested = urllib.parse.unquote(decoded, errors='strict') if match.group(1) == 'article' else decoded
+            if (not decoded or len(decoded) > 255 or decoded in ('.', '..') or nested in ('.', '..') or re.search(r'[/\\#?\x00-\x1f\x7f]', nested)
+                    or ('%' in decoded and match.group(1) != 'article')
                     or urllib.parse.quote(decoded, safe="~!*'()-._") != part):
                 raise ValueError('Invalid sitemap content reference')
         urls.append(value)
