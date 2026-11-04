@@ -13,12 +13,19 @@ class PackageTests(unittest.TestCase):
             for name in ['deploy-bilingual.sh','rollback-bilingual.sh','verify-bilingual-release.cjs']:
                 (root / 'scripts' / name).write_bytes((HERE / name).read_bytes())
             for name in ['package.json', 'package-lock.json']: (root / 'server' / name).write_bytes(b'{}\n')
+            for name, source in release.OPS.items():
+                (root / source).write_bytes(b'ops\r\n'); files[name] = b'ops\n'
             baseline = {'version':1, 'captured_at':datetime.datetime.now(datetime.timezone.utc).isoformat(), 'files':dict.fromkeys(files), 'prerequisites':{n:release.sha(b'{}\n') for n in ['package.json','package-lock.json']}}
+            for name in release.OPS: baseline['files'][name] = release.sha(b'old ops\n')
             result = release.bundle(root,'a'*40,list(files),baseline)
             with tarfile.open(result['package']) as archive:
                 for line in archive.extractfile('SHA256SUMS').read().decode().splitlines():
                     digest,name = line.split('  ',1); self.assertEqual(digest,release.sha(archive.extractfile(name).read()))
                 for name in ['MANIFEST.json','BASELINE.json','SHA256SUMS','deploy-bilingual.sh','rollback-bilingual.sh']: self.assertNotIn(b'\r',archive.extractfile(name).read())
+                for name in release.OPS: self.assertEqual(archive.extractfile(name).read(),b'ops\n')
+            baseline['files']['ops/indexnow.py'] = None
+            with self.assertRaisesRegex(ValueError,'Existing operations'): release.bundle(root,'a'*40,list(files),baseline)
+            baseline['files']['ops/indexnow.py'] = release.sha(b'old ops\n')
             baseline['files']['server/.env'] = None
             with self.assertRaisesRegex(ValueError,'scope'): release.bundle(root,'a'*40,list(files),baseline)
 if __name__ == '__main__': unittest.main()

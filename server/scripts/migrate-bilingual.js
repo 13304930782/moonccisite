@@ -25,4 +25,4 @@ async function migrate(c){
  for(const entry of loaded)if(!entry.previous)await c.query('INSERT INTO schema_migrations(filename,checksum) VALUES (?,?)',[entry.filename,entry.checksum]);
 }
 if(require.main===module){const apply=process.argv.includes('--apply');if(process.argv.slice(2).some(v=>!['--apply','--check'].includes(v)))throw Error('Use --check or --apply');const db=require('../src/db');db.getConnection().then(async c=>{try{if(apply){const [[lock]]=await c.query("SELECT GET_LOCK('mooncci_schema_migrations',30) AS locked");if(Number(lock.locked)!==1)throw Error('Migration lock unavailable');await migrate(c);}console.log(JSON.stringify({mode:apply?'applied':'read-only',pending:await check(c)}));}finally{if(apply)await c.query("SELECT RELEASE_LOCK('mooncci_schema_migrations')");c.release();await db.end();}}).catch(e=>{console.error(e.code||e.message);process.exitCode=1;});}
-module.exports={migrate,check};
+module.exports={migrate,check,migrations};

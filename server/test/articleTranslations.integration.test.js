@@ -1,4 +1,20 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+test('generic migration runner accepts a current schema seed and shares the bilingual ledger',{skip:process.env.BILINGUAL_INTEGRATION!=='true'},async t=>{
+ const name='mooncci_qa_generic_bilingual_'+process.pid,port=Number(process.env.TEST_DB_PORT||33079);
+ const c=await require('mysql2/promise').createConnection({host:'127.0.0.1',port,user:'root',multipleStatements:true});
+ await c.query('CREATE DATABASE '+name+' CHARACTER SET utf8mb4');await c.query('USE '+name);
+ t.after(async()=>{await c.query('DROP DATABASE '+name);await c.end();});
+ const run=(script='migrate.js')=>{
+  const result=require('node:child_process').spawnSync(process.execPath,[path.join(__dirname,'../scripts',script)],{encoding:'utf8',env:{...process.env,DB_HOST:'127.0.0.1',DB_PORT:String(port),DB_USER:'root',DB_PASSWORD:'',DB_NAME:name}});
+  assert.equal(result.status,0,result.stderr+'\n'+result.stdout);
+ };
+ run('init-db.js');run();assert.deepEqual(await require('../scripts/migrate-bilingual').check(c),[]);
+ const [before]=await c.query('SELECT filename,checksum FROM schema_migrations ORDER BY filename');
+ await require('../scripts/migrate-bilingual').migrate(c);run();
+ const [after]=await c.query('SELECT filename,checksum FROM schema_migrations ORDER BY filename');
+ assert.deepEqual(after,before);
+ for(const filename of require('../scripts/migrate-bilingual').migrations)assert.equal(after.filter(row=>row.filename===filename).length,1);
+});
 test('translations retain one post identity across draft publication, review, restore and withdrawal',{skip:process.env.BILINGUAL_INTEGRATION!=='true'},async t=>{
  const name='mooncci_qa_bilingual_'+process.pid;
  Object.assign(process.env,{DB_HOST:'127.0.0.1',DB_PORT:process.env.TEST_DB_PORT||'33079',DB_USER:'root',DB_PASSWORD:'',DB_NAME:name,JWT_SECRET:'bilingual-isolated-test-secret-32-characters',SITE_URL:'https://example.test',PUBLISHING_ENABLED:'true',MAIL_ENABLED:'false',ENGAGEMENT_ENABLED:'false'});

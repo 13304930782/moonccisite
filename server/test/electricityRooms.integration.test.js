@@ -31,6 +31,8 @@ test(
     await db.query(
       'CREATE TABLE IF NOT EXISTS users(id INT PRIMARY KEY,username VARCHAR(100) UNIQUE,email VARCHAR(100),role VARCHAR(20),status VARCHAR(20),can_comment INT) ENGINE=InnoDB',
     );
+    const [localeColumns]=await db.query("SHOW COLUMNS FROM users LIKE 'ui_locale'");
+    if(!localeColumns.length)await db.query("ALTER TABLE users ADD COLUMN ui_locale VARCHAR(5) CHARACTER SET ascii NOT NULL DEFAULT 'zh-CN'");
     await db.query(
       'CREATE TABLE IF NOT EXISTS site_settings(setting_key VARCHAR(100) PRIMARY KEY,setting_value TEXT)',
     );
@@ -80,7 +82,7 @@ test(
     ])
       await db.query(`DELETE FROM ${table}`);
     await db.query(
-      "INSERT INTO users VALUES(1,'mooncci','owner@example.test','owner','active',1),(2,'friend-a','a@example.test','user','active',1),(3,'friend-b','b@example.test','user','active',1),(4,'outsider','out@example.test','user','active',1),(5,'disabled','d@example.test','user','disabled',1),(6,'admin','admin@example.test','admin','active',1)",
+      "INSERT INTO users(id,username,email,role,status,can_comment) VALUES(1,'mooncci','owner@example.test','owner','active',1),(2,'friend-a','a@example.test','user','active',1),(3,'friend-b','b@example.test','user','active',1),(4,'outsider','out@example.test','user','active',1),(5,'disabled','d@example.test','user','disabled',1),(6,'admin','admin@example.test','admin','active',1)",
     );
     const schedule = [
       { hour: 0, type: 'daily' },

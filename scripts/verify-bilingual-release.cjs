@@ -2,6 +2,7 @@
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
 const {spawnSync} = require('node:child_process');
 const LIVE = '/www/wwwroot/mooncci-source/server', WEB = '/www/wwwroot/mooncci.site';
+const OPS = {'ops/nginx-blog-seo.conf':'/www/server/panel/vhost/nginx/mooncci-blog-seo.inc','ops/refresh-sitemap.py':'/opt/mooncci-sitemap/refresh-sitemap.py','ops/indexnow.py':'/opt/mooncci-indexnow/indexnow.py'};
 const sha = data => crypto.createHash('sha256').update(data).digest('hex');
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const write = (file, data) => fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n', {mode:0o600});
@@ -14,30 +15,38 @@ function safe(root, name) {
   }
   return current;
 }
-function target(name, live=LIVE, web=WEB) {
+function target(name, live=LIVE, web=WEB, ops=OPS) {
+  if(Object.hasOwn(OPS,name)){
+    const absolute=path.resolve(ops[name]);
+    for(let parent=path.dirname(absolute);;parent=path.dirname(parent)){
+      try{if(fs.lstatSync(parent).isSymbolicLink())throw Error('Symlink operations path');}catch(e){if(e.code!=='ENOENT')throw e;}
+      if(parent===path.dirname(parent))break;
+    }
+    return safe(path.dirname(absolute),path.basename(absolute));
+  }
   if (name.startsWith('dist/')) return safe(web, name.slice(5));
   if (/^server\/(src\/|runtime\/|database\/migrations\/|scripts\/migrate-bilingual\.js$)/.test(name) && !name.includes('/node_modules/') && !name.endsWith('deployment.json')) return safe(live, name.slice(7));
   throw Error('Protected destination');
 }
 function digest(file) { return fs.existsSync(file) ? sha(fs.readFileSync(file)) : null; }
-function verify(folder, live=LIVE, web=WEB, installed=false) {
+function verify(folder, live=LIVE, web=WEB, installed=false, ops=OPS) {
   const manifest=json(path.join(folder,'MANIFEST.json')), baseline=json(path.join(folder,'BASELINE.json'));
   if (manifest.version!==1 || baseline.version!==1 || JSON.stringify(Object.keys(manifest.files).sort())!==JSON.stringify(Object.keys(baseline.files).sort())) throw Error('Invalid manifest scope');
   const age=Date.now()-Date.parse(baseline.captured_at);
   if (!installed && (!Number.isFinite(age)||age<0||age>86400000)) throw Error('Stale baseline');
   for (const [name,hash] of Object.entries(manifest.files)) {
     if (digest(safe(folder,name))!==hash) throw Error('Payload mismatch: '+name);
-    if (digest(target(name,live,web))!==(installed?hash:baseline.files[name])) throw Error('Production drift: '+name);
+    if (digest(target(name,live,web,ops))!==(installed?hash:baseline.files[name])) throw Error('Production drift: '+name);
   }
   if (Object.keys(baseline.prerequisites).sort().join(',')!=='package-lock.json,package.json') throw Error('Prerequisite scope');
   for(const [name,hash] of Object.entries(baseline.prerequisites)) if(digest(safe(live,name))!==hash) throw Error('Dependency drift');
   return manifest;
 }
-function snapshot(folder, backup, live=LIVE, web=WEB) {
-  const manifest=verify(folder,live,web); const before={};
+function snapshot(folder, backup, live=LIVE, web=WEB,ops=OPS) {
+  const manifest=verify(folder,live,web,false,ops); const before={};
   for(const name of Object.keys(manifest.files)) {
-    const source=target(name,live,web); before[name]=digest(source);
-    if(before[name]!==null){const dest=safe(backup+'/before',name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(source,dest);if(digest(dest)!==before[name])throw Error('Backup mismatch');}
+    const source=target(name,live,web,ops); before[name]=digest(source);
+    if(before[name]!==null){const dest=safe(backup+'/before',name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(source,dest);fs.chmodSync(dest,fs.statSync(source).mode&0o777);if(digest(dest)!==before[name])throw Error('Backup mismatch');}
   }
   write(path.join(backup,'BEFORE.json'),before);
   for(const file of ['MANIFEST.json','BASELINE.json','verify-bilingual-release.cjs','rollback-bilingual.sh'])fs.copyFileSync(path.join(folder,file),path.join(backup,file));
@@ -51,23 +60,25 @@ function publicDirectory(directory,owner) {
   fs.chmodSync(directory,0o755);
   if(owner)fs.chownSync(directory,owner.uid,owner.gid);
 }
-function copy(source,destination,owner) {
+function copy(source,destination,owner,mode=0o644) {
   publicDirectory(path.dirname(destination),owner);const temp=destination+'.bilingual-new';
-  fs.copyFileSync(source,temp,fs.constants.COPYFILE_EXCL);fs.chmodSync(temp,0o644);
+  fs.copyFileSync(source,temp,fs.constants.COPYFILE_EXCL);fs.chmodSync(temp,mode);
   if(owner)fs.chownSync(temp,owner.uid,owner.gid);fs.renameSync(temp,destination);
 }
 function install(folder) {
   const manifest=verify(folder);const owner=fs.statSync(LIVE);
   // Static assets precede the document entry; old hashed assets remain available.
-  const names=Object.keys(manifest.files).sort((a,b)=>(a==='dist/index.html')-(b==='dist/index.html'));
-  for(const name of names)copy(safe(folder,name),target(name),name.startsWith('server/')?owner:null);
+  const order=name=>name==='dist/index.html'?4:name==='ops/indexnow.py'?3:name==='ops/refresh-sitemap.py'?2:1;
+  const names=Object.keys(manifest.files).sort((a,b)=>order(a)-order(b));
+  for(const name of names){const dest=target(name);copy(safe(folder,name),dest,name.startsWith('server/')?owner:null,Object.hasOwn(OPS,name)?fs.statSync(dest).mode&0o777:0o644);}
   verify(folder,LIVE,WEB,true);
 }
-function restore(backup, presentationOnly, live=LIVE,web=WEB) {
+function restore(backup, presentationOnly, live=LIVE,web=WEB,ops=OPS) {
+  if(presentationOnly)throw Error('Bilingual backend already started: keep compatible frontend, SSR and ops; manual reviewed recovery required');
   const before=json(path.join(backup,'BEFORE.json')),owner=fs.statSync(live);
-  const entries=Object.entries(before).filter(([name])=>!name.startsWith('server/database/migrations/')&&(!presentationOnly||name.startsWith('dist/')||name.startsWith('server/runtime/')));
+  const entries=Object.entries(before).filter(([name])=>!name.startsWith('server/database/migrations/'));
   for(const [name,hash] of entries)if(hash!==null&&digest(safe(backup+'/before',name))!==hash)throw Error('Corrupt rollback backup');
-  for(const [name,hash] of entries){const dest=target(name,live,web);if(hash!==null)copy(safe(backup+'/before',name),dest,name.startsWith('server/')?owner:null);else if(fs.existsSync(dest))fs.unlinkSync(dest);}
+  for(const [name,hash] of entries){const dest=target(name,live,web,ops);if(hash!==null)copy(safe(backup+'/before',name),dest,name.startsWith('server/')?owner:null,Object.hasOwn(OPS,name)?fs.statSync(safe(backup+'/before',name)).mode&0o777:0o644);else if(fs.existsSync(dest))fs.unlinkSync(dest);}
 }
 function database() {
   const env=require(path.join(LIVE,'node_modules/dotenv')).parse(fs.readFileSync(path.join(LIVE,'.env')));

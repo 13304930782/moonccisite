@@ -3,6 +3,7 @@ import argparse, datetime, hashlib, io, json, re, subprocess, tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+OPS = {'ops/nginx-blog-seo.conf': 'scripts/nginx-blog-seo.conf', 'ops/refresh-sitemap.py': 'scripts/refresh-sitemap.py', 'ops/indexnow.py': 'scripts/indexnow.py'}
 MIGRATIONS = [f"20261104000{n}_{name}.sql" for n, name in [(1, "article_translations"), (2, "content_translations"), (3, "translation_draft_source")]]
 def sha(data): return hashlib.sha256(data).hexdigest()
 def safe(name): return bool(re.fullmatch(r"[A-Za-z0-9_@+.,/-]+", name)) and all(p not in ("", ".", "..") for p in name.split("/"))
@@ -18,7 +19,7 @@ def inputs(base):
             if "node_modules" in file.relative_to(ROOT / directory).parts or file.name == "deployment.json": continue
             if file.is_symlink(): raise ValueError("Release symlink: " + rel)
             if file.is_file() and not any(p.startswith(".") for p in file.relative_to(ROOT / directory).parts): names.append(rel)
-    return sorted(set(names))
+    return sorted(set(names) | set(OPS))
 def bundle(root, revision, names, baseline):
     if baseline.get("version") != 1 or set(baseline.get("files", {})) != set(names): raise ValueError("Baseline does not match exact payload scope")
     stamp = datetime.datetime.fromisoformat(baseline["captured_at"].replace("Z", "+00:00"))
@@ -29,13 +30,14 @@ def bundle(root, revision, names, baseline):
         if sha((root / "server" / name).read_bytes().replace(b"\r\n", b"\n")) != digest: raise ValueError("Production dependency manifest differs: " + name)
     entries = {}
     for name in names:
-        if not safe(name) or not name.startswith(("server/src/", "server/runtime/", "server/database/migrations/", "dist/")) and name != "server/scripts/migrate-bilingual.js": raise ValueError("Unsafe payload " + name)
+        if not safe(name) or not name.startswith(("server/src/", "server/runtime/", "server/database/migrations/", "dist/")) and name != "server/scripts/migrate-bilingual.js" and name not in OPS: raise ValueError("Unsafe payload " + name)
         if "/node_modules/" in name or name.endswith("deployment.json"): raise ValueError("Protected payload")
         if baseline["files"][name] is not None and not re.fullmatch(r"[a-f0-9]{64}", baseline["files"][name]): raise ValueError("Invalid baseline digest")
-        file = root / name
+        if name in OPS and baseline["files"][name] is None: raise ValueError("Existing operations file required: " + name)
+        file = root / OPS.get(name, name)
         if file.is_symlink() or not file.is_file(): raise ValueError("Missing regular payload " + name)
         data = file.read_bytes()
-        entries[name] = data.replace(b"\r\n", b"\n") if name.startswith("server/") else data
+        entries[name] = data.replace(b"\r\n", b"\n") if name.startswith(("server/", "ops/")) else data
     for required in ["dist/index.html", "server/runtime/document.mjs", "server/runtime/styles.json", "server/runtime/home.css"]:
         if not entries.get(required): raise ValueError("Missing built artifact " + required)
     manifest = {"version": 1, "revision": revision, "files": {n: sha(d) for n, d in entries.items()}, "migrations": MIGRATIONS}
@@ -61,6 +63,6 @@ if __name__ == "__main__":
     names = inputs(args.base)
     if args.list_files: print(json.dumps(names, indent=2))
     else:
-        if git("status", "--porcelain"): raise SystemExit("Commit all release changes before packaging")
+        if git("status", "--porcelain", "--untracked-files=all", "--", ".", ":(exclude)outputs/**"): raise SystemExit("Commit all release changes before packaging (only outputs evidence is excluded)")
         if not args.baseline: raise SystemExit("--baseline required")
         print(json.dumps(bundle(ROOT, git("rev-parse", "HEAD"), names, json.loads(args.baseline.read_text(encoding="utf-8-sig"))), indent=2))

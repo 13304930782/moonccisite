@@ -39,6 +39,8 @@ export async function ensureMessages(locale:UiLocale){
  await Promise.all([sourcePending,locale==='en'?pending:undefined]);
 }
 export function translate(locale:UiLocale,key:string,params?:MessageParams):string{
+ // Optional API labels may be absent even when a caller is typed through an any payload.
+ if(key==null)return '';
  key=sourceMessages?.[key]||key;
  if(/^m_[a-f0-9]{10}$/.test(key))return locale==='en'?'Loading interface…':'正在加载界面…';
  const catalog=locale==='en'?english:chinese;
