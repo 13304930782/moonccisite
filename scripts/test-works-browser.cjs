@@ -12,7 +12,7 @@ const release={id:42,title:'版本记录回归',content:'原始发布内容。',
   for(const engine of (process.env.PLAYWRIGHT_TEST_BROWSERS || 'chromium,webkit').split(',')){
    const browser=await ({chromium,webkit}[engine]).launch({headless:true,...(engine==='chromium'&&process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
    try {
-    const page=await browser.newPage({reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+    const page=await browser.newPage({locale:'zh-CN',reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
     let project={...original},saved=null,releaseUpload;
     const uploadGate=new Promise(resolve=>{releaseUpload=resolve;});
     await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
@@ -52,7 +52,7 @@ const release={id:42,title:'版本记录回归',content:'原始发布内容。',
        assert.equal(await page.locator('.project-mobile-toc').isVisible(),width<1280);
        for(const link of await page.locator('.project-reading-rail nav a').all())assert.equal(await page.locator(await link.getAttribute('href')).count(),1,'TOC target exists');
       }else{
-       const card=page.locator('.project-card--compact');await card.waitFor();
+       const card=page.locator('.project-card--compact');await card.waitFor().catch(async error=>{console.error({url:page.url(),text:await page.locator('main').innerText()});throw error});
        assert.equal((await card.locator('.project-card-icon').boundingBox()).width,48);
        assert.equal(await card.locator('h3').evaluate(el=>getComputedStyle(el).whiteSpace),'nowrap');
        const name=await card.locator('h3').boundingBox();assert.ok(name.x+name.width<=width,'complete name stays in viewport');
@@ -102,14 +102,14 @@ const release={id:42,title:'版本记录回归',content:'原始发布内容。',
     releaseUpload();await iconField.locator('.project-image-url summary').click();await iconField.getByRole('textbox',{name:'作品图标',exact:true}).waitFor();
     await page.waitForFunction(()=>document.querySelector('.image-field--icon input:not([type=file])').value==='/api/uploads/new-icon.png');
     await page.getByRole('button',{name:'保存作品',exact:true}).click();
-    await page.waitForFunction(()=>document.querySelector('.editor-panel h2').textContent==='新建作品');
+    await page.locator('.projects-list-heading').waitFor();
     assert.equal(saved.icon_image,'/api/uploads/new-icon.png');assert.equal(saved.cover_image,'/api/uploads/cover.png');
     await page.reload();await page.getByRole('button',{name:'编辑',exact:true}).first().click();
     await iconField.locator('.project-image-url summary').click();
     assert.equal(await iconField.getByRole('textbox',{name:'作品图标',exact:true}).inputValue(),'/api/uploads/new-icon.png');
     await iconField.getByRole('button',{name:'移除图标',exact:true}).click();
     await page.getByRole('button',{name:'保存作品',exact:true}).click();
-    await page.waitForFunction(()=>document.querySelector('.editor-panel h2').textContent==='新建作品');
+    await page.locator('.projects-list-heading').waitFor();
     assert.equal(saved.icon_image,'');assert.equal(saved.cover_image,'/api/uploads/cover.png');
     await page.goto('http://127.0.0.1:4271/projects/promptdock');await page.getByRole('heading',{name:'PromptDock',exact:true}).waitFor();
     assert.equal(await page.locator('.project-detail-icon').count(),0,'explicit removal never restores branded default');

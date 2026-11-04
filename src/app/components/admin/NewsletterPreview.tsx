@@ -1,3 +1,5 @@
+import { AdminEmpty, AdminNotice } from './AdminState';
+import { useI18n } from '../../i18n';
 import { useEffect, useState } from 'react';
 import { safeHref } from '../../lib/safeUrl';
 import { api } from '../../lib/api';
@@ -6,6 +8,7 @@ type Item = { id: number; type: string; activity_id: string; title: string; exce
 export type NewsletterDraft = { period: { key: string; scheduledAt: string }; items: Item[]; editable: boolean };
 const types: Record<string, string> = { post: '文章', update: '近况', release: '项目版本' };
 export function NewsletterPreview({ data, reload }: { data: NewsletterDraft; reload: () => void }) {
+  const { locale,  t } = useI18n();
   const [saved, setSaved] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState('');
   const [message, setMessage] = useState('');
@@ -18,33 +21,33 @@ export function NewsletterPreview({ data, reload }: { data: NewsletterDraft; rel
     try {
       await api('/admin/newsletter/selection', { method: 'PUT', body: JSON.stringify({ weekStart: data.period.key, type: item.type, id: item.id, included: value }) });
       setSaved(current => ({ ...current, [item.activity_id]: value }));
-      setMessage(value ? '已加入本期' : '本期不发送');
+      setMessage(value ? t("m_36d69598f6") : t("m_c1bbf9c78a"));
     } catch (e: any) {
-      setError(e.message || '保存失败，请重试');
+      setError(e.message || t("m_f42a1238b4"));
       if (e.status === 409) reload();
     } finally { setBusy(''); }
   }
   return <>
     <div className="newsletter-draft-summary">
-      <p>计划发送：{new Date(data.period.scheduledAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}（北京时间）</p>
-      <p>已选 {count} / {data.items.length} 条 · 取消勾选即保存，仅影响本期。</p>
+      <p>{t("m_c7f8eebc9b")} {new Date(data.period.scheduledAt).toLocaleString(locale, { timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })} {t("m_5eb76ad884")}</p>
+      <p>{t("m_7ecf1cde64")} {count} / {data.items.length}  {t("m_5186bcf6e1")}</p>
     </div>
-    {!data.editable && <p role="status">本期已开始投递，不能再修改。</p>}
-    {error && <p role="alert">{error}</p>}
-    <p className="newsletter-save-status" role="status">{busy ? '保存中…' : message}</p>
+    {!data.editable && <AdminNotice kind="info">{t("m_8fc0f0e72f")}</AdminNotice>}
+    {error && <AdminNotice>{t(error || '')}</AdminNotice>}
+    <p className="newsletter-save-status" role="status">{busy ? t("m_ff509c9ba0") : message}</p>
     <div className="newsletter-draft-list">
       {data.items.map(item => <article key={item.activity_id} className={included(item) ? '' : 'newsletter-excluded'}>
         <div className="newsletter-draft-copy">
-          <small>{types[item.type] || item.type} · {new Date(item.published_at).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })}</small>
+          <small>{t(types[item.type] || item.type)} · {new Date(item.published_at).toLocaleDateString(locale, { timeZone: 'Asia/Shanghai' })}</small>
           <h3><a href={safeHref(item.path)} target="_blank" rel="noopener noreferrer">{item.title}</a></h3>
           <p>{item.excerpt}</p>
         </div>
         <label className="newsletter-include">
-          <input type="checkbox" checked={included(item)} disabled={!!busy || !data.editable} aria-label={`发送：${item.title}`} onChange={event => void select(item, event.target.checked)} />
-          <span>{included(item) ? '发送' : '不发送'}</span>
+          <input type="checkbox" checked={included(item)} disabled={!!busy || !data.editable} aria-label={t("m_933e757ce0", {v0: item.title})} onChange={event => void select(item, event.target.checked)} />
+          <span>{included(item) ? t("m_edecf0ae6e") : t("m_b7321d609d")}</span>
         </label>
       </article>)}
     </div>
-    {!data.items.length ? <p>暂无新内容，本期不发送。</p> : count === 0 && <p>已全部取消，本期不发送。</p>}
+    {!data.items.length ? <div className="admin-empty-result"><AdminEmpty title={t("m_6fce66ae49")} /></div> : count === 0 && <AdminNotice kind="info">{t("m_0f80520bad")}</AdminNotice>}
   </>;
 }

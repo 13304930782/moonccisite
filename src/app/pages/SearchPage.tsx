@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import '../../styles/content-discovery.css';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { FormEvent, useEffect, useState } from "react";
@@ -5,6 +6,7 @@ import { useSearchParams } from "react-router-dom";
 import { PageHeading, SitePage, useResource } from "../components/ContentUI";
 import { PostResults } from "../components/PostResults";
 export default function SearchPage() {
+  const { t } = useI18n();
   const [params, setParams] = useSearchParams();
   const q = params.get("q") || "";
   const category = params.get('category') || '', tag = params.get('tag') || '';
@@ -22,13 +24,12 @@ export default function SearchPage() {
   }
   return (
     <SitePage className="discovery-page">
-      <PageHeading eyebrow="SEARCH" title="搜索文章">
-        <p>按标题、摘要、正文、分类和标签搜索。</p>
+      <PageHeading eyebrow="SEARCH" title={t("m_a8322456d1")}>
+        <p>{t("m_a5a72387a7")}</p>
       </PageHeading>
       <form onSubmit={submit} className="inline-actions mb-8">
         <label className="sr-only" htmlFor="article-search">
-          搜索关键词
-        </label>
+           {t("m_c00a21fdf7")} </label>
         <input
           id="article-search"
           className="neo-input flex-1 min-w-0"
@@ -36,24 +37,24 @@ export default function SearchPage() {
           maxLength={100}
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          placeholder="输入关键词…"
+          placeholder={t("m_26b5de5a5e")}
         />
-        <button className="quiet-button">搜索</button>
+        <button className="quiet-button">{t("m_44ce7ae909")}</button>
       </form>
       <div className="search-filters">
-        <label>分类<ThemeSelect aria-label="分类" allowEmpty value={category} onValueChange={value=>filter('category',value)}><option value="">全部分类</option>{(categories.data||[]).map((item:any)=><option key={item.category} value={item.category}>{item.category}</option>)}</ThemeSelect></label>
-        <label>标签<ThemeSelect aria-label="标签" allowEmpty value={tag} onValueChange={value=>filter('tag',value)}><option value="">全部标签</option>{(tags.data||[]).map((item:any)=><option key={item.tag} value={item.tag}>{item.tag}</option>)}</ThemeSelect></label>
-        {(categories.error || tags.error) && <p role="status">筛选项暂时无法更新。<button type="button" className="text-link" onClick={()=>{categories.reload();tags.reload();}}>重试</button></p>}
+        <label>{t("m_515559957f")}<ThemeSelect aria-label={t("m_515559957f")} allowEmpty value={category} onValueChange={value=>filter('category',value)}><option value="">{t("m_a105443485")}</option>{(categories.data||[]).map((item:any)=><option key={item.category} value={item.category}>{item.category}</option>)}</ThemeSelect></label>
+        <label>{t("m_1d0fd5f933")}<ThemeSelect aria-label={t("m_1d0fd5f933")} allowEmpty value={tag} onValueChange={value=>filter('tag',value)}><option value="">{t("m_b709cb12f0")}</option>{(tags.data||[]).map((item:any)=><option key={item.tag} value={item.tag}>{item.tag}</option>)}</ThemeSelect></label>
+        {(categories.error || tags.error) && <p role="status">{t("m_774a622e91")}<button type="button" className="text-link" onClick={()=>{categories.reload();tags.reload();}}>{t("m_b8784c8dd5")}</button></p>}
       </div>
       {q || category || tag ? (
         <PostResults
           path={`/posts?${query}`}
           searchQuery={q}
-          emptyAction={<button className="quiet-button" onClick={()=>{setKeyword('');setParams({});}}>清除搜索，重新查找</button>}
-          empty="没有符合当前条件的文章。"
+          emptyAction={<button className="quiet-button" onClick={()=>{setKeyword('');setParams({});}}>{t("m_456c848474")}</button>}
+          empty={t("m_b747bfa966")}
         />
       ) : (
-        <p className="quiet-state">输入关键词，查找感兴趣的内容。</p>
+        <p className="quiet-state">{t("m_baa76ac3e7")}</p>
       )}
     </SitePage>
   );

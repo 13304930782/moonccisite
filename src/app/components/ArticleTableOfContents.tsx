@@ -1,7 +1,9 @@
+import { useI18n } from '../i18n';
 import {useEffect,useRef,useState} from 'react';
 import {reducedMotion} from '../lib/motionPreference';
 type Heading={id:string;title:string;level:number};
 export function ArticleTableOfContents({headings,preview=false}:{headings:Heading[];preview?:boolean}){
+  const { t } = useI18n();
  const [active,setActive]=useState(headings[0]?.id||''),[open,setOpen]=useState(false),[settingsOpen,setSettingsOpen]=useState(false);
  const rail=useRef<HTMLElement>(null);
  useEffect(()=>{
@@ -34,18 +36,18 @@ export function ArticleTableOfContents({headings,preview=false}:{headings:Headin
   observe();select();
   return()=>{changes.disconnect();observer.disconnect();win.removeEventListener('scroll',onScroll);if(frame)win.cancelAnimationFrame(frame);};
  },[headings]);
- const links=<nav aria-label="文章目录">{headings.map(h=><a key={h.id} title={h.title} className={`${h.level>=3?'toc-sub ':''}${active===h.id?'on':''}`} aria-current={active===h.id?'location':undefined} href={`#${h.id}`} onClick={event=>{
+ const links=<nav aria-label={t("m_3b2d0794ee")}>{headings.map(h=><a key={h.id} title={h.title} className={`${h.level>=3?'toc-sub ':''}${active===h.id?'on':''}`} aria-current={active===h.id?'location':undefined} href={`#${h.id}`} onClick={event=>{
   const doc=rail.current?.ownerDocument,node=doc?.getElementById(h.id),win=doc?.defaultView;if(!node||!win)return;
   event.preventDefault();setActive(h.id);
   const header=doc.querySelector('.site-header')?.getBoundingClientRect().height||76;
   win.scrollTo({top:win.scrollY+node.getBoundingClientRect().top-header-24,behavior:reducedMotion()?'auto':'smooth'});
   try{win.history.replaceState(win.history.state,'',`#${h.id}`);}catch{/* Embedded editor previews can restrict history. */}
  }}><span className="toc-entry-title">{h.title}</span></a>)}</nav>;
- const settings=(compact=false)=>!preview&&<button type="button" className={`reading-settings-trigger ${compact?'reading-toolbar-settings':'toc-reading-trigger'}`} aria-label="阅读设置" aria-expanded={settingsOpen} aria-controls="reading-settings-panel" onClick={event=>window.dispatchEvent(new CustomEvent('mooncci:reading-tools-open',{detail:{trigger:event.currentTarget}}))}><span aria-hidden="true">Aa</span>{!compact&&'阅读设置'}</button>;
+ const settings=(compact=false)=>!preview&&<button type="button" className={`reading-settings-trigger ${compact?'reading-toolbar-settings':'toc-reading-trigger'}`} aria-label={t("m_863c2a1656")} aria-expanded={settingsOpen} aria-controls="reading-settings-panel" onClick={event=>window.dispatchEvent(new CustomEvent('mooncci:reading-tools-open',{detail:{trigger:event.currentTarget}}))}><span aria-hidden="true">Aa</span>{!compact&&t("m_863c2a1656")}</button>;
  if(!headings.length&&preview)return null;
  return <aside ref={rail} className={`article-rail${headings.length?'':' article-rail-settings-only'}`} data-reading-ignore>
-  <div className="toc-in">{!!headings.length&&<><div className="toc-label">本文目录</div>{links}</>}{settings()}</div>
-  <div className="article-reading-toolbar">{headings.length?<button type="button" className="reading-directory-toggle" aria-expanded={open} aria-controls="article-narrow-directory" onClick={()=>setOpen(value=>!value)}>目录 <span aria-hidden="true">{open?'▴':'▾'}</span></button>:<span/>}{settings(true)}</div>
+  <div className="toc-in">{!!headings.length&&<><div className="toc-label">{t("m_421185c97f")}</div>{links}</>}{settings()}</div>
+  <div className="article-reading-toolbar">{headings.length?<button type="button" className="reading-directory-toggle" aria-expanded={open} aria-controls="article-narrow-directory" onClick={()=>setOpen(value=>!value)}>{t("m_52daa71ebc")} <span aria-hidden="true">{open?'▴':'▾'}</span></button>:<span/>}{settings(true)}</div>
   {!!headings.length&&<div id="article-narrow-directory" className="toc-narrow" hidden={!open}>{links}</div>}
  </aside>;
 }

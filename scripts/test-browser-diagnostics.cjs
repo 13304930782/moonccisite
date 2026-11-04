@@ -8,7 +8,7 @@ const { chromium } = require('playwright');
   await fs.mkdir('.cache/diagnostic-qa', { recursive: true });
   try {
     for (const width of [390, 768, 1280]) {
-      const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
+      const page = await browser.newPage({locale:'zh-CN', viewport: { width, height: 900 }, reducedMotion: 'reduce' });
       const requests = []; const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.route('**/api/**', async route => {

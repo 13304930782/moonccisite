@@ -7,6 +7,7 @@ require('dotenv').config({
 });
 
 const mysql = require('mysql2/promise');
+const bilingual = require('./migrate-bilingual');
 
 const MIGRATIONS_DIR = path.resolve(__dirname, '../database/migrations');
 const LOCK_NAME = 'mooncci_schema_migrations';
@@ -121,7 +122,9 @@ async function run() {
 
     for (const filename of files) {
       const filePath = path.join(MIGRATIONS_DIR, filename);
-      const sql = fs.readFileSync(filePath, 'utf8').trim();
+      const content = fs.readFileSync(filePath, 'utf8');
+      const sql = (bilingual.migrations.includes(filename)
+        ? content.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n') : content).trim();
       const hash = checksum(sql);
 
       if (!sql) {
@@ -159,10 +162,19 @@ async function run() {
       return;
     }
 
+    let bilingualApplied = false;
     for (const item of pending) {
       const startedAt = Date.now();
 
       console.log(`[migrate] applying: ${item.filename}`);
+      if (bilingual.migrations.includes(item.filename)) {
+        // The same checked upgrade supports both current schema.sql seeds and
+        // existing installations, including locale columns and unique indexes.
+        if (!bilingualApplied) await bilingual.migrate(connection);
+        bilingualApplied = true;
+        console.log(`[migrate] applied: ${item.filename} (${Date.now() - startedAt}ms)`);
+        continue;
+      }
       await connection.query(item.sql);
       await connection.query(
         'INSERT INTO schema_migrations (filename, checksum) VALUES (?, ?)',

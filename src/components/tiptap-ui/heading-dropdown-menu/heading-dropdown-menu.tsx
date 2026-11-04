@@ -1,3 +1,4 @@
+import { useI18n } from '../../../app/i18n';
 import { forwardRef, useCallback, useState } from "react"
 
 // --- Icons ---
@@ -55,6 +56,7 @@ export const HeadingDropdownMenu = forwardRef<
     },
     ref
   ) => {
+  const { t } = useI18n();
     const { editor } = useTiptapEditor(providedEditor)
     const [isOpen, setIsOpen] = useState<boolean>(false)
     const { isVisible, isActive, canToggle, Icon } = useHeadingDropdownMenu({
@@ -87,9 +89,9 @@ export const HeadingDropdownMenu = forwardRef<
             tabIndex={-1}
             disabled={!canToggle}
             data-disabled={!canToggle}
-            aria-label="Format text as heading"
+            aria-label={t("Format text as heading")}
             aria-pressed={isActive}
-            tooltip="Heading"
+            tooltip={t("Heading")}
             {...buttonProps}
             ref={ref}
           >

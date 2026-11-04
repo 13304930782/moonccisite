@@ -6,7 +6,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
  try{
  browser=process.env.PLAYWRIGHT_BROWSER==='webkit'?await webkit.launch():await chromium.launch({...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:process.platform==='win32'?{channel:'msedge'}:{})});
  for(const width of [320,390,768,1440])for(const theme of ['light','dark'])for(const sized of [false,true]){
- const page=await browser.newPage({viewport:{width,height:950},reducedMotion:'reduce'});await page.addInitScript(t=>{if(window.top===window&&location.pathname.startsWith('/article/'))localStorage.setItem('mooncci-theme',t);},theme);
+ const page=await browser.newPage({locale:'zh-CN',viewport:{width,height:950},reducedMotion:'reduce'});await page.addInitScript(t=>{if(window.top===window&&location.pathname.startsWith('/article/'))localStorage.setItem('mooncci-theme',t);},theme);
  let release;const gate=new Promise(r=>release=r),errors=[];page.on('pageerror',e=>errors.push(e.message));
  const image_dimensions={'/api/uploads/cover.svg':{width:600,height:360},'/api/uploads/portrait.svg':{width:240,height:480}};
  await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());

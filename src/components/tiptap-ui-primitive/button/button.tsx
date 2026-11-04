@@ -1,3 +1,4 @@
+import {useI18n} from '@/app/i18n';
 import { forwardRef, Fragment, useMemo } from "react"
 
 // --- Tiptap UI Primitive ---
@@ -87,6 +88,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
+    const {t}=useI18n();
+    if(typeof tooltip==='string')tooltip=t(tooltip);
+    if(typeof props['aria-label']==='string')props['aria-label']=t(props['aria-label']);
+    if(typeof children==='string')children=t(children);
     const isCheckVariant = variant === "check"
     const buttonStyle: ButtonStyle | undefined = isCheckVariant
       ? "ghost"

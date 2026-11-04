@@ -4,7 +4,7 @@ const {chromium}=require('playwright');
  const {preview}=await import('vite');const server=await preview({preview:{host:'127.0.0.1',port:4199,strictPort:true}});let browser;
  try{
   browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
-  const page=await browser.newPage();await page.addInitScript(()=>Object.defineProperty(navigator,'doNotTrack',{value:'0',configurable:true}));const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const page=await browser.newPage({locale:'zh-CN'});await page.addInitScript(()=>Object.defineProperty(navigator,'doNotTrack',{value:'0',configurable:true}));const errors=[];page.on('pageerror',e=>errors.push(e.message));
   let role='owner',fail=false,tracked=[];
   await page.route('**/api/**',async route=>{
    const url=new URL(route.request().url());let data={};

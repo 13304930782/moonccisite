@@ -1,0 +1,1 @@
+ALTER TABLE article_drafts ADD COLUMN source_hash CHAR(64) CHARACTER SET ascii NOT NULL DEFAULT '';

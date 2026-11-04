@@ -1,6 +1,7 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const {test}=require('node:test'),assert=require('node:assert/strict'),ts=require('typescript'),fs=require('node:fs');
 const React=require('react'),{act,create}=require('react-test-renderer');
-function loadTs(file,modules={}){const m={exports:{}};const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;new Function('exports','require',code)(m.exports,name=>name.endsWith('.css')?{}:modules[name]||require(name));return m.exports;}
+function loadTs(file,modules={}){const m={exports:{}};const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;new Function('exports','require',code)(m.exports,name=>i18nFixture(name)?i18nFixture(name):name.endsWith('.css')?{}:modules[name]||require(name));return m.exports;}
 const crop=loadTs('src/app/lib/coverCrop.ts');
 const image=loadTs('src/app/components/CoverImage.tsx',{'../lib/coverCrop':crop});
 const safeUrl=loadTs('src/app/lib/safeUrl.ts');
@@ -26,7 +27,7 @@ test('review dismissal retains manuscript during exit, blocks closing actions an
   './SubmissionsPage':{workflowNames:{submitted:'待审核'}},
  };
  const code=ts.transpileModule(fs.readFileSync('src/app/pages/PublishingQueuePage.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- new Function('exports','require',code)(module.exports,name=>name.endsWith('.css')?{}:mocks[name]||require(name));
+ new Function('exports','require',code)(module.exports,name=>i18nFixture(name)?i18nFixture(name):name.endsWith('.css')?{}:mocks[name]||require(name));
  let root;
  try{
   await act(async()=>{root=create(React.createElement(module.exports.default));});

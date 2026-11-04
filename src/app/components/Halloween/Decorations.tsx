@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import confetti from 'canvas-confetti';
@@ -18,6 +19,7 @@ function Pumpkin({ size = 20 }: { size?: number }) {
 export const theme = {className:'halloween', styles, faviconSvg:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ff7a1a" color="#3d2178">'+pumpkin+'</svg>', dispose:stopCandy};
 
 function Home({environment}: {environment:FestivalEnvironment}) {
+  const { t } = useI18n();
   const button = useRef<HTMLButtonElement>(null);
   const [hero, setHero] = useState<Element | null>(null);
   const [moving, setMoving] = useState(false);
@@ -27,14 +29,14 @@ function Home({environment}: {environment:FestivalEnvironment}) {
     const unsubscribe = environment.observeMotion(target,moving => {setMoving(moving);if (reducedMotion() || document.hidden) stopCandy();});
     return () => {unsubscribe();stopCandy();};
   }, []);
-  return <><button ref={button} type="button" className="hw-candy" data-halloween="hero" aria-label="万圣节快乐，点击撒糖" onClick={() => {
-    if (reducedMotion()) { notify.success('糖果送到啦'); return; }
+  return <><button ref={button} type="button" className="hw-candy" data-halloween="hero" aria-label={t("m_0bb00fec55")} onClick={() => {
+    if (reducedMotion()) { notify.success(t("m_1d53a738f1")); return; }
     const rect = button.current!.getBoundingClientRect();
     const existingCanvases = new Set(document.querySelectorAll('canvas'));
     didFire = true;
     void confetti({ particleCount: 150, spread: 110, angle: innerWidth < 768 ? -90 : -45, startVelocity: innerWidth < 768 ? 32 : 45, scalar: 1.35, ticks: 240, gravity: 0.8, colors: ['#ff7a1a', '#5b33a6', '#ffd36b'], origin: { x: (rect.left + rect.width / 2) / innerWidth, y: (rect.top + rect.height / 2) / innerHeight }, disableForReducedMotion: true });
     document.querySelectorAll('canvas').forEach(canvas => { if (!existingCanvases.has(canvas)) canvas.ariaHidden = 'true'; });
-  }}><Pumpkin />万圣节快乐 · 点我讨糖</button>{hero && createPortal(<div className="hw-scene" data-halloween="hero" data-moving={moving} aria-hidden="true"><div className="hw-moon"/><svg className="hw-web" viewBox="0 0 190 190"><path d="M0 0 190 0M0 0 175 73M0 0 134 134M0 0 73 175M0 0 0 190M0 38Q8 30 15 35Q24 25 27 27Q35 21 35 15Q31 7 38 0M0 76Q17 60 29 70Q44 48 54 54Q64 42 70 29Q62 13 76 0M0 114Q23 94 44 105Q65 73 81 81Q96 61 105 44Q96 17 114 0M0 152Q33 122 58 140Q86 98 108 108Q127 80 140 58Q128 24 152 0M0 190Q38 155 73 175Q108 123 134 134Q157 101 175 73Q161 32 190 0"/></svg>{[0,1,2].map(i => <svg key={i} className="hw-bat" style={{ '--hw-period': `${14 + i * 4}s` } as React.CSSProperties} viewBox="0 0 60 30"><path d="M30 13 26 6 23 12C17 8 8 9 0 0c1 12 4 20 12 23 1-7 7-6 10-1 3-6 5-1 8 8 3-9 5-14 8-8 3-5 9-6 10 1 8-3 11-11 12-23-8 9-17 8-23 12l-3-6Z"/></svg>)}</div>, hero)}</>;
+  }}><Pumpkin />{t("m_15831f8827")}</button>{hero && createPortal(<div className="hw-scene" data-halloween="hero" data-moving={moving} aria-hidden="true"><div className="hw-moon"/><svg className="hw-web" viewBox="0 0 190 190"><path d="M0 0 190 0M0 0 175 73M0 0 134 134M0 0 73 175M0 0 0 190M0 38Q8 30 15 35Q24 25 27 27Q35 21 35 15Q31 7 38 0M0 76Q17 60 29 70Q44 48 54 54Q64 42 70 29Q62 13 76 0M0 114Q23 94 44 105Q65 73 81 81Q96 61 105 44Q96 17 114 0M0 152Q33 122 58 140Q86 98 108 108Q127 80 140 58Q128 24 152 0M0 190Q38 155 73 175Q108 123 134 134Q157 101 175 73Q161 32 190 0"/></svg>{[0,1,2].map(i => <svg key={i} className="hw-bat" style={{ '--hw-period': `${14 + i * 4}s` } as React.CSSProperties} viewBox="0 0 60 30"><path d="M30 13 26 6 23 12C17 8 8 9 0 0c1 12 4 20 12 23 1-7 7-6 10-1 3-6 5-1 8 8 3-9 5-14 8-8 3-5 9-6 10 1 8-3 11-11 12-23-8 9-17 8-23 12l-3-6Z"/></svg>)}</div>, hero)}</>;
 }
 
 function Hat() {

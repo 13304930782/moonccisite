@@ -1,3 +1,4 @@
+import { useI18n } from './i18n';
 import { feedbackStore } from './lib/feedback';
 import { confirmationStore } from './lib/confirmAction';
 import { afterInitialLoad } from './lib/afterInitialLoad';
@@ -10,16 +11,19 @@ import { useCallback, lazy, Suspense, useState, useEffect, useSyncExternalStore 
 import { RoutePosition } from './components/RoutePosition';
 import '../styles/experience.css';
 const FeedbackHost = lazy(() => import('./components/FeedbackHost').then(m => ({ default: m.FeedbackHost })));
-import {PageAnalytics} from './components/PageAnalytics';
 import { SiteSettingsProvider } from './context/SiteSettingsContext';
 import HomePage from './pages/HomePage';
-import { createBrowserRouter, createMemoryRouter, RouterProvider, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { createBrowserRouter, createMemoryRouter, RouterProvider, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import {Link} from './components/LocaleLink';
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { SiteMeta } from './components/SiteMeta';
 import { SitePage, ContentSkeleton } from './components/ContentUI';
 import { ThemeProvider } from './context/ThemeContext';
+import {LocaleProvider} from './context/LocaleContext';
+import {splitLocalePath} from './lib/locale';
 
+const LocaleEffects = lazy(() => import('./components/LocaleEffects'));
 const ReadingTools = lazy(() => import('./components/ReadingTools'));
 const WeatherCompanion = lazy(() => import('./components/WeatherCompanion'));
 const RoutePages=lazy(()=>import('./RoutePages'));
@@ -39,8 +43,9 @@ function PublicWeatherCompanion() {
 }
 
 function RouteLoader() {
+  const { t } = useI18n();
   const {pathname} = useLocation();
-  return <SitePage>{/^\/(login|register)$/.test(pathname) ? <section className="auth-route-skeleton" aria-label="正在加载表单"><ContentSkeleton/></section> : <ContentSkeleton />}</SitePage>;
+  return <SitePage>{/^\/(login|register)$/.test(pathname) ? <section className="auth-route-skeleton" aria-label={t("m_bab32f18a4")}><ContentSkeleton/></section> : <ContentSkeleton />}</SitePage>;
 }
 
 function SiteRoutes() {
@@ -50,15 +55,16 @@ function SiteRoutes() {
   const onReady = useCallback(() => setInteractive(true), []);
   return <RoutePosition><NavigationProtection/><RoutePreload/>
           <SiteMeta /><DeferredFeedbackHost/>
-          <PageAnalytics /><DiagnosticNavigation />
-          <Suspense fallback={<RouteLoader />}>{status && status>=400 && location.key===initialKey ? (status===404 ? <NotFoundPage/> : <RouteFailure/>) : (location.pathname==='/'?<HomePage/>:<RoutePages/>)}<DocumentReady onReady={onReady}/></Suspense>
-          {interactive && <><PublicWeatherCompanion /><Suspense fallback={null}><ReadingTools /></Suspense></>}
+          <DiagnosticNavigation />
+          <Suspense fallback={<RouteLoader />}>{status && status>=400 && location.key===initialKey ? (status===404 ? <NotFoundPage/> : <RouteFailure/>) : (splitLocalePath(location.pathname).pathname==='/'?<HomePage/>:<RoutePages/>)}<DocumentReady onReady={onReady}/></Suspense>
+          {interactive && <><Suspense fallback={null}><LocaleEffects/></Suspense><PublicWeatherCompanion /><Suspense fallback={null}><ReadingTools /></Suspense></>}
   </RoutePosition>;
 }
 function RouteFailure() {
-  return <SitePage><section className="resource-notice" role="alert"><div><h1>页面暂时未能加载</h1><p>请重新加载页面后继续。</p></div><button className="quiet-button" onClick={()=>window.location.reload()}>重新加载</button></section></SitePage>;
+  const { t } = useI18n();
+  return <SitePage><section className="resource-notice" role="alert"><div><h1>{t("m_bfd3eb0bb1")}</h1><p>{t("m_8064323249")}</p></div><button className="quiet-button" onClick={()=>window.location.reload()}>{t("m_7bdd5ce1e2")}</button></section></SitePage>;
 }
 export default function App({url, documentData}: {url?:string; documentData?:DocumentData} = {}) {
-  const [router] = useState(() => { const routes=[{path:'*',element:<SiteRoutes/>,errorElement:<RouteFailure/>}]; return url ? createMemoryRouter(routes,{initialEntries:[url]}) : createBrowserRouter(routes); });
-  return <DocumentDataProvider data={documentData}><ThemeProvider><SiteSettingsProvider><AuthProvider><RouterProvider router={router}/></AuthProvider></SiteSettingsProvider></ThemeProvider></DocumentDataProvider>;
+  const [router] = useState(() => { const routes=[{path:'*',element:<LocaleProvider><AuthProvider><SiteSettingsProvider><SiteRoutes/></SiteSettingsProvider></AuthProvider></LocaleProvider>,errorElement:<LocaleProvider><AuthProvider><SiteSettingsProvider><RouteFailure/></SiteSettingsProvider></AuthProvider></LocaleProvider>}]; return url ? createMemoryRouter(routes,{initialEntries:[url]}) : createBrowserRouter(routes); });
+  return <DocumentDataProvider data={documentData}><ThemeProvider><RouterProvider router={router}/></ThemeProvider></DocumentDataProvider>;
 }

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Toaster } from './ui/sonner';
@@ -8,6 +9,7 @@ import { toast } from 'sonner';
 import { FeedbackToast } from './FeedbackToast';
 
 export function FeedbackHost() {
+  const { t } = useI18n();
   const location = useLocation();
   const messages = useSyncExternalStore(feedbackStore.subscribe, feedbackStore.getSnapshot);
   const displayed = useRef(new Map<string, number>());
@@ -40,12 +42,12 @@ export function FeedbackHost() {
     return () => { mounts.disconnect(); observer.disconnect(); window.removeEventListener('resize', measure); window.removeEventListener('scroll', measure); };
   }, [location.pathname]);
   return <>
-    <Toaster position="top-right" visibleToasts={2} expand offset={{ top: `max(${top}px, env(safe-area-inset-top))`, left: 'max(16px, env(safe-area-inset-left))', right: 'max(16px, env(safe-area-inset-right))' }} mobileOffset={{ top: `max(${top}px, env(safe-area-inset-top))`, left: 'max(16px, env(safe-area-inset-left))', right: 'max(16px, env(safe-area-inset-right))' }} containerAriaLabel="操作提示"/>
+    <Toaster position="top-right" visibleToasts={2} expand offset={{ top: `max(${top}px, env(safe-area-inset-top))`, left: 'max(16px, env(safe-area-inset-left))', right: 'max(16px, env(safe-area-inset-right))' }} mobileOffset={{ top: `max(${top}px, env(safe-area-inset-top))`, left: 'max(16px, env(safe-area-inset-left))', right: 'max(16px, env(safe-area-inset-right))' }} containerAriaLabel={t("m_b87b880332")}/>
     <AlertDialog open={!!request} onOpenChange={open => { if (!open) finishConfirmation(false); }}>
       <AlertDialogContent className="experience-confirm" onOpenAutoFocus={event => { event.preventDefault(); document.querySelector<HTMLButtonElement>('[data-confirm-cancel]')?.focus(); }} onCloseAutoFocus={event => { event.preventDefault(); if (trigger.current?.isConnected) trigger.current.focus(); }}>
-        <AlertDialogTitle>请确认操作</AlertDialogTitle>
-        <AlertDialogDescription>{request?.message}</AlertDialogDescription>
-        <AlertDialogFooter><AlertDialogCancel data-confirm-cancel onClick={() => finishConfirmation(false)}>取消</AlertDialogCancel><AlertDialogAction onClick={() => finishConfirmation(true)}>{request?.label}</AlertDialogAction></AlertDialogFooter>
+        <AlertDialogTitle>{t("m_bc13f638d4")}</AlertDialogTitle>
+        <AlertDialogDescription>{t(request?.message || '')}</AlertDialogDescription>
+        <AlertDialogFooter><AlertDialogCancel data-confirm-cancel onClick={() => finishConfirmation(false)}>{t("m_2cd0f3be87")}</AlertDialogCancel><AlertDialogAction onClick={() => finishConfirmation(true)}>{t(request?.label || '')}</AlertDialogAction></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   </>;

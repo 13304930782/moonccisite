@@ -1,12 +1,15 @@
+import { useI18n } from '../i18n';
 import {NodeMonitorPermission} from '../components/NodeMonitorPermission';
 import { notify } from '../lib/feedback';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import {Link} from '../components/LocaleLink';
 import { api } from '../lib/api';
 import { AccountProfileForm, AccountProfile } from '../components/AccountProfileForm';
 import '../../styles/account.css';
 export default function AdminUserSettingsPage() {
+  const { t } = useI18n();
   const { id } = useParams(); const navigate=useNavigate();
   const base=`/admin/users/${id}`;
   const [user,setUser]=useState<AccountProfile|null>(null),[email,setEmail]=useState(''),[confirmation,setConfirmation]=useState(''),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
@@ -17,22 +20,22 @@ export default function AdminUserSettingsPage() {
     try{const r=await api(path,{method,...(body?{body:JSON.stringify(body)}:{})});notify.success(r.message);if(r.user)setUser(r.user);else await load();return true;}
     catch(e:any){setMessage(e.message); notify.error(e.message);return false;}finally{setBusy(false);}
   };
-  return <div className="admin-page"><Link className="text-link" to="/admin/users">返回用户管理</Link><h1 className="admin-title">用户设置</h1>
-    {error?<p role="alert">{error}<button onClick={load}>重试</button></p>:!user?<p role="status">正在加载…</p>:<>
-      <p>#{user.id} · {user.username}{user.deleted_at&&<small className="deleted-account-label">已删除</small>}</p>
+  return <div className="admin-page"><Link className="text-link" to="/admin/users">{t("m_7232718ecc")}</Link><h1 className="admin-title">{t("m_7ce710f646")}</h1>
+    {error?<p role="alert">{t(error || '')}<button onClick={load}>{t("m_b8784c8dd5")}</button></p>:!user?<p role="status">{t("m_21bd738e0d")}</p>:<>
+      <p>#{user.id} · {user.username}{user.deleted_at&&<small className="deleted-account-label">{t("m_077a6d3771")}</small>}</p>
       <AccountProfileForm key={user.id} user={user} base={base} onSaved={setUser}/>
       {!user.deleted_at&&<fieldset disabled={busy}>
-        <section className="account-section"><div><h2>登录邮箱</h2><p>管理员设置邮箱会使该用户的旧登录会话失效。</p></div><form className="account-fields" onSubmit={e=>{e.preventDefault();void run(`${base}/email`,'PUT',{email,version:user.version});}}><label>登录邮箱<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label><button className="neo-button" type="submit">保存登录邮箱</button></form></section>
-        <section className="account-section"><div><h2>权限与状态</h2><p>停用可以恢复；删除不能恢复。</p></div><form className="account-fields" onSubmit={e=>{e.preventDefault();void run(base,'PUT',{role:user.role,status:user.status,can_comment:user.can_comment});}}>
-          <label>角色<ThemeSelect aria-label="角色" disabled={busy} value={user.role} onValueChange={role=>setUser({...user,role})}><option value="user">普通用户</option><option value="editor">编辑</option><option value="teacher">教师</option><option value="admin">管理员</option><option value="owner">站长</option></ThemeSelect></label>
-          <label>状态<ThemeSelect aria-label="状态" disabled={busy} value={user.status} onValueChange={status=>setUser({...user,status})}><option value="active">正常</option><option value="disabled">已停用</option></ThemeSelect></label>
-          <label>评论权限<ThemeSelect aria-label="评论权限" disabled={busy} value={String(user.can_comment)} onValueChange={value=>setUser({...user,can_comment:Number(value)})}><option value="1">允许评论</option><option value="0">禁止评论</option></ThemeSelect></label><button className="neo-button" type="submit">保存权限</button>
+        <section className="account-section"><div><h2>{t("m_a9eaab0fd8")}</h2><p>{t("m_17423e72d0")}</p></div><form className="account-fields" onSubmit={e=>{e.preventDefault();void run(`${base}/email`,'PUT',{email,version:user.version});}}><label>{t("m_a9eaab0fd8")}<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label><button className="neo-button" type="submit">{t("m_32eeab0f9d")}</button></form></section>
+        <section className="account-section"><div><h2>{t("m_c8e67e63d5")}</h2><p>{t("m_f6ac1d1c44")}</p></div><form className="account-fields" onSubmit={e=>{e.preventDefault();void run(base,'PUT',{role:user.role,status:user.status,can_comment:user.can_comment});}}>
+          <label>{t("m_c47b54e84e")}<ThemeSelect aria-label={t("m_c47b54e84e")} disabled={busy} value={user.role} onValueChange={role=>setUser({...user,role})}><option value="user">{t("m_f6a2faaac2")}</option><option value="editor">{t("m_0518365699")}</option><option value="teacher">{t("m_a6654120cb")}</option><option value="admin">{t("m_e19796712f")}</option><option value="owner">{t("m_b2118962f8")}</option></ThemeSelect></label>
+          <label>{t("m_6320b4a872")}<ThemeSelect aria-label={t("m_6320b4a872")} disabled={busy} value={user.status} onValueChange={status=>setUser({...user,status})}><option value="active">{t("m_296de0e31f")}</option><option value="disabled">{t("m_a8c3698b5b")}</option></ThemeSelect></label>
+          <label>{t("m_d64dcf669d")}<ThemeSelect aria-label={t("m_d64dcf669d")} disabled={busy} value={String(user.can_comment)} onValueChange={value=>setUser({...user,can_comment:Number(value)})}><option value="1">{t("m_44b31019f7")}</option><option value="0">{t("m_5cd4cc2209")}</option></ThemeSelect></label><button className="neo-button" type="submit">{t("m_6fb73fce60")}</button>
         </form></section>
         <NodeMonitorPermission key={user.id} userId={user.id}/>
-        <section className="account-section"><div><h2>密码</h2><p>重置链接发给用户，管理员不会获得密码。</p></div><button className="neo-button" onClick={()=>void run(`${base}/password-reset`,'POST')}>发送密码重置链接</button></section>
-        <section className="account-section"><div><h2>删除账号</h2><p>保留文章、评论、用户名和头像并标记“已删除”。释放邮箱和第三方绑定，账号无法恢复。</p></div><form className="account-fields" onSubmit={async e=>{e.preventDefault();if(await run(`${base}/account`,'DELETE',{username:confirmation}))navigate('/admin/users');}}><label>输入“{user.username}”确认删除<input value={confirmation} onChange={e=>setConfirmation(e.target.value)} autoComplete="off"/></label><button className="neo-button account-danger" disabled={confirmation!==user.username}>删除账号</button></form></section>
+        <section className="account-section"><div><h2>{t("m_a621ab606d")}</h2><p>{t("m_4ada4f24bf")}</p></div><button className="neo-button" onClick={()=>void run(`${base}/password-reset`,'POST')}>{t("m_5c8cf9b49f")}</button></section>
+        <section className="account-section"><div><h2>{t("m_cd3266d91a")}</h2><p>{t("m_852d1df2d7")}</p></div><form className="account-fields" onSubmit={async e=>{e.preventDefault();if(await run(`${base}/account`,'DELETE',{username:confirmation}))navigate('/admin/users');}}><label>{t("m_0829050518")}{user.username}{t("m_6b71d62943")}<input value={confirmation} onChange={e=>setConfirmation(e.target.value)} autoComplete="off"/></label><button className="neo-button account-danger" disabled={confirmation!==user.username}>{t("m_cd3266d91a")}</button></form></section>
       </fieldset>}
-      {message&&<p role="status" className="account-message">{message}</p>}
+      {message&&<p role="status" className="account-message">{t(message || '')}</p>}
     </>}
   </div>;
 }

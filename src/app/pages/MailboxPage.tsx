@@ -1,5 +1,7 @@
+import { useI18n } from '../i18n';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+
+import {Link} from '../components/LocaleLink';
 import { ArrowLeft, ArrowUpRight, Check, Copy, Eye, EyeOff, Inbox, KeyRound, Mail, RefreshCw, Send } from 'lucide-react';
 import { api } from '../lib/api';
 import { visibleDiagnostic } from '../lib/browserDiagnostics';
@@ -20,6 +22,7 @@ export default function MailboxPage() {
 }
 
 function MailboxContent() {
+  const { locale,  t } = useI18n();
   const { user } = useAuth();
   const owner = user?.role === 'owner';
   const [access, setAccess] = useState<Access | null>(null);
@@ -85,11 +88,11 @@ function MailboxContent() {
       const history = await api('/mailboxes/sent', { signal: lifetime.current.signal });
       if (mounted.current && version === historyVersion.current) { setSent(history.messages); setHistoryError(''); historyLoaded.current = true; }
     } catch {
-      if (mounted.current && version === historyVersion.current) setHistoryError('发送记录暂未刷新，请稍后刷新查看。');
+      if (mounted.current && version === historyVersion.current) setHistoryError(t("m_e61081ca30"));
     } finally { historyPending.current = false; if (mounted.current) setHistoryLoading(false); }
   }, []);
   useEffect(() => {
-    void refresh().catch(error => { if (mounted.current) setNotice(error.message || '邮箱状态暂时无法读取'); })
+    void refresh().catch(error => { if (mounted.current) setNotice(error.message || t("m_8956835f94")); })
       .finally(() => { if (mounted.current) setLoading(false); });
   }, [refresh]);
   useEffect(() => {
@@ -122,7 +125,7 @@ function MailboxContent() {
       }
     } catch (error: any) { if (current()) {
       if ([401,403,409].includes(error.status)) { folders.current = {}; setMailList(null); setSelected(null); }
-      setMailError(error.message || '暂时无法读取邮件。');
+      setMailError(error.message || t("m_e0f46c4f8d"));
     } }
     finally { if (current()) setMailLoading(false); }
   }, []);
@@ -154,7 +157,7 @@ function MailboxContent() {
       });
     } catch (error: any) { if (current()) {
       if ([401,403,409].includes(error.status)) { folders.current = {}; setMailList(null); setSelected(null); }
-      setMailError(error.message || '暂时无法读取邮件。');
+      setMailError(error.message || t("m_e0f46c4f8d"));
     } }
     finally { if (current()) setMailLoading(false); }
   };
@@ -177,7 +180,7 @@ function MailboxContent() {
       await work();
       if (mounted.current) await refresh();
     }
-    catch (error: any) { setNotice(error.message || '操作失败，请稍后重试。'); }
+    catch (error: any) { setNotice(error.message || t("m_2c1e5ec621")); }
     finally { if (mounted.current) setBusy(false); }
   };
   const apply = (event: FormEvent) => { event.preventDefault(); void run(async () => {
@@ -200,105 +203,105 @@ function MailboxContent() {
       setSent(previous => [{ id: result.id, recipient_email: to, subject, status: 'accepted' }, ...previous.filter(row => row.id !== result.id)].slice(0, 50));
       setHistoryError(''); setTo(''); setSubject(''); setContent(''); setNotice(result.message); changeView('sent');
       setFolderRevision(value => value + 1);
-    } catch (error: any) { if (mounted.current) setNotice(error.message || '操作失败，请稍后重试。'); }
+    } catch (error: any) { if (mounted.current) setNotice(error.message || t("m_2c1e5ec621")); }
     finally { sendInFlight.current = false; if (mounted.current) setBusy(false); }
   };
   const closeCredentials = () => { setCredentialMode(null); setCredentialChallenge(''); setCredentialCode(''); setCredentialPassword(''); setNewPassword(''); setConfirmPassword(''); setCredentialVisible(false); setCredentialMessage(''); setCredentialError(''); };
   const startCredentials = async (mode: 'reveal' | 'change') => {
     closeCredentials(); setCredentialMode(mode); setCredentialBusy(true);
     try { const result = await api('/mailboxes/credentials/code', { method: 'POST' }); setCredentialChallenge(result.challenge_id); setCredentialMessage(result.message); }
-    catch (error: any) { setCredentialError(error.message || '验证码发送失败。'); }
+    catch (error: any) { setCredentialError(error.message || t("m_61a107ff57")); }
     finally { setCredentialBusy(false); }
   };
   const revealCredentials = async (event: FormEvent) => { event.preventDefault(); setCredentialBusy(true); setCredentialError('');
-    try { const result = await api('/mailboxes/credentials/reveal', { method: 'POST', body: JSON.stringify({ challenge_id: credentialChallenge, code: credentialCode }) }); setCredentialPassword(result.password); setCredentialChallenge(''); setCredentialCode(''); setCredentialMessage('密码仅在当前页面短暂显示，切换页面或 60 秒后自动隐藏。'); }
-    catch (error: any) { setCredentialError(error.message || '验证失败。'); }
+    try { const result = await api('/mailboxes/credentials/reveal', { method: 'POST', body: JSON.stringify({ challenge_id: credentialChallenge, code: credentialCode }) }); setCredentialPassword(result.password); setCredentialChallenge(''); setCredentialCode(''); setCredentialMessage(t("m_09c0c54e44")); }
+    catch (error: any) { setCredentialError(error.message || t("m_94835c45ef")); }
     finally { setCredentialBusy(false); }
   };
   const changeCredentials = async (event: FormEvent) => { event.preventDefault(); setCredentialError('');
-    if (newPassword !== confirmPassword) { setCredentialError('两次输入的密码不一致。'); return; }
+    if (newPassword !== confirmPassword) { setCredentialError(t("m_9daceebc80")); return; }
     setCredentialBusy(true);
     try { const result = await api('/mailboxes/credentials/change', { method: 'POST', body: JSON.stringify({ challenge_id: credentialChallenge, code: credentialCode, password: newPassword }) }); closeCredentials(); setCredentialMessage(result.message); await refresh(); }
-    catch (error: any) { setCredentialError(error.message || '密码更新未完成，请刷新状态后重试。'); }
+    catch (error: any) { setCredentialError(error.message || t("m_14c3cb5dbd")); }
     finally { setCredentialBusy(false); }
   };
   const copyCredentials = async () => { if (!credentialPassword) return;
-    try { await navigator.clipboard.writeText(credentialPassword); setCredentialMessage('密码已复制，请直接粘贴到邮件客户端。'); }
-    catch { setCredentialVisible(true); credentialInput.current?.focus(); credentialInput.current?.select(); setCredentialMessage('浏览器未允许自动复制，密码已选中；请使用复制命令。'); }
+    try { await navigator.clipboard.writeText(credentialPassword); setCredentialMessage(t("m_02315f5262")); }
+    catch { setCredentialVisible(true); credentialInput.current?.focus(); credentialInput.current?.select(); setCredentialMessage(t("m_93e5a6e8ec")); }
   };
 
   return <main className="mailbox-page">
-    <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>我的邮箱</h1>
-      <p>{access?.status === 'active' ? '在这里收信、读信和发送邮件。' : '申请专属 @mooncci.site 地址，获批后即可收发邮件。'}</p></div>
-      {owner && <Link className="mailbox-review-link" to="/admin/mailbox-requests">邮箱申请与权限 <ArrowUpRight size={16} aria-hidden="true" /></Link>}
+    <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>{t("m_2d7256702a")}</h1>
+      <p>{access?.status === 'active' ? t("m_94cfb2238a") : t("m_ec56da8065")}</p></div>
+      {owner && <Link className="mailbox-review-link" to="/admin/mailbox-requests">{t("m_41f3c254fe")} <ArrowUpRight size={16} aria-hidden="true" /></Link>}
     </header>
-    {notice && <p role="status" aria-live="polite" className="mailbox-notice">{notice}</p>}
-    {loading ? <p className="mailbox-empty">正在读取邮箱状态…</p> : <>
+    {notice && <p role="status" aria-live="polite" className="mailbox-notice">{t(notice)}</p>}
+    {loading ? <p className="mailbox-empty">{t("m_63ee59a104")}</p> : <>
       {owner && access?.status !== 'active' && <section className="mailbox-panel" aria-labelledby="mailbox-connect-title">
-        <div className="mailbox-panel-head"><span className="mailbox-icon"><Mail size={20} aria-hidden="true" /></span><div><h2 id="mailbox-connect-title">连接现有邮箱</h2><p>mooncci@mooncci.site</p></div></div>
-        <p className="mailbox-explainer">输入这个邮箱的现有密码，网站会通过加密连接向邮局验证。不会重置宝塔邮箱，也不会把密码显示给其他用户。</p>
-        <form onSubmit={connect} className="mailbox-form"><label htmlFor="owner-mail-password">现有邮箱密码</label><div className="mailbox-inline">
+        <div className="mailbox-panel-head"><span className="mailbox-icon"><Mail size={20} aria-hidden="true" /></span><div><h2 id="mailbox-connect-title">{t("m_28201a8f6c")}</h2><p>mooncci@mooncci.site</p></div></div>
+        <p className="mailbox-explainer">{t("m_4e841d4d0b")}</p>
+        <form onSubmit={connect} className="mailbox-form"><label htmlFor="owner-mail-password">{t("m_f438487d7a")}</label><div className="mailbox-inline">
           <input id="owner-mail-password" type="password" autoComplete="off" value={password} onChange={event => setPassword(event.target.value)} minLength={8} maxLength={256} required />
-          <button className="mailbox-primary" disabled={busy}>{busy ? '验证中…' : '连接并启用发信'}</button></div></form>
-        {access?.status === 'revoked' && <p className="mailbox-footnote">之前的测试邮箱已停用；连接后此处将显示现有 mooncci 邮箱。</p>}
+          <button className="mailbox-primary" disabled={busy}>{busy ? t("m_7f2d0739a2") : t("m_5aa28dcf62")}</button></div></form>
+        {access?.status === 'revoked' && <p className="mailbox-footnote">{t("m_9fbb2222a6")}</p>}
       </section>}
       {!owner && <section className="mailbox-panel" aria-labelledby="mailbox-status-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Mail size={20} aria-hidden="true" /></span><div>
-        <h2 id="mailbox-status-title">{access?.mailbox_address || '专属邮箱'}</h2><p>{access ? labels[access.status] : '尚未申请'}</p></div>
-        <button type="button" onClick={() => refresh().catch(error => setNotice(error.message))} className="mailbox-secondary mailbox-refresh"><RefreshCw size={16} aria-hidden="true" />刷新状态</button></div>
-        {access?.status === 'active' && <p className="mailbox-footnote">{access.daily_limit === 0 ? '未设置每日发信上限。' : `每日发信上限 ${access.daily_limit} 封。`}</p>}
-        {access?.review_note && <p className="mailbox-footnote">审核说明：{access.review_note}</p>}
-        {access?.status === 'provisioning' && <p className="mailbox-footnote">邮局创建结果尚未确认，站长核对前不能发信。</p>}
-        {access?.status === 'revoked' && <p className="mailbox-footnote">网页发信权限已停用，请联系站长。</p>}
+        <h2 id="mailbox-status-title">{access?.mailbox_address || t("m_9103e931e4")}</h2><p>{access ? t(labels[access.status]) : t("m_d7da7be6f7")}</p></div>
+        <button type="button" onClick={() => refresh().catch(error => setNotice(error.message))} className="mailbox-secondary mailbox-refresh"><RefreshCw size={16} aria-hidden="true" />{t("m_802a407c77")}</button></div>
+        {access?.status === 'active' && <p className="mailbox-footnote">{access.daily_limit === 0 ? t("m_b4fdc08432") : t("m_71a9245c73", {v0: access.daily_limit})}</p>}
+        {access?.review_note && <p className="mailbox-footnote">{t("m_ff02dbb07f")}{access.review_note}</p>}
+        {access?.status === 'provisioning' && <p className="mailbox-footnote">{t("m_43b4cb7e02")}</p>}
+        {access?.status === 'revoked' && <p className="mailbox-footnote">{t("m_e00c4b6317")}</p>}
       </section>}
-      {!owner && (!access || access.status === 'rejected') && <section className="mailbox-panel" aria-labelledby="mailbox-apply-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Check size={20} aria-hidden="true" /></span><div><h2 id="mailbox-apply-title">申请邮箱</h2><p>提交后由站长审核。</p></div></div>
-        <form onSubmit={apply} className="mailbox-form"><label htmlFor="mail-local">期望地址</label><div className="mailbox-address"><input id="mail-local" value={localPart} onChange={event => setLocalPart(event.target.value)} autoComplete="off" required maxLength={32} placeholder="your-name" /><span>@mooncci.site</span></div>
-          <p className="mailbox-help">3–32 位，以字母开头；可用小写字母、数字、点、横线和下划线。</p><label htmlFor="mail-reason">申请说明</label>
-          <textarea id="mail-reason" rows={4} value={reason} onChange={event => setReason(event.target.value)} minLength={10} maxLength={1000} required placeholder="说明邮箱用途和预计发送对象" />
-          <button className="mailbox-primary" disabled={busy}>{busy ? '提交中…' : '提交申请'}</button></form></section>}
-      {access?.status === 'active' && <>{owner && <section className="mailbox-account-line" aria-label="当前邮箱账号"><div><strong>{access.mailbox_address}</strong><span>已连接</span></div><span className="mailbox-badge">已开通</span></section>}
+      {!owner && (!access || access.status === 'rejected') && <section className="mailbox-panel" aria-labelledby="mailbox-apply-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Check size={20} aria-hidden="true" /></span><div><h2 id="mailbox-apply-title">{t("m_8e2cfa2945")}</h2><p>{t("m_0abe073d69")}</p></div></div>
+        <form onSubmit={apply} className="mailbox-form"><label htmlFor="mail-local">{t("m_20c8a1f510")}</label><div className="mailbox-address"><input id="mail-local" value={localPart} onChange={event => setLocalPart(event.target.value)} autoComplete="off" required maxLength={32} placeholder="your-name" /><span>@mooncci.site</span></div>
+          <p className="mailbox-help">{t("m_9867160539")}</p><label htmlFor="mail-reason">{t("m_c033e6eeed")}</label>
+          <textarea id="mail-reason" rows={4} value={reason} onChange={event => setReason(event.target.value)} minLength={10} maxLength={1000} required placeholder={t("m_801b078d6d")} />
+          <button className="mailbox-primary" disabled={busy}>{busy ? t("m_18931020ad") : t("m_9cc5e4d81e")}</button></form></section>}
+      {access?.status === 'active' && <>{owner && <section className="mailbox-account-line" aria-label={t("m_1de31f0f66")}><div><strong>{access.mailbox_address}</strong><span>{t("m_5be0323e8a")}</span></div><span className="mailbox-badge">{t("m_f2b6b313b8")}</span></section>}
         <section className="mailbox-panel mailbox-credentials" aria-labelledby="mailbox-credentials-title">
-          <div className="mailbox-panel-head"><span className="mailbox-icon"><KeyRound size={20} aria-hidden="true" /></span><div><h2 id="mailbox-credentials-title">在邮件客户端使用</h2><p>登录用户名是完整邮箱地址；收件与发件使用同一个密码。</p></div></div>
-          <div className="mailbox-credential-actions"><Link className="mailbox-secondary" to={`/mail-setup?email=${encodeURIComponent(access.mailbox_address || '')}`}>查看客户端设置 <ArrowUpRight size={16} aria-hidden="true" /></Link>
-            <button type="button" className="mailbox-secondary" onClick={() => void startCredentials('reveal')} disabled={credentialBusy || ['pending','claimed','review'].includes(access.password_change_status || '')}>查看并复制密码</button>
-            <button type="button" className="mailbox-secondary" onClick={() => void startCredentials('change')} disabled={credentialBusy || ['pending','claimed','review'].includes(access.password_change_status || '')}>修改密码</button></div>
-          {['pending','claimed'].includes(access.password_change_status || '') && <p className="mailbox-credential-status" role="status">密码更新已提交，正在等待邮局确认。确认后此处会自动刷新；请暂时不要在客户端使用新密码。</p>}
-          {access.password_change_status === 'review' && <p className="mailbox-credential-status" role="alert">邮局未确认改密结果，收发信暂时停用。请联系站长核对，不要重复提交。</p>}
-          {credentialMode && <div className="mailbox-credential-workflow"><div className="mailbox-credential-workflow-head"><strong>{credentialMode === 'reveal' ? '查看邮箱密码' : '修改邮箱密码'}</strong><button type="button" className="mailbox-text-button" onClick={closeCredentials} disabled={credentialBusy}>关闭</button></div>
-            <p>{credentialPassword ? '验证已完成。请及时复制密码，并在使用后清空剪贴板。' : credentialChallenge ? '验证码已发送至你的登录邮箱。每个验证码仅可使用一次，10 分钟内有效。' : '请先完成邮箱验证码验证。'}</p>
-            {credentialMode === 'reveal' && credentialPassword ? <div className="mailbox-credential-result"><label htmlFor="mailbox-current-password">邮箱密码</label><div className="mailbox-credential-secret"><input ref={credentialInput} id="mailbox-current-password" type={credentialVisible ? 'text' : 'password'} value={credentialPassword} readOnly autoComplete="off" spellCheck={false} /><button type="button" className="mailbox-secondary" aria-label={credentialVisible ? '隐藏密码' : '显示密码'} onClick={() => setCredentialVisible(value => !value)}>{credentialVisible ? <EyeOff size={17} /> : <Eye size={17} />}</button><button type="button" className="mailbox-primary" onClick={() => void copyCredentials()}><Copy size={16} aria-hidden="true" />复制密码</button></div></div> : credentialMode === 'reveal' ? <form className="mailbox-form" onSubmit={revealCredentials}><label htmlFor="mailbox-verify-code">邮件验证码</label><input id="mailbox-verify-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={credentialCode} onChange={event => setCredentialCode(event.target.value.replace(/\D/g, ''))} required /><button className="mailbox-primary" disabled={credentialBusy || !credentialChallenge || credentialCode.length !== 6}>验证并查看</button></form>
-              : <form className="mailbox-form" onSubmit={changeCredentials}><label htmlFor="mailbox-change-code">邮件验证码</label><input id="mailbox-change-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={credentialCode} onChange={event => setCredentialCode(event.target.value.replace(/\D/g, ''))} required /><label htmlFor="mailbox-new-password">新邮箱密码</label><input id="mailbox-new-password" type="password" autoComplete="new-password" minLength={12} maxLength={128} value={newPassword} onChange={event => setNewPassword(event.target.value)} required /><p className="mailbox-help">至少 12 位，包含大小写字母和数字，不含空格。改密后，其他邮件客户端也要更新密码。</p><label htmlFor="mailbox-confirm-password">确认新密码</label><input id="mailbox-confirm-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} required /><button className="mailbox-primary" disabled={credentialBusy || !credentialChallenge || credentialCode.length !== 6 || !newPassword || newPassword !== confirmPassword}>验证并提交改密</button></form>}
+          <div className="mailbox-panel-head"><span className="mailbox-icon"><KeyRound size={20} aria-hidden="true" /></span><div><h2 id="mailbox-credentials-title">{t("m_915d7ffa78")}</h2><p>{t("m_403039b061")}</p></div></div>
+          <div className="mailbox-credential-actions"><Link className="mailbox-secondary" to={`/mail-setup?email=${encodeURIComponent(access.mailbox_address || '')}`}>{t("m_988125a325")} <ArrowUpRight size={16} aria-hidden="true" /></Link>
+            <button type="button" className="mailbox-secondary" onClick={() => void startCredentials('reveal')} disabled={credentialBusy || ['pending','claimed','review'].includes(access.password_change_status || '')}>{t("m_e04d4a0aef")}</button>
+            <button type="button" className="mailbox-secondary" onClick={() => void startCredentials('change')} disabled={credentialBusy || ['pending','claimed','review'].includes(access.password_change_status || '')}>{t("m_08d0080624")}</button></div>
+          {['pending','claimed'].includes(access.password_change_status || '') && <p className="mailbox-credential-status" role="status">{t("m_25925d0592")}</p>}
+          {access.password_change_status === 'review' && <p className="mailbox-credential-status" role="alert">{t("m_239889d2d3")}</p>}
+          {credentialMode && <div className="mailbox-credential-workflow"><div className="mailbox-credential-workflow-head"><strong>{credentialMode === 'reveal' ? t("m_1d39c4f26c") : t("m_3504d481ec")}</strong><button type="button" className="mailbox-text-button" onClick={closeCredentials} disabled={credentialBusy}>{t("m_3fd47edce4")}</button></div>
+            <p>{credentialPassword ? t("m_d12d9415e4") : credentialChallenge ? t("m_57292035a0") : t("m_c5f844220e")}</p>
+            {credentialMode === 'reveal' && credentialPassword ? <div className="mailbox-credential-result"><label htmlFor="mailbox-current-password">{t("m_ca6635021c")}</label><div className="mailbox-credential-secret"><input ref={credentialInput} id="mailbox-current-password" type={credentialVisible ? 'text' : 'password'} value={credentialPassword} readOnly autoComplete="off" spellCheck={false} /><button type="button" className="mailbox-secondary" aria-label={credentialVisible ? t("m_dd1d07bd9c") : t("m_ffe21a6711")} onClick={() => setCredentialVisible(value => !value)}>{credentialVisible ? <EyeOff size={17} /> : <Eye size={17} />}</button><button type="button" className="mailbox-primary" onClick={() => void copyCredentials()}><Copy size={16} aria-hidden="true" />{t("m_c49aca3e41")}</button></div></div> : credentialMode === 'reveal' ? <form className="mailbox-form" onSubmit={revealCredentials}><label htmlFor="mailbox-verify-code">{t("m_2d60deda8e")}</label><input id="mailbox-verify-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={credentialCode} onChange={event => setCredentialCode(event.target.value.replace(/\D/g, ''))} required /><button className="mailbox-primary" disabled={credentialBusy || !credentialChallenge || credentialCode.length !== 6}>{t("m_e415f98712")}</button></form>
+              : <form className="mailbox-form" onSubmit={changeCredentials}><label htmlFor="mailbox-change-code">{t("m_2d60deda8e")}</label><input id="mailbox-change-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={credentialCode} onChange={event => setCredentialCode(event.target.value.replace(/\D/g, ''))} required /><label htmlFor="mailbox-new-password">{t("m_5182344796")}</label><input id="mailbox-new-password" type="password" autoComplete="new-password" minLength={12} maxLength={128} value={newPassword} onChange={event => setNewPassword(event.target.value)} required /><p className="mailbox-help">{t("m_6b808672e3")}</p><label htmlFor="mailbox-confirm-password">{t("m_6fde05a916")}</label><input id="mailbox-confirm-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} required /><button className="mailbox-primary" disabled={credentialBusy || !credentialChallenge || credentialCode.length !== 6 || !newPassword || newPassword !== confirmPassword}>{t("m_0ebec0f0e9")}</button></form>}
           </div>}
-          {credentialMessage && <p className="mailbox-credential-status" role="status">{credentialMessage}</p>}{credentialError && <p className="mailbox-error" role="alert">{credentialError}</p>}
+          {credentialMessage && <p className="mailbox-credential-status" role="status">{t(credentialMessage)}</p>}{credentialError && <p className="mailbox-error" role="alert">{t(credentialError)}</p>}
         </section>
-        {!['pending','claimed','review'].includes(access.password_change_status || '') && <nav className="mailbox-view-tabs" aria-label="邮箱文件夹">
-          <button type="button" aria-current={view === 'inbox' ? 'page' : undefined} onClick={() => changeView('inbox')}><Inbox size={17} aria-hidden="true" />收件箱</button>
-          <button type="button" aria-current={view === 'sent' ? 'page' : undefined} onClick={() => changeView('sent')}><Send size={17} aria-hidden="true" />已发送</button>
-          <button type="button" aria-current={view === 'compose' ? 'page' : undefined} onClick={() => changeView('compose')}><Mail size={17} aria-hidden="true" />写邮件</button>
+        {!['pending','claimed','review'].includes(access.password_change_status || '') && <nav className="mailbox-view-tabs" aria-label={t("m_0fb2b9ea7c")}>
+          <button type="button" aria-current={view === 'inbox' ? 'page' : undefined} onClick={() => changeView('inbox')}><Inbox size={17} aria-hidden="true" />{t("m_63a5e7b739")}</button>
+          <button type="button" aria-current={view === 'sent' ? 'page' : undefined} onClick={() => changeView('sent')}><Send size={17} aria-hidden="true" />{t("m_60823aaec7")}</button>
+          <button type="button" aria-current={view === 'compose' ? 'page' : undefined} onClick={() => changeView('compose')}><Mail size={17} aria-hidden="true" />{t("m_2ef8275490")}</button>
         </nav>}
         {!['pending','claimed','review'].includes(access.password_change_status || '') && view !== 'compose' && <section className="mailbox-panel mailbox-letters" aria-labelledby="mail-folder-title">
-          <div className="mailbox-folder-head"><div><h2 id="mail-folder-title">{view === 'inbox' ? '收件箱' : '已发送'}</h2><p>{mailList ? `${mailList.total} 封邮件` : '正在读取…'}</p></div>
-            <button type="button" className="mailbox-secondary" onClick={() => void loadFolder(view, mailList?.page || 1)} disabled={mailLoading}><RefreshCw size={16} aria-hidden="true" />刷新</button></div>
-          {mailError && <p className="mailbox-error" role="alert">{mailError}</p>}
-          {mailLoading && mailList && <p className="mailbox-refresh-status" role="status">正在读取邮件…</p>}
-          {selected ? <article className="mailbox-letter-detail"><button type="button" className="mailbox-back" onClick={returnToList}><ArrowLeft size={16} aria-hidden="true" />返回列表</button>
-            <h3>{selected.subject}</h3><dl><div><dt>发件人</dt><dd>{selected.from || '未知'}</dd></div><div><dt>收件人</dt><dd>{selected.to || '未知'}</dd></div><div><dt>时间</dt><dd>{selected.date ? new Date(selected.date).toLocaleString('zh-CN') : '未知'}</dd></div></dl>
-            {selected.tooLarge ? <p className="mailbox-empty">这封邮件超过网页阅读上限（2 MB），请使用邮件客户端查看。</p> : <>
-              <pre className="mailbox-letter-body">{selected.text || '这封邮件没有可显示的纯文本正文。'}</pre>
-              {!!selected.attachments?.length && <p className="mailbox-attachment-note">附件：{selected.attachments.map(item => item.filename).join('、')}。当前网页暂不提供附件下载，请使用邮件客户端查看。</p>}
+          <div className="mailbox-folder-head"><div><h2 id="mail-folder-title">{view === 'inbox' ? t("m_63a5e7b739") : t("m_60823aaec7")}</h2><p>{mailList ? t("m_3a5dc05e38", {v0: mailList.total}) : t("m_86b6d0d630")}</p></div>
+            <button type="button" className="mailbox-secondary" onClick={() => void loadFolder(view, mailList?.page || 1)} disabled={mailLoading}><RefreshCw size={16} aria-hidden="true" />{t("m_aee8874341")}</button></div>
+          {mailError && <p className="mailbox-error" role="alert">{t(mailError)}</p>}
+          {mailLoading && mailList && <p className="mailbox-refresh-status" role="status">{t("m_3deb616d34")}</p>}
+          {selected ? <article className="mailbox-letter-detail"><button type="button" className="mailbox-back" onClick={returnToList}><ArrowLeft size={16} aria-hidden="true" />{t("m_e9d5ca6c14")}</button>
+            <h3>{selected.subject}</h3><dl><div><dt>{t("m_bae32961a3")}</dt><dd>{selected.from || t("m_4d8c1c5b42")}</dd></div><div><dt>{t("m_c237b665a6")}</dt><dd>{selected.to || t("m_4d8c1c5b42")}</dd></div><div><dt>{t("m_8b6ff49851")}</dt><dd>{selected.date ? new Date(selected.date).toLocaleString(locale,{timeZone:'Asia/Shanghai'}) : t("m_4d8c1c5b42")}</dd></div></dl>
+            {selected.tooLarge ? <p className="mailbox-empty">{t("m_03750d0311")}</p> : <>
+              <pre className="mailbox-letter-body">{selected.text || t("m_f0a22c359f")}</pre>
+              {!!selected.attachments?.length && <p className="mailbox-attachment-note">{t("m_bfa49584f7")}{selected.attachments.map(item => item.filename).join('、')}{t("m_c172587668")}</p>}
             </>}
-            {view === 'inbox' && selected.replyTo && <button type="button" className="mailbox-primary" onClick={() => { setTo(selected.replyTo || ''); setSubject(/^Re:/i.test(selected.subject) ? selected.subject : `Re: ${selected.subject}`); changeView('compose'); }}>回复</button>}
-          </article> : mailLoading && !mailList ? <p className="mailbox-empty">正在读取邮件…</p> : !mailList?.folderAvailable ? <p className="mailbox-empty">邮局尚未提供已发送文件夹。你仍可正常收发邮件。</p> : !mailList.messages.length ? <p className="mailbox-empty">{view === 'inbox' ? '收件箱里还没有邮件。' : '已发送里还没有邮件。'}</p> : <ul className="mailbox-letter-list">{mailList.messages.map(item => <li key={item.uid}><button type="button" disabled={mailLoading} onClick={() => void openMessage(item)} className={item.unread ? 'mailbox-letter-unread' : ''}>
-            <span className="mailbox-letter-correspondent">{view === 'inbox' ? item.from : item.to}</span><span className="mailbox-letter-subject">{item.subject}</span><time>{item.date ? new Date(item.date).toLocaleString('zh-CN') : ''}</time></button></li>)}</ul>}
-          {!selected && mailList && mailList.total > mailList.pageSize && <div className="mailbox-list-pages"><span>第 {mailList.page} 页</span><div><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page <= 1} onClick={() => void loadFolder(view, mailList.page - 1)}>上一页</button><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page * mailList.pageSize >= mailList.total} onClick={() => void loadFolder(view, mailList.page + 1)}>下一页</button></div></div>}
+            {view === 'inbox' && selected.replyTo && <button type="button" className="mailbox-primary" onClick={() => { setTo(selected.replyTo || ''); setSubject(/^Re:/i.test(selected.subject) ? selected.subject : `Re: ${selected.subject}`); changeView('compose'); }}>{t("m_cf945e21dd")}</button>}
+          </article> : mailLoading && !mailList ? <p className="mailbox-empty">{t("m_3deb616d34")}</p> : !mailList?.folderAvailable ? <p className="mailbox-empty">{t("m_d89b28a464")}</p> : !mailList.messages.length ? <p className="mailbox-empty">{view === 'inbox' ? t("m_1631539c78") : t("m_0c1879ca29")}</p> : <ul className="mailbox-letter-list">{mailList.messages.map(item => <li key={item.uid}><button type="button" disabled={mailLoading} onClick={() => void openMessage(item)} className={item.unread ? 'mailbox-letter-unread' : ''}>
+            <span className="mailbox-letter-correspondent">{view === 'inbox' ? item.from : item.to}</span><span className="mailbox-letter-subject">{item.subject}</span><time>{item.date ? new Date(item.date).toLocaleString(locale,{timeZone:'Asia/Shanghai'}) : ''}</time></button></li>)}</ul>}
+          {!selected && mailList && mailList.total > mailList.pageSize && <div className="mailbox-list-pages"><span>{t("m_af50a0fe2a")} {mailList.page}  {t("m_d24d3c9946")}</span><div><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page <= 1} onClick={() => void loadFolder(view, mailList.page - 1)}>{t("m_c9b9ae7a61")}</button><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page * mailList.pageSize >= mailList.total} onClick={() => void loadFolder(view, mailList.page + 1)}>{t("m_8a8542f696")}</button></div></div>}
         </section>}
-        {!['pending','claimed','review'].includes(access.password_change_status || '') && view === 'compose' && <section className="mailbox-panel" aria-labelledby="mail-compose-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Send size={20} aria-hidden="true" /></span><div><h2 id="mail-compose-title">写邮件</h2><p>发件人：{access.mailbox_address}</p></div></div>
-          <form onSubmit={send} className="mailbox-form"><label htmlFor="mail-to">收件人</label><input id="mail-to" type="email" value={to} onChange={event => setTo(event.target.value)} required placeholder="name@example.com" />
-            <label htmlFor="mail-subject">标题</label><input id="mail-subject" value={subject} onChange={event => setSubject(event.target.value)} required maxLength={120} />
-            <label htmlFor="mail-body">正文</label><textarea id="mail-body" value={content} onChange={event => setContent(event.target.value)} rows={9} required maxLength={10000} />
-            <div className="mailbox-form-footer"><p>发送后，邮件会保存到已发送文件夹。</p><button className="mailbox-primary" disabled={busy}>{busy ? '发送中…' : '发送邮件'}</button></div></form></section>}</>}
-      {access?.status === 'active' && view === 'sent' && <details className="mailbox-panel mailbox-history" onToggle={event => { if (event.currentTarget.open && !historyLoaded.current) void refreshHistory(); }}><summary id="mail-history-title">网页发送记录</summary><p className="mailbox-footnote">查看网页发送的状态记录。</p>
-        {historyError && <p className="mailbox-error" role="alert">{historyError}<button type="button" className="mailbox-text-button" onClick={() => void refreshHistory()}>刷新记录</button></p>}
-        {historyLoading && <p role="status">正在加载记录…</p>}{sent.length === 0 ? <p className="mailbox-empty">{historyLoading ? "" : "暂无发送记录。"}</p> : <ul>{sent.map(item => <li key={item.id}><div><strong>{item.subject}</strong><span>{item.recipient_email}</span></div><span>{item.status === 'accepted' ? '已发送' : item.status === 'uncertain' ? '结果待核对' : item.status === 'sending' ? '发送中' : '失败'}</span></li>)}</ul>}</details>}
+        {!['pending','claimed','review'].includes(access.password_change_status || '') && view === 'compose' && <section className="mailbox-panel" aria-labelledby="mail-compose-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Send size={20} aria-hidden="true" /></span><div><h2 id="mail-compose-title">{t("m_2ef8275490")}</h2><p>{t("m_f4f0c2b190")}{access.mailbox_address}</p></div></div>
+          <form onSubmit={send} className="mailbox-form"><label htmlFor="mail-to">{t("m_c237b665a6")}</label><input id="mail-to" type="email" value={to} onChange={event => setTo(event.target.value)} required placeholder="name@example.com" />
+            <label htmlFor="mail-subject">{t("m_c3405f8c7d")}</label><input id="mail-subject" value={subject} onChange={event => setSubject(event.target.value)} required maxLength={120} />
+            <label htmlFor="mail-body">{t("m_d661c3d96d")}</label><textarea id="mail-body" value={content} onChange={event => setContent(event.target.value)} rows={9} required maxLength={10000} />
+            <div className="mailbox-form-footer"><p>{t("m_67b8fdfb4f")}</p><button className="mailbox-primary" disabled={busy}>{busy ? t("m_364970d816") : t("m_c268c1b1ce")}</button></div></form></section>}</>}
+      {access?.status === 'active' && view === 'sent' && <details className="mailbox-panel mailbox-history" onToggle={event => { if (event.currentTarget.open && !historyLoaded.current) void refreshHistory(); }}><summary id="mail-history-title">{t("m_1ac3bf196d")}</summary><p className="mailbox-footnote">{t("m_7c5f13c106")}</p>
+        {historyError && <p className="mailbox-error" role="alert">{historyError}<button type="button" className="mailbox-text-button" onClick={() => void refreshHistory()}>{t("m_621e17c543")}</button></p>}
+        {historyLoading && <p role="status">{t("m_35ced93b32")}</p>}{sent.length === 0 ? <p className="mailbox-empty">{historyLoading ? "" : t("m_53224ee3db")}</p> : <ul>{sent.map(item => <li key={item.id}><div><strong>{item.subject}</strong><span>{item.recipient_email}</span></div><span>{item.status === 'accepted' ? t("m_60823aaec7") : item.status === 'uncertain' ? t("m_79989e841c") : item.status === 'sending' ? t("m_9eacfc58bf") : t("m_28384d7afd")}</span></li>)}</ul>}</details>}
     </>}
   </main>;
 }

@@ -1,0 +1,23 @@
+.ai-summary-settings .settings-heading{margin-bottom:8px}
+.ai-summary-settings .ai-page-description{color:var(--muted-foreground);font-size:15px;line-height:1.7;margin:0 0 28px;max-width:80ch}
+.ai-summary-settings .ai-settings-form{max-width:820px;padding:28px;border:1px solid var(--border);border-radius:var(--panel-radius,16px);background:var(--card)}
+.ai-summary-settings .ai-settings-form fieldset{display:grid;gap:24px;border:0;padding:0;margin:0;min-width:0}
+.ai-summary-settings .ai-enable-section{padding-bottom:20px;border-bottom:1px solid var(--border)}
+.ai-summary-settings .article-summary-toggle{width:100%;font-size:17px;font-weight:600;margin:0}
+.ai-summary-settings .ai-enable-section p{margin:8px 0 0;color:var(--muted-foreground);font-size:14px;line-height:1.7;max-width:78ch}
+.ai-summary-settings .settings-field>span:first-child{font-size:15px;font-weight:600}
+.ai-summary-settings .settings-field small,.ai-summary-settings .settings-hint{font-size:14px;line-height:1.7;font-weight:400}
+.ai-summary-settings .settings-field input{border-radius:10px;min-height:46px}
+.ai-summary-settings .choice-options{margin:0}
+.ai-summary-settings .settings-hint{padding:16px;border-radius:10px;background:var(--muted);color:var(--muted-foreground)}
+.ai-summary-settings .admin-notice{margin:0}
+.ai-summary-settings .ai-save-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding-top:20px;border-top:1px solid var(--border)}
+.ai-summary-settings .ai-save-actions button{min-height:44px;padding:10px 16px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--foreground);font-size:14px;line-height:1.4;white-space:nowrap;flex:none}
+.ai-summary-settings .ai-save-actions .button-primary{background:var(--foreground);color:var(--background);border-color:var(--foreground);font-weight:600}
+.ai-summary-settings .ai-save-actions span{font-size:14px;color:var(--muted-foreground);line-height:1.6}
+.ai-summary-settings .ai-save-actions button:disabled{opacity:.45;cursor:not-allowed}
+.ai-summary-settings .ai-save-actions button:hover:not(:disabled){opacity:.8}
+.ai-summary-settings :is(button,input):focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
+@media(max-width:600px){.ai-summary-settings .ai-settings-form{padding:20px 16px}.ai-summary-settings .ai-save-actions span{flex-basis:100%}.ai-summary-settings .choice-options button{flex:1 1 100%}}
+
+.ai-summary-settings #ai-summary-key-hint span{display:block}

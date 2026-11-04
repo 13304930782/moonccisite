@@ -1,3 +1,4 @@
+import { useI18n } from './i18n';
 import { feedbackStore } from './lib/feedback';
 import { confirmationStore } from './lib/confirmAction';
 import { afterInitialLoad } from './lib/afterInitialLoad';
@@ -38,7 +39,8 @@ const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
 const AdminUpdatesPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminUpdatesPage })));
 const AdminProjectsPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminProjectsPage })));
 const AdminNewsletterPage = lazy(() => import('./pages/AdminContentPage').then(m => ({ default: m.AdminNewsletterPage })));
-import { createBrowserRouter, createMemoryRouter, RouterProvider, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { createBrowserRouter, createMemoryRouter, RouterProvider, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import {Link} from './components/LocaleLink';
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const LoginPage = lazy(() => loadPage('/login'));
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
@@ -48,6 +50,7 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const AdminRuntimePage = lazy(() => import('./pages/AdminRuntimePage'));
 const AdminAnalyticsPage = lazy(() => import('./pages/AdminAnalyticsPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const AdminTaxonomyPage = lazy(() => import('./pages/AdminTaxonomyPage'));
 const AdminPostsPage = lazy(() => import('./pages/AdminPostsPage'));
 const AdminWritePage = lazy(() => import('./pages/AdminWritePage'));
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
@@ -76,19 +79,21 @@ const CategoryPage = lazy(() => import('./pages/CategoryPage'));
 const CategoriesPage = lazy(() => import('./pages/CategoriesPage'));
 const SearchPage = lazy(() => loadPage('/search'));
 const EarlyAccessPage = lazy(() => loadPage('/early-access'));
-const AdminEarlyAccessPage = lazy(() => import('./pages/AdminEarlyAccessPage'));
-const AdminEarlyAccessDetailPage = lazy(() => import('./pages/AdminEarlyAccessDetailPage'));
+
+
 import { AuthProvider, useAuth } from './context/AuthContext';
 const AdminShell = lazy(() => import('./components/admin/AdminShell').then(m => ({default:m.AdminShell})));
 import { SiteMeta } from './components/SiteMeta';
 import { SitePage, ContentSkeleton } from './components/ContentUI';
 import { ThemeProvider } from './context/ThemeContext';
+import {splitLocalePath, publicLanguagePath} from './lib/locale';
 
 const ElectricityPage = lazy(() => loadPage('/electricity'));
 const AdminElectricityPage = lazy(() => import('./pages/AdminElectricityPage'));
 function RouteLoader() {
+  const { t } = useI18n();
   const {pathname} = useLocation();
-  return <SitePage>{/^\/(login|register)$/.test(pathname) ? <section className="auth-route-skeleton" aria-label="正在加载表单"><ContentSkeleton/></section> : <ContentSkeleton />}</SitePage>;
+  return <SitePage>{/^\/(login|register)$/.test(pathname) ? <section className="auth-route-skeleton" aria-label={t("m_bab32f18a4")}><ContentSkeleton/></section> : <ContentSkeleton />}</SitePage>;
 }
 
 function isAdminRole(role?: string) {
@@ -114,26 +119,27 @@ function Guard({
   ownerOnly?: boolean;
   writerOnly?: boolean;
 }) {
+  const { t } = useI18n();
   const { user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
     return (
       <main className="site-container page-content">
-        <p className="quiet-state" role="status" aria-live="polite">正在确认登录状态…</p>
+        <p className="quiet-state" role="status" aria-live="polite">{t("m_a51656deb6")}</p>
       </main>
     );
   }
 
   if (!user) return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
-  const denied=ownerOnly&&!isOwnerRole(user.role)?'站长':adminOnly&&!isAdminRole(user.role)?'管理员或站长':writerOnly&&!isWriterRole(user.role)?'编辑、管理员或站长':'';
-  if(denied)return <main className="site-container page-content"><section className="quiet-state" role="status"><h1>当前账号无法访问此页面</h1><p>此功能需要{denied}权限，你的登录状态仍然有效。</p><div className="inline-actions"><Link className="quiet-button" to="/account/submissions">去我的投稿</Link><Link className="text-link" to="/account/settings">返回个人中心</Link>{isWriterRole(user.role)&&<Link className="text-link" to="/admin">返回后台</Link>}<Link className="text-link" to="/">返回网站</Link></div></section></main>;
+  const denied=ownerOnly&&!isOwnerRole(user.role)?t("m_b2118962f8"):adminOnly&&!isAdminRole(user.role)?t("m_b4b0d7a1a2"):writerOnly&&!isWriterRole(user.role)?t("m_228ee08c45"):'';
+  if(denied)return <main className="site-container page-content"><section className="quiet-state" role="status"><h1>{t("m_0bd99a0ad9")}</h1><p>{t("m_79ce9159de")}{denied}{t("m_416691014d")}</p><div className="inline-actions"><Link className="quiet-button" to="/account/submissions">{t("m_113fb4bd2b")}</Link><Link className="text-link" to="/account/settings">{t("m_5043d1733d")}</Link>{isWriterRole(user.role)&&<Link className="text-link" to="/admin">{t("m_280dc8a5a1")}</Link>}<Link className="text-link" to="/">{t("m_26c8fe2777")}</Link></div></section></main>;
 
   return children;
 }
 
 
-export default function RoutePages(){return <Routes>
+export default function RoutePages(){const location=useLocation();const route=splitLocalePath(location.pathname);if(route.locale==='en'&&!publicLanguagePath(route.pathname))return <NotFoundPage/>;return <Routes location={{...location,pathname:route.pathname}}>
           <Route path="/admin/ai-settings" element={<Guard ownerOnly><AdminShell><AdminAiSettingsPage /></AdminShell></Guard>} />
 <Route path="/node-monitor" element={<Guard><SitePage><NodeMonitorPage/></SitePage></Guard>}/>
 <Route path="/account/node-monitor" element={<Navigate to="/node-monitor" replace/>}/>
@@ -170,6 +176,7 @@ export default function RoutePages(){return <Routes>
           <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           <Route path="/admin" element={<Guard writerOnly><AdminShell><AdminPage /></AdminShell></Guard>} />
+          <Route path="/admin/taxonomy" element={<Guard adminOnly><AdminShell><AdminTaxonomyPage /></AdminShell></Guard>} />
           <Route path="/admin/posts" element={<Guard writerOnly><AdminShell><AdminPostsPage /></AdminShell></Guard>} />
           <Route path="/admin/write" element={<Guard writerOnly><AdminShell><AdminWritePage /></AdminShell></Guard>} />
           <Route path="/admin/media" element={<Guard adminOnly><AdminShell><AdminMediaPage /></AdminShell></Guard>} />
@@ -202,8 +209,8 @@ export default function RoutePages(){return <Routes>
           <Route path="/admin/send-mail" element={<Guard adminOnly><AdminShell><AdminSendMailPage /></AdminShell></Guard>} />
           <Route path="/admin/mailbox" element={<Guard><AdminShell><MailboxPage /></AdminShell></Guard>} />
           <Route path="/admin/mailbox-requests" element={<Guard ownerOnly><AdminShell><AdminMailboxRequestsPage /></AdminShell></Guard>} />
-          <Route path="/admin/early-access" element={<Guard ownerOnly><AdminShell><AdminEarlyAccessPage /></AdminShell></Guard>} />
-          <Route path="/admin/early-access/:id" element={<Guard ownerOnly><AdminShell><AdminEarlyAccessDetailPage /></AdminShell></Guard>} />
+          <Route path="/admin/early-access" element={<Guard ownerOnly><AdminShell><EarlyAccessPage admin /></AdminShell></Guard>} />
+          <Route path="/admin/early-access/:id" element={<Guard ownerOnly><AdminShell><EarlyAccessPage admin /></AdminShell></Guard>} />
           <Route path="/admin/electricity" element={<Guard ownerOnly><AdminShell><Suspense fallback={<RouteLoader />}><AdminElectricityPage /></Suspense></AdminShell></Guard>} />
 
           <Route path="*" element={<NotFoundPage />} />

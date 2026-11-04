@@ -5,7 +5,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { publicRead, fixedOrigin } from '../shared/public-policy.mjs';
 
-const types = { js:'text/javascript', css:'text/css', woff:'font/woff', woff2:'font/woff2', png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', svg:'image/svg+xml', webp:'image/webp', gif:'image/gif', avif:'image/avif' };
+const types = { json:'application/json', js:'text/javascript', css:'text/css', woff:'font/woff', woff2:'font/woff2', png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', svg:'image/svg+xml', webp:'image/webp', gif:'image/gif', avif:'image/avif' };
 function equal(a,b) { const x=Buffer.from(a||''),y=Buffer.from(b||'');return x.length===y.length && timingSafeEqual(x,y); }
 export function createReader({ origin, key, dist, fetcher = fetch }) {
   origin = fixedOrigin(origin);
@@ -27,7 +27,7 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
       if(active>=8)return stop(503,'Reader busy');
       active++;counted=true;
       if (req.method==='GET' && req.url==='/_reader/health') return stop(200,'ok');
-      if (!req.url.startsWith('/') || req.url.startsWith('//') || /%|\\/.test(req.url.split('?')[0])) return stop(404,'Not found');
+      if (!req.url.startsWith('/') || req.url.startsWith('//') || /\\/.test(req.url.split('?')[0])) return stop(404,'Not found');
       const url=new URL(req.url,'https://mooncci.site');
       const request=new Request(url,{method:req.method,headers:req.headers});
       if(!publicRead(request)) return stop(403,'Not a public read');
@@ -57,9 +57,19 @@ export function createReader({ origin, key, dist, fetcher = fetch }) {
       for(const name of ['accept','accept-language','if-none-match','if-modified-since']) if(req.headers[name])headers.set(name,req.headers[name]);
       const diagnostic=req.headers['x-mooncci-diagnostic']==='1';
       if(diagnostic)headers.set('X-Mooncci-Diagnostic','1');
-      const response=await fetcher(upstream,{method:req.method,headers,redirect:'manual',signal:AbortSignal.timeout(10000)});
+      let response=await fetcher(upstream,{method:req.method,headers,redirect:'manual',signal:AbortSignal.timeout(10000)});
       if(response.headers.has('set-cookie')){await response.body?.cancel();return stop(502,'Unexpected private response');}
-      if(response.status>=300 && response.status<400 && response.status!==304){await response.body?.cancel();return stop(502,'Unexpected redirect');}
+      // Canonical article redirects may only stay on this origin and in the same language.
+      const language = pathname => /^\/en(?:\/|$)/.test(pathname);
+      let current=upstream;
+      for(let hops=0;response.status>=300 && response.status<400 && response.status!==304;hops++) {
+        let target;const location=response.headers.get('location');try{if(location)target=new URL(location,current);}catch{}
+        await response.body?.cancel();
+        if(hops>=2 || !/^\/(?:en\/)?article\/[^/]+$/.test(upstream.pathname) || !target || target.origin!==origin || target.username || target.password || target.hash || language(target.pathname)!==language(upstream.pathname) || !/^\/(?:en\/)?article\/[^/]+$/.test(target.pathname) || !publicRead(new Request(target,{method:req.method})))return stop(502,'Unexpected redirect');
+        current=target;
+        response=await fetcher(target,{method:req.method,headers,redirect:'manual',signal:AbortSignal.timeout(10000)});
+        if(response.headers.has('set-cookie')){await response.body?.cancel();return stop(502,'Unexpected private response');}
+      }
       const chunks=[];let size=0;
       if(response.body) {
         const reader=response.body.getReader();

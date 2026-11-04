@@ -1,3 +1,4 @@
+import {useI18n} from '@/app/i18n';
 import { forwardRef, useCallback } from "react"
 
 // --- Lib ---
@@ -62,6 +63,7 @@ export const HeadingButton = forwardRef<HTMLButtonElement, HeadingButtonProps>(
     },
     ref
   ) => {
+ const {t}=useI18n();
     const { editor } = useTiptapEditor(providedEditor)
     const {
       isVisible,
@@ -110,7 +112,7 @@ export const HeadingButton = forwardRef<HTMLButtonElement, HeadingButtonProps>(
         {children ?? (
           <>
             <Icon className="tiptap-button-icon" />
-            {text && <span className="tiptap-button-text">{text}</span>}
+            {text && <span className="tiptap-button-text">{t(text)}</span>}
             {showShortcut && (
               <HeadingShortcutBadge level={level} shortcutKeys={shortcutKeys} />
             )}

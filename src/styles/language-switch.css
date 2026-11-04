@@ -1,0 +1,19 @@
+.language-switch { display:inline-flex; flex:none; align-items:center; min-height:44px; }
+.language-trigger { display:inline-flex; align-items:center; justify-content:space-between; gap:10px; min-height:44px; padding:0 12px; border:1px solid var(--border); border-radius:10px; color:var(--foreground); background:var(--background); font:inherit; font-size:14px; line-height:20px; white-space:nowrap; cursor:pointer; }
+.language-trigger:hover,.language-trigger[data-state=open] { background:var(--muted); }
+.language-trigger:focus-visible { outline:2px solid var(--ring,var(--foreground)); outline-offset:2px; border-color:transparent; }
+.language-menu { z-index:200; min-width:180px; max-width:calc(100vw - 32px); padding:6px; border:1px solid var(--border); border-radius:12px; background:var(--popover,var(--background)); color:var(--popover-foreground,var(--foreground)); font:inherit; box-shadow:0 8px 24px color-mix(in srgb,var(--foreground) 12%,transparent); }
+.language-menu [role=menuitemradio] { min-height:44px; padding-block:10px; padding-right:16px; border-radius:7px; font-size:14px; line-height:20px; white-space:nowrap; cursor:pointer; }
+.language-menu [data-highlighted] { background:var(--muted); color:var(--foreground); }
+.language-menu [aria-checked=true] { font-weight:600; }
+.navigation-language-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-block:12px; border-top:1px solid var(--border); font-size:13px; color:var(--muted-foreground); }
+.admin-frame .navigation-language-row { gap:8px; margin:0 12px 12px; }
+
+.header-language { display:flex; align-items:center; margin-right:8px; }
+@media(max-width:1100px) { .site-header .header-language { display:none; } .site-header .navigation-language-row { margin-top:16px; } }
+
+.article-languages { flex-wrap: wrap; justify-content: center; gap: 8px 16px; font-size: 13px; }
+.article-languages a { display: inline-flex; align-items: center; min-height: 44px; }
+.article-languages [aria-current="page"] { font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+
+@media(min-width:1101px) { .site-header .desktop-nav a { white-space:nowrap; } }

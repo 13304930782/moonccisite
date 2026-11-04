@@ -1,5 +1,7 @@
+import { useI18n } from '../i18n';
 import { ReactNode, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+
+import {Link} from './LocaleLink';
 import { Eye, MessageCircle, UserRound } from 'lucide-react';
 import { formatDate } from './ContentUI';
 import { safeImageSrc } from '../lib/safeUrl';
@@ -13,11 +15,12 @@ export function SingleLine({ children, className = '', label }: { children: Reac
 export function DetailMeta({ author, avatar, deleted, date, dateLabel, updatedDate, views, category }: {
   author?: string; avatar?: string; deleted?: boolean; date?: string; dateLabel?: string; updatedDate?: string; views?: number | null; category?: string;
 }) {
-  return <SingleLine className="detail-meta" label="发布信息">
-    {author && <span className="detail-author">{safeImageSrc(avatar) ? <img src={safeImageSrc(avatar)} alt="" /> : <UserRound className="detail-avatar" aria-hidden="true" />}<span>{author}</span>{deleted && <small>已删除</small>}</span>}
-    {(dateLabel || date) && <time dateTime={date || undefined}>{dateLabel || `${updatedDate ? '发布于 ' : ''}${formatDate(date!)}`}</time>}
-    {updatedDate && <time dateTime={updatedDate}>更新于 {formatDate(updatedDate)}</time>}
-    {views != null && <span className="article-view-count" aria-label={`${views} 次阅读`} title="阅读量"><Eye size={15} aria-hidden="true" /><span>{views.toLocaleString('zh-CN')}</span></span>}
+  const { t , formatDate} = useI18n();
+  return <SingleLine className="detail-meta" label={t("m_849fa6c202")}>
+    {author && <span className="detail-author">{safeImageSrc(avatar) ? <img src={safeImageSrc(avatar)} alt="" /> : <UserRound className="detail-avatar" aria-hidden="true" />}<span>{author}</span>{deleted && <small>{t("m_077a6d3771")}</small>}</span>}
+    {(dateLabel || date) && <time dateTime={date || undefined}>{dateLabel || `${updatedDate ? t("m_e87b95c9d9") : ''}${formatDate(date!)}`}</time>}
+    {updatedDate && <time dateTime={updatedDate}>{t("m_7153f0918a")} {formatDate(updatedDate)}</time>}
+    {views != null && <span className="article-view-count" aria-label={t("m_2d0e8195f4", {v0: views})} title={t("m_4a7ff85ddf")}><Eye size={15} aria-hidden="true" /><span>{views.toLocaleString('zh-CN')}</span></span>}
     {category && <Link to={`/category/${encodeURIComponent(category)}`}>{category}</Link>}
   </SingleLine>;
 }
@@ -49,9 +52,10 @@ export function DetailPage({ className = '', backTo, backLabel, label, title, me
   className?: string; backTo: string; backLabel: string; label: ReactNode; title: string; meta: ReactNode; children: ReactNode;
   aside?: ReactNode; asideTitle?: string; asideClassName?: string; preview?: boolean;
 }) {
+  const { t } = useI18n();
   return <article className={`detail-page ${className}`} data-reading-content={preview ? undefined : true}>
     <header className="detail-header">
-      <div className="detail-intro"><nav className="detail-breadcrumb" aria-label="面包屑导航" data-reading-ignore><Link className="text-link" to={backTo}>← {backLabel}</Link></nav>
+      <div className="detail-intro"><nav className="detail-breadcrumb" aria-label={t("m_6c3f7b6a12")} data-reading-ignore><Link className="text-link" to={backTo}>← {backLabel}</Link></nav>
       <div className="detail-label"><span className="detail-category">{label}</span></div></div>
       <h1 className="detail-title">{title}</h1>
       {meta}

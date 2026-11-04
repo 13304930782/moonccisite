@@ -26,10 +26,12 @@ jobs:
       - run: npm ci --prefix server
       - run: python3 scripts/prepare-ip-database.py
       - run: npm run typecheck
+      - run: npm run check:i18n
       - run: npm test
       - run: npm test --prefix server
       - run: npm run build
       - run: node scripts/test-document.mjs
+      - run: npm run test:bilingual:ssr
       - run: npm run check:bundle
       - run: python3 scripts/test_indexnow.py
       - run: python3 scripts/test_refresh_sitemap.py
@@ -61,6 +63,20 @@ jobs:
           printf 'https://archive.ubuntu.com/ubuntu/\n' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
           printf 'Acquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::Retries "2";\n' | sudo tee /etc/apt/apt.conf.d/80-mooncci-ci-timeouts >/dev/null
           npx playwright install --with-deps chromium webkit
+      - name: Verify bilingual history and editing in isolated browsers
+        run: npm run test:bilingual:browser
+      - name: Preserve bilingual browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bilingual-browser-evidence
+          if-no-files-found: ignore
+          include-hidden-files: true
+          path: |
+            .cache/locale-history-results.json
+            .cache/public-history-results.json
+            .cache/bilingual-hydration-results.json
+            .cache/public-history-*-375.png
       - run: node test/mobile-inputs.browser.cjs
       - run: node scripts/test-browser.cjs
       - run: node scripts/test-updates-browser.cjs
@@ -196,3 +212,9 @@ jobs:
         env:
           SLUG_INTEGRATION: "true"
           TEST_DB_PORT: "3306"
+
+      - name: Verify bilingual publication and idempotent migration
+        run: node --test server/test/articleTranslations.integration.test.js
+        env:
+          BILINGUAL_INTEGRATION: 'true'
+          TEST_DB_PORT: '3306'

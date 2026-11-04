@@ -1,8 +1,11 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useI18n } from '../i18n';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {Link} from './LocaleLink';
 import { safeRoutePath } from '../lib/safeUrl';
 import { usePreviousSiteVisit } from './RoutePosition';
 
 export function SiteBack({ className = 'text-link' }: { className?: string }) {
+  const { t } = useI18n();
   const previous = usePreviousSiteVisit(), location = useLocation(), navigate = useNavigate();
   const path = previous && safeRoutePath(previous.path, '');
   if (!path || location.pathname === '/' || /^\/(?:admin(?:-login)?|account)(?:\/|$)/.test(location.pathname)) return null;
@@ -11,5 +14,5 @@ export function SiteBack({ className = 'text-link' }: { className?: string }) {
       event.preventDefault();
       navigate(-1);
     }
-  }}>← 返回</Link>;
+  }}>{t("m_3a14a3c2be")}</Link>;
 }

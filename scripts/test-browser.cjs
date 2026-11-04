@@ -23,7 +23,7 @@ async function main() {
   try {
     await vite.listen();
     browser = await chromium.launch({ headless: true, ...(process.env.TEST_CHROME_PATH ? { executablePath: process.env.TEST_CHROME_PATH } : {}) });
-    const context = await browser.newContext();
+    const context = await browser.newContext({locale:'zh-CN'});
     const errors = [];
     const page = await context.newPage(); page.on('pageerror', error => errors.push(error.message));
     const url = 'http://127.0.0.1:4192/test/browser/harness.html';

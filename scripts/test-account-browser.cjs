@@ -6,7 +6,7 @@ async function main() {
   let browser;
   try {
     browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
-    const page = await browser.newPage();
+    const page = await browser.newPage({locale:'zh-CN'});
     page.setDefaultTimeout(15000);
     const errors = []; page.on('pageerror', e => errors.push(e.message));
     let user = { id: 2, username: '测试读者', email: 'reader@example.test', role: 'user', status: 'active', can_comment: 1, version: 0 };
@@ -56,6 +56,7 @@ async function main() {
       }
     }
     await page.goto('http://127.0.0.1:4196/admin/updates');
+    await page.getByRole('button', {name:'写动态',exact:true}).first().click();
     const statusSelect = page.getByRole('radiogroup', {name:'发布状态',exact:true});
     await statusSelect.waitFor();
     const alignment = await statusSelect.evaluate(el => {

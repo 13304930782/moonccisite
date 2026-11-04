@@ -1,0 +1,11 @@
+.editor-applications-back{display:inline-flex;align-items:center;gap:8px;min-height:44px;color:var(--muted-foreground);font-size:14px;text-decoration:none}
+.editor-applications-back:hover{color:var(--foreground);text-decoration:underline}
+.editor-applications-back:focus-visible{outline:2px solid var(--ring);outline-offset:3px;border-radius:6px}
+.editor-applications-heading{margin:12px 0 28px}
+.editor-applications-heading p{margin-top:12px;font-size:14px;line-height:1.7;max-width:70ch}
+.editor-applications-filters{padding-bottom:24px;border-bottom:1px solid var(--border);margin-bottom:24px}
+.editor-applications-results .admin-list-row{border:1px solid var(--border);border-radius:var(--panel-radius,16px);padding:20px;background:var(--card);overflow-wrap:anywhere}
+.editor-applications-page .admin-state--empty{margin:0}
+@media(max-width:560px){.editor-applications-heading{margin-bottom:20px}.editor-applications-results .admin-list-row{padding:16px}}
+
+@media(max-width:560px){.editor-applications-filters .choice-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.editor-applications-filters .choice-field{display:block;width:100%}.editor-applications-filters .choice-options button{min-width:0;white-space:nowrap}}

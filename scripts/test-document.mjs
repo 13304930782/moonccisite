@@ -104,3 +104,15 @@ assert.equal(sizedShot.getAttribute('height'),'879');
 assert.equal(sizedShot.getAttribute('loading'),'eager');
 assert.equal(sizedShot.getAttribute('fetchpriority'),'high');
 console.log('Works SSR acceptance: compact home card, article-style detail, real showcase, TOC and explicit icon removal passed.');
+
+// Legacy optional project stage must not make the entire SSR document unavailable.
+for(const locale of ['zh-CN','en']) {
+ const path=locale==='en'?'/en/projects':'/projects';
+ const missingStage={...work,stage:undefined,content_locale:locale};
+ const result=await renderDocument(path,p=>p.startsWith('/projects')?Promise.resolve({items:[missingStage],total:1,page:1,pageSize:20}):workLoad(p));
+ const dom=JSDOM.fragment(result.html);
+ assert.equal(dom.querySelector('.project-card h3').textContent,'PromptDock');
+ assert.equal(dom.querySelector('.project-card-stage').textContent,'');
+ assert.ok(!result.html.includes('startup-shell'));
+}
+console.log('Optional project stage: both locale SSR documents remain renderable.');

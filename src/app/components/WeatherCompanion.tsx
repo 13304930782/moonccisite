@@ -1,3 +1,5 @@
+import {splitLocalePath} from '../lib/locale';
+import { useI18n } from '../i18n';
 import { reducedMotion } from '../lib/motionPreference';
 import { FestivalSlot } from './Festivals/Entry';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -76,8 +78,10 @@ function isPhoneViewport() {
 }
 
 export default function WeatherCompanion() {
+  const { t } = useI18n();
   const { theme } = useMoonTheme();
-  const { pathname } = useLocation();
+  const routeLocation = useLocation();
+  const {pathname}=splitLocalePath(routeLocation.pathname);
   const [phoneViewport, setPhoneViewport] = useState(isPhoneViewport);
   const edgeMode = phoneViewport && /^\/article\/[^/]+/.test(pathname);
   const [edgeVisible, setEdgeVisible] = useState(false);
@@ -240,7 +244,7 @@ export default function WeatherCompanion() {
       setInputMood(password ? 'password' : account ? 'account' : null);
       setAmbientSpeech('');
       clearTimeout(messageTimer);
-      setFocusSpeech(password ? '你输密码，我闭眼。' : account ? '我在，慢慢来。' : '');
+      setFocusSpeech(password ? t("m_eefdaae28d") : account ? t("m_d1690be34d") : '');
       if(password || account) messageTimer = setTimeout(() => setFocusSpeech(''), 4200);
     };
     document.addEventListener('focusin', syncFocus);
@@ -288,7 +292,7 @@ export default function WeatherCompanion() {
   }, [reduced, collapsed, disabled, open, edgeMode, reaction, inputMood, data?.mode, pathname]);
   const moodName =
     data?.mood?.name ||
-    (!location ? '选个城市' : loaded ? '稍作等待' : '看看天气');
+    (!location ? t("m_7e35e077c1") : loaded ? t("m_ad858f1de3") : t("m_3bd7ed4057"));
   function selectLocation(
     value: WeatherLocation | null,
     source: WeatherLocationSource = 'manual',
@@ -381,7 +385,7 @@ export default function WeatherCompanion() {
       emotion: '02',
       color: theme === 'dark' ? '#d9d9d9' : '#292929',
       eyeColor: theme === 'dark' ? '#202020' : '#fafafa',
-      label: 'mooncci 天气小球',
+      label: t("m_78b7452b95"),
       lite: false,
       idle: false,
       autostart: !reduced && !document.hidden,
@@ -498,7 +502,7 @@ export default function WeatherCompanion() {
           setStatsError('');
         }
       } catch {
-        if (!stopped) setStatsError('统计暂不可用');
+        if (!stopped) setStatsError(t("m_0c05d49396"));
       } finally {
         clearTimeout(timeout);
         pending = null;
@@ -528,7 +532,7 @@ export default function WeatherCompanion() {
       applyStats(response.data);
       setStatsError('');
     } catch {
-      setStatsError('此次互动未确认记录，稍后刷新统计');
+      setStatsError(t("m_a5d78114fe"));
     } finally {
       clearTimeout(timeout);
     }
@@ -567,7 +571,7 @@ export default function WeatherCompanion() {
     <aside
       className={`weather-companion${edgeMode ? ' weather-companion--reading-phone' : ''}${edgeMode && !edgeVisible && !open ? ' weather-companion--edge-hidden' : ''}`}
       ref={root}
-      aria-label="mooncci 天气小球"
+      aria-label={t("m_78b7452b95")}
       data-emotion={displayedEmotion}
       onBlur={(event) => {
         if (edgeMode && !event.currentTarget.contains(event.relatedTarget as Node)) revealEdge();
@@ -577,8 +581,8 @@ export default function WeatherCompanion() {
         <button
           className="weather-companion-wake"
           onClick={() => { collapse(false); if (edgeMode) setEdgeVisible(true); }}
-          aria-label="展开天气小球"
-          title="展开天气小球"
+          aria-label={t("m_a12fa98d0f")}
+          title={t("m_a12fa98d0f")}
         >
           <CloudSun size={20} />
         </button>
@@ -588,7 +592,7 @@ export default function WeatherCompanion() {
             <button
               type="button"
               className="weather-companion-edge-handle"
-              aria-label="显示天气小球"
+              aria-label={t("m_2984f0b479")}
               onClick={(event) => {
                 revealEdge();
                 if (event.detail === 0) requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>('.weather-companion-ball')?.focus());
@@ -599,28 +603,28 @@ export default function WeatherCompanion() {
             <section
               className="weather-companion-panel"
               id="weather-companion-details"
-              aria-label="今日心情"
+              aria-label={t("m_7e44f9777b")}
             >
               <div className="weather-companion-heading">
-                <span>mooncci / 今日心情</span>
+                <span>{t("m_bc04f9a71c")}</span>
                 <button
                   onClick={() => setOpen(false)}
-                  aria-label="关闭心情卡片"
+                  aria-label={t("m_8cfae96d00")}
                 >
                   <X size={16} />
                 </button>
               </div>
-              <h2>{moodName}</h2>
+              <h2>{t(moodName)}</h2>
               {data?.mode === 'manual' && (
-                <p className="weather-companion-hint">mooncci 设定的心情</p>
+                <p className="weather-companion-hint">{t("m_e3fde0e618")}</p>
               )}
               <p>
                 {data?.mood?.message ||
                   (!location
-                    ? '选一个城市，让天气决定今天的心情。'
+                    ? t("m_a62af89e2a")
                     : loaded
-                      ? '天气暂不可用，先安静陪你一会儿。'
-                      : `正在看看${location.name}今天的天气。`)}
+                      ? t("m_359192b8e3")
+                      : t("m_2ff58c620a", {v0: location.name}))}
               </p>
               {data?.status === 'ready' && (
                 <div className="weather-companion-forecast">
@@ -630,11 +634,11 @@ export default function WeatherCompanion() {
                   <span>
                     {data.weatherSource === 'amap' ? (
                       <>
-                        日{' '}
+                         {t("m_85217f7aff")}{' '}
                         {data.weather?.dayTemperature == null
                           ? '—'
                           : Math.round(data.weather.dayTemperature)}
-                        ° / 夜{' '}
+                         {t("m_6f594ac811")}{' '}
                         {data.weather?.nightTemperature == null
                           ? '—'
                           : Math.round(data.weather.nightTemperature)}
@@ -653,7 +657,7 @@ export default function WeatherCompanion() {
                       </>
                     )}
                   </span>
-                  <small>{data.date} · 当地当日预报</small>
+                  <small>{data.date}  {t("m_1e106ea5f7")}</small>
                 </div>
               )}
               <WeatherCityPicker
@@ -663,28 +667,25 @@ export default function WeatherCompanion() {
               />
               <div
                 className="weather-companion-stats"
-                aria-label="今日全站互动统计"
+                aria-label={t("m_95417bd66c")}
                 aria-live="polite"
               >
                 <span>
-                  今日被摸 <strong>{stats?.pets ?? '—'}</strong> 次
-                </span>
+                   {t("m_ea591654d0")} <strong>{stats?.pets ?? '—'}</strong>  {t("m_172fb7e67b")} </span>
                 <span>
-                  今日被打 <strong>{stats?.hits ?? '—'}</strong> 次
-                </span>
-                {statsError && <small>{statsError}</small>}
+                   {t("m_5d6fb234d4")} <strong>{stats?.hits ?? '—'}</strong>  {t("m_172fb7e67b")} </span>
+                {statsError && <small>{t(statsError || '')}</small>}
               </div>
               <div className="weather-companion-actions">
-                <button onClick={pet}>摸摸</button>
+                <button onClick={pet}>{t("m_b545d54af6")}</button>
                 <button onClick={() => collapse(true)}>
                   <Minus size={14} />
-                  收起小球
-                </button>
+                   {t("m_1a98fb7338")} </button>
                 <button
                   ref={helpButton}
                   className="weather-companion-help"
                   type="button"
-                  aria-label="小球互动玩法"
+                  aria-label={t("m_30f4e0a3f4")}
                   aria-describedby={
                     helpOpen ? 'weather-companion-help' : undefined
                   }
@@ -714,11 +715,11 @@ export default function WeatherCompanion() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    {cityAttribution === 'dbip' ? 'IP 定位：' : '地图：'}
+                    {cityAttribution === 'dbip' ? t("m_a9e7d71efd") : t("m_fd903700f3")}
                     {cityAttribution === 'dbip'
                       ? 'DB-IP'
                       : cityAttribution === 'amap'
-                      ? '高德地图'
+                      ? t("m_1ecb3ba10a")
                       : cityAttribution === 'geonames'
                         ? 'GeoNames'
                         : '© OpenStreetMap contributors'}
@@ -737,8 +738,7 @@ export default function WeatherCompanion() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    天气：
-                    {data.weatherSource === 'amap' ? '高德天气' : 'Open-Meteo'}
+                     {t("m_b589b095fa")} {data.weatherSource === 'amap' ? t("m_a8b327c923") : 'Open-Meteo'}
                   </a>
                 )}
               </div>
@@ -756,26 +756,26 @@ export default function WeatherCompanion() {
               }}
               onPointerLeave={hideHelpSoon}
             >
-              <strong>和小球玩一会儿</strong>
-              <p>划一划或点「摸摸」，它会开心。</p>
-              <p>连续两次双击，会惹它短暂生气哦。</p>
+              <strong>{t("m_7634a27eb2")}</strong>
+              <p>{t("m_088e7d67f8")}</p>
+              <p>{t("m_6fde2c9fd2")}</p>
             </div>
           )}
           {!open && !reaction && (focusSpeech || ambientSpeech) && (
-            <span className="weather-companion-speech" aria-hidden="true">{focusSpeech || ambientSpeech}</span>
+            <span className="weather-companion-speech" aria-hidden="true">{t(focusSpeech || ambientSpeech)}</span>
           )}
           {reaction && (
             <span className="weather-companion-pet" role="status">
               {reaction === 'hit'
-                ? '哼！不许打我，生气一下！'
-                : '摸摸收到，开心 +1'}
+                ? t("m_0b355d71e2")
+                : t("m_5e20a46d52")}
             </span>
           )}
           <button
             className="weather-companion-ball"
             tabIndex={edgeMode && !edgeVisible && !open ? -1 : 0}
             aria-hidden={edgeMode && !edgeVisible && !open ? true : undefined}
-            aria-label={`查看今日心情：${moodName}`}
+            aria-label={t("m_c5acedf412", {v0: moodName})}
             aria-expanded={open}
             aria-controls="weather-companion-details"
             onKeyDown={(event) => {
@@ -847,7 +847,7 @@ export default function WeatherCompanion() {
               aria-hidden="true"
             />
             <span className="weather-companion-label">
-              {GrokBall.EMOTIONS.find(item => item.id === displayedEmotion)?.name || moodName}
+              {t(GrokBall.EMOTIONS.find(item => item.id === displayedEmotion)?.name || moodName)}
             </span>
             {pathname === '/' && <FestivalSlot name="hat" />}
           </button>

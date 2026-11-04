@@ -1,6 +1,7 @@
 // Keep sensitive routes bounded even when mounted independently of the main app.
 const routeLimiter = require('express-rate-limit')({windowMs:60000,limit:200,standardHeaders:true,legacyHeaders:false});
 const db=require('../db');
+const {localize}=require('../lib/contentTranslations');
 const {authRequired,adminOnly}=require('../middleware/auth');
 const {error}=require('../lib/articlePublishing');
 const {withCoverCrop}=require('../lib/articleCoverCrop');
@@ -12,7 +13,7 @@ router.get('/',routeLimiter,guarded(async(req,res)=>{
  const admin=req.query.manage==='true';
  if(admin){const u=await require('../middleware/auth').getUserFromRequest(req);if(!u||u.status!=='active'||!['owner','admin'].includes(u.role))throw error('无权限。',403);res.set('Cache-Control','private, no-store');}
  const [items]=await db.query("SELECT s.*,COUNT(p.id) article_count FROM article_series s LEFT JOIN article_series_posts sp ON sp.series_id=s.id LEFT JOIN posts p ON p.id=sp.post_id AND p.status='published' GROUP BY s.id ORDER BY s.updated_at DESC");
- res.json({items:admin?items:items.filter(s=>Number(s.article_count)>0)});
+ res.json({items:admin?items:await Promise.all(items.filter(s=>Number(s.article_count)>0).map(row=>localize(db,'series',row,req.query.locale)))});
 }));
 router.get('/article/:id',routeLimiter,guarded(async(req,res)=>{
  const [[row]]=await db.query("SELECT s.* FROM article_series s JOIN article_series_posts sp ON sp.series_id=s.id JOIN posts p ON p.id=sp.post_id WHERE p.id=? AND p.status='published'",[req.params.id]);
@@ -20,7 +21,8 @@ router.get('/article/:id',routeLimiter,guarded(async(req,res)=>{
  const [items]=await db.query("SELECT p.id,p.slug,p.title FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? AND p.status='published' ORDER BY sp.position,p.id",[row.id]);
  const index=items.findIndex(x=>String(x.id)===req.params.id);
  if(index<0)return res.json(null);
- res.json({series:row,position:index+1,total:items.length,previous:items[index-1]||null,next:items[index+1]||null});
+ const localizedItems=await require('../lib/articleTranslations').publicPosts(db,items,req.query.locale);
+ res.json({series:await localize(db,'series',row,req.query.locale),position:index+1,total:items.length,previous:localizedItems[index-1]||null,next:localizedItems[index+1]||null});
 }));
 router.get('/manage/:id/articles',routeLimiter,authRequired,adminOnly,guarded(async(req,res)=>{
  res.set('Cache-Control','private, no-store');
@@ -32,7 +34,7 @@ router.get('/:slug',routeLimiter,guarded(async(req,res)=>{
  if(!series)throw error('专栏不存在。',404);
  const [items]=await db.query("SELECT p.id,p.slug,p.title,p.summary,p.cover_image,p.cover_crop,p.published_at FROM article_series_posts sp JOIN posts p ON p.id=sp.post_id WHERE sp.series_id=? AND p.status='published' ORDER BY sp.position,p.id",[series.id]);
  if(!items.length)throw error('专栏暂未公开。',404);
- res.json({series,items:items.map(withCoverCrop)});
+ res.json({series:await localize(db,'series',series,req.query.locale,{strict:true}),items:(await require('../lib/articleTranslations').publicPosts(db,items,req.query.locale)).map(withCoverCrop)});
 }));
 router.use(authRequired,adminOnly,(_req,res,next)=>{res.set('Cache-Control','private, no-store');next();});
 function values(body){

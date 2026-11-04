@@ -6,8 +6,9 @@ const db = require('../db');
 const { authRequired, editorOrAdmin, isAdminLike, getUserFromRequest } = require('../middleware/auth');
 const {coverCropForInput,withCoverCrop,serializeCoverCrop}=require('../lib/articleCoverCrop');
 
-const {validateArticleSlug,resolveArticle,claimArticleSlug,articleSlugWriteError}=require('../lib/articleSlug');
+const {validateArticleSlug,resolveArticle,claimArticleSlug,articleSlugWriteError,displayArticleSlug}=require('../lib/articleSlug');
 const router = require('../lib/asyncRouter')();
+const translations=require('../lib/articleTranslations');
 router.use((_req, res, next) => {
   res.setHeader('Cache-Control', 'private, no-store');
   res.vary('Cookie');
@@ -91,6 +92,7 @@ function normalizePostInput(body, oldPost = null) {
 }
 
 function buildListQuery(query) {
+  const contentLocale=translations.locale(query.locale);
   const search = String(query.search || query.q || '').trim();
   const category = String(query.category || '').trim();
   const tag = String(query.tag || '').trim();
@@ -105,6 +107,7 @@ function buildListQuery(query) {
     where.push(`(p.title LIKE ? OR p.summary LIKE ? OR p.content LIKE ? OR p.category LIKE ? OR p.tags LIKE ?)`);
     const keyword = `%${search}%`;
     params.push(keyword, keyword, keyword, keyword, keyword);
+    if(contentLocale==='en'){where[where.length-1]=where[where.length-1].slice(0,-1)+" OR EXISTS (SELECT 1 FROM post_translations t WHERE t.post_id=p.id AND t.locale='en' AND t.status='published' AND (t.title LIKE ? OR t.summary LIKE ? OR t.content LIKE ?)))";params.push(keyword,keyword,keyword);}
   }
 
   if (category) {
@@ -132,7 +135,7 @@ function buildListQuery(query) {
   };
 }
 
-router.get('/meta/categories', async (_req, res) => {
+router.get('/meta/categories', async (req, res) => {
   const [rows] = await db.query(`
     SELECT category, COUNT(*) AS count
     FROM posts
@@ -143,10 +146,11 @@ router.get('/meta/categories', async (_req, res) => {
     ORDER BY count DESC, category ASC
   `);
 
+  if(translations.locale(req.query.locale)==='en')for(const row of rows)row.display_name=(await require('../lib/contentTranslations').localize(db,'category',{name:row.category},'en',{id:row.category})).name;
   res.json(rows);
 });
 
-router.get('/meta/tags', async (_req, res) => {
+router.get('/meta/tags', async (req, res) => {
   const [rows] = await db.query(`
     SELECT tags
     FROM posts
@@ -168,6 +172,7 @@ router.get('/meta/tags', async (_req, res) => {
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
 
+  if(translations.locale(req.query.locale)==='en')for(const row of result)row.display_name=(await require('../lib/contentTranslations').localize(db,'tag',{name:row.tag},'en',{id:row.tag})).name;
   res.json(result);
 });
 
@@ -175,7 +180,8 @@ require('../lib/articleDiscovery').attachDiscovery(router,db);
 
 router.get('/', async (req, res) => {
   const { sql, params } = buildListQuery(req.query);
-  const [rows] = await db.query(sql, params);
+  const [rawRows] = await db.query(sql, params);
+  const rows=await translations.publicPosts(db,rawRows,req.query.locale);
   if(req.query.format==='paged'){
     const countSql=sql.replace(/SELECT[\s\S]+?FROM posts p/,'SELECT COUNT(*) AS total FROM posts p').replace(/ORDER BY[\s\S]+$/,'');
     const [[count]]=await db.query(countSql,params.slice(0,-2));
@@ -199,7 +205,8 @@ router.get('/:id', async (req, res) => {
   let image_dimensions = {};
   try { image_dimensions = await require('../lib/articleImages').articleImageDimensions(rows[0], db); }
   catch (error) { console.warn('[posts/image-dimensions]', error.code || 'unavailable'); }
-  res.json({ ...withCoverCrop(rows[0]), image_dimensions });
+  const localized=await translations.publicPost(db,rows[0],req.query.locale);
+  res.json({ ...withCoverCrop({...localized,slug:displayArticleSlug(localized.slug)}), image_dimensions });
 });
 
 const revisions = require('../lib/articleRevisions');
@@ -208,6 +215,7 @@ async function writeTransaction(work){const c=await db.getConnection();try{await
 const writeHandler=work=>async(req,res)=>{try{res.json(await writeTransaction(c=>work(c,req)));}catch(e){e=articleSlugWriteError(e);if(e.status)return res.status(e.status).json({message:e.message});if(e.code==='ER_DUP_ENTRY')return res.status(409).json({message:'链接别名已存在。'});console.error('[posts/write]',e.code||'failed');res.status(500).json({message:'文章保存失败'});}};
 const publishGuard=(req,res,next)=>require('../services/articleWorkflow').enabled()&&!isAdminLike(req.user)?res.status(403).json({message:'请通过我的投稿提交审核。'}):next();
 const prepareSummary=async(req,res,next)=>{try{
+ if(translations.locale(req.body.locale)!=='zh-CN')throw writeError('Use the translation draft endpoint to edit English.',400);
  let old=null;if(req.params.id){const [[row]]=await db.query('SELECT * FROM posts WHERE id=?',[req.params.id]);if(!row||!canManagePost(req.user,row))throw writeError('文章不存在或无权限。',404);if(req.body.version!==row.version)throw writeError('文章已变化，请刷新。',409);old=row;}
  const normalized=normalizePostInput(req.body,old);if(normalized.error)throw writeError(normalized.error,400);
  const p=normalized.value;
@@ -242,16 +250,17 @@ router.delete('/:id',routeLimiter, authRequired, editorOrAdmin, publishGuard, as
  try{
   await c.beginTransaction();
   const workflow=require('../services/articleWorkflow');
-  const [[draft]]=await c.query('SELECT * FROM article_drafts WHERE post_id=? FOR UPDATE',[req.params.id]);
-  if(draft&&workflow.enabled())await workflow.assertEditable(c,draft);
+  const [drafts]=await c.query('SELECT * FROM article_drafts WHERE post_id=? ORDER BY id FOR UPDATE',[req.params.id]);
+  if(workflow.enabled())for(const draft of drafts)await workflow.assertEditable(c,draft);
   const [[post]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[req.params.id]);
   if(!post){await c.rollback();return res.status(404).json({message:'不存在'});}
   if(!canManagePost(req.user,post)){await c.rollback();return res.status(403).json({message:'无权限删除这篇文章'});}
-  if(draft&&workflow.enabled())await c.query('DELETE FROM article_workflows WHERE draft_id=?',[draft.id]);
+  if(workflow.enabled())await c.query('DELETE w FROM article_workflows w JOIN article_drafts d ON d.id=w.draft_id WHERE d.post_id=?',[post.id]);
   await c.query('DELETE FROM posts WHERE id=?',[post.id]);
   await c.commit();res.json({message:'删除成功'});
  }catch(e){await c.rollback();if(e.status)return res.status(e.status).json({message:e.message});throw e;}finally{c.release();}
 });
 
+router.use((error,_req,res,next)=>{if(['INVALID_LOCALE','TRANSLATION_UNAVAILABLE'].includes(error.code))return res.status(error.status).json({code:error.code,message:error.message});next(error);});
 module.exports = router;
 

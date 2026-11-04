@@ -1,0 +1,34 @@
+.newsletter-admin .newsletter-overview{padding:24px;border:1px solid var(--border);border-radius:var(--panel-radius,16px);background:var(--card);margin-bottom:24px}
+.newsletter-admin .newsletter-overview-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.newsletter-admin .newsletter-overview h2{font-size:20px;font-weight:650;line-height:1.4;margin:0 0 8px}
+.newsletter-admin .newsletter-schedule{font-size:16px;font-weight:500;line-height:1.6;margin:0}
+.newsletter-admin .newsletter-description{color:var(--muted-foreground);font-size:14px;line-height:1.7;margin:12px 0 20px}
+.newsletter-admin .newsletter-status{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;flex:none;border-radius:999px;background:var(--muted);font-size:14px;line-height:1.4;font-weight:600;white-space:nowrap}
+.newsletter-admin .newsletter-status>span{width:6px;height:6px;flex:none;border-radius:50%;background:currentColor}
+.newsletter-admin .admin-notice{padding:20px;margin-bottom:20px}
+.newsletter-admin .admin-notice strong{display:block;font-size:16px;font-weight:600;margin-bottom:6px}
+.newsletter-admin .admin-notice p{margin:0;line-height:1.7}
+.newsletter-admin .newsletter-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:16px}
+.newsletter-admin .newsletter-actions>a,.newsletter-admin .newsletter-actions>button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--foreground);font-size:14px;line-height:1.4;white-space:nowrap}
+.newsletter-admin .newsletter-config{margin-top:12px}
+.newsletter-admin .newsletter-config summary{font-weight:500;font-size:14px;color:var(--muted-foreground)}
+.newsletter-admin .newsletter-config p{padding-bottom:4px;max-width:80ch;color:var(--muted-foreground)}
+.newsletter-admin .newsletter-overview-footer{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.newsletter-admin .newsletter-primary{background:var(--foreground);border-color:var(--foreground);color:var(--background);font-weight:600;white-space:nowrap;padding-inline:20px;flex:none}
+.newsletter-admin .newsletter-counts{display:flex;flex-wrap:wrap;gap:24px;margin:0;padding:0;border:0}
+.newsletter-admin .newsletter-counts p{display:flex;gap:8px;align-items:baseline;padding:0;background:transparent;border-radius:0;font-size:14px;margin:0}
+.newsletter-admin .newsletter-counts strong{font-size:20px;line-height:1.4;font-weight:600}
+.newsletter-admin .newsletter-counts span{color:var(--muted-foreground)}
+.newsletter-admin .newsletter-navigation{display:flex;flex-wrap:wrap;gap:8px;padding:0 0 16px;border-bottom:1px solid var(--border)}
+.newsletter-admin .newsletter-navigation button{white-space:nowrap;background:var(--card);border-color:var(--border)}
+.newsletter-admin .newsletter-navigation button[aria-pressed=true]{background:var(--foreground);border-color:var(--foreground);color:var(--background);font-weight:600}
+.newsletter-admin .newsletter-section{margin-top:24px}
+.newsletter-admin [hidden]{display:none}
+.newsletter-admin .admin-empty-result{border:0;background:transparent}
+.newsletter-admin .admin-empty-result .admin-state--empty{min-height:180px;padding:24px 16px}
+.newsletter-admin .newsletter-section .admin-records article{padding-block:16px;border-top:1px solid var(--border)}
+.newsletter-admin button:disabled{opacity:.45;cursor:not-allowed}
+.newsletter-admin :is(button,a,summary):focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
+.newsletter-admin :is(.newsletter-actions>a,.newsletter-actions>button,.newsletter-navigation>button):hover:not(:disabled):not([aria-pressed=true]){background:var(--muted)}
+.newsletter-admin .newsletter-primary:hover:not(:disabled){opacity:.85}
+@media(max-width:600px){.newsletter-admin .newsletter-overview{padding:20px 16px}.newsletter-admin .newsletter-overview-heading{flex-wrap:wrap;gap:12px}.newsletter-admin .admin-notice{padding:16px}.newsletter-admin .newsletter-overview-footer{gap:20px}.newsletter-admin .newsletter-navigation{gap:4px}.newsletter-admin .newsletter-navigation button{padding-inline:10px}.newsletter-admin .newsletter-actions{align-items:stretch}.newsletter-admin .newsletter-actions>a,.newsletter-admin .newsletter-actions>button{white-space:normal;text-align:center}}

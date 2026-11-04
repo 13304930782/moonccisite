@@ -1,10 +1,15 @@
+import { useI18n } from '../i18n';
+import {LanguageSwitch} from '../components/LanguageSwitch';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { ArrowLeft, CheckCircle2, ChevronRight, ImagePlus, Loader2, MoreHorizontal, Settings2, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, ImagePlus, Loader2, MoreHorizontal, Pencil, Eye, Settings2, Trash2, Upload, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import {Link} from '../components/LocaleLink';
+import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { usePublishing } from '../lib/usePublishing';
 import { useArticleDraft } from '../lib/useArticleDraft';
+import type {Locale} from '../lib/locale';
 import { api } from '../lib/api';
 import { articlePath } from '../lib/articleUrl';
 import { notify } from '../lib/feedback';
@@ -23,11 +28,12 @@ import { CoverFramingDialog } from '../components/CoverFramingDialog';
 import { CoverImage } from '../components/CoverImage';
 import { CoverDisplayPreviews } from '../components/CoverDisplayPreviews';
 import { MarkdownContent } from '../components/MarkdownContent';
+import { StatusNotice } from '../components/ContentUI';
 import { AdminButton } from '../components/admin/AdminButton';
 import { Switch } from '../components/ui/switch';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../components/ui/dialog';
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetDescription } from '../components/ui/sheet';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator } from '../components/ui/dropdown-menu';
 import '../../styles/article-workspace.css';
 import '../../styles/admin-ui-v2.css';
 import '../../styles/admin-writing.css';
@@ -43,13 +49,22 @@ export default function AdminWritePage() {
 }
 
 function Workspace({ userId, postId }: { userId: number; postId?: string }) {
+  const { locale, t} = useI18n();
+  const { preference, setLocale, languageError } = useLocale();
   const { user } = useAuth();
   const navigate = useNavigate();
   const publishing = usePublishing();
   const contributor = publishing && !['owner', 'admin'].includes(user?.role || '');
   const account = location.pathname.startsWith('/account');
   const backTo = account ? '/account/submissions' : '/admin/posts';
-  const d = useArticleDraft(userId, postId);
+  const [editorLocale,setEditorLocale] = useState<Locale>('zh-CN');
+  const [englishOpened,setEnglishOpened] = useState(false);
+  const chinese = useArticleDraft(userId,postId);
+  const sharedPostId = postId || (chinese.draft?.post_id ? String(chinese.draft.post_id) : undefined);
+  const english = useArticleDraft(userId,sharedPostId,'en',englishOpened && !!sharedPostId);
+  const d = editorLocale === 'en' ? english : chinese;
+  const englishVersion = editorLocale === 'en';
+  const versionPublished=(englishVersion?d.draft?.translation_status:d.draft?.post_status)==='published';
   const slugReserved = ['archives', 'meta'].includes(String(d.form.slug || '').trim());
   const [published, setPublished] = useState(false);
   const [conflictMode, setConflictMode] = useState<'compare' | 'review' | 'edit'>('compare');
@@ -121,11 +136,11 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
     return () => { large.removeEventListener('change', resize); small.removeEventListener('change', resize); };
   }, []);
   useEffect(() => {
-    const scroll = workspace.current?.closest('.admin-main') || window;
+    const scroll = (!phone && workspace.current?.querySelector('.writing-main')) || workspace.current?.closest('.admin-main') || window;
     const update = () => setScrolled(scroll instanceof HTMLElement ? scroll.scrollTop > 4 : window.scrollY > 4);
     update(); scroll.addEventListener('scroll', update, { passive: true });
     return () => scroll.removeEventListener('scroll', update);
-  }, [published]);
+  }, [published, phone]);
   useEffect(() => { if (published) completion.current?.focus(); }, [published]);
   useEffect(() => {
     const viewport = window.visualViewport, host = workspace.current;
@@ -134,7 +149,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
     const update = () => {
       if (layoutWidth !== window.innerWidth) { layoutWidth = window.innerWidth; baseline = Math.max(window.innerHeight, document.documentElement.clientHeight, Number.isFinite(viewport.height) ? viewport.height : 0); }
       const active = document.activeElement;
-      editing = active instanceof HTMLElement && host.contains(active) && (active.matches('.article-editor [contenteditable=true],textarea[aria-label="Markdown 正文"]') || editing && !!active.closest('.editor-toolbar-frame,.article-source-toolbar'));
+      editing = active instanceof HTMLElement && host.contains(active) && (active.matches('.article-editor [contenteditable=true],textarea[data-markdown-editor]') || editing && !!active.closest('.editor-toolbar-frame,.article-source-toolbar'));
       if (!editing && Number.isFinite(viewport.height)) baseline = Math.max(baseline, viewport.height);
       const keyboardHeight = baseline - viewport.height - viewport.offsetTop, top = viewport.offsetTop + viewport.height - 44;
       const editor = host.querySelector('.article-editor')?.getBoundingClientRect(), header = host.querySelector('.writing-topbar')?.getBoundingClientRect();
@@ -194,13 +209,13 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
     setPreview(false); setMode(lastEditMode.current);
     if (['summary', 'category', 'tags', 'slug', 'cover'].includes(field)) { if (wide) collapseSettings(false); else setSettingsOpen(true); }
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      const target = document.getElementById('article-' + field) || (field === 'cover' ? document.querySelector<HTMLElement>('.writing-cover-drop,.writing-media-select') : null) || workspace.current?.querySelector<HTMLElement>('[aria-label="Markdown 正文"], .article-editor [contenteditable="true"], .article-editor button');
+      const target = document.getElementById('article-' + field) || (field === 'cover' ? document.querySelector<HTMLElement>('.writing-cover-drop,.writing-media-select') : null) || workspace.current?.querySelector<HTMLElement>('[data-markdown-editor], .article-editor [contenteditable="true"], .article-editor button');
       target?.focus();
     }));
   };
   useEffect(() => { if (d.summaryError) fixField('summary'); }, [d.summaryError]);
   const openPreview = async () => { commitTags(); if (await d.generateSummary()) { setSettingsOpen(false); setPreview(true); } };
-  const submit = async () => { if (await d.action('submit')) { setPreview(false); notify.success('稿件已提交审核'); } };
+  const submit = async () => { if (await d.action('submit')) { setPreview(false); notify.success(t("m_047e544107")); } };
   const publish = async () => {
     if (await (conflictMode === 'review' && d.serverCopy ? d.resolveConflict('publish-current') : d.action('publish'))) { setPreview(false); setConflictMode('edit'); setPublished(true); }
   };
@@ -215,58 +230,63 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   };
   const uploadCover = async (file: File) => {
     if (fieldsDisabled || uploads > 0) return;
-    if (!file.type.startsWith('image/')) { setUploadError('请选择图片文件。'); return; }
+    if (!file.type.startsWith('image/')) { setUploadError(t("m_e51a2ecf22")); return; }
     try { change('cover_image', await upload(file)); } catch (error: any) { setUploadError(error.message); }
   };
   const summary = stripLegacyAgeNotice(d.form.summary), summaryLength = Array.from(summary).length;
-  const automatic = d.form.summary_mode === 'ai' || !summary.trim() && d.form.summary_mode !== 'manual';
+  const automatic = !englishVersion && (d.form.summary_mode === 'ai' || !summary.trim() && d.form.summary_mode !== 'manual');
   const cover = safeImageSrc(d.form.cover_image);
-  const lockedTitle = reviewState === 'scheduled' ? '已安排定时发布' : reviewState === 'approved' ? '审核已通过，等待发布' : '待管理员审核';
+  const lockedTitle = reviewState === 'scheduled' ? t("m_58d276b79b") : reviewState === 'approved' ? t("m_f6304d5dea") : t("m_73adfa6919");
 
   if (published) return <div className="admin-page article-workspace writing-workspace ui-v2">
-    <Link className="article-back-link" to={backTo}><ArrowLeft size={16} aria-hidden="true" />返回稿件列表</Link>
-    <section className="article-published"><CheckCircle2 size={32} aria-hidden="true" /><p className="article-workspace-eyebrow">发布完成</p><h1 ref={completion} tabIndex={-1}>文章已发布</h1><p className="article-published-title">{d.form.title}</p><p className="article-workspace-caption">读者现在可以查看这篇文章。后续修改需再次发布才会更新到网站。</p><div className="article-completion-actions">{d.draft?.post_id && <Link className="article-button article-button-primary" to={articlePath({id:d.draft.post_id,slug:d.draft.payload.slug})}>查看文章 ↗</Link>}<AdminButton type="button" variant="soft" onClick={() => setPublished(false)} className="ui-btn ui-btn--soft">继续编辑</AdminButton><Link className="article-back-link" to={backTo}>返回稿件列表 →</Link></div></section>
+    <Link className="article-back-link" to={backTo}><ArrowLeft size={16} aria-hidden="true" />{t("m_2b615e36a3")}</Link>
+    <section className="article-published"><CheckCircle2 size={32} aria-hidden="true" /><p className="article-workspace-eyebrow">{t("m_d66f5aae02")}</p><h1 ref={completion} tabIndex={-1}>{t("m_7aff53ceac")}</h1><p className="article-published-title">{d.form.title}</p><p className="article-workspace-caption">{t("m_69a8153718")}</p><div className="article-completion-actions">{d.draft?.post_id && <Link className="article-button article-button-primary" to={articlePath({id:d.draft.post_id,slug:d.draft.payload.slug},editorLocale)}>{t("m_5d3dc3103e")}</Link>}<AdminButton type="button" variant="soft" onClick={() => setPublished(false)} className="ui-btn ui-btn--soft">{t("m_fd4b9e3b6c")}</AdminButton><Link className="article-back-link" to={backTo}>{t("m_45a65d3ca1")}</Link></div></section>
   </div>;
 
   const openHistory = () => { historyOrigin.current = phone ? moreTrigger.current : historyTrigger.current; setHistoryOpen(true); };
-  const modeSwitch = !locked && !showComparison && <div className="writing-mode-switch writing-segment" role="group" aria-label="正文编辑模式"><button type="button" aria-pressed={!preview && editorMode === 'visual'} disabled={!d.ready || uploads > 0} onClick={() => { setPreview(false); setMode('visual'); }}>富文本编辑</button><button type="button" aria-pressed={preview || editorMode === 'preview'} disabled={!d.ready || uploads > 0} onClick={() => { setPreview(false); setMode('preview'); }}>阅读预览</button></div>;
-  const shortStatus = d.error ? '保存失败 重试' : d.busy ? '保存中…' : d.dirty ? '未保存' : d.ready ? '已保存' : '加载中…';
+  const modeSwitch = !locked && !showComparison && <div className="writing-mode-switch writing-segment" role="group" aria-label={t("m_1e594397ca")}><button type="button" aria-pressed={!preview && editorMode === 'visual'} disabled={!d.ready || uploads > 0} onClick={() => { setPreview(false); setMode('visual'); }}><Pencil size={15} aria-hidden="true" />{t("m_c029ea24cb")}</button><button type="button" aria-pressed={preview || editorMode === 'preview'} disabled={!d.ready || uploads > 0} onClick={() => { setPreview(false); setMode('preview'); }}><Eye size={15} aria-hidden="true" />{t("m_64d4febdc0")}</button></div>;
+  const shortStatus = d.error ? t("m_831e8ae014") : d.busy ? t("m_ff509c9ba0") : d.dirty ? t("m_6a1be012c9") : d.ready ? t("m_1bd91a7d0c") : t("m_4927a53bcc");
 
   const draftActions = [
-    ...(publishing && !contributor ? [{ label: '提交到审核 / 发布计划', disabled: !d.ready || locked || d.busy || d.blocked || uploads > 0, run: () => void submit() }] : []),
-    ...(!contributor && d.draft?.post_status === 'published' ? [{ label: '撤回为草稿', disabled: locked || d.busy || d.isRestoring || d.blocked, run: () => { void (async () => { if (await confirmAction('撤回后读者将无法访问这篇文章，确定撤回？')) void d.action('withdraw'); })(); } }] : []),
-    ...(d.draft?.post_status === 'published' ? [{ label: '查看文章', disabled: false, run: () => navigate(`/article/${d.draft.post_id}`) }] : []),
-    ...(d.draft ? [{ label: d.draft.post_id ? '放弃未发布修改' : '删除草稿及历史', danger: true, disabled: locked || d.busy || d.isRestoring || uploads > 0, run: () => { void (async () => { if (await confirmAction(d.draft.post_id ? '放弃这份修订稿和当前未保存内容？公开文章和历史保持不变。' : '永久删除这份未发布草稿及其全部历史？')) void d.discard(); })(); } }] : []),
+    ...(publishing && !contributor ? [{ label: t("m_7ddb7d0fcc"), disabled: !d.ready || locked || d.busy || d.blocked || uploads > 0, run: () => void submit() }] : []),
+    ...(!contributor && versionPublished ? [{ label: t("m_c91bcb8e27"), disabled: locked || d.busy || d.isRestoring || d.blocked, run: () => { void (async () => { if (await confirmAction(t("m_cf9bb94aa2"))) void d.action('withdraw'); })(); } }] : []),
+    ...(versionPublished ? [{ label: t("m_f6beed2923"), disabled: false, run: () => navigate(articlePath({id:d.draft.post_id,slug:d.draft.payload.slug},editorLocale)) }] : []),
+    ...(d.draft ? [{ label: d.draft.post_id ? t("m_9ae8295a9b") : t("m_adb7015d2d"), danger: true, disabled: locked || d.busy || d.isRestoring || uploads > 0, run: () => { void (async () => { if (await confirmAction(d.draft.post_id ? t("m_6acaf74473") : t("m_fceb101c01"))) void d.discard(); })(); } }] : []),
   ];
 
   const settings = <fieldset disabled={fieldsDisabled} className="writing-settings-fields">
-    <section className="writing-setting-section"><h2>封面</h2>
-      {cover ? <><div className="writing-cover-preview"><CoverImage src={cover} frame={effectiveCoverFrame(coverFrame(d.form.cover_crop, 'detail'), 'detail')} alt="封面显示范围预览" /></div><div className="writing-cover-actions"><AdminButton type="button" variant="soft" disabled={uploads > 0 || d.busy || d.isRestoring} onClick={() => setFraming(d.form.cover_image)} className="ui-btn ui-btn--soft">调整取景</AdminButton><AdminButton type="button" variant="ghost" onClick={() => fileInput.current?.click()} className="ui-btn ui-btn--ghost">更换</AdminButton><AdminButton type="button" variant="ghost" onClick={() => change('cover_image', '')} className="ui-btn ui-btn--ghost">移除</AdminButton></div></> : <button type="button" className="writing-cover-drop" disabled={uploads > 0} onClick={() => fileInput.current?.click()} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) void uploadCover(file); }} onPaste={event => { const address = event.clipboardData.getData('text').trim(); if (safeImageSrc(address)) { event.preventDefault(); change('cover_image', address); } }}><ImagePlus size={24} aria-hidden="true" /><span>拖放图片，或点击上传</span><small>也可以粘贴图片地址</small></button>}
-      <AdminButton type="button" variant="ghost" className="writing-address-toggle ui-btn ui-btn--ghost" aria-expanded={coverAddress} onClick={() => setCoverAddress(value => !value)}>使用图片地址</AdminButton>
-      {(coverAddress || !!d.form.cover_image && !cover) && <label htmlFor="article-cover">封面地址<input id="article-cover" value={d.form.cover_image} onChange={event => change('cover_image', event.target.value)} placeholder="输入图片地址，或从媒体库选择" className="ui-input" /></label>}
-      <AdminButton type="button" variant="soft" className="writing-media-select ui-btn ui-btn--soft" onClick={() => setPicker('cover')}>从媒体库选择</AdminButton>
-      <div className="writing-quality"><span>图片质量</span><div className="writing-segment" role="group" aria-label="图片质量">{[['low', '较小'], ['medium', '标准'], ['high', '高清']].map(([value, label]) => <button type="button" key={value} aria-pressed={quality === value} onClick={() => setQuality(value)}>{label}</button>)}</div></div>
+    {englishVersion && <p>{t("m_49a78a6f19")}</p>}
+    <fieldset disabled={englishVersion} className="writing-settings-fields">
+    <section className="writing-setting-section"><h2>{t("m_ccbb5ee62b")}</h2>
+      {cover ? <><div className="writing-cover-preview"><CoverImage src={cover} frame={effectiveCoverFrame(coverFrame(d.form.cover_crop, 'detail'), 'detail')} alt={t("m_870c003dd3")} /></div><div className="writing-cover-actions"><AdminButton type="button" variant="soft" disabled={uploads > 0 || d.busy || d.isRestoring} onClick={() => setFraming(d.form.cover_image)} className="ui-btn ui-btn--soft">{t("m_63d34caa68")}</AdminButton><AdminButton type="button" variant="ghost" onClick={() => fileInput.current?.click()} className="ui-btn ui-btn--ghost">{t("m_916afcd853")}</AdminButton><AdminButton type="button" variant="ghost" onClick={() => change('cover_image', '')} className="ui-btn ui-btn--ghost">{t("m_6135d4159e")}</AdminButton></div></> : <button type="button" className="writing-cover-drop" disabled={uploads > 0} onClick={() => fileInput.current?.click()} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) void uploadCover(file); }} onPaste={event => { const address = event.clipboardData.getData('text').trim(); if (safeImageSrc(address)) { event.preventDefault(); change('cover_image', address); } }}><ImagePlus size={24} aria-hidden="true" /><span>{t("m_9d2c3a680e")}</span><small>{t("m_84bd6feeed")}</small></button>}
+      <AdminButton type="button" variant="ghost" className="writing-address-toggle ui-btn ui-btn--ghost" aria-expanded={coverAddress} onClick={() => setCoverAddress(value => !value)}>{t("m_f50757280f")}</AdminButton>
+      {(coverAddress || !!d.form.cover_image && !cover) && <label htmlFor="article-cover">{t("m_ca6844ca55")}<input id="article-cover" value={d.form.cover_image} onChange={event => change('cover_image', event.target.value)} placeholder={t("m_0189412954")} className="ui-input" /></label>}
+      <AdminButton type="button" variant="soft" className="writing-media-select ui-btn ui-btn--soft" onClick={() => setPicker('cover')}>{t("m_b1a53ac1d4")}</AdminButton>
+      <div className="writing-quality"><span>{t("m_0ab5629be5")}</span><div className="writing-segment" role="group" aria-label={t("m_0ab5629be5")}>{[['low', t("m_b58fafc108")], ['medium', t("m_6bea77acef")], ['high', t("m_40ab001308")]].map(([value, label]) => <button type="button" key={value} aria-pressed={quality === value} onClick={() => setQuality(value)}>{label}</button>)}</div></div>
     </section>
-    <section className="writing-setting-section"><label htmlFor="article-category">分类<input id="article-category" value={d.form.category} placeholder="选择或输入分类" onChange={event => change('category', event.target.value)} className="ui-input" /></label></section>
-    <section className="writing-setting-section"><label htmlFor="article-tags">标签</label><TagInput id="article-tags" tags={d.form.tags||[]} value={tagInput} onInput={setTagInput} onCommit={commitTags} onRemove={index=>change('tags',d.form.tags.filter((_:string,position:number)=>position!==index))}/></section>
-    <section className="writing-setting-section"><label htmlFor="article-slug">英文链接<span className="writing-slug"><span>/article/</span><input id="article-slug" value={d.form.slug} maxLength={100} autoCapitalize="none" spellCheck={false} aria-describedby={slugReserved ? "article-slug-hint article-slug-error" : "article-slug-hint"} aria-invalid={slugReserved || undefined} placeholder="例如 cities-skylines-2-mods" onChange={event => change('slug', event.target.value)} className="ui-input" /></span></label>
-      <p id="article-slug-hint" className="writing-ai-help">手动输入小写英文字母、数字和短横线，最多 100 个字符；也可以让 DeepSeek 根据文章生成。</p>
-      <AdminButton type="button" variant="soft" className="writing-generate-summary ui-btn ui-btn--soft" disabled={!ai?.enabled || !d.form.title.trim() || d.busy || d.blocked} onClick={() => { commitTags(); void d.generateSlug(); }}>{d.slugBusy && <Loader2 className="writing-spinner" size={14} aria-hidden="true" />}{d.slugBusy ? '生成中…' : 'DeepSeek 生成英文链接'}</AdminButton>
-      {!ai?.enabled && <p className="writing-ai-help">{ai?.unavailable ? 'AI 设置暂时无法读取，可以先手动填写。' : 'AI 尚未启用，可以手动填写英文链接。'}</p>}
-      {slugReserved && <p id="article-slug-error" role="alert">这个英文链接已被系统使用，请换一个名称。</p>}
-      {d.slugError && <p role="alert">{d.slugError} 可重试，或手动填写英文链接。</p>}
+    <section className="writing-setting-section"><label htmlFor="article-category">{t("m_515559957f")}<input id="article-category" value={d.form.category} placeholder={t("m_26127f0906")} onChange={event => change('category', event.target.value)} className="ui-input" /></label></section>
+    <section className="writing-setting-section"><label htmlFor="article-tags">{t("m_1d0fd5f933")}</label><TagInput id="article-tags" tags={d.form.tags||[]} value={tagInput} onInput={setTagInput} onCommit={commitTags} onRemove={index=>change('tags',d.form.tags.filter((_:string,position:number)=>position!==index))}/></section>
+    <section className="writing-setting-section"><label htmlFor="article-slug">{t("m_5503649ce1")}<span className="writing-slug"><span>/article/</span><input id="article-slug" value={d.form.slug} maxLength={100} autoCapitalize="none" spellCheck={false} aria-describedby={slugReserved ? "article-slug-hint article-slug-error" : "article-slug-hint"} aria-invalid={slugReserved || undefined} placeholder={t("m_bd9be8f2ad")} onChange={event => change('slug', event.target.value)} className="ui-input" /></span></label>
+      <p id="article-slug-hint" className="writing-ai-help">{t("m_d29fde4a50")}</p>
+      <AdminButton type="button" variant="soft" className="writing-generate-summary ui-btn ui-btn--soft" disabled={!ai?.enabled || !d.form.title.trim() || d.busy || d.blocked} onClick={() => { commitTags(); void d.generateSlug(); }}>{d.slugBusy && <Loader2 className="writing-spinner" size={14} aria-hidden="true" />}{d.slugBusy ? t("m_43d2661b36") : t("m_57306b3469")}</AdminButton>
+      {!ai?.enabled && <StatusNotice state={ai?.unavailable ? "error" : "info"}>{ai?.unavailable ? t("m_c822344a9a") : t("m_2369fa260a")}</StatusNotice>}
+      {slugReserved && <p id="article-slug-error" role="alert">{t("m_32056c8bb5")}</p>}
+      {d.slugError && <p role="alert">{d.slugError}  {t("m_7245bccb33")}</p>}
     </section>
-    <section className="writing-setting-section writing-summary"><div className="writing-summary-label"><label htmlFor="article-summary">简介</label><span title="建议 80–140 字，搜索引擎可能另选摘要。" className={summaryLength > 140 ? 'writing-summary-warning' : undefined}>{summaryLength} / 140 字</span></div><textarea id="article-summary" rows={4} value={summary} placeholder="介绍文章主题与主要内容" aria-describedby="article-summary-mode-hint" onChange={event => change('summary', event.target.value)} className="ui-input" />
-      <div className="writing-summary-actions"><label className="writing-ai-switch"><Switch checked={automatic} aria-label="DeepSeek 自动总结" onCheckedChange={checked => d.update((previous: any) => ({ ...previous, summary_mode: checked ? 'ai' : 'manual', summary_receipt: '' }))} /><span>DeepSeek 自动总结</span></label><AdminButton type="button" variant="soft" className="writing-generate-summary ui-btn ui-btn--soft" disabled={!ai?.enabled || d.busy || d.blocked} onClick={() => { commitTags(); void d.generateSummary(true); }}>{d.summaryBusy && <Loader2 className="writing-spinner" size={14} aria-hidden="true" />}{d.summaryBusy ? '生成中…' : '生成简介'}</AdminButton></div>
-      <div className="writing-ai-help" id="article-summary-mode-hint"><span>{ai?.unavailable ? 'AI 设置暂时无法读取，可先填写手写简介。' : '预览或发布前，根据正文生成简介。'}</span>{user?.role === 'owner' && <Link to="/admin/ai-settings">配置 AI</Link>}</div>
-      {d.form.summary_mode === 'ai' && <p className="writing-ai-receipt" role="status">{d.form.summary_receipt ? 'AI 简介已生成。' : '预览时将根据当前正文生成简介。'}</p>}
-      {d.summaryError && <p role="alert">{d.summaryError} 可重试，或编辑简介改为手写。</p>}
+    </fieldset>
+    <section className="writing-setting-section writing-summary"><div className="writing-summary-label"><label htmlFor="article-summary">{t("m_8131eafd02")}</label><span title={t("m_0d25a40e88")} className={summaryLength > 140 ? 'writing-summary-warning' : undefined}>{summaryLength}  {t("m_64315e56d6")}</span></div><textarea id="article-summary" rows={4} value={summary} placeholder={t("m_417a1c538e")} aria-describedby="article-summary-mode-hint" onChange={event => change('summary', event.target.value)} className="ui-input" />
+      {!englishVersion && <><div className="writing-summary-actions"><label className="writing-ai-switch"><Switch checked={automatic} aria-label={t("m_3a8e5f3da5")} onCheckedChange={checked => d.update((previous: any) => ({ ...previous, summary_mode: checked ? 'ai' : 'manual', summary_receipt: '' }))} /><span>{t("m_3a8e5f3da5")}</span></label><AdminButton type="button" variant="soft" className="writing-generate-summary ui-btn ui-btn--soft" disabled={!ai?.enabled || d.busy || d.blocked} onClick={() => { commitTags(); void d.generateSummary(true); }}>{d.summaryBusy && <Loader2 className="writing-spinner" size={14} aria-hidden="true" />}{d.summaryBusy ? t("m_43d2661b36") : t("m_34cd059814")}</AdminButton></div>
+      <div className="writing-ai-help" id="article-summary-mode-hint"><span>{ai?.unavailable ? t("m_e92543b224") : t("m_fa5522981b")}</span>{user?.role === 'owner' && <Link to="/admin/ai-settings">{t("m_d02656b388")}</Link>}</div>
+      </>}
+      {englishVersion && <p>{t("m_581d752eaf")}</p>}
+      {!englishVersion && d.form.summary_mode === 'ai' && <p className="writing-ai-receipt" role="status">{d.form.summary_receipt ? t("m_299d4c0238") : t("m_63795bee11")}</p>}
+      {d.summaryError && <p role="alert">{d.summaryError}  {t("m_3c447d3799")}</p>}
     </section>
-    {phone && !locked && draftActions.length > 0 && <section className="writing-setting-section writing-draft-actions"><h2>草稿操作</h2>{draftActions.map(action => <AdminButton type="button" key={action.label} variant="ghost" className={"ui-btn ui-btn--ghost " + (('danger' in action ? 'writing-menu-danger ui-btn--danger' : undefined) || '')} disabled={action.disabled} onClick={action.run}>{'danger' in action && <Trash2 size={18} strokeWidth={1.8} aria-hidden="true" />}{action.label}</AdminButton>)}</section>}
-    {d.form.source_url && <section className="writing-setting-section"><h2>旧站来源</h2><p>{d.form.source_url}</p><p>原发布时间：{d.form.published_at}（首次发布时保留）</p></section>}
+    {phone && !locked && draftActions.length > 0 && <section className="writing-setting-section writing-draft-actions"><h2>{t("m_7437cbd046")}</h2>{draftActions.map(action => <AdminButton type="button" key={action.label} variant="ghost" className={"ui-btn ui-btn--ghost " + (('danger' in action ? 'writing-menu-danger ui-btn--danger' : undefined) || '')} disabled={action.disabled} onClick={action.run}>{'danger' in action && <Trash2 size={18} strokeWidth={1.8} aria-hidden="true" />}{action.label}</AdminButton>)}</section>}
+    {d.form.source_url && <section className="writing-setting-section"><h2>{t("m_876df41c1d")}</h2><p>{d.form.source_url}</p><p>{t("m_624bd95d15")}{d.form.published_at}{t("m_434debb93e")}</p></section>}
   </fieldset>;
 
-  const settingsDescription = <SheetDescription className="sr-only">封面、分类、标签、链接别名和简介</SheetDescription>;
+  const settingsDescription = <SheetDescription className="sr-only">{t("m_1d27731c09")}</SheetDescription>;
 
   const mediaDialogs = <>
 {picker && <ArticleMediaPicker uploadImage={upload} restoreFocus={picker !== 'body'} onClose={() => setPicker(null)} onSelect={(url, alt) => { if (picker === 'cover') change('cover_image', url); else insert.current(url, alt); }} />}
@@ -276,37 +296,46 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   return <div ref={workspace} data-keyboard-open={keyboardToolbar ? 'true' : undefined} style={keyboardToolbar ? { '--writing-keyboard-top': `${keyboardToolbar.top}px`, '--writing-keyboard-left': `${keyboardToolbar.left}px`, '--writing-keyboard-width': `${keyboardToolbar.width}px` } as CSSProperties : undefined} className={`admin-page article-workspace writing-workspace ui-v2${wide && !collapsed && !locked && !showComparison && !preview ? ' writing-with-settings' : ''}`}>
     <div className="writing-main">
       <header className={`writing-topbar${scrolled ? ' is-scrolled' : ''}`}>
-        <div className="writing-topbar-meta"><button type="button" className="writing-back" aria-label={account ? '返回稿件列表' : '返回文章管理'} onClick={() => navigate(backTo)}><ArrowLeft size={15} aria-hidden="true" /><span>{account ? '返回稿件列表' : '文章管理'}</span></button><div className="writing-save-state" role="status" data-state={d.error ? 'error' : !d.ready ? 'loading' : d.busy ? 'saving' : d.dirty ? 'dirty' : 'saved'}><span className="writing-save-dot" aria-hidden="true" /><span className="writing-status-full">{d.status}</span><span className="writing-status-short">{!d.error ? shortStatus : <button type="button" className="writing-retry-short" disabled={d.busy || d.blocked} onClick={() => void save()}>{shortStatus}</button>}</span></div>{d.error && !d.blocked && <AdminButton type="button" variant="ghost" className="writing-retry-desktop ui-btn ui-btn--ghost" disabled={d.busy} onClick={() => void save()}>重试</AdminButton>}</div>
+        <div className="writing-topbar-meta"><button type="button" className="writing-back" aria-label={account ? t("m_2b615e36a3") : t("m_7bd74080eb")} onClick={() => navigate(backTo)}><ArrowLeft size={15} aria-hidden="true" /><span>{account ? t("m_2b615e36a3") : t("m_4e7cb68111")}</span></button><div className="writing-save-state" role="status" data-state={d.error ? 'error' : !d.ready ? 'loading' : d.busy ? 'saving' : d.dirty ? 'dirty' : 'saved'}><span className="writing-save-dot" aria-hidden="true" /><span className="writing-status-full">{d.status}</span><span className="writing-status-short">{!d.error ? shortStatus : <button type="button" className="writing-retry-short" disabled={d.busy || d.blocked} onClick={() => void save()}>{shortStatus}</button>}</span></div>{d.error && !d.blocked && <AdminButton type="button" variant="ghost" className="writing-retry-desktop ui-btn ui-btn--ghost" disabled={d.busy} onClick={() => void save()}>{t("m_b8784c8dd5")}</AdminButton>}</div>
         <div className="writing-mode-desktop">{modeSwitch}</div>
         <div className="writing-topbar-actions">
-          {!locked && <><AdminButton type="button" ref={historyTrigger} variant="ghost" className="writing-history-trigger ui-btn ui-btn--ghost" disabled={!d.ready} onClick={openHistory}>修订历史</AdminButton><AdminButton type="button" variant="soft" className="writing-save-trigger ui-btn ui-btn--soft" disabled={locked || !d.ready || d.busy || d.blocked || d.isRestoring} onClick={() => void save()}>{d.busy ? '保存中…' : '保存草稿'}</AdminButton></>}
-          {!locked && !preview && !showComparison && (!wide || collapsed) && <AdminButton type="button" ref={settingsTrigger} variant="ghost" className="writing-settings-trigger ui-btn ui-btn--ghost" aria-label="文章设置" aria-expanded={wide ? !collapsed : settingsOpen} onClick={() => wide ? collapseSettings(false) : setSettingsOpen(true)}><Settings2 size={16} aria-hidden="true" /><span>设置</span></AdminButton>}
-          {!locked && (phone || draftActions.length > 0) && <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" ref={moreTrigger} variant="ghost" size="icon" aria-label="更多文章操作" className="ui-btn ui-btn--ghost ui-btn--icon"><MoreHorizontal size={18} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal ui-v2 writing-more-menu">{phone ? <><DropdownMenuItem disabled={!d.ready || preview || showComparison} onSelect={() => setSettingsOpen(true)}>文章设置</DropdownMenuItem><DropdownMenuItem disabled={!d.ready} onSelect={openHistory}>修订历史</DropdownMenuItem><DropdownMenuItem disabled={locked || !d.ready || d.busy || d.blocked || d.isRestoring} onSelect={() => void save()}>保存草稿</DropdownMenuItem></> : draftActions.map(action => <DropdownMenuItem key={action.label} className={'danger' in action ? 'writing-menu-danger' : undefined} disabled={action.disabled} onSelect={action.run}>{action.label}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>}
-          {!locked && <AdminButton type="button" variant="solid" disabled={!d.ready || locked || d.busy || d.isRestoring || d.blocked || uploads > 0 || showComparison} onClick={() => void openPreview()} className="ui-btn ui-btn--solid">{contributor ? '预览并提交审核' : '发布'}</AdminButton>}
+          <div className="writing-interface-language"><span>{t("m_3d13868593")}</span><LanguageSwitch /></div>
+          {!locked && <><AdminButton type="button" ref={historyTrigger} variant="soft" className="writing-history-trigger writing-secondary-action ui-btn ui-btn--soft" disabled={!d.ready} onClick={openHistory}>{t("m_b11590c91f")}</AdminButton><AdminButton type="button" variant="soft" className="writing-save-trigger ui-btn ui-btn--soft" disabled={locked || !d.ready || d.busy || d.blocked || d.isRestoring} onClick={() => void save()}>{d.busy ? t("m_ff509c9ba0") : t("m_5329e3f0ee")}</AdminButton></>}
+          {!locked && !preview && !showComparison && (!wide || collapsed) && <AdminButton type="button" ref={settingsTrigger} variant="ghost" className="writing-settings-trigger ui-btn ui-btn--ghost" aria-label={t("m_89ae9a9ca1")} aria-expanded={wide ? !collapsed : settingsOpen} onClick={() => wide ? collapseSettings(false) : setSettingsOpen(true)}><Settings2 size={16} aria-hidden="true" /><span>{t("m_df3d58c7d8")}</span></AdminButton>}
+          {(!wide || (!locked && draftActions.length > 0)) && <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" ref={moreTrigger} variant="soft" size="icon" aria-label={t("m_1b0702d7cc")} className="writing-secondary-action ui-btn ui-btn--soft ui-btn--icon"><MoreHorizontal size={18} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal ui-v2 writing-more-menu"><DropdownMenuSub><DropdownMenuSubTrigger className="writing-language-menu-entry">{t("m_3d13868593")}</DropdownMenuSubTrigger><DropdownMenuSubContent className="admin-portal ui-v2 writing-language-submenu"><DropdownMenuRadioGroup value={preference} onValueChange={value => setLocale(value as 'zh-CN' | 'en' | 'system')}><DropdownMenuRadioItem value="zh-CN">{t("m_72726d8818")}</DropdownMenuRadioItem><DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem><DropdownMenuRadioItem value="system">{t("m_217cfe7db1")}</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuSubContent></DropdownMenuSub><DropdownMenuSeparator className="writing-language-menu-entry" />{!locked && (phone ? <><DropdownMenuItem disabled={!d.ready || preview || showComparison} onSelect={() => setSettingsOpen(true)}>{t("m_89ae9a9ca1")}</DropdownMenuItem><DropdownMenuItem disabled={!d.ready} onSelect={openHistory}>{t("m_b11590c91f")}</DropdownMenuItem><DropdownMenuItem disabled={locked || !d.ready || d.busy || d.blocked || d.isRestoring} onSelect={() => void save()}>{t("m_5329e3f0ee")}</DropdownMenuItem></> : draftActions.map(action => <DropdownMenuItem key={action.label} className={'danger' in action ? 'writing-menu-danger' : undefined} disabled={action.disabled} onSelect={action.run}>{action.label}</DropdownMenuItem>))}</DropdownMenuContent></DropdownMenu>}
+          {!locked && <AdminButton type="button" variant="solid" disabled={!d.ready || locked || d.busy || d.isRestoring || d.blocked || uploads > 0 || showComparison} onClick={() => void openPreview()} className="ui-btn ui-btn--solid">{contributor ? t("m_14466a5bf0") : t("m_b61f333b91")}</AdminButton>}
 
         </div>
       </header>
       <div className="writing-body">
+      <section className="writing-content-language" aria-label={t("m_d562f79cd4")}><span className="writing-content-language-label">{t("m_d562f79cd4")}</span><div className="writing-segment" role="group" aria-label={t("m_d562f79cd4")}>
+        <button type="button" className="quiet-button" aria-pressed={!englishVersion} disabled={d.busy||uploads>0} onClick={()=>setEditorLocale('zh-CN')}>{t("m_72726d8818")}</button>
+        <button type="button" className="quiet-button" aria-pressed={englishVersion} disabled={!chinese.ready||chinese.busy||d.busy||uploads>0} onClick={()=>{void(async()=>{if(!sharedPostId&&!await chinese.identity())return;setEnglishOpened(true);setEditorLocale('en');})();}}>English</button>
+        </div><span className="writing-version-state" role="status"><span className="writing-version-label">{t("m_5f76b2bf82")}{locale === 'en' ? ' ' : ''}{t("m_6320b4a872")}{locale === 'en' ? ': ' : '：'}</span><span>{t(d.draft?.source_changed?t("m_133c7031a7"):d.draft?.translation_status==='published'?t("m_d334724d6b"):d.draft?t("m_2a2fd29bd2"):t("m_bb1ea50f6a"))}</span></span>
+        {englishVersion&&d.draft?.source_changed&&<button type="button" className="quiet-button" disabled={locked||d.busy||d.blocked||uploads>0||!d.draft.current_source_hash} onClick={()=>void d.reviewSource()}>{t("m_1f9e07738c")}</button>}
+      </section>
+
+        {languageError && <p role="alert" className="article-workspace-notice">{languageError}</p>}
         <div className="writing-mode-mobile">{modeSwitch}</div>
-        <h1 className="sr-only">{locked ? lockedTitle : showComparison ? '处理版本冲突' : preview ? '发布前检查' : postId || d.draft?.post_id ? '编辑文章' : '写文章'}</h1>
-        {locked && <div className="article-submission-bar"><p role="status">{lockedTitle}</p><small>审核结果和后续操作可在稿件列表查看。</small>{reviewState === 'scheduled' && <small>北京时间 {new Date(Number(d.draft.workflow.scheduled_at)).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</small>}</div>}
-        {!locked && !d.localAvailable && <p role="alert">本地恢复副本不可用，请确认服务器保存成功后再离开。</p>}
-        {!locked && d.error && !showComparison && !(conflictMode === 'review' && d.serverCopy) && <div className="article-workspace-notice" role="alert"><h2>{d.errorStatus === 409 ? '版本冲突，尚未发布' : '操作尚未完成'}</h2><p>{d.error}</p><div className="inline-actions">{d.errorStatus === 409 ? <AdminButton type="button" disabled={d.busy} onClick={() => void inspect()} className="ui-btn ui-btn--solid">对比并选择版本</AdminButton> : <>{d.errorStatus === 401 && <a className="article-button" href="/login" target="_blank" rel="noopener noreferrer">重新登录（新窗口）</a>}<AdminButton type="button" variant="soft" disabled={d.busy || d.blocked} onClick={() => void save()} className="ui-btn ui-btn--soft">重试保存</AdminButton></>}<AdminButton type="button" variant="ghost" onClick={() => void navigator.clipboard.writeText(d.form.content).then(() => notify.success('正文已复制')).catch(() => setUploadError('无法访问剪贴板，请在 Markdown 源码中手动复制。'))} className="ui-btn ui-btn--ghost">复制当前正文</AdminButton></div></div>}
+        <h1 className="sr-only">{locked ? lockedTitle : showComparison ? t("m_6af8a5c00e") : preview ? t("m_5fbee954c9") : postId || d.draft?.post_id ? t("m_12dfe39e2e") : t("m_13b195d6cc")}</h1>
+        {locked && <div className="article-submission-bar"><p role="status">{lockedTitle}</p><small>{t("m_d0b966b9d9")}</small>{reviewState === 'scheduled' && <small>{t("m_64e1e8d8ce")} {new Date(Number(d.draft.workflow.scheduled_at)).toLocaleString(locale, { timeZone: 'Asia/Shanghai' })}</small>}</div>}
+        {!locked && !d.localAvailable && <p role="alert">{t("m_572c660037")}</p>}
+        {!locked && d.error && !showComparison && !(conflictMode === 'review' && d.serverCopy) && <div className="article-workspace-notice" role="alert"><h2>{d.errorStatus === 409 ? t("m_16e0548d1d") : t("m_9688019106")}</h2><p>{d.error}</p><div className="inline-actions">{d.errorStatus === 409 ? <AdminButton type="button" disabled={d.busy} onClick={() => void inspect()} className="ui-btn ui-btn--solid">{t("m_39d395dcfe")}</AdminButton> : <>{d.errorStatus === 401 && <a className="article-button" href="/login" target="_blank" rel="noopener noreferrer">{t("m_da2d2566af")}</a>}<AdminButton type="button" variant="soft" disabled={d.busy || d.blocked} onClick={() => void save()} className="ui-btn ui-btn--soft">{t("m_917e750405")}</AdminButton></>}<AdminButton type="button" variant="ghost" onClick={() => void navigator.clipboard.writeText(d.form.content).then(() => notify.success(t("m_3400ddb2de"))).catch(() => setUploadError(t("m_833441d271")))} className="ui-btn ui-btn--ghost">{t("m_2e6aec92fb")}</AdminButton></div></div>}
         {showComparison && !locked && <ArticleConflict comparison={d.serverCopy} current={d.form} busy={d.busy} onResolve={resolveConflict} onRefresh={() => void inspect()} onPublish={() => { setConflictMode('review'); setPreview(true); }} onContinue={() => { setConflictMode('edit'); setPreview(false); }} />}
-        {conflictMode === 'review' && d.serverCopy && <div className="article-workspace-notice"><h2>将使用当前内容覆盖发布</h2><p>已选择的网站版本会保存到修订历史。请检查下方内容，再确认覆盖。</p><AdminButton type="button" variant="soft" disabled={d.busy} onClick={() => setConflictMode('compare')} className="ui-btn ui-btn--soft">返回版本对比</AdminButton>{d.errorStatus !== 409 && d.error && <p role="alert">{d.error}</p>}</div>}
-        {!locked && d.recovery && <div className="article-workspace-notice" role="alert">发现未同步的本地内容。<AdminButton type="button" variant="soft" onClick={() => d.resolve(true)} className="ui-btn ui-btn--soft">恢复本地内容</AdminButton><AdminButton type="button" variant="ghost" onClick={() => d.resolve(false)} className="ui-btn ui-btn--ghost">使用服务器内容</AdminButton></div>}
-        {preview && !locked && !showComparison && <section className="article-full-preview"><AdminButton type="button" variant="ghost" className="article-return-edit ui-btn ui-btn--ghost" disabled={d.busy} onClick={() => setPreview(false)}><ArrowLeft size={16} aria-hidden="true" />返回编辑</AdminButton><ArticleReview onFix={fixField} post={{ ...d.form, author_name: '当前作者' }} busy={d.busy || d.isRestoring || uploads > 0} disabled={d.blocked && !(conflictMode === 'review' && d.serverCopy)} publishLabel={conflictMode === 'review' ? '确认覆盖发布' : contributor ? '确认提交审核' : d.draft?.post_status === 'published' ? '确认更新' : '确认发布'} onPublish={() => void (contributor ? submit() : publish())} /></section>}
-        {locked && <article className="submission-document"><header><span className="account-eyebrow">稿件详情</span><h1>{d.form.title || '未命名稿件'}</h1><p className="submission-document-meta">提交的审核版本 · 仅作者与审核人员可见</p></header><div className="submission-document-body">{cover && (d.form.cover_crop ? <CoverDisplayPreviews src={cover} crop={d.form.cover_crop} /> : <img className="content-image" src={cover} alt="" />)}<MarkdownContent content={d.form.content || ''} headingPrefix="submission-heading" /></div></article>}
-        {d.summaryBusy && <p role="status">正在根据正文生成 DeepSeek 简介…</p>}
+        {conflictMode === 'review' && d.serverCopy && <div className="article-workspace-notice"><h2>{t("m_217570bfd6")}</h2><p>{t("m_acd0a9e30b")}</p><AdminButton type="button" variant="soft" disabled={d.busy} onClick={() => setConflictMode('compare')} className="ui-btn ui-btn--soft">{t("m_5eeb9b923c")}</AdminButton>{d.errorStatus !== 409 && d.error && <p role="alert">{d.error}</p>}</div>}
+        {!locked && d.recovery && <div className="article-workspace-notice" role="alert">{t("m_a9eb59dc46")}<AdminButton type="button" variant="soft" onClick={() => d.resolve(true)} className="ui-btn ui-btn--soft">{t("m_d045c9afd0")}</AdminButton><AdminButton type="button" variant="ghost" onClick={() => d.resolve(false)} className="ui-btn ui-btn--ghost">{t("m_f4870bb2ff")}</AdminButton></div>}
+        {preview && !locked && !showComparison && <section className="article-full-preview"><AdminButton type="button" variant="ghost" className="article-return-edit ui-btn ui-btn--ghost" disabled={d.busy} onClick={() => setPreview(false)}><ArrowLeft size={16} aria-hidden="true" />{t("m_16b38790d5")}</AdminButton><ArticleReview onFix={fixField} post={{ ...d.form, content_locale:editorLocale, author_name: t("m_bc23331f73") }} busy={d.busy || d.isRestoring || uploads > 0} disabled={d.blocked && !(conflictMode === 'review' && d.serverCopy)} publishLabel={conflictMode === 'review' ? t("m_7dd20b7a2c") : contributor ? t("m_34ef20b205") : versionPublished ? t("m_397ee4a9e4") : t("m_c8f73143f3")} onPublish={() => void (contributor ? submit() : publish())} /></section>}
+        {locked && <article className="submission-document"><header><span className="account-eyebrow">{t("m_8cd59b0a18")}</span><h1>{d.form.title || t("m_0d29eaf3ac")}</h1><p className="submission-document-meta">{t("m_78b756d8eb")}</p></header><div className="submission-document-body">{cover && (d.form.cover_crop ? <CoverDisplayPreviews src={cover} crop={d.form.cover_crop} /> : <img className="content-image" src={cover} alt="" />)}<MarkdownContent content={d.form.content || ''} headingPrefix="submission-heading" /></div></article>}
+        {d.summaryBusy && <p role="status">{t("m_227f4fa588")}</p>}
         <fieldset hidden={preview || locked || showComparison} disabled={fieldsDisabled} className="writing-editor-fields">
-          <label className="writing-title"><span className="sr-only">标题</span><textarea ref={titleInput} id="article-title" rows={1} value={d.form.title} maxLength={255} onChange={event => change('title', event.target.value.replace(/[\r\n]+/g, ' '))} placeholder="未命名草稿" /></label>
-          {!isRichText(d.form.content) && !!d.form.content && <div className="writing-source-toggle"><button type="button" aria-pressed={editorMode === 'source'} disabled={fieldsDisabled || uploads > 0} onClick={() => setMode(editorMode === 'source' ? 'visual' : 'source')}>Markdown 源码</button></div>}
-          {d.ready && <ArticleEditor writingToolbar mode={editorMode} onModeChange={setMode} hideModeControls onMediaLibrary={() => setPicker('body')} disabled={fieldsDisabled || uploads > 0} registerImageInsert={fn => { insert.current = fn; }} value={d.form.content} onChange={value => change('content', value)} existing={!!postId || !!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={setEditorPending} />}
+          <label className="writing-title"><span className="sr-only">{t("m_c3405f8c7d")}</span><textarea ref={titleInput} id="article-title" rows={1} value={d.form.title} maxLength={255} onChange={event => change('title', event.target.value.replace(/[\r\n]+/g, ' '))} placeholder={t("m_865f0a03ab")} /></label>
+          {!isRichText(d.form.content) && !!d.form.content && <div className="writing-source-toggle"><button type="button" aria-pressed={editorMode === 'source'} disabled={fieldsDisabled || uploads > 0} onClick={() => setMode(editorMode === 'source' ? 'visual' : 'source')}>{t("m_9380ef6f8d")}</button></div>}
+          {d.ready && <ArticleEditor key={editorLocale} writingToolbar mode={editorMode} onModeChange={setMode} hideModeControls onMediaLibrary={() => setPicker('body')} disabled={fieldsDisabled || uploads > 0} registerImageInsert={fn => { insert.current = fn; }} value={d.form.content} onChange={value => change('content', value)} existing={!!postId || !!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={setEditorPending} />}
         </fieldset>
-        {uploadError && <p role="alert">{uploadError}</p>}{uploads > 0 && <p role="status">正在上传图片…</p>}
+        {uploadError && <p role="alert">{uploadError}</p>}{uploads > 0 && <p role="status">{t("m_831d255caa")}</p>}
       </div>
     </div>
-    {wide && !collapsed && !locked && !showComparison && !preview && <aside className="writing-settings" aria-label="文章设置"><div className="writing-settings-heading"><h2>文章设置</h2><AdminButton type="button" variant="ghost" size="icon" aria-label="收起文章设置" onClick={() => { collapseSettings(true); requestAnimationFrame(() => settingsTrigger.current?.focus()); }} className="ui-btn ui-btn--ghost ui-btn--icon"><ChevronRight size={18} aria-hidden="true" /></AdminButton></div>{settings}</aside>}
+    {wide && !collapsed && !locked && !showComparison && !preview && <aside className="writing-settings" aria-label={t("m_89ae9a9ca1")}><div className="writing-settings-heading"><h2>{t("m_89ae9a9ca1")}</h2><AdminButton type="button" variant="ghost" size="icon" aria-label={t("m_78e31fd2ee")} onClick={() => { collapseSettings(true); requestAnimationFrame(() => settingsTrigger.current?.focus()); }} className="ui-btn ui-btn--ghost ui-btn--icon"><ChevronRight size={18} aria-hidden="true" /></AdminButton></div>{settings}</aside>}
     <Sheet open={!wide && settingsOpen} onOpenChange={setSettingsOpen}><SheetContent side={phone ? 'bottom' : 'right'} className={`admin-portal ui-v2 writing-settings-sheet${phone ? ' writing-settings-bottom' : ''}`} data-focus-method={phone ? 'pointer' : undefined}
       onOpenAutoFocus={event => { if (phone) { event.preventDefault(); settingsClose.current?.focus({ preventScroll: true }); } }}
       onPointerDownCapture={event => { if (phone) event.currentTarget.dataset.focusMethod = 'pointer'; }}
@@ -316,11 +345,11 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
       onTouchEnd={event => { const start = settingsSwipe.current, touch = event.changedTouches[0]; settingsSwipe.current = null; if (start && touch && touch.clientY - start.y > 80 && Math.abs(touch.clientX - start.x) < touch.clientY - start.y) setSettingsOpen(false); }}
       onTouchCancel={() => { settingsSwipe.current = null; }}
       onCloseAutoFocus={event => { event.preventDefault(); (phone ? moreTrigger.current : settingsTrigger.current)?.focus(); }}>
-      {phone ? <><header className="writing-sheet-header"><div className="writing-sheet-handle" aria-hidden="true" /><div className="writing-sheet-title-row"><SheetTitle>文章设置</SheetTitle><SheetClose asChild><button ref={settingsClose} type="button" className="writing-sheet-close" aria-label="关闭"><X size={18} aria-hidden="true" /></button></SheetClose></div></header>{settingsDescription}<div ref={settingsScroll} className="writing-sheet-scroll">{settings}</div></> : <><div className="writing-sheet-handle" aria-hidden="true" /><SheetTitle>文章设置</SheetTitle>{settingsDescription}{settings}</>}
+      {phone ? <><header className="writing-sheet-header"><div className="writing-sheet-handle" aria-hidden="true" /><div className="writing-sheet-title-row"><SheetTitle>{t("m_89ae9a9ca1")}</SheetTitle><SheetClose asChild><button ref={settingsClose} type="button" className="writing-sheet-close" aria-label={t("m_3fd47edce4")}><X size={18} aria-hidden="true" /></button></SheetClose></div></header>{settingsDescription}<div ref={settingsScroll} className="writing-sheet-scroll">{settings}</div></> : <><div className="writing-sheet-handle" aria-hidden="true" /><SheetTitle>{t("m_89ae9a9ca1")}</SheetTitle>{settingsDescription}{settings}</>}
       {mediaDialogs}
     </SheetContent></Sheet>
-    <input ref={fileInput} type="file" hidden accept="image/*" aria-label="上传封面" disabled={fieldsDisabled || uploads > 0} onChange={event => { const file = event.target.files?.[0]; if (file) void uploadCover(file); event.target.value = ''; }} />
-    <Dialog open={historyOpen} onOpenChange={setHistoryOpen}><DialogContent className="admin-portal ui-v2 writing-history-dialog" onOpenAutoFocus={event => { event.preventDefault(); }} onCloseAutoFocus={event => { event.preventDefault(); historyOrigin.current?.focus(); }}><DialogTitle asChild><h2 ref={historyTitle} tabIndex={-1}>修订历史</h2></DialogTitle><DialogDescription className="sr-only">比较历史版本与当前内容，恢复不会直接发布。</DialogDescription><div ref={element => { if (element && historyHost && !element.contains(historyHost)) element.appendChild(historyHost); }} /></DialogContent></Dialog>
+    <input ref={fileInput} type="file" hidden accept="image/*" aria-label={t("m_3d1a8b4ad8")} disabled={fieldsDisabled || uploads > 0} onChange={event => { const file = event.target.files?.[0]; if (file) void uploadCover(file); event.target.value = ''; }} />
+    <Dialog open={historyOpen} onOpenChange={setHistoryOpen}><DialogContent className="admin-portal ui-v2 writing-history-dialog" onOpenAutoFocus={event => { event.preventDefault(); }} onCloseAutoFocus={event => { event.preventDefault(); historyOrigin.current?.focus(); }}><DialogTitle asChild><h2 ref={historyTitle} tabIndex={-1}>{t("m_b11590c91f")}</h2></DialogTitle><DialogDescription className="sr-only">{t("m_cc3435cb9e")}</DialogDescription><div ref={element => { if (element && historyHost && !element.contains(historyHost)) element.appendChild(historyHost); }} /></DialogContent></Dialog>
     {d.ready && historyHost && createPortal(<ArticleRevisionHistory draftId={d.draft.id} version={d.draft.version} current={d.form} disabled={historyDisabled} onRestore={d.restore} />, historyHost)}
     {(wide || !settingsOpen) && mediaDialogs}
   </div>;

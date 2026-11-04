@@ -1,6 +1,11 @@
+import { useI18n } from '../i18n';
 import { notify } from '../lib/feedback';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+
+import {Link} from '../components/LocaleLink';
+import { ThemeSelect } from '../components/ThemeSelect';
+import { ArrowLeft } from 'lucide-react';
+import '../../styles/editor-applications.css';
 import { api } from '../lib/api';
 import { AdminEmpty, AdminError, AdminLoading, AdminNotice } from '../components/admin/AdminState';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog';
@@ -19,6 +24,7 @@ const statusText: Record<string, string> = {
 const tabs = [['all', '全部'], ['pending', '待审核'], ['approved', '已通过'], ['rejected', '已拒绝']] as const;
 
 export default function AdminEditorApplicationsPage() {
+  const { t } = useI18n();
   const [applications, setApplications] = useState<Application[]>([]);
   const [status, setStatus] = useState<string>('pending');
   const [message, setMessage] = useState('');
@@ -37,7 +43,7 @@ export default function AdminEditorApplicationsPage() {
       const data = await api(`/admin/editor-applications?status=${status}`);
       if (version === requestVersion.current) setApplications(data);
     } catch (err: any) {
-      if (version === requestVersion.current) { setApplications([]); setLoadError(err.message || '申请加载失败'); }
+      if (version === requestVersion.current) { setApplications([]); setLoadError(err.message || t("m_93683bff05")); }
     } finally {
       if (version === requestVersion.current) setLoading(false);
     }
@@ -50,6 +56,7 @@ export default function AdminEditorApplicationsPage() {
   const open = (application: Application, next: 'approved' | 'rejected') => {
     if (reviewing !== null) return;
     setNote('');
+    setMessage('');
     setDecision({ application, status: next });
   };
 
@@ -67,11 +74,11 @@ export default function AdminEditorApplicationsPage() {
         body: JSON.stringify({ status: nextStatus, review_note: note.trim() }),
       });
 
-      notify.success(res.message || '操作成功');
+      notify.success(res.message || t("m_38de25e522"));
       setDecision(null);
       await loadApplications();
     } catch (err: any) {
-      setMessage(err.message || '操作失败'); notify.error(err.message || '操作失败');
+      setMessage(err.message || t("m_0c3b4cf7aa")); notify.error(err.message || t("m_0c3b4cf7aa"));
     } finally {
       setReviewing(null);
     }
@@ -80,48 +87,49 @@ export default function AdminEditorApplicationsPage() {
   const approving = decision?.status === 'approved';
 
   return (
-    <div className="admin-page">
+    <div className="admin-page editor-applications-page">
       <div className="admin-page-body">
-        <Link to="/admin" className="text-sm text-foreground hover:underline">返回后台</Link>
+        <Link to="/admin" className="editor-applications-back"><ArrowLeft size={16} aria-hidden="true"/>{t("m_280dc8a5a1")}</Link>
 
-        <div className="mt-2 mb-2">
-          <h1 className="admin-title">编辑申请审核</h1>
-          <p className="mt-2 text-sm text-muted-foreground">审核普通用户的写文章权限申请。</p>
+        <header className="editor-applications-heading">
+          <h1 className="admin-title">{t("m_70dfdc8440")}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{t("m_02ccd5a5ff")}</p>
+        </header>
+
+        <div className="editor-applications-filters">
+        <ThemeSelect value={status} aria-label={t("m_9a94254a1d")} onValueChange={value=>{setStatus(value);setMessage('');}}>
+          {tabs.map(([value, label]) => <option key={value} value={value} disabled={loading && status !== value}>{t(label)}</option>)}
+        </ThemeSelect>
         </div>
 
-        <div className="admin-filter-chips" role="group" aria-label="筛选编辑申请状态">
-          {tabs.map(([value, label]) => (
-            <button key={value} type="button" aria-pressed={status === value} disabled={loading && status !== value}
-              onClick={() => { setStatus(value); setMessage(''); }}>{label}</button>
-          ))}
-        </div>
+        <section className="editor-applications-results" aria-label={t("m_70dfdc8440")} aria-busy={loading}>
 
-        {message && <AdminNotice>{message}</AdminNotice>}
-        {loadError && <AdminError message={loadError} onRetry={() => void loadApplications()} />}
-        {loading && <AdminLoading label="正在加载申请…" />}
+        {message && !decision && <AdminNotice>{t(message || '')}</AdminNotice>}
+        {loadError && <AdminError message={t(loadError || '')} onRetry={() => void loadApplications()} />}
+        {loading && <AdminLoading label={t("m_43ffc731ff")} />}
         {!loading && !loadError && applications.length === 0 && (
-          <AdminEmpty
-            title={status === 'pending' ? '没有待审核的申请' : '暂无申请'}
-            hint={status === 'pending' ? '新的编辑申请提交后会出现在这里。' : '换一个状态查看其他申请。'}
-            action={status !== 'all' && <button type="button" className="quiet-button" onClick={() => setStatus('all')}>查看全部申请</button>}
-          />
+          <div className="admin-empty-result"><AdminEmpty
+            title={status === 'pending' ? t("m_610ab1a383") : t("m_1c5ebfa2ee")}
+            hint={status === 'pending' ? t("m_df3e7f3dbe") : t("m_3b0df18b88")}
+            action={status !== 'all' && <button type="button" className="quiet-button" onClick={() => setStatus('all')}>{t("m_421a425978")}</button>}
+          /></div>
         )}
 
         <div className="space-y-4" aria-busy={loading}>
           {!loading && applications.map((item) => (
-            <article key={item.id} className="admin-list-row" aria-label={`申请 #${item.id}`}>
+            <article key={item.id} className="admin-list-row" aria-label={t("m_b48b0159a0", {v0: item.id})}>
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                     <span>#{item.id}</span>
-                    <span className="admin-status-chip" data-status={item.status}>{statusText[item.status] || item.status}</span>
-                    <span>用户：{item.username}</span>
-                    <span>邮箱：{item.email}</span>
-                    <span>当前角色：{item.role}</span>
+                    <span className="admin-status-chip" data-status={item.status}>{t(statusText[item.status] || item.status)}</span>
+                    <span>{t("m_1a78d1d501")}{item.username}</span>
+                    <span>{t("m_144030382e")}{item.email}</span>
+                    <span>{t("m_8e8ffdeea8")}{item.role}</span>
                   </div>
 
                   <div className="mt-1 text-sm text-muted-foreground">
-                    申请时间：{item.created_at?.slice(0, 19).replace('T', ' ')}
+                     {t("m_5729fc7b4b")}{item.created_at?.slice(0, 19).replace('T', ' ')}
                   </div>
 
                   <p className="mt-4 whitespace-pre-wrap leading-7 text-foreground">
@@ -130,7 +138,7 @@ export default function AdminEditorApplicationsPage() {
 
                   {item.review_note && (
                     <div className="mt-3 rounded-[10px] bg-muted px-4 py-3 text-sm text-muted-foreground">
-                      审核备注：{item.review_note}
+                       {t("m_42328507f0")}{item.review_note}
                     </div>
                   )}
                 </div>
@@ -138,12 +146,12 @@ export default function AdminEditorApplicationsPage() {
                 {item.status === 'pending' && (
                   <div className="admin-row-actions shrink-0">
                     <button type="button" data-tone="primary" disabled={reviewing !== null} onClick={() => open(item, 'approved')}
-                      aria-label={`通过 ${item.username} 的申请`}>
-                      {reviewing === item.id && approving ? '处理中…' : '通过'}
+                      aria-label={t("m_6078612132", {v0: item.username})}>
+                      {reviewing === item.id && approving ? t("m_d3d21191f3") : t("m_1e9f2561b7")}
                     </button>
                     <button type="button" data-tone="danger" disabled={reviewing !== null} onClick={() => open(item, 'rejected')}
-                      aria-label={`拒绝 ${item.username} 的申请`}>
-                      {reviewing === item.id && !approving ? '处理中…' : '拒绝'}
+                      aria-label={t("m_92866ea66d", {v0: item.username})}>
+                      {reviewing === item.id && !approving ? t("m_d3d21191f3") : t("m_136de7a8c4")}
                     </button>
                   </div>
                 )}
@@ -151,21 +159,23 @@ export default function AdminEditorApplicationsPage() {
             </article>
           ))}
         </div>
+        </section>
       </div>
 
       <Dialog open={Boolean(decision)} onOpenChange={(next) => { if (!next && reviewing === null) setDecision(null); }}>
         <DialogContent className="admin-note-dialog">
-          <DialogTitle>{approving ? '通过编辑申请' : '拒绝编辑申请'}</DialogTitle>
+          <DialogTitle>{approving ? t("m_30c9fa0a54") : t("m_22de0407f2")}</DialogTitle>
           <DialogDescription>
-            {decision && `${approving ? '通过后' : '拒绝后'}会通知 ${decision.application.username}。备注会一并记录，可以留空。`}
+            {decision && t("m_bbf3faf386", {v0: approving ? t("m_da34836915") : t("m_4a71bcc4de"), v1: decision.application.username})}
           </DialogDescription>
-          <label className="sr-only" htmlFor="review-note">{approving ? '通过备注（可选）' : '拒绝理由（可选）'}</label>
+          {message && <AdminNotice>{t(message)}</AdminNotice>}
+          <label className="sr-only" htmlFor="review-note">{approving ? t("m_510dbecc56") : t("m_a31fe5934e")}</label>
           <textarea id="review-note" value={note} maxLength={500} onChange={(event) => setNote(event.target.value)}
-            placeholder={approving ? '通过备注，可留空' : '拒绝理由，可留空'} autoFocus />
+            placeholder={approving ? t("m_352ea4a7f8") : t("m_30b70fcc1e")} autoFocus />
           <div className="inline-actions">
-            <button type="button" className="quiet-button" disabled={reviewing !== null} onClick={() => setDecision(null)}>取消</button>
+            <button type="button" className="quiet-button" disabled={reviewing !== null} onClick={() => setDecision(null)}>{t("m_2cd0f3be87")}</button>
             <button type="button" className="neo-button neo-button-dark" disabled={reviewing !== null} onClick={() => void submit()}>
-              {reviewing !== null ? '提交中…' : approving ? '确认通过' : '确认拒绝'}
+              {reviewing !== null ? t("m_18931020ad") : approving ? t("m_603c2f9a1c") : t("m_de45b8ac34")}
             </button>
           </div>
         </DialogContent>

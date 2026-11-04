@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { FormInput } from '../components/FormInput';
 import {authLink, loginDestination} from '../lib/loginDestination';
 import { ArrowRight, Mail, User } from 'lucide-react';
@@ -11,6 +12,7 @@ import { SocialLoginButtons } from '../components/SocialLoginButtons';
 import { useAuth } from '../context/AuthContext';
 
 export default function RegisterPage() {
+  const { t } = useI18n();
   const { register, googleLogin, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -28,21 +30,21 @@ export default function RegisterPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!username.trim() || !email.trim() || !password || !confirmPassword) {
-      return setMessage('请完整填写用户名、邮箱、密码和确认密码');
+      return setMessage(t("m_507670533c"));
     }
     const problem = passwordProblem(password);
     if (problem) return setMessage(problem);
-    if (password !== confirmPassword) { setConfirmTouched(true); return setMessage('两次输入的密码不一致'); }
+    if (password !== confirmPassword) { setConfirmTouched(true); return setMessage(t("m_5880774570")); }
 
     setLoading(true);
     setMessage('');
 
     try {
       await register(username.trim(), email.trim(), password);
-      notify.success('注册成功，请使用新账号登录。');
+      notify.success(t("m_98d83fcec5"));
       navigate(authLink('/login', destination), {replace:true});
     } catch (err: any) {
-      setMessage(err.message || '注册失败');
+      setMessage(err.message || t("m_6d57824e03"));
     } finally {
       setLoading(false);
     }
@@ -58,7 +60,7 @@ export default function RegisterPage() {
         destination || (['owner', 'admin', 'editor'].includes(user.role) ? '/admin' : '/'),
       );
     } catch (err: any) {
-      setMessage(err.message || 'Google 注册失败，请重试');
+      setMessage(err.message || t("m_a228b3f9eb"));
     } finally {
       setLoading(false);
     }
@@ -67,8 +69,7 @@ export default function RegisterPage() {
   if (authLoading)
     return (
       <p className="quiet-state" role="status">
-        正在确认登录状态…
-      </p>
+         {t("m_a51656deb6")} </p>
     );
   if (user) return <Navigate to={destination || "/"} replace />;
 
@@ -78,29 +79,26 @@ export default function RegisterPage() {
       modeLabel="NEW MEMBER"
       storyTitle={
         <>
-          创建账号，
-          <br />
-          加入讨论。
-        </>
+           {t("m_651aacde4d")} <br />
+           {t("m_c254cc4782")} </>
       }
-      storyDescription="注册后可以参与评论、收藏文章；投稿开放时，可在个人中心创建草稿并提交审核。"
-      formTitle="注册账号"
-      formDescription="填写基础信息，创建你的 mooncci 通行证。"
-      alternatePrompt="已经有账号？"
-      alternateLabel="去登录"
+      storyDescription={t("m_99d460dca1")}
+      formTitle={t("m_679e917b16")}
+      formDescription={t("m_abeb3d92f7")}
+      alternatePrompt={t("m_5d3598cbd8")}
+      alternateLabel={t("m_dd388142a5")}
       alternateTo={authLink('/login', destination)}
     >
       {message && (
         <div className="auth-message is-error" role="alert">
-          {message}
+          {t(message || '')}
         </div>
       )}
 
       <form onSubmit={submit} className="auth-form">
         <div>
           <label htmlFor="username" className="auth-field-label">
-            用户名
-          </label>
+             {t("m_1a3f0617d6")} </label>
           <div className="auth-field-control">
             <User aria-hidden="true" />
             <FormInput
@@ -113,15 +111,14 @@ export default function RegisterPage() {
               autoComplete="username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              placeholder="你的公开名称"
+              placeholder={t("m_49a731ce15")}
             />
           </div>
         </div>
 
         <div>
           <label htmlFor="register-email" className="auth-field-label">
-            邮箱
-          </label>
+             {t("m_73075237fd")} </label>
           <div className="auth-field-control">
             <Mail aria-hidden="true" />
             <FormInput
@@ -143,12 +140,12 @@ export default function RegisterPage() {
           <PasswordField
             id="new-password"
             name="password"
-            label="密码"
+            label={t("m_a621ab606d")}
             required
             autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="至少 8 位，包含字母和数字"
+            placeholder={t("m_0894775633")}
           />
           <PasswordRules password={password} />
         </div>
@@ -156,14 +153,14 @@ export default function RegisterPage() {
         <PasswordField
           id="confirm-password"
           name="confirmPassword"
-          label="确认密码"
+          label={t("m_81b17bc0c3")}
           required
           autoComplete="new-password"
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
           onBlur={() => setConfirmTouched(true)}
-          error={mismatch ? '两次输入的密码不一致。' : undefined}
-          placeholder="再次输入密码"
+          error={mismatch ? t("m_9daceebc80") : undefined}
+          placeholder={t("m_d0c9a0e810")}
         />
 
         <button
@@ -171,7 +168,7 @@ export default function RegisterPage() {
           disabled={loading}
           className="neo-button neo-button-dark auth-submit disabled:opacity-60"
         >
-          {loading ? '注册中...' : '创建账号'}
+          {loading ? t("m_bda8d590a9") : t("m_f48d12cf53")}
           <ArrowRight aria-hidden="true" className="h-4 w-4" />
         </button>
       </form>

@@ -1,3 +1,4 @@
+import { useI18n } from '../../../app/i18n';
 import { forwardRef, useCallback } from "react"
 
 // --- Tiptap UI ---
@@ -61,6 +62,7 @@ export const BlockquoteButton = forwardRef<
     },
     ref
   ) => {
+  const { t } = useI18n();
     const { editor } = useTiptapEditor(providedEditor)
     const {
       isVisible,
@@ -100,7 +102,7 @@ export const BlockquoteButton = forwardRef<
         data-disabled={!canToggle}
         aria-label={label}
         aria-pressed={isActive}
-        tooltip="Blockquote"
+        tooltip={t("Blockquote")}
         onClick={handleClick}
         {...buttonProps}
         ref={ref}
@@ -108,7 +110,7 @@ export const BlockquoteButton = forwardRef<
         {children ?? (
           <>
             <Icon className="tiptap-button-icon" />
-            {text && <span className="tiptap-button-text">{text}</span>}
+            {text && <span className="tiptap-button-text">{t(text)}</span>}
             {showShortcut && (
               <BlockquoteShortcutBadge shortcutKeys={shortcutKeys} />
             )}

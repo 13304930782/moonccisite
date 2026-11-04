@@ -50,9 +50,10 @@ test('the palette defines exactly the UI tokens referenced by the three page sty
 });
 
 test('shared shell retains approved semantic navigation changes and theme keeps PR101 baseline',()=>{
+ // Approved bilingual copy, locale-aware links and language switch; CSS pins are unchanged.
  // Canonical LF Git blobs allow Windows checkouts and shallow CI without old commit history.
  const pins={
-  'src/app/components/admin/AdminShell.tsx':'4647bbd62d5bf9a3f80a0bdea68cdaad2f1ca390', // Restore the authorized festival menu only.
+  'src/app/components/admin/AdminShell.tsx':'f2cc04d01728b4f9b9e1c037ead84af781aeb0d7', // Approved locale menu, taxonomy entry and retired Early Access removal.
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
  };
  for(const [file,pin] of Object.entries(pins)) {

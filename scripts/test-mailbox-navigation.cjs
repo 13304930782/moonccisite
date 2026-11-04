@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  const {preview}=await import('vite');const server=await preview({preview:{host:'127.0.0.1',port:4292,strictPort:true}});
  const browser=await chromium.launch({...process.platform==='win32'?{channel:'msedge'}:{},headless:true});
  try{for(const width of [390,768,1280]){
-  const page=await browser.newPage({viewport:{width,height:900}});const calls=[];let failInbox=false,historyGate,releaseHistory;
+  const page=await browser.newPage({locale:'zh-CN',viewport:{width,height:900}});const calls=[];let failInbox=false,historyGate,releaseHistory;
   historyGate=new Promise(r=>releaseHistory=r);
   await page.route('**/api/**',async route=>{
    const url=new URL(route.request().url()),p=url.pathname;calls.push(p+url.search);

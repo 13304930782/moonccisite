@@ -1,12 +1,15 @@
+import { useI18n } from '../i18n';
 import { AdminEmpty, AdminError, AdminLoading } from '../components/admin/AdminState';
 import { useContentListQuery } from '../lib/useContentListQuery';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+
+import {Link} from '../components/LocaleLink';
 import { useAdminList } from '../lib/useAdminList';
 import { AdminPagination } from '../components/AdminPagination';
 import { ThemeSelect } from '../components/ThemeSelect';
 const roles: Record<string,string> = {owner:'站长',admin:'管理员',editor:'编辑',teacher:'教师',user:'普通用户'};
 export default function AdminUsersPage() {
+  const { t } = useI18n();
   const query = useContentListQuery();
   const filters = {
     keyword: query.params.get('keyword') || '',
@@ -18,30 +21,30 @@ export default function AdminUsersPage() {
   const list = useAdminList<any>('/admin/users',filters,query);
   const filter = (patch: Partial<typeof filters>) => { query.update({ ...filters, ...patch, page: '' }); };
   return <div className="admin-page">
-    <h1 className="admin-title">用户管理</h1>
-    <p className="text-muted-foreground">查看账号资料、登录方式与权限。进入设置可修改资料或删除账号。</p>
+    <h1 className="admin-title">{t("m_fbf413d429")}</h1>
+    <p className="text-muted-foreground">{t("m_ea29724ddc")}</p>
     <div className="admin-toolbar">
       <form className="admin-search" onSubmit={e=>{e.preventDefault();filter({keyword:keyword.trim()});}}>
-        <input aria-label="搜索用户" placeholder="搜索用户名或邮箱" value={keyword} onChange={e=>setKeyword(e.target.value)} />
-        <button className="neo-button" type="submit">搜索</button>
+        <input aria-label={t("m_62eb3f931b")} placeholder={t("m_5645a9f777")} value={keyword} onChange={e=>setKeyword(e.target.value)} />
+        <button className="neo-button" type="submit">{t("m_44ce7ae909")}</button>
       </form>
-      <ThemeSelect aria-label="筛选角色" value={filters.role} onValueChange={role=>filter({role})}>
-        <option value="all">全部角色</option>{Object.entries(roles).map(([v,n])=><option key={v} value={v}>{n}</option>)}
+      <ThemeSelect aria-label={t("m_559df1e120")} value={filters.role} onValueChange={role=>filter({role})}>
+        <option value="all">{t("m_2878fe5864")}</option>{Object.entries(roles).map(([v,n])=><option key={v} value={v}>{t(n)}</option>)}
       </ThemeSelect>
-      <ThemeSelect aria-label="筛选用户状态" value={filters.status} onValueChange={status=>filter({status})}>
-        <option value="all">全部状态</option><option value="active">正常</option><option value="disabled">停用 / 已删除</option>
+      <ThemeSelect aria-label={t("m_444862e025")} value={filters.status} onValueChange={status=>filter({status})}>
+        <option value="all">{t("m_0a379c1e73")}</option><option value="active">{t("m_296de0e31f")}</option><option value="disabled">{t("m_608319c0fa")}</option>
       </ThemeSelect>
     </div>
-    <AdminPagination label="用户管理分页" page={list.page} total={list.total} disabled={list.loading} onPage={list.setPage}/>
+    <AdminPagination label={t("m_df4404553d")} page={list.page} total={list.total} disabled={list.loading} onPage={list.setPage}/>
     {list.error && <AdminError message={list.error} onRetry={list.reload} />}
-    {list.loading && <AdminLoading label="正在加载用户…" />}
+    {list.loading && <AdminLoading label={t("m_320c1248c3")} />}
     <div>{list.items.map(user=><article className="admin-user-row" key={user.id}>
-      <div className="admin-user-info"><strong>{user.username}</strong>{user.deleted_at && <small className="deleted-account-label">已删除</small>}
-        <p>{user.deleted_at ? '邮箱与第三方绑定已释放' : user.email}</p>
-        <p>#{user.id} · {roles[user.role] || user.role} · {user.deleted_at ? '已删除' : user.status==='active'?'正常':'已停用'} · 评论{user.can_comment?'允许':'禁止'}</p>
+      <div className="admin-user-info"><strong>{user.username}</strong>{user.deleted_at && <small className="deleted-account-label">{t("m_077a6d3771")}</small>}
+        <p>{user.deleted_at ? t("m_27d778daa8") : user.email}</p>
+        <p>#{user.id} · {t(roles[user.role] || user.role)} · {user.deleted_at ? t("m_077a6d3771") : user.status==='active'?t("m_296de0e31f"):t("m_a8c3698b5b")}  {t("m_c79f5f413a")}{user.can_comment?t("m_ce7ef28b67"):t("m_b645c326ce")}</p>
       </div>
-      <Link className="neo-button" to={`/admin/users/${user.id}/settings`}>{user.deleted_at?'查看':'设置'}</Link>
+      <Link className="neo-button" to={`/admin/users/${user.id}/settings`}>{user.deleted_at?t("m_db8db05304"):t("m_df3d58c7d8")}</Link>
     </article>)}</div>
-    {!list.loading && !list.error && !list.items.length && <AdminEmpty title="没有符合条件的用户" action={<button className="quiet-button" onClick={()=>{setKeyword('');filter({keyword:'',role:'all',status:'all'});}}>清除筛选，查看全部用户</button>} />}
+    {!list.loading && !list.error && !list.items.length && <AdminEmpty title={t("m_7950f8e07c")} action={<button className="quiet-button" onClick={()=>{setKeyword('');filter({keyword:'',role:'all',status:'all'});}}>{t("m_ca9d014440")}</button>} />}
   </div>;
 }

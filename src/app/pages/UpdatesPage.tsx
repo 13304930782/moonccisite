@@ -1,5 +1,7 @@
+import { useI18n } from '../i18n';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import {Link} from '../components/LocaleLink';
 import { SitePage, useResource, type PageData } from '../components/ContentUI';
 import { SiteBack } from '../components/SiteBack';
 import { useSiteSettings } from '../context/SiteSettingsContext';
@@ -16,6 +18,7 @@ const filters = [['', '全部'], ['post', '文章'], ['update', '近况'], ['rel
 const activityPath = (page: number, type: string) => `/activity?page=${page}&type=${encodeURIComponent(type)}`;
 
 export default function UpdatesPage() {
+  const { t } = useI18n();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -23,7 +26,7 @@ export default function UpdatesPage() {
   const requestedPage = Number(params.get('page'));
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const { data: settings } = useSiteSettings();
-  const title = `最近更新 · ${settings?.brand?.site_title?.trim() || 'mooncci'}`;
+  const title = t("m_4b0bc25bf3", {v0: settings?.brand?.site_title?.trim() || 'mooncci'});
   const list = useRef<HTMLDivElement>(null);
   const filtersRoot = useRef<HTMLDivElement>(null), filterMarker = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
@@ -55,7 +58,9 @@ export default function UpdatesPage() {
   const restoreY = useRef<{ y: number } | null>(null);
   const [minHeight, setMinHeight] = useState(0);
   useEffect(() => {
-    const apply = () => { if (document.title !== title) document.title = title; };
+    // HTML normalizes title whitespace; compare the same normalized value to avoid observer loops.
+    const normalizedTitle = title.replace(/[ \t\r\n\f]+/g, ' ').trim();
+    const apply = () => { if (document.title !== normalizedTitle) document.title = normalizedTitle; };
     apply();
     const observer = new MutationObserver(apply);
     observer.observe(document.head, { childList: true, subtree: true, characterData: true });
@@ -82,8 +87,8 @@ export default function UpdatesPage() {
   return <SitePage className="updates-v2">
     <div className="updates-header-column">
     <SiteBack className="updates-back" />
-    <header className="updates-heading"><h1>最近更新</h1><p>文章、近况，以及作品的更新</p></header>
-    <div className="updates-filter-scroll"><div ref={filtersRoot} className="updates-filters" role="radiogroup" aria-label="更新类型">
+    <header className="updates-heading"><h1>{t("m_b067526e73")}</h1><p>{t("m_6624096318")}</p></header>
+    <div className="updates-filter-scroll"><div ref={filtersRoot} className="updates-filters" role="radiogroup" aria-label={t("m_673fa10a52")}>
       <span ref={filterMarker} className="updates-filter-marker" aria-hidden="true" />
       {filters.map(([key, label], index) => <button key={key} type="button" role="radio" aria-checked={type === key} tabIndex={type === key ? 0 : -1}
         onClick={() => { if (type !== key) change(key, 1); }}
@@ -94,7 +99,7 @@ export default function UpdatesPage() {
           const next = event.key === 'Home' ? 0 : event.key === 'End' ? filters.length - 1 : (index + delta + filters.length) % filters.length;
           (event.currentTarget.parentElement?.querySelectorAll('button')[next] as HTMLButtonElement)?.focus();
           change(filters[next][0], 1);
-        }}><span>{label}</span></button>)}
+        }}><span>{t(label)}</span></button>)}
     </div></div>
     </div>
     <div ref={list} className="updates-list-space" style={{ minHeight: minHeight || undefined }}>
@@ -104,6 +109,7 @@ export default function UpdatesPage() {
 }
 
 function UpdatesFeed({ type, page, onMore, onFirst }: { type: string; page: number; onMore: () => void; onFirst: () => void }) {
+  const { t } = useI18n();
   const resource = useResource<PageData<UpdateActivity>>(activityPath(page, type));
   const [pages, setPages] = useState<Record<number, PageData<UpdateActivity>>>({});
   const [backfillError, setBackfillError] = useState('');
@@ -127,7 +133,7 @@ function UpdatesFeed({ type, page, onMore, onFirst }: { type: string; page: numb
         setPages(previous => ({ ...previous, [number]: data }));
       }
     }
-    restorePages().catch(error => { if (!controller.signal.aborted) setBackfillError(error.message || '加载失败'); });
+    restorePages().catch(error => { if (!controller.signal.aborted) setBackfillError(error.message || t("m_d1d044826a")); });
     return () => controller.abort();
   }, [page, type, retry, resource.data, outOfRange]);
   const available = { ...pages, ...(resource.data ? { [page]: resource.data } : {}) };
@@ -139,7 +145,7 @@ function UpdatesFeed({ type, page, onMore, onFirst }: { type: string; page: numb
   const groups = useMemo(() => groupUpdates(items), [items]);
   const complete = !outOfRange && Object.keys(available).filter(number => Number(number) <= page).length === page;
   const total = resource.data?.total ?? pages[page - 1]?.total ?? items.length;
-  const error = outOfRange ? '页码超出范围' : resource.error || backfillError;
+  const error = outOfRange ? t("m_2c5882fc7b") : resource.error || backfillError;
   useEffect(() => {
     if (!complete || !focusNew.current) return;
     const id = items.find(item => !focusNew.current!.has(item.activity_id))?.activity_id;
@@ -160,20 +166,20 @@ function UpdatesFeed({ type, page, onMore, onFirst }: { type: string; page: numb
   useEffect(() => { if (complete) window.dispatchEvent(new Event('mooncci:content-ready')); }, [complete]);
   return <div ref={root} className="updates-feed" aria-busy={!complete && !error}>
     <div className="updates-feed-content">
-    {!items.length && !error && !complete && <div className="updates-skeleton" role="status" aria-label="正在加载更新">{Array.from({ length: 8 }, (_, i) => <div key={i}><span /><span /><span /></div>)}</div>}
+    {!items.length && !error && !complete && <div className="updates-skeleton" role="status" aria-label={t("m_3f0ee082d2")}>{Array.from({ length: 8 }, (_, i) => <div key={i}><span /><span /><span /></div>)}</div>}
     {groups.map(group => <section key={group.key} className="updates-month" id={`g-${group.key}`} aria-labelledby={`heading-${group.key}`}>
-      <h2 id={`heading-${group.key}`} className="updates-month-heading"><span>{group.label}</span><small>{group.items.length} 条</small></h2>
+      <h2 id={`heading-${group.key}`} className="updates-month-heading"><span>{group.label}</span><small>{group.items.length} {t("m_f004f1d84c")}</small></h2>
       {group.items.map(item => <UpdateRow key={item.activity_id} item={item} />)}
     </section>)}
 
-    {error && <div className="updates-notice" role="alert"><p>{outOfRange ? '页码超出范围，请返回第一页。' : '加载失败，请稍后重试。'}</p><button type="button" onClick={() => { if (outOfRange) onFirst(); else { resource.reload(); setRetry(value => value + 1); } }}>{outOfRange ? '返回第一页' : '重试'}</button></div>}
-    {complete && !items.length && !error && <p className="updates-notice">这个分类下还没有更新</p>}
+    {error && <div className="updates-notice" role="alert"><p>{outOfRange ? t("m_60cb552f6a") : t("m_fcbfcd21a1")}</p><button type="button" onClick={() => { if (outOfRange) onFirst(); else { resource.reload(); setRetry(value => value + 1); } }}>{outOfRange ? t("m_1d964bbcfd") : t("m_b8784c8dd5")}</button></div>}
+    {complete && !items.length && !error && <p className="updates-notice">{t("m_f9430a43f1")}</p>}
     {!!items.length && <div className="updates-pagination">
-      {items.length < total ? <button type="button" disabled={!complete} onClick={() => { focusNew.current = new Set(items.map(item => item.activity_id)); onMore(); }}>{complete ? '加载更多' : '正在加载…'}</button> : complete && <p>已经到底了</p>}
-      <small role="status">已显示 {items.length} / {total} 条</small>
+      {items.length < total ? <button type="button" disabled={!complete} onClick={() => { focusNew.current = new Set(items.map(item => item.activity_id)); onMore(); }}>{complete ? t("m_af90a08fec") : t("m_21bd738e0d")}</button> : complete && <p>{t("m_b7c1cdefd7")}</p>}
+      <small role="status">{t("m_326fee0b90")} {items.length} / {total} {t("m_f004f1d84c")}</small>
     </div>}
     </div>
-    {!!groups.length && <aside className="updates-time-rail" aria-label="按月份浏览"><nav><p>时间</p>{groups.map(group => <a key={group.key} href={`#g-${group.key}`} aria-current={(active || `g-${groups[0].key}`) === `g-${group.key}` ? 'location' : undefined}
+    {!!groups.length && <aside className="updates-time-rail" aria-label={t("m_33c7164b10")}><nav><p>{t("m_8b6ff49851")}</p>{groups.map(group => <a key={group.key} href={`#g-${group.key}`} aria-current={(active || `g-${groups[0].key}`) === `g-${group.key}` ? 'location' : undefined}
       onClick={event => {
         if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
         event.preventDefault();
@@ -184,6 +190,7 @@ function UpdatesFeed({ type, page, onMore, onFirst }: { type: string; page: numb
 }
 
 function UpdateRow({ item }: { item: UpdateActivity }) {
+  const { t } = useI18n();
   const article = useResource<{ cover_image?: string; cover_crop?: unknown }>(`/posts/${item.id}`, item.type === 'post' && !item.cover_image);
   const post = item.cover_image ? item : article.data;
   const src = safeImageSrc(post?.cover_image);
@@ -193,12 +200,12 @@ function UpdateRow({ item }: { item: UpdateActivity }) {
   const date = new Date(item.published_at);
   return <Link to={safeRoutePath(item.path)} className="updates-row" data-activity={item.activity_id} aria-labelledby={titleId}>
     <div className="updates-copy"><div className="updates-meta">
-      <span className="updates-badge" data-type={item.type}>{filters.find(([key]) => key === item.type)?.[1] || '更新'}</span>
-      <time dateTime={Number.isNaN(date.getTime()) ? undefined : item.published_at}>{Number.isNaN(date.getTime()) ? '日期未知' : `${date.getMonth() + 1}月${date.getDate()}日`}</time>
-      {item.type === 'release' && <><span>GitHub Releases</span>{!!item.prerelease && <span className="updates-prerelease">预发布</span>}</>}
-      {item.type === 'update' && <span>· 讨论{typeof item.comment_count === 'number' && item.comment_count > 0 ? ` ${item.comment_count}` : ''}</span>}
+      <span className="updates-badge" data-type={item.type}>{filters.find(([key]) => key === item.type)?.[1] || t("m_3055a035f0")}</span>
+      <time dateTime={Number.isNaN(date.getTime()) ? undefined : item.published_at}>{Number.isNaN(date.getTime()) ? t("m_0a680746ce") : t("m_d3e3f512cb", {v0: date.getMonth() + 1, v1: date.getDate()})}</time>
+      {item.type === 'release' && <><span>GitHub Releases</span>{!!item.prerelease && <span className="updates-prerelease">{t("m_1acda6ce54")}</span>}</>}
+      {item.type === 'update' && <span>{t("m_7e031417a8")}{typeof item.comment_count === 'number' && item.comment_count > 0 ? ` ${item.comment_count}` : ''}</span>}
     </div>
-    {item.type === 'update' ? <p className="updates-note" id={titleId}>{text.excerpt || '查看近况'}</p> : <><h3 id={titleId}>{text.title}</h3>{text.excerpt && <p className="updates-excerpt">{text.excerpt}</p>}</>}
+    {item.type === 'update' ? <p className="updates-note" id={titleId}>{text.excerpt || t("m_c93d1ee63c")}</p> : <><h3 id={titleId}>{text.title}</h3>{text.excerpt && <p className="updates-excerpt">{text.excerpt}</p>}</>}
     </div>
     {item.type === 'post' && src && <div className="updates-cover"><img {...responsiveImage(src, false, frame?.zoom ?? 1)} alt="" width={160} height={100} loading="lazy" decoding="async" style={{ objectPosition: position, transform: frame && frame.zoom !== 1 ? `scale(${frame.zoom})` : undefined, transformOrigin: position }} /></div>}
   </Link>;

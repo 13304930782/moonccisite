@@ -1,3 +1,4 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
 const React=require('react'),{act,create}=require('react-test-renderer');
 const text=node=>typeof node==='string'?node:Array.isArray(node)?node.map(text).join(''):node?.children?text(node.children):'';
@@ -7,11 +8,12 @@ function clock(){let now=0,id=0;const pending=new Map();return {set:(fn,ms)=>{pe
 function load(api,confirm,notices,timers,pointer){
  const box=({children,...props})=>React.createElement('fixture-box',props,children),button=React.forwardRef(({asChild,variant,children,...props},ref)=>asChild?React.cloneElement(children,{...props,ref}):React.createElement('button',{...props,ref},children));
  const mocks={'../lib/useContentListQuery':require('./helpers/content-list-query.cjs'),'../lib/api':{api},'../lib/confirmAction':{confirmAction:confirm},'../lib/feedback':{notify:{success:value=>notices.push({kind:'success',value}),error:value=>notices.push({kind:'error',value})}},'../lib/safeUrl':{safeImageSrc:value=>value||''},
+  '../components/admin/AdminState':{AdminEmpty:({title,hint,action})=>React.createElement('div',null,title,hint,action),AdminLoading:({label})=>React.createElement('p',null,label),AdminError:({message,onRetry})=>React.createElement('div',{role:'alert'},message,React.createElement('button',{onClick:onRetry},'重试'))},
   '../components/admin/AdminButton':{AdminButton:button},'../components/ui/dialog':{Dialog:box,DialogContent:box,DialogDescription:'p',DialogTitle:'h2'},
   '../components/ui/dropdown-menu':{DropdownMenu:box,DropdownMenuTrigger:box,DropdownMenuContent:box,DropdownMenuItem:'menuitem',DropdownMenuRadioGroup:({value,onValueChange,children})=>React.createElement('select',{value,onChange:onValueChange?event=>onValueChange(event.target.value):undefined},children),DropdownMenuRadioItem:({value,children})=>React.createElement('option',{value},children)},
   'lucide-react':Object.fromEntries(['ChevronDown','Image','RefreshCw','RotateCw','Trash2','Undo2','Upload','X','MoreHorizontal','ArrowDownWideNarrow','Check','CheckSquare','Square','ListFilter'].map(name=>[name,'svg']))};
  const module={exports:{}},code=ts.transpileModule(fs.readFileSync('src/app/pages/AdminMediaPage.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- new Function('exports','require','setTimeout','clearTimeout','window',code)(module.exports,name=>name.endsWith('.css')?{}:mocks[name]||require(name),timers.set,timers.clear,pointer.window);return module.exports.default;
+ new Function('exports','require','setTimeout','clearTimeout','window',code)(module.exports,name=>i18nFixture(name)?i18nFixture(name):name.endsWith('.css')?{}:mocks[name]||require(name),timers.set,timers.clear,pointer.window);return module.exports.default;
 }
 async function fixture({items=[media()],total,handle,touch=false}={}){
  const calls=[],confirms=[],answers=[],notices=[],focuses=[],timers=clock();let store=structuredClone(items);
@@ -156,12 +158,12 @@ test('failed trash batch restore and permanent delete refresh server results and
  }
 });
 
-test('inline search clear immediately loads unfiltered page one, restores input focus and has no duplicate empty-state action',async()=>{
+test('inline search clear immediately loads unfiltered page one, restores input focus and supports the empty-state clear action',async()=>{
  const f=await fixture({total:51,handle:call=>{if(call.method==='GET'&&new URL(call.url,'https://local.invalid').searchParams.get('q')==='absent')return {items:[],total:0,page:1,pageSize:50};}});try{
   const search=()=>f.root.root.findByProps({'aria-label':'搜索媒体文件'}),clears=()=>f.root.root.findAllByType('button').filter(node=>node.props['aria-label']==='清除搜索');assert.equal(clears().length,0);
   await act(async()=>search().props.onChange({target:{value:'needle'}}));await act(async()=>f.timers.tick(299));assert.equal(f.calls.length,1);await act(async()=>f.timers.tick(1));assert.equal(new URL(f.calls.at(-1).url,'https://local.invalid').searchParams.get('q'),'needle');await f.click('下一页');assert.equal(new URL(f.calls.at(-1).url,'https://local.invalid').searchParams.get('page'),'2');assert.equal(clears().length,1);assert(f.root.root.findByProps({className:'media-search-field'}).findAllByType('button').includes(clears()[0]));
   const before=f.calls.length;await f.click('清除搜索');assert.equal(f.calls.length,before+1,'clear must request immediately, without advancing the debounce clock');const query=new URL(f.calls.at(-1).url,'https://local.invalid').searchParams;assert.equal(query.get('q'),'');assert.equal(query.get('page'),'1');assert.equal(query.get('status'),'active');assert.equal(search().props.value,'');assert.equal(clears().length,0);assert.equal(f.focuses.at(-1),'搜索媒体文件');await act(async()=>f.timers.tick(300));assert.equal(f.calls.length,before+1,'the cleared keyword timer must not trigger a duplicate request');
-  await act(async()=>search().props.onChange({target:{value:'absent'}}));await act(async()=>f.timers.tick(300));assert.match(text(f.root.toJSON()),/没有找到匹配的媒体文件/);assert.equal(clears().length,1);assert.equal(f.root.root.findAllByType('button').filter(node=>text(node)==='清除搜索').length,0,'the empty state must not add a second clear action');await f.click('清除搜索');assert.equal(search().props.value,'');assert.equal(clears().length,0);assert.equal(f.focuses.at(-1),'搜索媒体文件');
+  await act(async()=>search().props.onChange({target:{value:'absent'}}));await act(async()=>f.timers.tick(300));assert.match(text(f.root.toJSON()),/没有找到匹配的文件/);assert.equal(clears().length,1);assert.equal(f.root.root.findAllByType('button').filter(node=>text(node)==='清除搜索').length,1,'the empty state offers a nearby clear action');await f.click('清除搜索');assert.equal(search().props.value,'');assert.equal(clears().length,0);assert.equal(f.focuses.at(-1),'搜索媒体文件');
  }finally{await f.close();}
 });
 

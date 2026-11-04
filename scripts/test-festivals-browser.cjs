@@ -13,7 +13,7 @@ const { catalog, defaults, validate, evaluate } = require('../server/src/lib/fes
     let config = defaults(), failSave = false;
     const errors = [], writes = [], requests = [];
     async function makePage(role) {
-      const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, reducedMotion: 'reduce' });
+      const context = await browser.newContext({locale:'zh-CN', viewport: { width: 1280, height: 1000 }, reducedMotion: 'reduce' });
       const page = await context.newPage();
       page.on('pageerror', error => errors.push(error.message));
       await page.route('https://status.mooncci.site/**', route => route.fulfill({ contentType: 'text/html', body: `<p style="margin:0;color:${new URL(route.request().url()).searchParams.get('theme') === 'dark' ? '#eee' : '#222'}">All services are online</p>` }));

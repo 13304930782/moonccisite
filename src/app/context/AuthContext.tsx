@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { clearPublicSnapshots } from '../lib/publicSnapshots';
 import { useDocumentHydration } from './DocumentData';
 import { startTransition, createContext, useContext, useEffect, useRef, useState } from 'react';
@@ -33,6 +34,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { t,locale } = useI18n();
   const documentReady = useDocumentHydration();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,8 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const authenticate = (path: string, body: object): Promise<User> => {
-    if (logoutRequest.current) throw new Error('正在退出登录，请稍后重试。');
-    if (loginRequest.current) throw new Error('正在登录，请稍后重试。');
+    if (logoutRequest.current) throw new Error(t("m_6d470b7808"));
+    if (loginRequest.current) throw new Error(t("m_c0279e3436"));
     const version = ++authVersion.current;
     const request = (async () => {
       try {
@@ -90,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (data.registration_required) {
           if (version === authVersion.current) window.location.assign('/complete-registration');
-          throw new Error('请完成邮箱验证后继续。');
+          throw new Error(t("m_59d8fd77de"));
         }
         if (version === authVersion.current) {
           clearAuthCache();
@@ -112,11 +114,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) => {
     await api('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, email, password,locale }),
     });
   };
 
-  const googleLogin = (credential: string, returnTo?:string) => authenticate('/auth/google', { credential,return_to:returnTo });
+  const googleLogin = (credential: string, returnTo?:string) => authenticate('/auth/google', { credential,return_to:returnTo,locale });
 
   const logout = (): Promise<boolean> => {
     if (logoutRequest.current) return logoutRequest.current;
@@ -148,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return true;
       } catch {
-        setLogoutError('退出登录未完成，请检查网络后重试。');
+        setLogoutError(t("m_9f4e87a9c6"));
         return false;
       } finally {
         window.clearTimeout(timeout);

@@ -29,6 +29,7 @@ test('cover framing migration, drafts, revisions, review snapshots and public re
   await setup.query('USE ' + name);
   await setup.query(fs.readFileSync(path.join(__dirname, '../database/schema.sql'), 'utf8'));
   await setup.query(fs.readFileSync(path.join(__dirname, '../database/migrations/202609090002_auth_revocation.sql'), 'utf8'));
+  await setup.query(fs.readFileSync(path.join(__dirname, '../database/migrations/202611040002_content_translations.sql'), 'utf8'));
   const users = {};
   for (const [label, role] of [['owner', 'owner'], ['admin', 'admin'], ['author', 'user'], ['other', 'editor']]) {
     const [row] = await setup.query('INSERT INTO users(username,email,password_hash,role) VALUES (?,?,?,?)',

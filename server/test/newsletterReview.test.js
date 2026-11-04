@@ -25,7 +25,7 @@ function harness(t, options = {}) {
     if (sql.startsWith('SELECT enabled')) return [[{ enabled: options.enabled === false ? 0 : 1 }]];
     if (sql.startsWith('SELECT COUNT(*) total FROM subscribers')) return [[{ total: options.subscribers ?? 1 }]];
     if (sql.startsWith('SELECT d.id,d.subscriber_id')) return [[{ id: 1, subscriber_id: 1, email: 'qa@example.invalid' }]];
-    if (sql.startsWith('SELECT status FROM subscribers')) return [[{ status: 'active' }]];
+    if (sql.startsWith('SELECT status,ui_locale FROM subscribers')) return [[{ status: 'active' }]];
     if (sql.startsWith('SELECT status,COUNT(*)')) return [options.deliveryCounts || (sent.length ? [{ status: options.deliveryStatus || 'sent', total: 1 }] : [])];
     if (sql.startsWith('UPDATE newsletter_deliveries d JOIN')) return [{ affectedRows: 1 }];
     if (/^(UPDATE newsletter_runs|UPDATE newsletter_deliveries|DELETE FROM newsletter_tokens|INSERT IGNORE INTO newsletter_deliveries|INSERT INTO newsletter_tokens)/.test(sql)) return [{}];

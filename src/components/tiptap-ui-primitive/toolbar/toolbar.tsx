@@ -1,3 +1,4 @@
+import { useI18n } from '@/app/i18n'
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react"
 import { Separator } from "@/components/tiptap-ui-primitive/separator"
 import "@/components/tiptap-ui-primitive/toolbar/toolbar.scss"
@@ -161,6 +162,7 @@ const useToolbarNavigation = (
 
 export const Toolbar = forwardRef<HTMLDivElement, ToolbarProps>(
   ({ children, className, variant = "fixed", ...props }, ref) => {
+    const {t} = useI18n()
     const toolbarRef = useRef<HTMLDivElement>(null)
     const composedRef = useComposedRef(toolbarRef, ref)
     useToolbarNavigation(toolbarRef)
@@ -169,7 +171,7 @@ export const Toolbar = forwardRef<HTMLDivElement, ToolbarProps>(
       <div
         ref={composedRef}
         role="toolbar"
-        aria-label="toolbar"
+        aria-label={t("Editor toolbar")}
         data-variant={variant}
         className={cn("tiptap-toolbar", className)}
         {...props}

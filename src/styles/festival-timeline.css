@@ -1,0 +1,15 @@
+.fest-v2 .fv-year-timeline { margin-top: 28px; min-width: 0; }
+.fest-v2 .fv-year-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; border-radius: 8px; }
+.fest-v2 .fv-year-scroll:focus-visible { outline: 2px solid var(--foreground); outline-offset: 4px; }
+.fest-v2 .fv-year-space { min-width: 840px; padding: 4px 16px 0; }
+.fest-v2 .fv-year-canvas { position: relative; }
+.fest-v2 .fv-year-guide { position: absolute; width: 1px; background: color-mix(in srgb, var(--foreground) 13%, transparent); }
+.fest-v2 .fv-year-label { position: absolute; z-index: 1; width: max-content; max-width: 100%; white-space: nowrap; font-size: 12px; line-height: 20px; color: var(--fest-secondary); background: var(--fest-fill); }
+.fest-v2 .fv-year-label.is-active { color: var(--fest-orange-text); font-weight: 600; }
+.fest-v2 .fv-year-track { position: absolute; left: 0; right: 0; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 13%, var(--background)); }
+.fest-v2 .fv-year-window { position: absolute; top: -3px; height: 10px; min-width: 3px; border-radius: 5px; background: color-mix(in srgb, var(--foreground) 33%, var(--background)); }
+.fest-v2 .fv-year-window.is-active { background: var(--fest-active); }
+.fest-v2 .fv-year-today { position: absolute; top: -8px; width: 2px; height: 22px; background: var(--foreground); }
+.fest-v2 .fv-year-today-label { position: absolute; transform: translateX(-50%); border-radius: 999px; padding: 2px 8px; background: var(--foreground); color: var(--background); font-size: 12px; line-height: 18px; white-space: nowrap; }
+.fest-v2 .fv-year-month { position: absolute; color: var(--fest-secondary); font-size: 12px; line-height: 20px; white-space: nowrap; }
+.fest-v2 .fv-year-error { margin-top: 12px; color: var(--fest-secondary); font-size: 14px; line-height: 1.5; }

@@ -1,3 +1,4 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
 const React=require('react'),{act,create}=require('react-test-renderer');
 
@@ -10,7 +11,7 @@ test('editor review cancellation sends nothing and an in-flight review disables 
  const api=(path,options)=>options?(writes.push({path,...options}),new Promise((resolve,reject)=>{finish=resolve;fail=reject;})):Promise.resolve([item]);
  const code=ts.transpileModule(fs.readFileSync('src/app/pages/AdminEditorApplicationsPage.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const module={exports:{}};
- new Function('exports','require',code)(module.exports,name=>name.endsWith('/api')?{api}:name.endsWith('/feedback')?{notify:{success:()=>{},error:message=>alerts.push(message)}}:name.endsWith('/AdminState')?{AdminEmpty:()=>null,AdminError:()=>null,AdminLoading:()=>null,AdminNotice:()=>null}:name==='react-router-dom'?{Link:'a'}:name.endsWith('/dialog')?{Dialog:({open,children})=>open?children:null,DialogContent:'div',DialogTitle:'h2',DialogDescription:'p'}:require(name));
+ new Function('exports','require',code)(module.exports,name=>i18nFixture(name)?i18nFixture(name):name.endsWith('/api')?{api}:name.endsWith('/feedback')?{notify:{success:()=>{},error:message=>alerts.push(message)}}:name.endsWith('/AdminState')?{AdminEmpty:()=>null,AdminError:()=>null,AdminLoading:()=>null,AdminNotice:()=>null}:name.endsWith('.css')?{}:name.endsWith('/ThemeSelect')?{ThemeSelect:({children})=>React.createElement('select',null,children)}:name.endsWith('/LocaleLink')||name==='react-router-dom'?{Link:'a'}:name.endsWith('/dialog')?{Dialog:({open,children})=>open?children:null,DialogContent:'div',DialogTitle:'h2',DialogDescription:'p'}:require(name));
  let root;
  const text=node=>[].concat(node.props.children).join('');
  const button=match=>root.root.findAllByType('button').find(node=>match(String(node.props['aria-label']||''),text(node)));

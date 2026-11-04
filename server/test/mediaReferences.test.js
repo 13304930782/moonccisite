@@ -5,7 +5,7 @@ process.env.SITE_URL='https://mooncci.site';
 process.env.JWT_SECRET='isolated-media-reference-test-secret';
 const oldUrl='/api/uploads/used_image.png',newUrl='/api/uploads/new.png';
 const external='https://external.example'+oldUrl,prefix=oldUrl+'-other.webp';
-const fields={posts:['content','cover_image'],site_settings:['setting_value'],updates:['content','image_url'],projects:['content','cover_image','icon_image'],site_now:['content'],article_series:['cover_image'],article_drafts:['payload'],article_revisions:['payload'],article_workflows:['snapshot']};
+const fields={content_translations:['draft','published','published_source'],post_translations:['content'],posts:['content','cover_image'],site_settings:['setting_value'],updates:['content','image_url'],projects:['content','cover_image','icon_image'],site_now:['content'],article_series:['cover_image'],article_drafts:['payload'],article_revisions:['payload'],article_workflows:['snapshot']};
 const editorial={title:'Title '+oldUrl,slug:'article',summary:'Description '+oldUrl,category:'Category '+oldUrl,tags:[oldUrl],source_url:'https://source.example'+oldUrl};
 const document=url=>({...editorial,content:'![relative]('+url+'?v=1#image) <img src="https://mooncci.site'+url+'"> ![external]('+external+') ![prefix]('+prefix+')',cover_image:url,summary_mode:'ai'});
 const signed=url=>{const p=document(url);p.summary_receipt=proof.signature(p);return p;};
@@ -44,6 +44,8 @@ function fixtures(){
  data.article_drafts=[{id:'draft',post_id:1,version:7,base_version:5,published_version:7,dirty:0,payload:JSON.stringify(signed(oldUrl))},{id:'external',post_id:2,version:3,base_version:5,published_version:3,dirty:0,payload:JSON.stringify({...editorial,content:external,cover_image:external})},{id:'prefix',post_id:3,version:1,base_version:5,published_version:1,dirty:0,payload:JSON.stringify({content:prefix,cover_image:prefix})}];
  data.article_workflows=data.article_drafts.map(d=>({draft_id:d.id,draft_version:d.version,state:'scheduled',snapshot:d.payload,scheduled_at:12345}));
  data.article_revisions=data.article_drafts.map((d,i)=>({id:i+1,post_id:d.post_id,kind:'publish',published_version:5,payload:d.payload,content_hash:revisions.hash(parse(d.payload)),created_at:'original',updated_at:'original'}));
+ data.post_translations=[];
+ data.content_translations=[];
  return data;
 }
 function fakeDb(data){
@@ -53,13 +55,14 @@ function fakeDb(data){
   const table=sql.match(/(?:FROM|UPDATE|INTO) (\w+)/)?.[1];
   if(sql.startsWith('SELECT')){
    let rows=data[table];
-   if(sql==='SELECT id FROM article_revisions WHERE post_id=? LIMIT 1')rows=rows.filter(r=>r.post_id===args[0]).slice(0,1);
-   else if(sql.startsWith('SELECT content_hash'))rows=rows.filter(r=>r.post_id===args[0]&&r.kind===args[1]).slice(-1);
+   if(sql==='SELECT id FROM article_revisions WHERE post_id=? AND locale=? LIMIT 1')rows=rows.filter(r=>r.post_id===args[0]).slice(0,1);
+   else if(sql.startsWith('SELECT content_hash'))rows=rows.filter(r=>r.post_id===args[0]&&r.kind===args[2]).slice(-1);
    else if(table==='article_revisions'&&sql.includes('FOR UPDATE'))rows=rows.filter(r=>JSON.stringify(r.payload).includes(args[0]));
    return [structuredClone(rows)];
   }
   if(sql.startsWith('INSERT INTO article_revisions')){data.article_revisions.push({id:data.article_revisions.length+1,post_id:args[0],draft_id:args[1],actor_id:args[2],kind:args[3],payload:args[4],content_hash:args[5],published_version:args[6]});return [{insertId:data.article_revisions.length}];}
   assert(sql.startsWith('UPDATE'),sql);
+  if(table==='content_translations'){const row=data[table].find(r=>r.entity_type===args[3]&&r.entity_id===args[4]&&r.locale===args[5]);assert(row);Object.assign(row,{draft:args[0],published:args[1],published_source:args[2],version:row.version+1});return [{affectedRows:1}];}
   const key=table==='site_settings'?'setting_key':table==='article_workflows'?'draft_id':'id',row=data[table].find(row=>row[key]===args.at(-1));assert(row,sql);
   if(table==='posts'){Object.assign(row,{content:args[0],cover_image:args[1],version:row.version+1});}
   else if(table==='article_drafts'){Object.assign(row,{payload:args[0],base_version:args[1],version:row.version+args[2],published_version:args[3]});}
@@ -73,7 +76,7 @@ function fakeDb(data){
 test('deletion guard covers all nine consumers but filters external, prefix and editorial-only candidates',async()=>{
  const data=fixtures(),db=fakeDb(data);
  assert.equal(await countReferences(db,oldUrl),9);
- assert.deepEqual(db.events.map(e=>e.sql.match(/FROM (\w+)/)[1]),Object.keys(fields));
+ assert.deepEqual(db.events.map(e=>e.sql.match(/FROM (\w+)/)[1]),['posts','post_translations','content_translations',...Object.keys(fields).filter(x=>!['posts','post_translations','content_translations'].includes(x))]);
  for(const e of db.events){assert(e.sql.includes('LOCATE('));assert(e.args.every(url=>url===oldUrl));assert(!e.sql.includes('COUNT('));}
  for(const table of Object.keys(data))data[table]=data[table].slice(1);
  data.article_drafts.push({payload:JSON.stringify({...editorial,content:'No media',cover_image:''})});
@@ -125,4 +128,26 @@ test('free-text settings preserve external quoted origins and candidate-only row
  const db=fakeDb(data),before=structuredClone(data);await updateReferences(db,oldUrl,newUrl,99);assert.deepEqual(data,before);assert(db.events.every(e=>e.sql.startsWith('SELECT')));
  data.site_settings.push({setting_key:'local',setting_value:'<img src="https://mooncci.site'+oldUrl+'?v=1">'});
  await updateReferences(db,oldUrl,newUrl,99);assert.equal(data.site_settings.at(-1).setting_value,'<img src="https://mooncci.site'+newUrl+'?v=1">');
+});
+
+test('English content snapshots protect media and relocate together without publishing drafts',async()=>{
+ const data=fixtures();for(const table of Object.keys(data))data[table]=[];
+ const source={about:{content:'![source]('+oldUrl+')',activities:[{title:'Work',content:'![work]('+oldUrl+')',url:oldUrl,enabled:true}]}};
+ const translated={about:{content:'![English]('+oldUrl+'?v=1)',activities:[{title:'Work EN',content:'![work EN]('+oldUrl+')'}]}};
+ data.content_translations=[
+  {entity_type:'blog_pages',entity_id:'1',locale:'en',draft:JSON.stringify(translated),published:translated,published_source:source,version:4,published_at:'original',updated_at:'original'},
+  {entity_type:'project',entity_id:'2',locale:'en',draft:{name:'Unpublished',content:'![draft]('+oldUrl+')'},published:null,published_source:null,version:1},
+  {entity_type:'project',entity_id:'3',locale:'en',draft:{name:oldUrl,content:'![external]('+external+') ![prefix]('+prefix+')'},published:null,published_source:null,version:1}
+ ];
+ const db=fakeDb(data),untouched=structuredClone(data.content_translations[2]);
+ assert.equal(await countReferences(db,oldUrl),2);
+ await updateReferences(db,oldUrl,newUrl,99);
+ assert.equal(await countReferences(db,oldUrl),0);assert.equal(await countReferences(db,newUrl),2);
+ const row=data.content_translations[0];assert.equal(row.version,5);assert.equal(row.published_at,'original');assert.equal(row.updated_at,'original');
+ assert.equal(parse(row.published).about.content,'![English]('+newUrl+'?v=1)');
+ const newSource=JSON.parse(JSON.stringify(source).replaceAll(oldUrl,newUrl));
+ const localized=require('../src/lib/contentTranslations').overlay(newSource,parse(row.published),parse(row.published_source));
+ assert.equal(localized.about.activities[0].title,'Work EN');
+ assert.equal(data.content_translations[1].published,null);assert.equal(data.content_translations[1].published_source,null);assert.equal(data.content_translations[1].version,2);
+ assert.deepEqual(data.content_translations[2],untouched);
 });

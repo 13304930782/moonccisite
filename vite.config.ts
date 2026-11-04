@@ -54,8 +54,10 @@ export default defineConfig({
         experimentalMinChunkSize: 10000,
         onlyExplicitManualChunks: true,
         manualChunks(id) {
-          // Share tiny navigation icons without pulling editor icons into the entry.
-          if (/[\\/]lucide-react[\\/]dist[\\/]esm[\\/]icons[\\/](chevron-(down|up|left|right)|arrow-(left|up-right)|circle-(check|alert)|copy)\.js$/.test(id)) return 'navigation-icons';
+          // Preserve account-route boundaries when merging small shared chunks.
+          if (/[\\/]src[\\/]app[\\/]pages[\\/](?:CompleteRegistrationPage|EditorApplyPage)\.tsx$/.test(id)) return 'account-routes';
+            // Keep non-rendering locale effects lazy instead of merging them into the entry.
+            if (/[\\/]src[\\/]app[\\/](components[\\/](?:LocaleEffects|PageAnalytics)\.tsx|lib[\\/]nativeValidation\.ts)$/.test(id)) return 'site-effects';
           if (id.includes('/node_modules/re2js/') || id.includes('\\node_modules\\re2js\\')) return 'editor-search-engine';
           if (/[\\/]node_modules[\\/](prosemirror-[^\\/]+|orderedmap|rope-sequence|w3c-keyname)[\\/]/.test(id)) return 'editor-engine';
         },

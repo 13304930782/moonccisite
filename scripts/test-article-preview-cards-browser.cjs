@@ -21,7 +21,7 @@ const images={
    const browser = await engine.launch({headless:true,...(name==='chromium'&&process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}:{})});
    let releaseStyles;
    try {
-    const page = await browser.newPage({viewport:{width:390,height:900}});
+    const page = await browser.newPage({locale:'zh-CN',viewport:{width:390,height:900}});
     const errors = [];page.on('pageerror',error=>errors.push(error.message));
     const stylesheetGate = new Promise(resolve=>{releaseStyles=resolve;});
     let stalledStyles = 0;

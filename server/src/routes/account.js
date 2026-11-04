@@ -78,6 +78,7 @@ async function avatar(req, res) {
   res.json({ user: await profile(db, targetId(req)), message: '头像已更新。' });
 }
 async function reset(req, res) { await sendReset(await target(db, req)); res.json({ message: '密码重置链接已发送到登录邮箱，30 分钟内有效。' }); }
+router.put('/account/locale',writeLimit,authRequired,handler(async(req,res)=>{const language=require('../lib/articleTranslations').locale(req.body.locale);await db.query('UPDATE users SET ui_locale=? WHERE id=?',[language,req.user.id]);res.json({locale:language});}));
 router.get('/account', readLimit, authRequired, handler(read));
 router.put('/account', writeLimit, authRequired, handler(save));
 router.post('/account/avatar', writeLimit, authRequired, upload, handler(avatar));
@@ -96,7 +97,7 @@ router.post('/account/email-code', mailLimit, authRequired, handler(async(req,re
     await c.query('INSERT INTO account_challenges(id,user_id,session_hash,purpose,old_email,new_email,old_code_hash,new_code_hash,created_at,expires_at) VALUES (?,?,?,"email",?,?,"",?,?,?)',[id,req.user.id,settings.sessionHash(req),req.user.email,email,settings.hash(`${id}:${code}`),Date.now(),Date.now()+600000]);
   });
   try{
-    const r=await require('../lib/mailer').sendMail({to:email,subject:'[mooncci] 验证新登录邮箱',text:`验证码：${code}，10 分钟内有效。验证后还需输入当前密码或重新授权已绑定的第三方账号，才能完成邮箱换绑。`});
+    const r=await require('../lib/mailer').sendMail({to:email,...require('../lib/serverMessages').challenge('verifyEmail',code,req.user.ui_locale)});
     if(!r.sent)throw new Error();
   }catch{await db.query('UPDATE account_challenges SET expires_at=0 WHERE id=?',[id]);throw fail('验证码发送失败，请稍后重试。',503);}
   res.json({challenge_id:id,message:'验证码已发送到新邮箱。'});
@@ -127,7 +128,7 @@ router.post('/account/security-code', mailLimit, authRequired, handler(async (re
     await c.query('INSERT INTO account_challenges(id,user_id,session_hash,purpose,old_email,old_code_hash,created_at,expires_at) VALUES (?,?,?,"social",?,?,?,?)', [id,user.id,settings.sessionHash(req),user.email,settings.hash(`${id}:${code}`),Date.now(),Date.now()+600000]);
   });
   try {
-    const result = await require('../lib/mailer').sendMail({to:user.email,subject:'[mooncci] 确认第三方账号变更',text:`验证码：${code}，10 分钟内有效。用于更换或解除第三方登录绑定，请勿转发。`});
+    const result = await require('../lib/mailer').sendMail({to:user.email,...require('../lib/serverMessages').challenge('verifySocial',code,req.user.ui_locale)});
     if (!result.sent) throw new Error();
   } catch { await db.query('UPDATE account_challenges SET expires_at=0 WHERE id=?',[id]); throw fail('验证码发送失败，请稍后重试。',503); }
   res.json({challenge_id:id,message:'验证码已发送到当前登录邮箱，10 分钟内有效。'});

@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{chromium}=requ
  const server=await(await import('vite')).preview({preview:{host:'127.0.0.1',port:4261,strictPort:true}});
  const browser=await chromium.launch({...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:process.platform==='win32'?{channel:'msedge'}:{})});
  try {
-  const page=await browser.newPage({viewport:{width:390,height:900}});page.setDefaultTimeout(15000);
+  const page=await browser.newPage({locale:'zh-CN',viewport:{width:390,height:900}});page.setDefaultTimeout(15000);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const ready={a:false,b:false},requests={a:0,b:0};let publishes=0;
   let draft={id:'11111111-1111-4111-8111-111111111111',version:1,payload:{title:'逐张图片检查',summary:'本文用于检验文章发布前的图片检查与逐张重试。',summary_mode:'manual',content:'正文内容\n\n![图片一](/fixture-a.svg)\n\n![图片二](/fixture-b.svg)',tags:[]},workflow:{state:'draft'}};

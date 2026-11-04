@@ -5,6 +5,8 @@ const {siteOrigin} = require('./siteIdentity');
 // Include working copies and history: a hidden reference can become public later.
 const sources = [
   ['posts', ['content', 'cover_image']],
+  ['post_translations', ['content']],
+  ['content_translations', ['draft', 'published', 'published_source']],
   ['site_settings', ['setting_value']],
   ['updates', ['content', 'image_url']],
   ['projects', ['content', 'cover_image', 'icon_image']],
@@ -44,6 +46,10 @@ function mapSettingValue(raw, visit) {
   const next = typeof before === 'string' ? visit(before) : walk(before);
   return JSON.stringify(next) === JSON.stringify(before) ? raw : JSON.stringify(next);
 }
+function mapTranslationValue(raw, visit) {
+  if (raw == null) return null;
+  return mapSettingValue(typeof raw === 'string' ? raw : JSON.stringify(raw), visit);
+}
 async function countReferences(db, url) {
   let total = 0;
   for (const [table, fields] of sources) {
@@ -52,6 +58,10 @@ async function countReferences(db, url) {
       if (payloadTables.includes(table)) {
         const payload = parsePayload(row[fields[0]]);
         total += Number(documentFields.some(field => references(payload?.[field], url)));
+      } else if (table === 'content_translations') {
+        let found = false;
+        for (const field of fields) mapTranslationValue(row[field], value => { found ||= references(value, url); return value; });
+        total += Number(found);
       } else if (table === 'site_settings') {
         let found = false;
         mapSettingValue(row.setting_value, value => { found ||= references(value, url); return value; });
@@ -84,10 +94,17 @@ async function updateReferences(c, oldUrl, newUrl, actorId) {
     await c.query('UPDATE posts SET content=?,cover_image=?,version=version+1,updated_at=NOW() WHERE id=?', [next.content, next.cover_image, post.id]);
     await revisions.record(c, {post_id:post.id}, next, post.status === 'published' ? 'publish' : 'manual', actorId, post.status === 'published' ? post.version + 1 : null);
   }
+  const [translatedRows]=await c.query(`SELECT * FROM post_translations WHERE ${matches(['content'])} ORDER BY post_id,locale FOR UPDATE`,[oldUrl]);
+  const changedTranslations=translatedRows.filter(t=>remap(t.content,oldUrl,newUrl)!==t.content);
+  for(const t of changedTranslations){
+    const next={...t,content:remap(t.content,oldUrl,newUrl)};
+    await c.query('UPDATE post_translations SET content=?,version=version+1,updated_at=NOW(3) WHERE post_id=? AND locale=?',[next.content,t.post_id,t.locale]);
+    await revisions.record(c,{post_id:t.post_id,locale:t.locale},next,t.status==='published'?'publish':'manual',actorId,t.status==='published'?t.version+1:null);
+  }
   for (const draft of drafts) {
     const next = remapPayload(draft.payload, oldUrl, newUrl);
     const changed = JSON.stringify(next) !== JSON.stringify(typeof draft.payload === 'string' ? JSON.parse(draft.payload) : draft.payload);
-    const post = posts.find(p => Number(p.id) === Number(draft.post_id));
+    const post = draft.locale==='en'?changedTranslations.find(t=>Number(t.post_id)===Number(draft.post_id)):posts.find(p => Number(p.id) === Number(draft.post_id));
     const base = post && draft.base_version === post.version ? post.version + 1 : draft.base_version;
     const published = changed && draft.published_version === draft.version ? draft.version + 1 : draft.published_version;
     if (!changed && base === draft.base_version) continue;
@@ -106,6 +123,14 @@ async function updateReferences(c, oldUrl, newUrl, actorId) {
     const next = remapPayload(row.payload, oldUrl, newUrl);
     if (JSON.stringify(next) === JSON.stringify(parsePayload(row.payload))) continue;
     await c.query('UPDATE article_revisions SET payload=?,content_hash=? WHERE id=?', [JSON.stringify(next), revisions.hash(next), row.id]);
+  }
+  const translationFields = ['draft', 'published', 'published_source'];
+  const [contentTranslations] = await c.query(`SELECT * FROM content_translations WHERE ${matches(translationFields)} ORDER BY entity_type,entity_id,locale FOR UPDATE`, translationFields.map(() => oldUrl));
+  for (const row of contentTranslations) {
+    const next = translationFields.map(field => mapTranslationValue(row[field], value => remap(value, oldUrl, newUrl)));
+    if (!translationFields.some((field, index) => JSON.stringify(parsePayload(row[field])) !== JSON.stringify(parsePayload(next[index])))) continue;
+    // Keep the source snapshot in step with renamed assets so list translations stay attached.
+    await c.query('UPDATE content_translations SET draft=?,published=?,published_source=?,version=version+1,updated_at=updated_at WHERE entity_type=? AND entity_id=? AND locale=?', [...next, row.entity_type, row.entity_id, row.locale]);
   }
   for (const [table, fields] of sources.filter(([table]) => ['site_settings','updates','projects','site_now','article_series'].includes(table))) {
     const key = table==='site_settings' ? 'setting_key' : 'id';

@@ -39,15 +39,26 @@
     />
   </head>
   <body>
-    <div id="root"><div id="startup-shell" class="startup-shell"><a class="startup-brand" href="/">mooncci</a><main class="startup-body"><h1>正在打开页面</h1><p id="startup-message" role="status">正在加载，请稍候。</p><button id="startup-retry" hidden type="button">重新加载</button><noscript><p>请在浏览器中启用 JavaScript 后重新打开。</p></noscript></main></div></div>
+    <div id="root"><div id="startup-shell" class="startup-shell"><a class="startup-brand" href="/">mooncci</a><main class="startup-body"><h1>正在打开页面</h1><p id="startup-message" role="status">正在加载，请稍候。</p><button id="startup-retry" hidden type="button">重新加载</button><noscript><p lang="zh-CN">请在浏览器中启用 JavaScript 后重新打开。</p><p lang="en">Enable JavaScript in your browser and reopen this page.</p></noscript></main></div></div>
     <script>
       (function () {
         var retry = document.getElementById('startup-retry');
         if (!retry) return;
+        var locale = /^\/en(?:\/|$)/.test(location.pathname) ? 'en' : '';
+        if (!locale) {
+          try { var saved = JSON.parse(localStorage.getItem('mooncci:language') || 'null'); if (saved && (saved.preference === 'en' || saved.preference === 'zh-CN')) locale = saved.preference; } catch (_) {}
+          if (!locale) { var languages = navigator.languages || [navigator.language]; for (var i=0;i<languages.length;i++) { if (/^en(?:-|$)/i.test(languages[i])) {locale='en';break;} if (/^zh(?:-|$)/i.test(languages[i])) {locale='zh-CN';break;} } }
+        }
+        var english = locale === 'en';
+        document.documentElement.lang = english ? 'en' : 'zh-CN';
+        document.querySelector('#startup-shell h1').textContent = english ? 'Opening page' : '正在打开页面';
+        document.getElementById('startup-message').textContent = english ? 'Loading, please wait.' : '正在加载，请稍候。';
+        retry.textContent = english ? 'Reload' : '重新加载';
+        document.title = english ? 'mooncci · Notes on technology' : 'mooncci · 个人技术手记';
         retry.addEventListener('click', function () { location.reload(); });
         var timer = setTimeout(function () {
           var message = document.getElementById('startup-message');
-          if (message) { message.textContent = '页面加载时间较长，请检查网络后重试。'; retry.hidden = false; }
+          if (message) { message.textContent = english ? 'This page is taking longer to load. Check your connection and try again.' : '页面加载时间较长，请检查网络后重试。'; retry.hidden = false; }
         }, 12000);
         window.addEventListener('mooncci:mounted', function () { clearTimeout(timer); }, { once: true });
       })();

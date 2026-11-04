@@ -211,3 +211,16 @@
 .settings-save .settings-dirty { color: var(--foreground); font-weight: 500; }
 .settings-save .settings-dirty::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 8px; border-radius: 50%; background: var(--foreground); vertical-align: middle; }
 .settings-save .settings-error { color: var(--destructive); }
+.site-settings-page .settings-image-actions{flex-wrap:wrap;gap:10px}
+.site-settings-page .settings-upload,.site-settings-page .settings-image-actions .text-link{min-height:44px;padding:10px 16px;border:1px solid var(--border);border-radius:var(--control-radius,10px);background:var(--card);color:var(--foreground);font-size:14px;white-space:nowrap;flex:none}
+.site-settings-page .settings-upload:hover{background:var(--muted)}
+.site-settings-page .settings-upload:has(input:disabled){opacity:.5;cursor:not-allowed}
+.site-settings-page .settings-upload input{height:100%}
+/* Field labels supply the spacing; the nested selector must not add another gap. */
+#weather-companion .settings-two-columns{align-items:start}
+#weather-companion .settings-field .choice-native,
+#weather-companion .settings-field .choice-options{margin-block:0}
+#weather-companion .settings-field input,
+#weather-companion .settings-field .choice-native{height:44px;min-height:44px;box-sizing:border-box;font-size:16px;line-height:1.4;border-radius:var(--control-radius,10px)}
+#weather-companion .weather-mood-trigger{width:100%;height:44px;min-height:44px;font-size:16px}
+.weather-mood-menu{width:var(--radix-dropdown-menu-trigger-width);max-height:min(352px,var(--radix-dropdown-menu-content-available-height));overflow-y:auto;overscroll-behavior:contain}

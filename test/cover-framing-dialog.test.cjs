@@ -1,3 +1,4 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -9,7 +10,7 @@ function loadTs(file, imports = {}) {
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true},
   }).outputText;
-  new Function('require', 'module', 'exports', code)(name => name.endsWith('.css') ? {} : imports[name] || require(name), module, module.exports);
+  new Function('require', 'module', 'exports', code)(name=>i18nFixture(name)?i18nFixture(name):name.endsWith('.css') ? {} : imports[name] || require(name), module, module.exports);
   return module.exports;
 }
 

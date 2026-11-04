@@ -1,7 +1,9 @@
+import { useI18n } from '../i18n';
 import { confirmAction } from '../lib/confirmAction';
 import { hasUnsavedChanges } from '../lib/useUnsavedLeave';
 import { notify } from '../lib/feedback';
 import { ThemeSelect } from './ThemeSelect';
+import { AdminEmpty, AdminError, AdminLoading } from './admin/AdminState';
 import { ReactNode, useEffect, useState } from 'react';
 import { Plus, Users, Upload, X, ArrowUpRight } from 'lucide-react';
 import { api } from '../lib/api';
@@ -23,10 +25,12 @@ export function AdminElectricityRooms({
 }: {
   children: (room: ElectricityRoom, onBusyChange: (busy: boolean) => void) => ReactNode;
 }) {
+  const { t } = useI18n();
   const [settingsBusy, setSettingsBusy] = useState(false);
-  const canChangeRoom = async () => !settingsBusy && (!hasUnsavedChanges() || await confirmAction('当前宿舍设置有未保存的更改，继续可能丢失这些修改。', '继续切换'));
+  const canChangeRoom = async () => !settingsBusy && (!hasUnsavedChanges() || await confirmAction(t("m_89398dbb4c"), t("m_47df49807e")));
   const [rooms, setRooms] = useState<ElectricityRoom[]>([]),
     [selected, setSelected] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true),
     [mode, setMode] = useState<'' | 'add' | 'edit' | 'import'>('');
   const [busy, setBusy] = useState(false),
@@ -64,11 +68,14 @@ export function AdminElectricityRooms({
           : response.data[0]?.id || ''),
     );
   };
-  useEffect(() => {
-    load()
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+  const reloadRooms = async () => {
+    setLoading(true);
+    setLoadError('');
+    try { await load(); }
+    catch (e) { setLoadError(e instanceof Error ? e.message : t("m_b3b75bd055")); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { void reloadRooms(); }, []);
   const open = async (next: typeof mode) => {
     if (!(await canChangeRoom())) return;
     setError('');
@@ -95,7 +102,7 @@ export function AdminElectricityRooms({
             .join(', '),
         }));
       } catch (e) {
-        setError(e instanceof Error ? e.message : '无法读取成员');
+        setError(e instanceof Error ? e.message : t("m_0d4b979463"));
         setMode('');
       } finally {
         setBusy(false);
@@ -121,7 +128,7 @@ export function AdminElectricityRooms({
           }),
         });
         await load();
-        notify.success('宿舍信息已保存；移除成员后其旧订阅链接立即失效。');
+        notify.success(t("m_224441cea3"));
       } else {
         const inputs =
           mode === 'import'
@@ -136,7 +143,7 @@ export function AdminElectricityRooms({
           return;
         }
         await load(result.data[0]?.id);
-        setMessage(`已添加 ${result.data.length} 个宿舍，等待计划采集，也可点击立即查询。`); notify.success('宿舍已添加');
+        setMessage(t("m_6dde6f4a4f", {v0: result.data.length})); notify.success(t("m_db01f8b0df"));
       }
       setMode('');
       setDraft({
@@ -152,15 +159,15 @@ export function AdminElectricityRooms({
     } catch (e) {
       setError(
         e instanceof SyntaxError
-          ? '导入内容不是有效的 JSON 数组。'
+          ? t("m_2c64696391")
           : e instanceof Error
             ? e.message
-            : '操作失败。',
+            : t("m_b3b75bd055"),
       ); notify.error(e instanceof SyntaxError
-          ? '导入内容不是有效的 JSON 数组。'
+          ? t("m_2c64696391")
           : e instanceof Error
             ? e.message
-            : '操作失败。');
+            : t("m_b3b75bd055"));
     } finally {
       setBusy(false);
     }
@@ -169,16 +176,16 @@ export function AdminElectricityRooms({
     <div className="electricity-admin electricity-admin-v2">
       <header className="electricity-admin-head">
         <div>
-          <span>UTILITIES / 宿舍管理</span>
-          <h1>水电监控设置</h1>
-          <p>按宿舍管理采集与订阅，同宿舍成员共享一份电量数据。</p>
+          <span>{t("m_d2232b15c8")}</span>
+          <h1>{t("m_af99c07be8")}</h1>
+          <p>{t("m_1efdcb27c0")}</p>
         </div>
       </header>
-      <div className="electricity-room-toolbar">
+      {!loading && !loadError && rooms.length > 0 && <div className="electricity-room-toolbar">
         <label>
-          <span>当前管理</span>
+          <span>{t("m_3f50589be1")}</span>
           <ThemeSelect
-            aria-label="当前管理的宿舍"
+            aria-label={t("m_5059efe0ac")}
             value={selected}
             disabled={Boolean(mode) || busy || settingsBusy || !rooms.length}
             onValueChange={async (value) => {
@@ -188,11 +195,11 @@ export function AdminElectricityRooms({
               setError('');
             }}
           >
-            {!rooms.length && <option value="">尚未添加宿舍</option>}
+            {!rooms.length && <option value="">{t("m_360a26014e")}</option>}
             {rooms.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
-                {!r.active ? ' · 已停用' : ''}
+                {!r.active ? t("m_4826482624") : ''}
               </option>
             ))}
           </ThemeSelect>
@@ -204,34 +211,31 @@ export function AdminElectricityRooms({
             onClick={() => open('edit')}
           >
             <Users />
-            宿舍与成员
-          </button>
+             {t("m_353efbabce")} </button>
           <button
             className="electricity-button"
             disabled={busy || settingsBusy || Boolean(mode)}
             onClick={() => open('add')}
           >
             <Plus />
-            添加宿舍
-          </button>
+             {t("m_ee4512c271")} </button>
           <button
             className="electricity-button"
             disabled={busy || settingsBusy || Boolean(mode)}
             onClick={() => open('import')}
           >
             <Upload />
-            批量导入
-          </button>
+             {t("m_fd77192739")} </button>
         </div>
-      </div>
+      </div>}
       {error && (
         <div className="electricity-admin-notice is-error" role="alert">
-          {error}
+          {t(error || '')}
         </div>
       )}
       {message && (
         <div className="electricity-admin-notice" role="status">
-          {message}
+          {t(message || '')}
         </div>
       )}
       {mode && (
@@ -242,14 +246,14 @@ export function AdminElectricityRooms({
           <div className="electricity-manage-heading">
             <h2 id="room-editor-title">
               {mode === 'add'
-                ? '添加宿舍'
+                ? t("m_ee4512c271")
                 : mode === 'edit'
-                  ? '宿舍与成员'
-                  : '批量导入宿舍'}
+                  ? t("m_353efbabce")
+                  : t("m_948b0a8748")}
             </h2>
             <button
               className="electricity-schedule-remove"
-              aria-label="取消宿舍编辑"
+              aria-label={t("m_34f75b9922")}
               disabled={busy}
               onClick={() => {
                 setMode('');
@@ -271,13 +275,10 @@ export function AdminElectricityRooms({
               {mode === 'import' ? (
                 <>
                   <p className="electricity-manage-help">
-                    每次最多 10
-                    个。先校验学校电表和网站用户名，再确认导入；不会覆盖已有宿舍。
-                  </p>
+                     {t("m_5f6eedeafd")} </p>
                   <label className="electricity-import-label">
-                    账号清单（JSON 数组）
-                    <textarea
-                      aria-label="账号清单"
+                     {t("m_0ebdb62f56")} <textarea
+                      aria-label={t("m_6507ddb472")}
                       spellCheck={false}
                       autoComplete="off"
                       rows={8}
@@ -287,24 +288,22 @@ export function AdminElectricityRooms({
                         setPreview(null);
                       }}
                       placeholder={
-                        '[\n  {"name":"朋友的宿舍", "account":"学校账号", "roomVerify":"宿舍校验凭据", "members":["网站用户名"], "notifyTo":""}\n]'
+                        t("m_6036e24c98")
                       }
                       required
                     />
                   </label>
                   <p className="electricity-manage-help">
-                    清单包含查询凭据，仅在此页提交；保存后不会回显。
-                  </p>
+                     {t("m_077e5c99dc")} </p>
                   {preview && (
                     <div className="electricity-import-preview">
-                      <h3>确认以下宿舍</h3>
+                      <h3>{t("m_d36da78e2f")}</h3>
                       {preview.map((r, i) => (
                         <div key={i}>
                           <strong>{r.name}</strong>
-                          <span>学校电表：{r.schoolName}</span>
+                          <span>{t("m_a20387ab55")}{r.schoolName}</span>
                           <span>
-                            成员：{r.members.join('、') || '暂未绑定'} · 通知：
-                            {r.notifyTo || '未开启'}
+                             {t("m_c73b90f735")}{r.members.join('、') || t("m_53f2067aef")}  {t("m_c082705f99")} {r.notifyTo || t("m_3cffa9757b")}
                           </span>
                         </div>
                       ))}
@@ -314,7 +313,7 @@ export function AdminElectricityRooms({
               ) : (
                 <div className="electricity-field-grid">
                   <label>
-                    <span>宿舍名称</span>
+                    <span>{t("m_25de31f72e")}</span>
                     <input
                       required
                       maxLength={100}
@@ -322,32 +321,31 @@ export function AdminElectricityRooms({
                       onChange={(e) =>
                         setDraft({ ...draft, name: e.target.value })
                       }
-                      placeholder="例如：清荷公寓 A2-628"
+                      placeholder={t("m_175b81b4af")}
                     />
                   </label>
                   <label>
                     <span>
                       {room?.legacy && mode === 'edit'
-                        ? '访问范围'
-                        : '绑定网站用户名'}
+                        ? t("m_b3e8912ac6")
+                        : t("m_4c2a1dc8c3")}
                     </span>
                     {room?.legacy && mode === 'edit' ? (
                       <p className="electricity-manage-help">
-                        仅站长登录后可见
-                      </p>
+                         {t("m_501353afb2")} </p>
                     ) : (
                       <input
                         value={draft.members}
                         onChange={(e) =>
                           setDraft({ ...draft, members: e.target.value })
                         }
-                        placeholder="多个用户名用逗号分隔，需先注册"
+                        placeholder={t("m_12ddd09901")}
                       />
                     )}
                   </label>
                   <label>
                     <span>
-                      学校账号{mode === 'edit' ? '（留空保持原值）' : ''}
+                       {t("m_9a8ddf1a5e")}{mode === 'edit' ? t("m_1fa5481dd5") : ''}
                     </span>
                     <input
                       type="password"
@@ -362,8 +360,7 @@ export function AdminElectricityRooms({
                   </label>
                   <label>
                     <span>
-                      宿舍校验凭据
-                      {mode === 'edit' ? '（更换时需同时填写账号）' : ''}
+                       {t("m_64f73f15ec")} {mode === 'edit' ? t("m_826bd0be54") : ''}
                     </span>
                     <input
                       type="password"
@@ -378,14 +375,14 @@ export function AdminElectricityRooms({
                   </label>
                   {mode === 'add' && (
                     <label>
-                      <span>通知收件人</span>
+                      <span>{t("m_b836608abe")}</span>
                       <input
                         type="email"
                         value={draft.notifyTo}
                         onChange={(e) =>
                           setDraft({ ...draft, notifyTo: e.target.value })
                         }
-                        placeholder="留空则不发送邮件"
+                        placeholder={t("m_d1313cca0d")}
                       />
                     </label>
                   )}
@@ -398,7 +395,7 @@ export function AdminElectricityRooms({
                           setDraft({ ...draft, active: e.target.checked })
                         }
                       />
-                      <span>启用宿舍（关闭后暂停采集并撤销私密订阅）</span>
+                      <span>{t("m_c918462cc2")}</span>
                     </label>
                   )}
                 </div>
@@ -409,14 +406,14 @@ export function AdminElectricityRooms({
                   type="submit"
                 >
                   {busy
-                    ? '正在校验与保存…'
+                    ? t("m_fa87382eab")
                     : mode === 'import'
                       ? preview
-                        ? '确认导入'
-                        : '校验并预览'
+                        ? t("m_4a8d6841b4")
+                        : t("m_cfec9515a8")
                       : mode === 'edit'
-                        ? '保存宿舍信息'
-                        : '验证并添加'}
+                        ? t("m_8feefed5c6")
+                        : t("m_e1d1aa5bb0")}
                 </button>
                 <button
                   className="electricity-button"
@@ -428,21 +425,22 @@ export function AdminElectricityRooms({
                     setDraft((d) => ({ ...d, account: '', roomVerify: '' }));
                   }}
                 >
-                  取消
-                </button>
+                   {t("m_2cd0f3be87")} </button>
               </div>
             </fieldset>
           </form>
         </section>
       )}
       {loading ? (
-        <p role="status">正在读取宿舍…</p>
+        <AdminLoading label={t("m_8e507acd9e")} />
+      ) : loadError ? (
+        <AdminError message={loadError} onRetry={() => void reloadRooms()} />
       ) : room ? (
         <div hidden={Boolean(mode)}>
           <div className="electricity-room-summary">
             <span>
-              {room.legacy ? '仅站长可见' : `${room.memberCount} 位成员可见`}
-              {!room.active ? ' · 已停用' : ''}
+              {room.legacy ? t("m_e5cb8acdc4") : t("m_2377df5f36", {v0: room.memberCount})}
+              {!room.active ? t("m_4826482624") : ''}
             </span>
             <a
               className="electricity-room-panel-link"
@@ -450,20 +448,20 @@ export function AdminElectricityRooms({
               target="_blank"
               rel="noreferrer"
             >
-              查看此宿舍面板 <ArrowUpRight size={14} />
+               {t("m_05941c46b0")} <ArrowUpRight size={14} />
             </a>
           </div>
           {children(room, setSettingsBusy)}
         </div>
       ) : (
         !mode && (
-          <section className="electricity-room-empty">
-            <h2>添加第一个宿舍</h2>
-            <p>填写学校查询账号和宿舍凭据，再绑定朋友的网站用户名。</p>
-            <button className="electricity-button" onClick={() => open('add')}>
-              <Plus />
-              添加宿舍
-            </button>
+          <section className="admin-empty-result electricity-room-empty">
+            <AdminEmpty title={t("m_41004ae4d2")} hint={t("m_0268fcbc12")} action={
+              <div className="electricity-room-empty-actions">
+                <button type="button" className="electricity-button electricity-button--primary" onClick={() => open('add')}><Plus />{t("m_ee4512c271")}</button>
+                <button type="button" className="electricity-button" onClick={() => open('import')}><Upload />{t("m_fd77192739")}</button>
+              </div>
+            } />
           </section>
         )
       )}

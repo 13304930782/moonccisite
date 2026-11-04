@@ -1,3 +1,4 @@
+import { useI18n } from '../../../app/i18n';
 import { useEffect, useState } from 'react'
 import { useCurrentEditor, useEditorState } from '@tiptap/react'
 import { NodeSelection } from '@tiptap/pm/state'
@@ -5,6 +6,7 @@ import { Image, ChevronDown, X } from 'lucide-react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/tiptap-ui-primitive/popover'
 
 export function ImageControls() {
+  const { t } = useI18n();
   const { editor } = useCurrentEditor()
   const selected = useEditorState({ editor, selector: ({ editor }) => {
     const selection = editor?.state.selection
@@ -37,34 +39,34 @@ export function ImageControls() {
   const applyWidth = () => {
     if (width === null) return
     const value = Number(width)
-    if (!Number.isFinite(value) || value < 32 || value > 1600) { setError('请输入 32–1600 px'); return }
+    if (!Number.isFinite(value) || value < 32 || value > 1600) { setError(t("m_1b767db727")); return }
     update({ width: Math.round(value), height: null })
     setWidth(null)
     setError('')
   }
   const applyCaption = () => { if (caption !== null) { update({ imageCaption: caption.trim().slice(0, 300) }); setCaption(null) } }
   return <Popover open={open} onOpenChange={setOpen}>
-    <PopoverTrigger asChild><button type="button" className="editor-image-settings-trigger" aria-label="图片设置"><Image size={16} aria-hidden="true" /><span>图片设置</span><ChevronDown size={14} aria-hidden="true" /></button></PopoverTrigger>
-    <PopoverContent className="editor-image-controls" align="start" sideOffset={8} collisionPadding={12} aria-label="图片大小与排版" onCloseAutoFocus={event => { event.preventDefault() }}>
-      <div className="editor-image-settings-header"><strong>图片设置</strong><button type="button" className="editor-image-settings-close" aria-label="关闭图片设置" onClick={() => setOpen(false)}><X size={18} aria-hidden="true" /></button></div>
+    <PopoverTrigger asChild><button type="button" className="editor-image-settings-trigger" aria-label={t("m_75359a4812")}><Image size={16} aria-hidden="true" /><span>{t("m_75359a4812")}</span><ChevronDown size={14} aria-hidden="true" /></button></PopoverTrigger>
+    <PopoverContent className="editor-image-controls" align="start" sideOffset={8} collisionPadding={12} aria-label={t("m_b1a73de7f6")} onCloseAutoFocus={event => { event.preventDefault() }}>
+      <div className="editor-image-settings-header"><strong>{t("m_75359a4812")}</strong><button type="button" className="editor-image-settings-close" aria-label={t("m_818bfb9ced")} onClick={() => setOpen(false)}><X size={18} aria-hidden="true" /></button></div>
       <div className="editor-image-settings-section">
-        <span className="editor-image-settings-label">尺寸</span>
-        <div className="editor-image-segments" role="group" aria-label="图片尺寸">
-          <button type="button" aria-pressed={selected.width === 80} onClick={() => update({ width: 80, height: null })}>小图</button>
-          <button type="button" aria-pressed={selected.width === 320} onClick={() => update({ width: 320, height: null })}>中图</button>
-          <button type="button" aria-pressed={!selected.width} onClick={() => update({ width: null, height: null, imageLayout: 'block' })}>原尺寸</button>
+        <span className="editor-image-settings-label">{t("m_246df7d8db")}</span>
+        <div className="editor-image-segments" role="group" aria-label={t("m_c08c3589c7")}>
+          <button type="button" aria-pressed={selected.width === 80} onClick={() => update({ width: 80, height: null })}>{t("m_e83eda77f6")}</button>
+          <button type="button" aria-pressed={selected.width === 320} onClick={() => update({ width: 320, height: null })}>{t("m_a2b3e56f93")}</button>
+          <button type="button" aria-pressed={!selected.width} onClick={() => update({ width: null, height: null, imageLayout: 'block' })}>{t("m_f60066ec4b")}</button>
         </div>
-        <label className="editor-image-width-field"><span>宽度</span><span className="editor-image-width-input"><input aria-label="图片宽度（像素）" aria-invalid={!!error} type="number" min="32" max="1600" step="1" value={width ?? selected.width ?? ''} placeholder="自动" onChange={event => { setWidth(event.target.value); setError('') }} onBlur={applyWidth} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); applyWidth() } }} /><span>px</span></span></label>
+        <label className="editor-image-width-field"><span>{t("m_3b730da0ad")}</span><span className="editor-image-width-input"><input aria-label={t("m_39ff6c7c01")} aria-invalid={!!error} type="number" min="32" max="1600" step="1" value={width ?? selected.width ?? ''} placeholder={t("m_7eb336e42c")} onChange={event => { setWidth(event.target.value); setError('') }} onBlur={applyWidth} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); applyWidth() } }} /><span>px</span></span></label>
         {error && <span className="editor-image-settings-error" role="alert">{error}</span>}
       </div>
       <div className="editor-image-settings-section">
-        <span className="editor-image-settings-label">排版</span>
-        <div className="editor-image-segments" role="group" aria-label="图片对齐">
-          {(['left', 'center', 'right'] as const).map((align, index) => <button type="button" key={align} aria-pressed={selected.imageAlign === align} disabled={selected.imageLayout === 'heading'} onClick={() => update({ imageAlign: align })}>{['靠左', '居中', '靠右'][index]}</button>)}
+        <span className="editor-image-settings-label">{t("m_29d5eedb72")}</span>
+        <div className="editor-image-segments" role="group" aria-label={t("m_1b01af645a")}>
+          {(['left', 'center', 'right'] as const).map((align, index) => <button type="button" key={align} aria-pressed={selected.imageAlign === align} disabled={selected.imageLayout === 'heading'} onClick={() => update({ imageAlign: align })}>{[t("m_6548f6b58c"), t("m_4cc3885c18"), t("m_be92a99ec4")][index]}</button>)}
         </div>
-        <button className="editor-image-heading-toggle" type="button" aria-pressed={selected.imageLayout === 'heading'} disabled={!adjacentHeading && selected.imageLayout !== 'heading'} title={adjacentHeading ? '小图放在相邻标题左侧' : '请将图片放到标题前后'} onClick={headingLayout}><span>标题旁</span><span className="editor-image-toggle-indicator" aria-hidden="true" /></button>
+        <button className="editor-image-heading-toggle" type="button" aria-pressed={selected.imageLayout === 'heading'} disabled={!adjacentHeading && selected.imageLayout !== 'heading'} title={adjacentHeading ? t("m_dbdd7e7a76") : t("m_5318ba36d7")} onClick={headingLayout}><span>{t("m_d0ac62dca8")}</span><span className="editor-image-toggle-indicator" aria-hidden="true" /></button>
       </div>
-      <label className="editor-image-caption-field"><span className="editor-image-settings-label">图片说明</span><textarea aria-label="图片说明" rows={2} maxLength={300} value={caption ?? selected.imageCaption ?? ''} placeholder="选填，居中显示在图片下方" onChange={event => setCaption(event.target.value)} onBlur={applyCaption} /></label>
+      <label className="editor-image-caption-field"><span className="editor-image-settings-label">{t("m_5e137136f6")}</span><textarea aria-label={t("m_5e137136f6")} rows={2} maxLength={300} value={caption ?? selected.imageCaption ?? ''} placeholder={t("m_986a0cfddc")} onChange={event => setCaption(event.target.value)} onBlur={applyCaption} /></label>
     </PopoverContent>
   </Popover>
 }

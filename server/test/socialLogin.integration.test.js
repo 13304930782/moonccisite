@@ -12,6 +12,8 @@ test('social login, owner settings, mandatory email, binding, revocation and rep
   await setup.query('CREATE DATABASE IF NOT EXISTS mooncci_qa_social_login CHARACTER SET utf8mb4');
   await setup.query('USE mooncci_qa_social_login');
   await setup.query(`CREATE TABLE IF NOT EXISTS users (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, username VARCHAR(100) UNIQUE, email VARCHAR(120) UNIQUE, password_hash VARCHAR(255), google_sub VARCHAR(255) UNIQUE, role VARCHAR(16), status VARCHAR(16), can_comment INT DEFAULT 1, login_attempts INT DEFAULT 0, locked_until DATETIME NULL)`);
+    const [localeColumns]=await setup.query("SHOW COLUMNS FROM users LIKE 'ui_locale'");
+    if(!localeColumns.length)await setup.query("ALTER TABLE users ADD COLUMN ui_locale VARCHAR(5) CHARACTER SET ascii NOT NULL DEFAULT 'zh-CN'");
   for (const file of ['202609090002_auth_revocation.sql', '202609100001_social_login.sql']) await setup.query(fs.readFileSync(path.join(__dirname, '../database/migrations', file), 'utf8'));
   await setup.query('DELETE FROM oauth_identities; DELETE FROM oauth_providers; DELETE FROM oauth_states; DELETE FROM oauth_registrations; DELETE FROM auth_revocations; DELETE FROM auth_invalidations; DELETE FROM users');
   await setup.end();

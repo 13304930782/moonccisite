@@ -8,6 +8,8 @@ test('revision history transactions, retention, authorization and restore',{skip
  await db.query('DROP TABLE article_drafts');await db.query('ALTER TABLE posts DROP COLUMN version');
  await db.query('INSERT INTO posts(title,slug,content,status,author_id) VALUES ("Existing","existing","Keep original content","published",?)',[owner.insertId]);
  await setup.query(fs.readFileSync(path.join(__dirname,'../database/migrations/202609110001_article_drafts.sql'),'utf8'));
+ // Upgrade the recreated legacy draft table before exercising current APIs.
+ await require('../scripts/migrate-bilingual').migrate(setup);
  const [[legacy]]=await db.query('SELECT content,version FROM posts WHERE slug="existing"');assert.equal(legacy.content,'Keep original content');assert.equal(legacy.version,1);
  const token=id=>`mooncci_token=${jwt.sign({id,sessionStartedAt:Date.now()},process.env.JWT_SECRET)}`;const cookie=token(owner.insertId);
  const server=require('../src/index').listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(async()=>{await new Promise(r=>server.close(r));await db.end();await require('../src/platformDb').end();await setup.query(`DROP DATABASE ${name}`);await setup.end();});

@@ -236,6 +236,7 @@ DROP TABLE IF EXISTS `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `users` (
+  `ui_locale` varchar(5) CHARACTER SET ascii NOT NULL DEFAULT 'zh-CN',
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL,
   `email` varchar(120) NOT NULL,
@@ -338,6 +339,7 @@ CREATE TABLE IF NOT EXISTS site_now (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS subscribers (
+ ui_locale VARCHAR(5) CHARACTER SET ascii NOT NULL DEFAULT 'zh-CN',
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(254) NOT NULL UNIQUE,
   status ENUM('pending','active','unsubscribed') NOT NULL DEFAULT 'pending',
@@ -595,6 +597,8 @@ CREATE TABLE IF NOT EXISTS article_drafts (
   id CHAR(36) CHARACTER SET ascii NOT NULL PRIMARY KEY,
   author_id INT NOT NULL,
   post_id INT NULL,
+  locale VARCHAR(5) CHARACTER SET ascii NOT NULL DEFAULT 'zh-CN',
+  source_hash CHAR(64) CHARACTER SET ascii NOT NULL DEFAULT '',
   base_version INT NULL,
   version INT NOT NULL DEFAULT 1,
   payload JSON NOT NULL,
@@ -602,7 +606,7 @@ CREATE TABLE IF NOT EXISTS article_drafts (
   published_version INT NULL,
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-  UNIQUE KEY uniq_article_working_copy(post_id),
+  UNIQUE KEY uniq_article_working_copy(post_id,locale),
   INDEX idx_article_draft_author(author_id,updated_at),
   FOREIGN KEY(author_id) REFERENCES users(id),
   FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE
@@ -639,6 +643,7 @@ CREATE TABLE IF NOT EXISTS article_revisions (
  post_id INT NULL,
  draft_id CHAR(36) CHARACTER SET ascii NULL,
  actor_id INT NULL,
+ locale VARCHAR(5) CHARACTER SET ascii NOT NULL DEFAULT 'zh-CN',
  kind ENUM('baseline','auto','manual','publish','restore') NOT NULL,
  payload JSON NOT NULL,
  content_hash CHAR(64) CHARACTER SET ascii NOT NULL,
@@ -646,7 +651,7 @@ CREATE TABLE IF NOT EXISTS article_revisions (
  auto_bucket BIGINT NULL,
  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
- UNIQUE KEY revision_publication(post_id,published_version),
+ UNIQUE KEY revision_publication(post_id,locale,published_version),
  INDEX revision_post(post_id,id),
  INDEX revision_draft(draft_id,id),
  INDEX revision_expiry(kind,updated_at),
@@ -856,3 +861,18 @@ CREATE TABLE IF NOT EXISTS article_slug_aliases (
   KEY idx_article_slug_post (post_id),
   CONSTRAINT fk_article_slug_post FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS post_translations (
+ post_id INT NOT NULL,
+ locale VARCHAR(5) CHARACTER SET ascii NOT NULL,
+ title VARCHAR(255) NOT NULL,
+ summary TEXT NOT NULL,
+ content LONGTEXT NOT NULL,
+ status ENUM('draft','published') NOT NULL DEFAULT 'draft',
+ version INT NOT NULL DEFAULT 1,
+ source_hash CHAR(64) CHARACTER SET ascii NOT NULL,
+ published_at DATETIME(3) NULL,
+ updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ PRIMARY KEY(post_id,locale),
+ FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

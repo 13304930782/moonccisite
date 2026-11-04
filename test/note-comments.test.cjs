@@ -1,9 +1,10 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
 const React=require('react'),{act,create}=require('react-test-renderer');
 function load(source, state){
  const module={exports:{}};
  const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- const mock=name=>name==='react'?React:name==='react/jsx-runtime'?require(name):name==='lucide-react'?Object.fromEntries(['Heart','MessageCircle','Reply','Send','Trash2','X'].map(x=>[x,'svg'])):name==='react-router-dom'?{Link:'a',useLocation:()=>({pathname:'/updates/4'})}:name.endsWith('/api')?{api:state.api}:name.endsWith('/AuthContext')?{useAuth:()=>({user:state.user})}:name.endsWith('/commentTime')?{formatCommentTime:x=>x}:name.endsWith('/feedback')?{notify:{success(){},error(){}}}:name.endsWith('/confirmAction')?{confirmAction:async()=>true}:{EmptyState:({children})=>React.createElement('div',null,children)};
+ const mock=name=>name.endsWith('/LocaleLink')?{Link:'a'}:i18nFixture(name)?i18nFixture(name):name==='react'?React:name==='react/jsx-runtime'?require(name):name==='lucide-react'?Object.fromEntries(['Heart','MessageCircle','Reply','Send','Trash2','X'].map(x=>[x,'svg'])):name==='react-router-dom'?{Link:'a',useLocation:()=>({pathname:'/updates/4'})}:name.endsWith('/api')?{api:state.api}:name.endsWith('/AuthContext')?{useAuth:()=>({user:state.user})}:name.endsWith('/commentTime')?{formatCommentTime:x=>x}:name.endsWith('/feedback')?{notify:{success(){},error(){}}}:name.endsWith('/confirmAction')?{confirmAction:async()=>true}:{EmptyState:({children})=>React.createElement('div',null,children)};
  new Function('exports','require',code)(module.exports,mock);return module.exports.CommentSection;
 }
 const source=fs.readFileSync('src/app/components/CommentSection.tsx','utf8');
@@ -12,7 +13,7 @@ test('note regions omit the China prefix only when a region is present; other va
  for(const [raw,display] of [['中国广东','广东'],['中国香港','香港'],['中国澳门','澳门'],['中国台湾','台湾'],['美国','美国'],['中国','中国']]){
   for(const variant of ['note',undefined]){
    const root=await mount({user:null,api:async()=>[{...row,ip_location:raw}]},{variant});
-   const location=root.root.findAllByType('span').find(n=>n.children[0]==='来自 ');
+   const location=root.root.findAllByType('span').find(n=>n.children.join('').startsWith('来自 '));
    assert.equal(location.children.join(''),'来自 '+(variant==='note'?display:raw));root.unmount();
   }
  }
@@ -48,13 +49,14 @@ test('note like motion begins only after a real user action; delete permission r
  assert.equal(root.root.findAllByProps({'data-note-like':'clicked'}).length,1);root.unmount();
 });
 test('default article and compact list markup stay identical to production baseline',async()=>{
+ // Bilingual rendering splits posting-rule text into adjacent translated text nodes; visible copy and all DOM structure unchanged.
  // Serialized DOM from 854189d with the synthetic row above; no Git history is needed in shallow CI checkouts.
  const baseline={
   'guest:false':'0f2ec1de44747dc6a14d4d305df913a28b641e13b16979b20d5e78f6f7da59db',
   'guest:true':'e0b54d1475046d8f2fdbf8fdec8683e1372e91cc7d810880a57027b638052ef1',
-  'user:false':'cf669dfb4b518e23d7e8c3c024b582ed8b49146d042b339b2844debddca91793',
+  'user:false':'e8f68eca27a90fcc06e4dc42e614305ed0e37ede0b001c6d109a4168d39a2e02',
   'user:true':'6317a1fbee58af24cdef32cfb5883b026ac1bacf2ab57231f8f7ecea212254ba',
-  'owner:false':'1f272ed4465c19f0ad9875c94b3103c95dfb81c9511b8c72aab5e3b0fab7a278',
+  'owner:false':'4a308054b23706f8b4f8a8f43e1223b3ce79a1a9bbd1d4056dea832949f4d8ff',
   'owner:true':'2cf7e6ef1f5770d3f8a5e01cd4d56dce0fb0940cb94374e7efcb6e2c706263eb',
  };
  for(const user of [null,{id:3,username:'读者',role:'user'},{id:9,username:'站长',role:'owner'}])for(const compact of [false,true]){

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import {isRichText} from '../lib/richText';
 import { lazy, Suspense, useState, useRef, useEffect, useCallback } from 'react';
 import { MarkdownContent } from './MarkdownContent';
@@ -34,6 +35,7 @@ export function ArticleEditor({
   disabled?:boolean;
   writingToolbar?:boolean;
 }) {
+  const { t } = useI18n();
   const [localMode,setLocalMode]=useState<ArticleEditorMode>(existing && !isRichText(value) ? 'source' : 'visual');
   const [visualReady,setVisualReady]=useState(false),[visualBusy,setVisualBusy]=useState(false),[imageBusy,setImageBusy]=useState(false);
   const requestedMode=controlledMode??localMode,mode=requestedMode==='source'&&isRichText(value)?'visual':requestedMode;
@@ -62,12 +64,12 @@ export function ArticleEditor({
       {!hideModeControls&&<div
         className="article-editor-tabs"
         role="group"
-        aria-label="正文编辑模式"
+        aria-label={t("m_1e594397ca")}
       >
         {[
-          ['visual', '富文本编辑'],
-          ...(!isRichText(value) && (existing || mode==='source') ? [['source', 'Markdown 源码']] : []),
-          ['preview', '阅读预览'],
+          ['visual', t("m_c029ea24cb")],
+          ...(!isRichText(value) && (existing || mode==='source') ? [['source', t("m_9380ef6f8d")]] : []),
+          ['preview', t("m_64d4febdc0")],
         ].map(([key, title]) => (
           <button
             type="button"
@@ -82,27 +84,27 @@ export function ArticleEditor({
       </div>}
       {mode!=='visual'&&<p className="article-editor-hint">
         {mode === 'source'
-            ? '源码会原样保留。已有文章默认在此编辑；特殊 HTML 或扩展语法建议继续使用源码模式。'
-            : '使用与公开文章页相同的阅读排版。'}
+            ? t("m_ad00dc5bd9")
+            : t("m_9aa73cf11b")}
       </p>}
       {imageTools&&(!writingToolbar||mode==='source')&&<div className={writingToolbar?'article-source-toolbar':'article-editor-image-row'} hidden={mode==='preview'}>{imageTools}</div>}
       {mode === 'source' ? (
-        <textarea
+        <textarea data-markdown-editor
           ref={source}
-          aria-label="Markdown 正文"
+          aria-label={t("m_cb25f99348")}
           spellCheck={false}
           rows={22}
           value={value}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="开始写作"
+          placeholder={t("m_6bbde83d85")}
         />
       ) : (<>{mode === 'preview' && (
         <div className="article-editor-preview">
-          <MarkdownContent content={value || '还没有正文内容。'} />
+          <MarkdownContent content={value || t("m_91c8dfdb2f")} />
         </div>
       )}<div hidden={mode==='preview'}><Suspense
-          fallback={<p className="quiet-state">正在加载可视化编辑器…</p>}
+          fallback={<p className="quiet-state">{t("m_8fa48595e4")}</p>}
         >
           <VisualMarkdownEditor
             value={value}

@@ -9,7 +9,11 @@
     "test": "node --test test/*.test.cjs",
     "typecheck": "tsc --noEmit",
     "check:bundle": "node scripts/check-bundle-budget.mjs",
-    "check": "npm run typecheck && npm test && npm run build && npm run check:bundle"
+    "check": "npm run typecheck && npm test && npm run build && npm run check:bundle",
+    "test:bilingual:ssr": "node scripts/test-bilingual-document.mjs",
+    "test:bilingual:browser": "node scripts/test-locale-history.cjs && node scripts/test-bilingual-public-browser.cjs && node scripts/test-bilingual-editor-browser.cjs && node scripts/test-bilingual-hydration-browser.mjs",
+    "audit:bilingual:routes": "node scripts/test-bilingual-routes-browser.cjs",
+    "check:i18n": "node scripts/check-i18n.cjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

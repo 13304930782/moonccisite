@@ -10,7 +10,7 @@ async function loadPost(c,d,user) {
   if (!d.post_id) return null;
   const [[post]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[d.post_id]);
   if (!post || (!isAdminLike(user) && Number(post.author_id)!==Number(user.id))) throw error('文章不存在或无权限。',404);
-  return post;
+  return d.locale==='en'?require('./articleTranslations').published(c,post,true):post;
 }
 async function inspect(c,d,user) {
   const post=await loadPost(c,d,user);
@@ -36,11 +36,12 @@ async function resolve(c,d,user,input) {
   const selected=input.choice==='adopt-post'?postPayload(post,d):input.choice==='adopt-draft'?d.payload:current;
   // Adopting a server draft does not silently rebase it onto a newer public article.
   const base=input.choice==='adopt-draft'?d.base_version:post?.version??null;
-  await c.query('UPDATE article_drafts SET payload=?,base_version=?,version=version+1,dirty=1,published_version=NULL WHERE id=?',[JSON.stringify(selected),base,d.id]);
+  const sourceHash=d.locale==='en'&&input.choice==='adopt-post'?(post.source_hash||''):(d.source_hash||'');
+  await c.query('UPDATE article_drafts SET payload=?,source_hash=?,base_version=?,version=version+1,dirty=1,published_version=NULL WHERE id=?',[JSON.stringify(selected),sourceHash,base,d.id]);
   if (workflow.enabled()) await c.query("UPDATE article_workflows SET state='draft',reason='',scheduled_at=NULL WHERE draft_id=?",[d.id]);
   if (input.choice==='publish-current') {
     if (post) await revisions.record(c,d,post,'restore',user.id,post.version);
-    await publish(c,{...d,payload:selected,version:d.version+1,base_version:base},user);
+    await publish(c,{...d,payload:selected,source_hash:sourceHash,version:d.version+1,base_version:base},user);
     if (workflow.enabled()) await c.query("UPDATE article_workflows SET state='published',reason='',scheduled_at=NULL WHERE draft_id=?",[d.id]);
   }
 }

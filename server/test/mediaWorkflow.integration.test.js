@@ -8,7 +8,7 @@ test('real media rename and repeated compression keep file, dimensions and artic
  // Keep the normal Sharp cache enabled during all operations, including repeated paths.
  t.after(async()=>{if(server)await new Promise(r=>server.close(r));if(db)await db.end();if(created)await setup.query('DROP DATABASE '+name);await setup.end();sharp.cache(false);assert(fixture.startsWith(parent+path.sep));fs.rmSync(fixture,{recursive:true,force:true});});
  await setup.query('CREATE DATABASE '+name+' CHARACTER SET utf8mb4');created=true;await setup.query('USE '+name);
- for(const file of ['schema.sql','migrations/202609090002_auth_revocation.sql'])await setup.query(fs.readFileSync(path.join(__dirname,'../database',file),'utf8'));
+ for(const file of ['schema.sql','migrations/202609090002_auth_revocation.sql','migrations/202611040002_content_translations.sql'])await setup.query(fs.readFileSync(path.join(__dirname,'../database',file),'utf8'));
  const [user]=await setup.query("INSERT INTO users(username,email,password_hash,role) VALUES ('Media QA','media-workflow@example.test','unused','admin')");
  db=require('../src/db');
  // Evaluate the real route with its real dependencies, only relocating its uploads directory.

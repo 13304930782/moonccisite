@@ -4,16 +4,16 @@ const {pathToFileURL} = require('node:url');
 const {randomBytes,timingSafeEqual} = require('node:crypto');
 const {decodeArticleReference}=require('./articleSlug');
 const documentToken = randomBytes(32).toString('hex');
-const publicRoutes = /^\/(?:|articles|archives|about|links|projects|updates|tags|categories|rss|series|early-access|mail-setup|article\/[^/]+|updates\/[^/]+|projects\/[^/]+|category\/[^/]+|tag\/[^/]+|series\/[^/]+)$/;
-const privateRoutes = /^\/(?:admin(?:\/.*)?|account(?:\/.*)?|login|admin-login|register|forgot-password|reset-password|complete-registration|subscription\/[^/]+|search|diagnostics|electricity|node-monitor)$/;
+const publicRoutes = /^(?:\/en)?\/(?:|articles|archives|about|links|projects|updates|tags|categories|rss|series|early-access|mail-setup|article\/[^/]+|updates\/[^/]+|projects\/[^/]+|category\/[^/]+|tag\/[^/]+|series\/[^/]+)$|^\/en$/;
+const privateRoutes = /^\/(?:admin(?:\/.*)?|account(?:\/.*)?|login|admin-login|register|forgot-password|reset-password|complete-registration|subscription\/[^/]+|search|diagnostics|electricity|node-monitor)$|^\/en\/search$/;
 const endpoints = /^\/(?:settings\/(?:site|blog-pages)|publishing\/config|subscriptions\/status|now|activity|projects(?:\/[A-Za-z0-9_-]+)?|updates\/[1-9]\d*|posts(?:\/(?:[^/?]+(?:\/discovery)?|meta\/(?:categories|tags)))?|series(?:\/[^/?]+)?)$/;
-const allowedQuery = new Set(['page','pageSize','format','category','tag','type','featured','release']);
+const allowedQuery = new Set(['page','pageSize','format','category','tag','type','featured','release','locale','search']);
 function isPublicResource(value) {
   if (!value.startsWith('/') || value.startsWith('//')) return false;
   const url = new URL(value,'http://local');
   const article=url.pathname.match(/^\/posts\/([^/]+)(?:\/discovery)?$/);
   if(article && article[1]!=='archives' && (!decodeArticleReference(article[1]) || article[1]==='meta'))return false;
-  return endpoints.test(url.pathname) && [...url.searchParams.keys()].every(key=>allowedQuery.has(key));
+  return endpoints.test(url.pathname) && [...url.searchParams.keys()].every(key=>allowedQuery.has(key)) && (!url.searchParams.has('locale') || (url.searchParams.getAll('locale').length===1 && ['zh-CN','en'].includes(url.searchParams.get('locale'))));
 }
 async function loadPublicResource(value,clientIp) {
   if(!isPublicResource(value)) throw Error('Unexpected document resource');
@@ -43,7 +43,7 @@ async function injectDocument(template, rendered) {
   let start=template.indexOf('<div id="root">'), script=template.indexOf('<script',start);
   if(start<0||script<0) throw Error('Document root missing');
   const assets=JSON.parse(await fs.readFile(path.resolve(__dirname,'../../runtime/styles.json'),'utf8'));
-  const pathname=new URL(rendered.data.url||'/','http://local').pathname;
+  const pathname=new URL(rendered.data.url||'/','http://local').pathname.replace(/^\/en(?=\/|$)/,'')||'/';
   const routes={'/articles':'ArticlesPage','/article':'ArticlePage','/archives':'ArchivesPage','/about':'BlogInfoPages','/links':'BlogInfoPages','/projects':'ProjectsPage','/updates':'UpdatesPage','/tags':'TagsPage','/tag':'TagPage','/categories':'CategoriesPage','/category':'CategoryPage','/series':'SeriesPage','/early-access':'EarlyAccessPage','/mail-setup':'MailSetupPage','/rss':'RssPage'};
   const name=rendered.data.status===404?'NotFoundPage':routes['/'+pathname.split('/')[1]]||'index';
   if(pathname==='/' && rendered.data.status!==404) {
@@ -54,7 +54,7 @@ async function injectDocument(template, rendered) {
       return /rel="stylesheet"/.test(link) && entryCss.has(href) ? '' : link;
     }).replace('</head>', '<style id="mooncci-home-css">'+homeCss+'</style></head>');
   }
-  const selected=[assets[name],...(pathname==='/' && rendered.data.resources?.['/now']?.content?.trim()?[assets.MarkdownContent]:[])].filter(Boolean);
+  const selected=[assets[name],...(pathname==='/' && (rendered.data.resources?.['/now']||rendered.data.resources?.['/now?locale=en'])?.content?.trim()?[assets.MarkdownContent]:[])].filter(Boolean);
   start=template.indexOf('<div id="root">');
   const rootScript=template.indexOf('<script',start);
   const css=[...new Set(selected.flatMap(x=>x.css))].filter(url=>!template.includes(url) && !(pathname==='/' && rendered.data.status!==404 && (assets.index?.css||[]).includes(url)));

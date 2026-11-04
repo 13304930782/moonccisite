@@ -1,3 +1,4 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -12,7 +13,7 @@ test('note server render uses production-allowed resources and actual activity e
   const entries=[{id:901,excerpt:'当前近况'},{id:902,excerpt:'更多近况第一条'},{id:903,excerpt:'更多近况第二条'}].map(entry=>({...entry,published_at:item.published_at}));
   const module={exports:{}};
   const code=ts.transpileModule(fs.readFileSync('src/app/pages/NoteDetailPage.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText;
-  const mock=name=>name==='react'?React:name==='react/jsx-runtime'?require(name):
+  const mock=name=>i18nFixture(name)?i18nFixture(name):name==='react'?React:name==='react/jsx-runtime'?require(name):
     name==='react-router-dom'?{useParams:()=>({id:'901'}),Link:({to,children,...props})=>React.createElement('a',{href:to,...props},children)}:
     name.endsWith('/ContentUI')?{SitePage:({children,...props})=>React.createElement('main',props,children),ResourceState:({children})=>children,formatDate:value=>value,useResource:path=>{requested.push(path);assert.ok(isPublicResource(path),'Production SSR rejects '+path);return {data:path==='/updates/901'?item:{items:entries}};}}:
     name.endsWith('/RoutePosition')?{usePreviousSiteVisit:()=>null}:
@@ -61,6 +62,8 @@ test('note summaries and relative dates handle Markdown and calendar days',()=>{
   assert.equal(relativeNoteDate('2026-10-17T00:00:00+08:00',now),'今天');
   assert.equal(relativeNoteDate('2026-10-16T23:00:00+08:00',now),'昨天');
   assert.equal(relativeNoteDate('bad-date',now),'');
+  assert.equal(relativeNoteDate('2026-10-16T23:00:00+08:00',now,'en'),'yesterday');
+  assert.equal(relativeNoteDate('2026-10-14T12:00:00+08:00',now,'en'),'3 days ago');
   const originalTimezone=process.env.TZ;
   try {
     for(const timezone of ['Asia/Shanghai','America/Los_Angeles','UTC']) {

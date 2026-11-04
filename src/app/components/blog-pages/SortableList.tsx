@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 import {useEffect,useRef,useState,type ReactNode,type PointerEvent,type CSSProperties} from 'react';
 
 export function moveItem<T>(items:readonly T[],from:number,to:number):T[] {
@@ -8,6 +9,7 @@ export function moveItem<T>(items:readonly T[],from:number,to:number):T[] {
 type Drag={pointerId:number;from:number;to:number;startY:number;delta:number;scrollY:number;scrollParent:HTMLElement|null;clientY:number;tops:number[];heights:number[];gap:number};
 type Props<T>={items:T[];onReorder:(items:T[])=>void;getKey:(item:T)=>string;getLabel:(item:T)=>string;children:(item:T,index:number,handle:ReactNode)=>ReactNode;disabled?:boolean;className?:string};
 export function SortableList<T>({items,onReorder,getKey,getLabel,children,disabled=false,className=''}:Props<T>){
+  const { t } = useI18n();
  const root=useRef<HTMLDivElement>(null),active=useRef<Drag|null>(null);
  const frame=useRef<number|null>(null);
  const stopScroll=()=>{if(frame.current!==null){cancelAnimationFrame(frame.current);frame.current=null;}};
@@ -16,7 +18,7 @@ export function SortableList<T>({items,onReorder,getKey,getLabel,children,disabl
  const finish=(event:PointerEvent,commit:boolean)=>{
   const current=active.current;if(!current||event.pointerId!==current.pointerId)return;
   active.current=null;stopScroll();setDrag(null);
-  if(commit&&current.from!==current.to){onReorder(moveItem(items,current.from,current.to));setAnnouncement(`${getLabel(items[current.from])}已移到第 ${current.to+1} 项`);}
+  if(commit&&current.from!==current.to){onReorder(moveItem(items,current.from,current.to));setAnnouncement(t("m_edc8c5620a", {v0: getLabel(items[current.from]), v1: current.to+1}));}
  };
  const start=(event:PointerEvent<HTMLButtonElement>,index:number)=>{
   if(disabled||items.length<2||!event.isPrimary||event.button!==0||active.current)return;
@@ -61,7 +63,7 @@ export function SortableList<T>({items,onReorder,getKey,getLabel,children,disabl
   return {transform:`translateY(${top-drag.tops[index]}px)`};
  };
  return <div ref={root} className={`bp-sortable-list ${className}`}>
-  {items.map((item,index)=><div key={getKey(item)} data-sortable-item="" data-dragging={drag?.from===index||undefined} className="bp-sortable-item" style={position(index)}>{children(item,index,<button type="button" className="bp-drag-handle" style={{touchAction:'none'}} aria-label={`拖动排序：${getLabel(item)}`} title="拖动排序，或使用上下方向键" disabled={disabled||items.length<2} onPointerDown={event=>start(event,index)} onPointerMove={move} onPointerUp={event=>finish(event,true)} onPointerCancel={event=>finish(event,false)} onLostPointerCapture={event=>finish(event,false)} onKeyDown={event=>{if(event.key==='Escape'&&active.current){active.current=null;stopScroll();setDrag(null);event.preventDefault();return;}if(drag||disabled||!['ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();const to=index+(event.key==='ArrowUp'?-1:1);if(to<0||to>=items.length)return;onReorder(moveItem(items,index,to));setAnnouncement(`${getLabel(item)}已移到第 ${to+1} 项`);}}>⠿</button>)}</div>)}
+  {items.map((item,index)=><div key={getKey(item)} data-sortable-item="" data-dragging={drag?.from===index||undefined} className="bp-sortable-item" style={position(index)}>{children(item,index,<button type="button" className="bp-drag-handle" style={{touchAction:'none'}} aria-label={t("m_384d8b87eb", {v0: getLabel(item)})} title={t("m_0262e2d5ff")} disabled={disabled||items.length<2} onPointerDown={event=>start(event,index)} onPointerMove={move} onPointerUp={event=>finish(event,true)} onPointerCancel={event=>finish(event,false)} onLostPointerCapture={event=>finish(event,false)} onKeyDown={event=>{if(event.key==='Escape'&&active.current){active.current=null;stopScroll();setDrag(null);event.preventDefault();return;}if(drag||disabled||!['ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();const to=index+(event.key==='ArrowUp'?-1:1);if(to<0||to>=items.length)return;onReorder(moveItem(items,index,to));setAnnouncement(t("m_edc8c5620a", {v0: getLabel(item), v1: to+1}));}}>⠿</button>)}</div>)}
   <span className="bp-sort-announcement" role="status" aria-live="polite">{announcement}</span>
  </div>;
 }

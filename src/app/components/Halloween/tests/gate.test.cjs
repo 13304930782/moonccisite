@@ -7,6 +7,7 @@ function fixture(inRange,off,storageDenied=false){
  const sessionStorage={getItem:key=>session.get(key)||null,removeItem:key=>session.delete(key)};
  const exports={};const code=ts.transpileModule(fs.readFileSync('src/app/components/Festivals/Runtime.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  new Function('exports','require','localStorage','sessionStorage','window','document','setTimeout','clearTimeout',code)(exports,name=>{
+  const localized=require('../../../../../test/helpers/i18n.cjs').fixture(name);if(localized)return localized;
   if(name==='./lifecycle')return {installTheme:()=>()=>{}};
   if(name==='react-router-dom')return {useLocation:()=>({pathname:result.path||'/'})};
   if(name==='../../lib/api')return {api:async(path,options)=>{result.requests.push({path,options});if(result.fail)throw Error('offline');return {active:result.range?{id:'halloween',label:'万圣节',windowLabel:'2026-10-25 — 2026-11-01',level:'major',options:{header:true,hat:true,home:true,favicon:true,pageAccent:true}}:null,serverTime:'2026-10-25T00:00:00Z',nextCheckAt:'2026-10-25T00:00:05Z'};}};

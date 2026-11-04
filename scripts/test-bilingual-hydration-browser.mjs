@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {createRequire} from 'node:module';
+import {chromium,webkit} from 'playwright';
+import {renderDocument} from '../server/runtime/document.mjs';
+const require=createRequire(import.meta.url),{injectDocument}=require('../server/src/lib/publicDocument.js');
+const template=await fs.readFile('dist/index.html','utf8'),root=path.resolve('dist');
+const post={id:7,slug:'shared-post',status:'published',title:'中文文章',summary:'中文简介',content:'## 中文标题\n\n中文正文',tags:[],author_name:'mooncci',published_at:'2026-11-01',content_locale:'zh-CN',available_locales:['zh-CN','en']};
+async function load(value){const url=new URL(value,'http://local'),p=url.pathname,en=url.searchParams.get('locale')==='en';
+ if(p==='/auth/session')return {user:null};
+ if(p==='/settings/site')return {brand:{site_title:'mooncci'},hero:{},footer:{},weather:{enabled:false}};
+ if(p==='/publishing/config')return {enabled:true};
+ if(p==='/subscriptions/status')return {available:false};
+ if(p==='/posts/shared-post')return en?{...post,title:'English article',summary:'English summary',content:'## English heading\n\nEnglish body.',content_locale:'en'}:post;
+ if(p.endsWith('/discovery'))return {previous:null,next:null,related:[]};
+ if(p.includes('/comments'))return [];
+ if(p.startsWith('/series/article/'))throw Object.assign(Error('No series'),{status:404});
+ if(p==='/analytics/view')return {views:1};
+ if(p==='/settings/blog-pages')return {about:null,links:[]};
+ return {items:[],total:0};
+}
+const pages={};for(const url of ['/article/shared-post','/en/article/shared-post'])pages[url]=await injectDocument(template.replace('lang="zh-CN"','lang="'+(url.startsWith('/en/')?'en':'zh-CN')+'"'),await renderDocument(url,load));
+const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://local');if(url.pathname.startsWith('/api/')){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(await load(req.url.slice(4))));}if(pages[url.pathname]){res.setHeader('Content-Type','text/html');return res.end(pages[url.pathname]);}const file=path.resolve(root,'.'+url.pathname);if(!file.startsWith(root+path.sep))throw Error('outside');const mime={'.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'};res.setHeader('Content-Type',mime[path.extname(file)]||'application/octet-stream');res.end(await fs.readFile(file));}catch{res.statusCode=404;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({message:'Not found'}));}});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port,records=[];
+try{for(const[name,engine]of[['chromium',chromium],['webkit',webkit]]){const browser=await engine.launch(name==='chromium'&&process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{});try{
+ const nojs=await browser.newContext({javaScriptEnabled:false});await nojs.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());for(const[route,title]of[['/article/shared-post','中文文章'],['/en/article/shared-post','English article']]){const page=await nojs.newPage();await page.goto(origin+route);assert.equal(await page.locator('h1').textContent(),title);assert.equal(await page.locator('h1').isVisible(),true);assert.equal(await page.getByText(route.startsWith('/en/')?'English body.':'中文正文',{exact:true}).isVisible(),true);await page.close();}await nojs.close();
+ const context=await browser.newContext({locale:'zh-CN'});await context.addInitScript(()=>{try{localStorage.setItem('mooncci:language',JSON.stringify({preference:'en',version:1}))}catch{}});await context.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());const errors=[];let page;
+ const newObservedPage=async()=>{const next=await context.newPage();next.on('pageerror',e=>errors.push(e.message));next.on('console',m=>{if(m.type()==='error'&&/hydration|Minified React error|did not match/i.test(m.text()))errors.push(m.text())});return next;};
+ for(const[route,title,lang]of[['/en/article/shared-post','English article','en'],['/article/shared-post','中文文章','zh-CN']]){if(page)await page.close();page=await newObservedPage();await page.goto(origin+route);await page.waitForFunction(()=>document.documentElement.lang==='en'&&document.querySelector('.language-trigger')?.textContent==='English').catch(async error=>{console.error({errors,lang:await page.locator('html').getAttribute('lang'),triggers:await page.locator('.language-trigger').allTextContents(),body:(await page.locator('body').innerText()).slice(0,1200)});throw error;});assert.equal(await page.locator('h1').textContent(),title);assert.equal(await page.locator('h1').getAttribute('lang'),lang);assert.equal(await page.locator('.neo-page').first().getAttribute('lang'),'en');assert.equal(new URL(page.url()).pathname,route);assert.equal(await page.locator('.language-trigger').first().getAttribute('aria-label'),'Interface language');}
+ const languageButton=page.locator('.language-trigger:visible').first();
+ await languageButton.focus();await languageButton.press('ArrowDown');
+ await page.getByRole('menuitemradio',{name:'English',exact:true}).waitFor({state:'visible'});
+ await page.waitForFunction(()=>document.activeElement?.getAttribute('role')==='menuitemradio');
+ await page.keyboard.press('Escape');
+ await page.waitForFunction(()=>document.activeElement?.classList.contains('language-trigger'));
+ await languageButton.click();await page.getByRole('menuitemradio',{name:'Chinese',exact:true}).click();
+ await page.waitForFunction(()=>document.documentElement.lang==='zh-CN');
+ assert.equal(await page.locator('h1').textContent(),'中文文章');
+ const failureContext=await browser.newContext({locale:'zh-CN'});
+ let blockMenu=true;
+ await failureContext.route('**/*',route=>new URL(route.request().url()).hostname!=='127.0.0.1'||(blockMenu&&/\/LanguageMenu-[^/]+\.js/.test(route.request().url()))?route.abort():route.continue());
+ const failurePage=await failureContext.newPage();await failurePage.goto(origin+'/article/shared-post');
+ await failurePage.evaluate(()=>{const input=document.createElement('input');input.id='unsaved-probe';input.value='unsaved draft';document.body.append(input)});
+ const failedButton=failurePage.locator('.language-trigger:visible').first();await failedButton.click();
+ await failurePage.locator('.language-switch [role="alert"]').waitFor({state:'visible'});
+ assert.equal(await failedButton.isEnabled(),true);
+ assert.equal(await failurePage.locator('h1').textContent(),'中文文章');
+ assert.equal(await failurePage.locator('#unsaved-probe').inputValue(),'unsaved draft');
+ blockMenu=false;await failurePage.locator('select.language-trigger').selectOption('en');
+ await failurePage.waitForFunction(()=>document.documentElement.lang==='en');
+ assert.equal(await failurePage.locator('#unsaved-probe').inputValue(),'unsaved draft');
+ await failureContext.close();
+ assert.deepEqual(errors,[]);records.push({engine:name,noJsChineseAndEnglish:true,hydrationErrors:errors,explicitChineseSharePreservedWithEnglishUI:true,lazyMenuKeyboardAndPointer:true,lazyMenuFailureKeepsPageUsable:true,pass:true});await context.close();
+ }finally{await browser.close();}}}finally{server.close();await fs.writeFile('.cache/bilingual-hydration-results.json',JSON.stringify(records,null,2));}
+console.log(JSON.stringify(records,null,2));

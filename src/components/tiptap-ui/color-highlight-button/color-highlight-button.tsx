@@ -1,3 +1,4 @@
+import {useI18n} from '@/app/i18n';
 import { forwardRef, useCallback, useMemo } from "react"
 
 // --- Lib ---
@@ -91,6 +92,7 @@ export const ColorHighlightButton = forwardRef<
     },
     ref
   ) => {
+ const {t}=useI18n();
     const { editor } = useTiptapEditor(providedEditor)
     const {
       isVisible,
@@ -103,7 +105,7 @@ export const ColorHighlightButton = forwardRef<
       editor,
       highlightColor,
       useColorValue,
-      label: text || `Toggle highlight (${highlightColor})`,
+      label: text || t("m_2f64dd7ebb",{color:highlightColor}),
       hideWhenUnavailable,
       mode,
       onApplied,
@@ -156,7 +158,7 @@ export const ColorHighlightButton = forwardRef<
                 { "--highlight-color": highlightColor } as React.CSSProperties
               }
             />
-            {text && <span className="tiptap-button-text">{text}</span>}
+            {text && <span className="tiptap-button-text">{t(text)}</span>}
             {showShortcut && (
               <ColorHighlightShortcutBadge shortcutKeys={shortcutKeys} />
             )}

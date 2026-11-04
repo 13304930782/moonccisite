@@ -22,6 +22,8 @@ test(
     await db.query(
       'CREATE TABLE IF NOT EXISTS users (id INT PRIMARY KEY, username VARCHAR(50), email VARCHAR(100), role VARCHAR(20), status VARCHAR(20), can_comment INT)',
     );
+    const [localeColumns]=await db.query("SHOW COLUMNS FROM users LIKE 'ui_locale'");
+    if(!localeColumns.length)await db.query("ALTER TABLE users ADD COLUMN ui_locale VARCHAR(5) CHARACTER SET ascii NOT NULL DEFAULT 'zh-CN'");
     await db.query(
       'CREATE TABLE IF NOT EXISTS site_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value TEXT)',
     );
@@ -70,7 +72,7 @@ test(
     ])
       await db.query(`DELETE FROM ${table}`);
     await db.query(
-      "INSERT INTO users VALUES (1,'owner','one@example.invalid','owner','active',1),(2,'admin','two@example.invalid','admin','active',1),(3,'user','three@example.invalid','user','active',1),(4,'other owner','four@example.invalid','owner','active',1)",
+      "INSERT INTO users(id,username,email,role,status,can_comment) VALUES (1,'owner','one@example.invalid','owner','active',1),(2,'admin','two@example.invalid','admin','active',1),(3,'user','three@example.invalid','user','active',1),(4,'other owner','four@example.invalid','owner','active',1)",
     );
     const repository = require('../src/repositories/electricityRepository');
     await repository.saveElectricityConfig({

@@ -1,11 +1,19 @@
+import '../../styles/admin-projects.css';
+import {flushSync} from 'react-dom';
+import {AdminEmpty, AdminNotice} from '../components/admin/AdminState';
+import '../../styles/admin-updates.css';
+import {ContentTranslationEditor} from '../components/ContentTranslationEditor';
+import { useI18n } from '../i18n';
 import { useContentListQuery } from '../lib/useContentListQuery';
 import '../../styles/admin-settings-layout.css';
+import '../../styles/admin-newsletter.css';
 import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
 import {useUnsavedLeave} from '../lib/useUnsavedLeave';
-import { Link } from 'react-router-dom';
+
+import {Link} from '../components/LocaleLink';
 import { ThemeSelect } from '../components/ThemeSelect';
-import { FormEvent, useState, useEffect, useCallback } from 'react';
+import { FormEvent, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import {
@@ -19,7 +27,7 @@ import {
 import { MarkdownContent } from '../components/MarkdownContent';
 import { safeImageSrc } from '../lib/safeUrl';
 import { projectIcon } from '../lib/projectBrand';
-import { Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import '../../styles/project-images.css';
 import { NewsletterPreview } from '../components/admin/NewsletterPreview';
 
@@ -42,6 +50,7 @@ function ImageField({
   icon?: boolean;
   project?: boolean;
 }) {
+  const { locale,  t } = useI18n();
   const [open, setOpen] = useState(false),
     [images, setImages] = useState<any[]>([]),
     [error, setError] = useState(''),
@@ -75,7 +84,7 @@ function ImageField({
     }
   }
   const mediaLibrary = open && <div className="image-field-library">
-    <button type="button" onClick={() => setOpen(false)}>关闭媒体库</button>
+    <button type="button" onClick={() => setOpen(false)}>{t("m_d3f1640aed")}</button>
     <div className="media-picker">
       {images.map(img => <button type="button" key={img.filename} onClick={() => { onChange(img.url); setOpen(false); }}>
         <img src={safeImageSrc(img.url)} alt={img.alt_text || img.filename} />
@@ -84,146 +93,75 @@ function ImageField({
     </div>
   </div>;
   const image = safeImageSrc(previewSrc ?? value);
-  return <section className={`image-field project-image-field${icon ? ' image-field--icon' : ''}`} aria-label={label} aria-busy={busy}>
+  return <section className={`image-field project-image-field${icon ? ' image-field--icon' : ''}`} aria-label={t(String(label))} aria-busy={busy}>
     <header className="project-image-heading">
-      <h3>{label}</h3>
+      <h3>{t(String(label))}</h3>
       <p>{description}</p>
     </header>
     <div className="project-image-content">
       <div className={`project-image-preview${icon ? ' project-image-preview--icon' : ''}`}>
-        {image ? <img src={image} alt={icon ? '作品图标预览' : '配图预览'} /> : <><ImageIcon size={24} aria-hidden="true" /><span>未选择图片</span></>}
+        {image ? <img src={image} alt={icon ? t("m_f04c0c8e40") : t("m_64814a7c00")} /> : <><ImageIcon size={24} aria-hidden="true" /><span>{t("m_5cc85c2fce")}</span></>}
       </div>
       <div className="project-image-actions">
         <label className="project-image-upload" aria-disabled={busy}>
-            {busy ? '处理中…' : image ? (icon ? '更换图标' : project ? '更换截图' : '更换配图') : '上传图片'}
-          <input type="file" aria-label={project ? (icon ? '上传作品图标' : '上传作品截图') : '上传配图'} accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy}
+            {busy ? t("m_d3d21191f3") : image ? (icon ? t("m_ea9fbf028a") : project ? t("m_138d69a5ca") : t("m_d1e4bfccf0")) : t("m_9fbb4750bb")}
+          <input type="file" aria-label={project ? (icon ? t("m_e130b5f543") : t("m_f315326eef")) : t("m_20afa916ec")} accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy}
             onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; void upload(file); }} />
         </label>
-        <button type="button" disabled={busy} onClick={library}>从媒体库选择</button>
-        {(value || previewSrc) && <button type="button" className="project-image-remove" disabled={busy} onClick={() => onChange('')}>{icon ? '移除图标' : '移除配图'}</button>}
+        <button type="button" disabled={busy} onClick={library}>{t("m_b1a53ac1d4")}</button>
+        {(value || previewSrc) && <button type="button" className="project-image-remove" disabled={busy} onClick={() => onChange('')}>{icon ? t("m_ba73b35b44") : t("m_92fa07eb4b")}</button>}
       </div>
     </div>
     <details className="project-image-url">
-      <summary>使用图片地址</summary>
-      <label>{label}<input value={value} disabled={busy} onChange={event => onChange(event.target.value)} placeholder="HTTPS 或 /api/uploads/…" /></label>
+      <summary>{t("m_f50757280f")}</summary>
+      <label>{t(String(label))}<input value={value} disabled={busy} onChange={event => onChange(event.target.value)} placeholder={t("m_07f6b91c58")} /></label>
     </details>
     {mediaLibrary}
-    {error && <p className="project-image-error" role="alert">{error}</p>}
+    {error && <p className="project-image-error" role="alert">{t(error || '')}</p>}
   </section>;
 }
 export function AdminUpdatesPage() {
-  const { page, setPage } = useContentListQuery();
-  const resource = useResource(`/admin/updates?page=${page}`);
-  const [dirty,setDirty]=useState(false),[imageBusy,setImageBusy]=useState(false);useUnsavedLeave(dirty);
-  const [form, rawSetForm] = useState({
-      id: 0,
-      content: '',
-      image_url: '',
-      status: 'draft',
-    }),
-    [message, setMessage] = useState(''),
-    [busy, setBusy] = useState(false);
-  const setForm=(v:any)=>{setDirty(true);rawSetForm(v);};
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    if(busy||imageBusy||resource.loading||resource.error)return;
-    setBusy(true);
-    try {
-      await api(form.id ? `/admin/updates/${form.id}` : '/admin/updates', {
-        method: form.id ? 'PUT' : 'POST',
-        body: JSON.stringify(form),
-      });
-      rawSetForm({ id: 0, content: '', image_url: '', status: 'draft' });setDirty(false);
-      notify.success('动态已保存');
-      resource.reload();
-    } catch (e: any) {
-      setMessage(e.message); notify.error(e.message);
-    } finally {
-      setBusy(false);
-    }
+  const {t,formatDate}=useI18n();const {page,setPage}=useContentListQuery();
+  const resource=useResource(`/admin/updates?page=${page}`);
+  const empty={id:0,content:'',image_url:'',status:'draft'};
+  const [form,rawSetForm]=useState<any>(empty),[editing,setEditing]=useState(false),[dirty,setDirty]=useState(false);
+  const [imageBusy,setImageBusy]=useState(false),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+  const [translation,setTranslation]=useState({dirty:false,busy:false});const newButton=useRef<HTMLButtonElement>(null);const leaving=useRef(false);const saving=useRef(false);
+  useUnsavedLeave(dirty||translation.dirty);
+  const setForm=(value:any)=>{rawSetForm(value);setDirty(true);};
+  const open=(item?:any)=>{rawSetForm(item?{...item}:{...empty});setDirty(false);setMessage('');setTranslation({dirty:false,busy:false});setEditing(true);};
+  const finish=()=>{setEditing(false);setDirty(false);setTranslation({dirty:false,busy:false});rawSetForm({...empty});requestAnimationFrame(()=>newButton.current?.focus());};
+  async function back(){if(busy||imageBusy||translation.busy||leaving.current)return;leaving.current=true;try{if(!dirty&&!translation.dirty||await confirmAction(t('m_d87119f6cc')))finish();}finally{leaving.current=false;}}
+  async function save(event:FormEvent){
+    event.preventDefault();if(saving.current||busy||imageBusy||translation.busy||resource.loading||resource.error)return;
+    saving.current=true;
+    if(translation.dirty&&!await confirmAction(t('m_a0731c0410'))){saving.current=false;return;}
+    setBusy(true);setMessage('');
+    try{await api(form.id?`/admin/updates/${form.id}`:'/admin/updates',{method:form.id?'PUT':'POST',body:JSON.stringify(form)});flushSync(finish);notify.success(t('m_5c4bcec56b'));if(!form.id&&page!==1)setPage(1);else resource.reload();}
+    catch(error:any){setMessage(error.message);notify.error(error.message);}finally{saving.current=false;setBusy(false);}
   }
-  return (
-    <div className="content-admin">
-      <PageHeading eyebrow="CONTENT" title="近况与动态" />
-      <p className="form-message" role="status">
-        {message}
-      </p>
-      <p className="muted">
-        首页右侧的简短近况已统一到{' '}
-        <Link className="text-link" to="/admin/site-settings#now">
-          站点设置 → 当前近况
-        </Link>
-        。这里管理独立发布的短动态。
-      </p>
-      <form className="editor-panel" onSubmit={save}>
-        <h2>{form.id ? '编辑动态' : '写一则动态'}</h2>
-        <label>
-          正文 · 支持 Markdown
-          <textarea
-            required
-            rows={7}
-            maxLength={10000}
-            value={form.content}
-            onChange={(e) => setForm({ ...form, content: e.target.value })}
-          />
-        </label>
-        <ImageField onBusy={setImageBusy}
-          value={form.image_url}
-          onChange={(image_url) => setForm({ ...form, image_url })}
-        />
-        <label>
-          发布状态
-          <ThemeSelect aria-label="发布状态"
-            value={form.status}
-            onValueChange={(nextValue) =>
-              setForm({ ...form, status: nextValue })
-            }
-          >
-            <option value="draft">草稿 / 撤回</option>
-            <option value="published">公开发布</option>
-          </ThemeSelect>
-        </label>
-        <div className="inline-actions">
-          <button disabled={busy||imageBusy||resource.loading||!!resource.error}>{busy ? '保存中…' : '保存动态'}</button>
-          {form.id > 0 && (
-            <button
-              type="button"
-              onClick={async () =>
-                (!dirty||(await confirmAction('放弃当前未保存修改？'))) && (rawSetForm({ id: 0, content: '', image_url: '', status: 'draft' }),setDirty(false))
-              }
-            >
-              取消编辑
-            </button>
-          )}
-        </div>
-        <details>
-          <summary>正文预览</summary>
-          <MarkdownContent content={form.content} />
-        </details>
+  return <div className="content-admin content-admin--updates">
+    {editing?<>
+      <button type="button" className="updates-back" disabled={busy||imageBusy||translation.busy} onClick={()=>void back()}><ArrowLeft size={16} aria-hidden="true"/>{t('m_337c99f1e5')}</button>
+      <PageHeading eyebrow="CONTENT" title={t(form.id?'m_d7f953ad34':'m_e66fd484b3')}/>
+      {(resource.loading||resource.error)&&<ResourceState resource={resource}>{null}</ResourceState>}
+      <form className="editor-panel updates-editor" onSubmit={save}>
+        <fieldset disabled={busy||translation.busy}>
+          <label className="updates-body-field">{t('m_94d0d085d8')}<textarea autoFocus required rows={6} maxLength={10000} value={form.content} onChange={event=>setForm({...form,content:event.target.value})}/></label>
+          <ImageField onBusy={setImageBusy} value={form.image_url} onChange={image_url=>setForm((previous:any)=>({...previous,image_url}))}/>
+          <div className="updates-publication"><label>{t('m_5100f029e0')}<ThemeSelect aria-label={t('m_5100f029e0')} value={form.status} onValueChange={status=>setForm({...form,status})}><option value="draft">{t('m_9719f2fcd5')}</option><option value="published">{t('m_70cff5ab60')}</option></ThemeSelect></label></div>
+          <details className="updates-preview"><summary>{t('m_9b5078da24')}</summary><div className="updates-preview-body"><MarkdownContent content={form.content}/>{safeImageSrc(form.image_url)&&<img src={safeImageSrc(form.image_url)} alt=""/>}</div></details>
+          {message&&<p role="alert" className="updates-error">{t(message)}</p>}
+          <div className="updates-save-actions"><button type="submit" className="updates-save" disabled={busy||imageBusy||translation.busy||resource.loading||!!resource.error}>{t(busy?'m_ff509c9ba0':'m_64508ac540')}</button><button type="button" disabled={busy||imageBusy||translation.busy} onClick={()=>void back()}>{t('m_4b29ce8e40')}</button></div>
+        </fieldset>
       </form>
-      <ResourceState resource={resource}>
-        {resource.data && (
-          <>
-            <div className="admin-records">
-              {resource.data.items.map((u: any) => (
-                <article key={u.id}>
-                  <div>
-                    <span className="muted">
-                      {labels[u.status]} ·{' '}
-                      {formatDate(u.published_at || u.created_at)}
-                    </span>
-                    <p>{u.content.slice(0, 160)}</p>
-                  </div>
-                  <button onClick={async () => {if(!dirty||(await confirmAction('放弃当前未保存修改？'))){rawSetForm({ ...u });setDirty(false);}}}>编辑 / 撤回</button>
-                </article>
-              ))}
-            </div>
-            <Pagination data={resource.data} onPage={setPage} />
-          </>
-        )}
-      </ResourceState>
-    </div>
-  );
+      {form.id>0&&<fieldset className="updates-translation" disabled={busy}><ContentTranslationEditor type="update" id={form.id} source={form} onStateChange={setTranslation}/></fieldset>}
+    </>:<>
+      <header className="updates-list-heading"><PageHeading eyebrow="CONTENT" title={t('m_010469b6ab')}/><button ref={newButton} type="button" className="updates-save" onClick={()=>open()}>{t('m_345e6bf024')}</button></header>
+      <p className="muted updates-list-hint">{t('m_8dfe391a50')}{' '}<Link className="text-link" to="/admin/site-settings#now">{t('m_7d1212d4b8')}</Link>{t('m_6a2ef51435')}</p>
+      <ResourceState resource={resource}>{resource.data&&<>{resource.data.items.length?<div className="admin-records updates-records">{resource.data.items.map((item:any)=><article key={item.id}><div><span className="muted">{t(labels[item.status])} · {formatDate(item.published_at||item.created_at)}</span><p>{item.content.slice(0,160)}</p></div><button type="button" onClick={()=>open(item)}>{t('m_dd3e9e6416')}</button></article>)}</div>:<div className="admin-empty-result"><AdminEmpty title={t('m_7ef5934699')} hint={t('m_a165885777')} action={<button type="button" className="quiet-button" onClick={()=>open()}>{t('m_345e6bf024')}</button>}/></div>}<Pagination data={resource.data} onPage={setPage}/></>}</ResourceState>
+    </>}
+  </div>;
 }
 const emptyProject = {
   id: 0,
@@ -241,78 +179,55 @@ const emptyProject = {
   featured_rank: '',
 };
 export function AdminProjectsPage() {
-  const [clock, setClock] = useState(Date.now());
-  useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(timer); }, []);
-  const [dirty,setDirty]=useState(false),[busyImages,setBusyImages]=useState({cover:false,icon:false});useUnsavedLeave(dirty);
-  const imageBusy = busyImages.cover || busyImages.icon;
-  const coverBusy = useCallback((value:boolean) => setBusyImages(previous => previous.cover === value ? previous : {...previous,cover:value}), []);
-  const iconBusy = useCallback((value:boolean) => setBusyImages(previous => previous.icon === value ? previous : {...previous,icon:value}), []);
-  const { user } = useAuth(),
-    owner = user?.role === 'owner';
-  const { page, setPage } = useContentListQuery();
-  const resource = useResource(`/admin/projects?page=${page}`),
-    [form, rawSetForm] = useState<any>({ ...emptyProject }),
-    [message, setMessage] = useState(''),
-    [busy, setBusy] = useState(false),
-    [selected, setSelected] = useState<number | null>(null);
-  const setForm=(v:any)=>{setDirty(true);rawSetForm(v);};
-  async function action(path: string, method: string, body?: any) {
-    if(busy||imageBusy||resource.loading||resource.error)return false;
-    setBusy(true);
-    setMessage('');
-    try {
-      const r = await api(path, {
-        method,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      notify.success(r.message || '操作已完成');
-      resource.reload();
-      return true;
-    } catch (e: any) {
-      setMessage(e.message); notify.error(e.message);
-      return false;
-    } finally {
-      setBusy(false);
-    }
+  const {locale,t}=useI18n();const {user}=useAuth();const owner=user?.role==='owner';
+  const {page,setPage}=useContentListQuery();const resource=useResource(`/admin/projects?page=${page}`);
+  const [clock,setClock]=useState(Date.now());useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),1000);return()=>clearInterval(timer);},[]);
+  const [form,rawSetForm]=useState<any>({...emptyProject}),[editing,setEditing]=useState(false),[dirty,setDirty]=useState(false);
+  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false),[selected,setSelected]=useState<number|null>(null);
+  const [translation,setTranslation]=useState({dirty:false,busy:false});const [busyImages,setBusyImages]=useState({cover:false,icon:false});
+  const pending=useRef(false),leaving=useRef(false),newButton=useRef<HTMLButtonElement>(null);
+  const imageBusy=busyImages.cover||busyImages.icon;useUnsavedLeave(dirty||translation.dirty);
+  const coverBusy=useCallback((value:boolean)=>setBusyImages(previous=>previous.cover===value?previous:{...previous,cover:value}),[]);
+  const iconBusy=useCallback((value:boolean)=>setBusyImages(previous=>previous.icon===value?previous:{...previous,icon:value}),[]);
+  const setForm=(value:any)=>{rawSetForm(value);setDirty(true);};
+  function open(item?:any){rawSetForm(item?{...emptyProject,...item,featured_rank:item.featured_rank??''}:{...emptyProject});setMessage('');setDirty(false);setTranslation({dirty:false,busy:false});setSelected(null);setEditing(true);}
+  function finish(){setEditing(false);setDirty(false);setTranslation({dirty:false,busy:false});rawSetForm({...emptyProject});requestAnimationFrame(()=>newButton.current?.focus());}
+  async function back(){if(pending.current||imageBusy||translation.busy||leaving.current)return;leaving.current=true;try{if(!dirty&&!translation.dirty||await confirmAction(t('m_d87119f6cc')))finish();}finally{leaving.current=false;}}
+  async function action(path:string,method:string,body?:any){
+    if(pending.current||imageBusy||translation.busy||resource.loading||resource.error)return false;
+    pending.current=true;setBusy(true);setMessage('');
+    try{const result=await api(path,{method,body:body?JSON.stringify(body):undefined});notify.success(result.message||t('m_db8102ba6e'));resource.reload();return true;}
+    catch(error:any){setMessage(error.message);notify.error(error.message);return false;}finally{pending.current=false;setBusy(false);}
   }
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    if (
-      await action(
-        form.id ? `/admin/projects/${form.id}` : '/admin/projects',
-        form.id ? 'PUT' : 'POST',
-        form,
-      )
-    )
-      {rawSetForm({ ...emptyProject });setDirty(false);}
+  async function save(event:FormEvent){
+    event.preventDefault();if(pending.current||imageBusy||translation.busy||resource.loading||resource.error)return;
+    pending.current=true;setBusy(true);
+    try{
+      if(translation.dirty&&!await confirmAction(t('m_a0731c0410')))return;
+      setMessage('');const creating=!form.id;
+      await api(form.id?`/admin/projects/${form.id}`:'/admin/projects',{method:form.id?'PUT':'POST',body:JSON.stringify(form)});
+      flushSync(finish);notify.success(t('m_db8102ba6e'));if(creating&&page!==1)setPage(1);else resource.reload();
+    }catch(error:any){setMessage(error.message);notify.error(error.message);}finally{pending.current=false;setBusy(false);}
   }
-  return (
-    <div className="content-admin content-admin--projects">
-      <PageHeading eyebrow="WORK" title="作品管理" />
-      <p className="muted">
-        自动同步服务：
-        {resource.data?.syncConfigured
-          ? '已开启'
-          : '未开启；部署时需配置 GITHUB_SYNC_ENABLED'}
-        。仓库开关默认关闭，手动同步仍受冷却限制。
-      </p>
-      <p className="form-message" role="status">
-        {message}
-      </p>
-      <form className="editor-panel" onSubmit={save}>
-        <h2>{form.id ? '编辑作品' : '新建作品'}</h2>
+  return <div className="content-admin content-admin--projects">
+    {editing?<>
+      <button type="button" className="projects-back" disabled={busy||imageBusy||translation.busy} onClick={()=>void back()}><ArrowLeft size={16} aria-hidden="true"/>{t('m_8788e94748')}</button>
+      <PageHeading eyebrow="WORK" title={t(form.id?'m_ebe85a9290':'m_668ca27393')}/>
+      {(resource.loading||resource.error)&&<ResourceState resource={resource}>{null}</ResourceState>}
+      <form className="editor-panel projects-editor" onSubmit={save}>
+        <fieldset disabled={busy||translation.busy}><section className="projects-section"><h2>{t('m_e8df058725')}</h2>
         <div className="form-grid">
           {[
-            ['name', '作品名称', 160],
-            ['slug', '地址标识（小写英文与连字符）', 160],
-            ['tech_stack', '技术栈', 1000],
-            ['demo_url', '作品入口 HTTPS 地址（演示或申请体验）', 500],
-            ['repo', '公开仓库（owner/repository）', 200],
-            ['featured_rank', '首页推荐顺序（留空不推荐）', 4],
+            ['name', t("m_35c0869550"), 160],
+            ['slug', t("m_341338a20a"), 160],
+            ['tech_stack', t("m_265b45019e"), 1000],
+            ['demo_url', t("m_9858520f59"), 500],
+            ['repo', t("m_8706015e1c"), 200],
           ].map(([key, label, max]) => (
             <label key={key}>
-              {label}
+              {t(String(label))}
               <input
+                name={String(key)}
                 required={key === 'name' || key === 'slug'}
                 maxLength={Number(max)}
                 disabled={key === 'repo' && !owner}
@@ -322,44 +237,41 @@ export function AdminProjectsPage() {
             </label>
           ))}
         </div>
-        <label>
-          简介
-          <textarea
+        </section><section className="projects-section"><h2>{t('m_7a68830642')}</h2><label>
+           {t("m_8131eafd02")} <textarea
             required
-            rows={3}
+            name="summary" rows={3}
             maxLength={2000}
             value={form.summary}
             onChange={(e) => setForm({ ...form, summary: e.target.value })}
           />
         </label>
         <label>
-          详细介绍 · Markdown
-          <textarea
-            rows={8}
+           {t("m_a213c3ece0")} <textarea
+            name="content" rows={8}
             maxLength={50000}
             value={form.content}
             onChange={(e) => setForm({ ...form, content: e.target.value })}
           />
         </label>
-        <div className="project-image-settings">
+        </section><section className="projects-section"><h2>{t('m_d24c10d37d')}</h2><div className="project-image-settings">
         <ImageField onBusy={iconBusy} icon project
           value={form.icon_image ?? ''}
           previewSrc={projectIcon(form)}
           onChange={(icon_image) => setForm((previous:any) => ({ ...previous, icon_image }))}
-          label="作品图标"
-          description="用于首页卡片与详情标题，不影响界面截图。"
+          label={t("m_d767823d1d")}
+          description={t("m_3bf9be1508")}
         />
         <ImageField onBusy={coverBusy} project
           value={form.cover_image}
           onChange={(cover_image) => setForm((previous:any) => ({ ...previous, cover_image }))}
-          label="作品界面截图"
-          description="上传真实界面截图，留空时仅展示文字。"
+          label={t("m_315cd7b482")}
+          description={t("m_0ee6b9e133")}
         />
         </div>
-        <div className="form-grid">
+        </section><section className="projects-section"><h2>{t('m_aab87b8683')}</h2><div className="form-grid">
           <label>
-            开发状态
-            <ThemeSelect aria-label="开发状态"
+             {t("m_5faa30fb29")} <ThemeSelect aria-label={t("m_5faa30fb29")}
               value={form.stage}
               onValueChange={(nextValue) =>
                 setForm({ ...form, stage: nextValue })
@@ -367,63 +279,59 @@ export function AdminProjectsPage() {
             >
               {['building', 'active', 'maintenance', 'archived'].map((s) => (
                 <option key={s} value={s}>
-                  {labels[s]}
+                  {t(labels[s])}
                 </option>
               ))}
             </ThemeSelect>
           </label>
           <label>
-            发布状态
-            <ThemeSelect aria-label="发布状态"
+             {t("m_5100f029e0")} <ThemeSelect aria-label={t("m_5100f029e0")}
               value={form.status}
               onValueChange={(nextValue) =>
                 setForm({ ...form, status: nextValue })
               }
             >
-              <option value="draft">草稿 / 撤回</option>
-              <option value="published">公开发布</option>
+              <option value="draft">{t("m_9719f2fcd5")}</option>
+              <option value="published">{t("m_70cff5ab60")}</option>
             </ThemeSelect>
           </label>
         </div>
-        <div className="inline-actions">
-          <button disabled={busy||imageBusy||resource.loading||!!resource.error}>保存作品</button>
-          {form.id > 0 && (
-            <button type="button" onClick={async () => {if(!dirty||(await confirmAction('放弃当前未保存修改？'))){rawSetForm({ ...emptyProject });setDirty(false);}}}>
-              取消编辑
-            </button>
-          )}
-        </div>
+        <label>{t("m_3c266a59ab")}<input name="featured_rank" maxLength={4} value={form.featured_rank} onChange={event=>setForm({...form,featured_rank:event.target.value})}/></label></section>
+        {message&&<p role="alert" className="projects-error">{t(message)}</p>}
+        <div className="inline-actions projects-save-actions">
+          <button className="project-save" disabled={busy||imageBusy||translation.busy||resource.loading||!!resource.error}>{t(busy?'m_ff509c9ba0':'m_e7205525f5')}</button>
+          <button type="button" disabled={busy||imageBusy||translation.busy} onClick={()=>void back()}>{t('m_4b29ce8e40')}</button>
+        </div></fieldset>
       </form>
+      {form.id>0&&<fieldset className="projects-translation" disabled={busy}><ContentTranslationEditor type="project" id={form.id} source={form} onStateChange={setTranslation}/></fieldset>}
+    </>:<>
+      <header className="projects-list-heading"><PageHeading eyebrow="WORK" title={t('m_831ed48e52')}/><button ref={newButton} type="button" className="project-save" disabled={busy} onClick={()=>open()}>{t('m_668ca27393')}</button></header>
+      {message&&<p role="alert" className="projects-error">{t(message)}</p>}
       <ResourceState resource={resource}>
         {resource.data && (
           <>
-            <div className="admin-records">
+            {!resource.data.items.length?<div className="admin-empty-result"><AdminEmpty title={t('m_9c8012c713')} hint={t('m_feceffc6dd')}/></div>:<div className="admin-records projects-records">
               {resource.data.items.map((p: any) => (
                 <article key={p.id}>
                   <div>
                     <h3>{p.name}</h3>
                     <p className="muted">
-                      {labels[p.status]} · {labels[p.stage]} · 同步
-                      {p.sync_enabled ? '已开启' : '已关闭'}
+                      {t(labels[p.status])} · {t(labels[p.stage])}  {t("m_ca6a803767")} {p.sync_enabled ? t("m_8a4ef3e48e") : t("m_6744b4c6a9")}
                     </p>
                     <small>
-                      最后成功：
-                      {p.last_success_at
-                        ? new Date(p.last_success_at).toLocaleString('zh-CN')
-                        : '尚未同步'}
+                       {t("m_84100b718c")} {p.last_success_at
+                        ? new Date(p.last_success_at).toLocaleString(locale,{timeZone:'Asia/Shanghai'})
+                        : t("m_439e864e83")}
                     </small>
-                    {p.next_attempt_at && Date.parse(p.next_attempt_at) > clock && <small className="sync-next-at">下次可同步：{new Date(p.next_attempt_at).toLocaleString('zh-CN')}</small>}
-                    {p.sync_error && <p role="alert">{p.sync_error}</p>}
+                    {p.next_attempt_at && Date.parse(p.next_attempt_at) > clock && <small className="sync-next-at">{t("m_2fd9849216")}{new Date(p.next_attempt_at).toLocaleString(locale,{timeZone:'Asia/Shanghai'})}</small>}
+                    {p.sync_error && <p role="alert">{t(p.sync_error)}</p>}
                   </div>
                   <div className="inline-actions">
                     <button
-                      onClick={async () =>
-                        (!dirty||(await confirmAction('放弃当前未保存修改？'))) && (rawSetForm({ ...p, featured_rank: p.featured_rank ?? '' }),setDirty(false))
-                      }
+                      onClick={()=>open(p)} disabled={busy}
                     >
-                      编辑
-                    </button>
-                    <button onClick={() => setSelected(p.id)}>版本管理</button>
+                       {t("m_0518365699")} </button>
+                    <button disabled={busy} onClick={() => setSelected(p.id)}>{t("m_79b622b8f8")}</button>
                     {owner && (
                       <>
                         <button
@@ -434,7 +342,7 @@ export function AdminProjectsPage() {
                             })
                           }
                         >
-                          {p.sync_enabled ? '关闭同步' : '开启同步'}
+                          {p.sync_enabled ? t("m_c1490d9ff9") : t("m_0aa086572f")}
                         </button>
                         <button
                           disabled={busy || !p.sync_enabled || (p.next_attempt_at && Date.parse(p.next_attempt_at) > clock)}
@@ -442,25 +350,25 @@ export function AdminProjectsPage() {
                             action(`/admin/projects/${p.id}/sync`, 'POST')
                           }
                         >
-                          {p.next_attempt_at && Date.parse(p.next_attempt_at) > clock ? Math.ceil((Date.parse(p.next_attempt_at)-clock)/1000)+' 秒后可同步' : '立即同步'}
+                          {p.next_attempt_at && Date.parse(p.next_attempt_at) > clock ? Math.ceil((Date.parse(p.next_attempt_at)-clock)/1000)+t("m_d7050e5034") : t("m_36e7a43a1c")}
                         </button>
                       </>
                     )}
                   </div>
                 </article>
               ))}
-            </div>
+            </div>}
             <Pagination data={resource.data} onPage={setPage} />
           </>
         )}
       </ResourceState>
-      {selected && (
-        <ReleaseManager id={selected} onClose={() => setSelected(null)} />
-      )}
-    </div>
-  );
+      <details className="projects-sync-info"><summary>{t('m_bc03f55f6d')}</summary><p className="muted">{t('m_6d1b4ca522')}{resource.data?.syncConfigured?t('m_8a4ef3e48e'):t('m_1133e57f65')}{t('m_9048c71183')}</p></details>
+      {selected&&<ReleaseManager id={selected} onClose={()=>setSelected(null)}/>}
+    </>}
+  </div>;
 }
 function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
+  const { locale,  t } = useI18n();
   const [page, setPage] = useState(1),
     r = useResource(`/admin/projects/${id}/releases?page=${page}`),
     [error, setError] = useState(''),
@@ -475,7 +383,7 @@ function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
         body: JSON.stringify({ hidden: !release.hidden }),
       });
       r.reload();
-      notify.success(release.hidden ? '版本已恢复展示' : '版本已隐藏');
+      notify.success(release.hidden ? t("m_5c3799f1f3") : t("m_73e60ca4a7"));
     } catch (e: any) {
       setError(e.message); notify.error(e.message);
     } finally { setBusyId(null); }
@@ -483,26 +391,26 @@ function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
   return (
     <section className="editor-panel">
       <div className="section-heading">
-        <h2>版本管理</h2>
-        <button onClick={onClose}>关闭</button>
+        <h2>{t("m_79b622b8f8")}</h2>
+        <button onClick={onClose}>{t("m_3fd47edce4")}</button>
       </div>
-      <p role="alert">{error}</p>
+      <p role="alert">{t(error || '')}</p>
       <ResourceState resource={r}>
         {r.data && (
           <>
             <div className="admin-records">
-              {!r.data.items.length && <div className="quiet-state"><h3>暂无版本记录</h3><p>同步仓库版本后，已导入的版本会显示在这里。</p></div>}
+              {!r.data.items.length && <div className="quiet-state"><h3>{t("m_28e3bc0d86")}</h3><p>{t("m_0dfbbeca4f")}</p></div>}
               {r.data.items.map((item: any) => (
                 <article key={item.id}>
                   <div>
                     <h3>{item.title}</h3>
                     <small>
-                      {item.repo} · {item.hidden ? '已隐藏' : '可见'} ·{' '}
-                      {item.historical ? '历史导入' : '新增版本'}
+                      {item.repo} · {item.hidden ? t("m_1f1bc0d510") : t("m_41417f490b")} ·{' '}
+                      {item.historical ? t("m_c8c9686c6f") : t("m_82bda02e90")}
                     </small>
                   </div>
                   <button disabled={busyId !== null || r.loading} onClick={() => hide(item)}>
-                    {busyId === item.id ? '正在更新…' : item.hidden ? '恢复展示' : '隐藏'}
+                    {busyId === item.id ? t("m_e6442ce18f") : item.hidden ? t("m_142d98f2cd") : t("m_145219e726")}
                   </button>
                 </article>
               ))}
@@ -515,6 +423,8 @@ function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
   );
 }
 export function AdminNewsletterPage() {
+  const { locale,  t , formatDate} = useI18n();
+  const [section, setSection] = useState('draft');
   const [page, setPage] = useState(1),
     r = useResource(`/admin/newsletter?page=${page}`),
     [subPage, setSubPage] = useState(1),
@@ -524,9 +434,10 @@ export function AdminNewsletterPage() {
     [busy, setBusy] = useState(false);
   async function put(path: string, body: any) {
     setBusy(true);
+    setMessage('');
     try {
       await api(path, { method: 'PUT', body: JSON.stringify(body) });
-      notify.success('设置已保存');
+      notify.success(t("m_bd03c0aad7"));
       r.reload();
       sub.reload();
     } catch (e: any) {
@@ -537,79 +448,82 @@ export function AdminNewsletterPage() {
   }
   return (
     <div className="content-admin newsletter-admin">
-      <PageHeading eyebrow="NEWSLETTER" title="订阅与周报" />
-      {message&&<p role="alert">{message}</p>}
+      <PageHeading eyebrow="NEWSLETTER" title={t("m_87594d4a43")} />
+      {message&&<AdminNotice>{t(message)}</AdminNotice>}
       <ResourceState resource={r}>
         {r.data && (
           <>
-            <section className="editor-panel newsletter-overview">
-              <h2>周报投递</h2><p className="newsletter-schedule">每周一 09:00 · Asia/Shanghai</p>
-              <p>无更新不发送。公开订阅需要用户自行确认邮箱。</p>
-              <p>
-                服务端邮件投递：
-                {r.data.deliveryConfigured ? '已配置开启' : '未开启'}
-              </p>
-              {!r.data.deliveryConfigured&&<div className="workspace-alert"><p>先开启服务器的周报投递，再回到这里开启订阅。站长需在服务器配置 NEWSLETTER_DELIVERY_ENABLED=true，并重启任务进程。</p><div className="inline-actions"><Link to="/admin/mail-settings">检查邮件设置</Link><Link to="/admin/runtime">查看任务进程状态</Link><button onClick={r.reload}>已完成配置，重新检查</button></div></div>}
-              <button
-                disabled={
-                  busy || (!r.data.deliveryConfigured && !r.data.enabled)
-                }
-                onClick={() =>
-                  put('/admin/newsletter', { enabled: !r.data.enabled })
-                }
-              >
-                {r.data.enabled ? '暂停周报' : '开启周报'}
-              </button>
-              <div className="newsletter-counts">
-                {r.data.counts.map((c: any) => (
-                  <p key={c.status}>
-                    {c.status === 'active' ? '有效订阅' : labels[c.status]}：
-                    {c.total}
-                  </p>
-                ))}
+            <section className="newsletter-overview" aria-labelledby="newsletter-overview-title">
+              <div className="newsletter-overview-heading">
+                <div><h2 id="newsletter-overview-title">{t("m_8dffc16214")}</h2><p className="newsletter-schedule">{t("m_e8d61e9429")}</p></div>
+                <span className="newsletter-status"><span aria-hidden="true" />{t(!r.data.deliveryConfigured ? '服务器投递未启用' : r.data.enabled ? '周报已启用' : '周报已暂停')}</span>
+              </div>
+              <p className="newsletter-description">{t("m_62b9b76eea")}</p>
+              {!r.data.deliveryConfigured && <AdminNotice kind="info">
+                <strong>{t('启用服务器投递后才能开启周报')}</strong>
+                <p>{t('先检查邮件与任务服务，完成配置后重新检查。')}</p>
+                <div className="newsletter-actions">
+                  <Link to="/admin/mail-settings">{t("m_3739038fa7")}</Link>
+                  <Link to="/admin/runtime">{t("m_74ad4dbcf0")}</Link>
+                  <button type="button" onClick={r.reload} disabled={r.loading}>{t('重新检查')}</button>
+                </div>
+                <details className="newsletter-config"><summary>{t('服务器配置说明')}</summary><p>{t("m_b33a7717ae")}</p></details>
+              </AdminNotice>}
+              <div className="newsletter-overview-footer">
+                <button className="newsletter-primary" disabled={busy || (!r.data.deliveryConfigured && !r.data.enabled)} onClick={() => put('/admin/newsletter', { enabled: !r.data.enabled })}>
+                  {r.data.enabled ? t("m_864b8d3731") : t("m_7e0e58cf82")}
+                </button>
+                <div className="newsletter-counts">
+                  {r.data.counts.map((c: any) => <p key={c.status}><strong>{c.total}</strong><span>{c.status === 'active' ? t("m_62b43de9d3") : t(labels[c.status])}</span></p>)}
+                </div>
               </div>
             </section>
-            <section className="newsletter-section" aria-labelledby="newsletter-draft-title">
-              <header><h2 id="newsletter-draft-title">下一期待发送</h2><p>文章、近况与项目版本，逐条选择是否发送。</p></header>
+            <div className="newsletter-navigation" role="group" aria-label={t("m_87594d4a43")}>
+              <button type="button" aria-pressed={section === 'draft'} aria-controls="newsletter-draft" onClick={() => setSection('draft')}>{t("m_0fe12d0e21")}</button>
+              <button type="button" aria-pressed={section === 'delivery'} aria-controls="newsletter-delivery" onClick={() => setSection('delivery')}>{t("m_f0c5fa02c9")}</button>
+              <button type="button" aria-pressed={section === 'subscribers'} aria-controls="newsletter-subscribers" onClick={() => setSection('subscribers')}>{t("m_1d8f926772")}</button>
+            </div>
+            <section id="newsletter-draft" hidden={section !== 'draft'} className="newsletter-section" aria-labelledby="newsletter-draft-title">
+              <header><h2 id="newsletter-draft-title">{t("m_0fe12d0e21")}</h2><p>{t("m_f20ac48471")}</p></header>
               <ResourceState resource={preview}>
                 {preview.data && <NewsletterPreview key={preview.data.period.key + ':' + preview.data.editable} data={preview.data} reload={preview.reload} />}
               </ResourceState>
             </section>
+            <div id="newsletter-delivery" hidden={section !== 'delivery'}>
             <section className="newsletter-section" aria-labelledby="newsletter-runs-title">
-              <header><h2 id="newsletter-runs-title">每周运行</h2><p>显示最近 12 期；未记录的历史不代表未运行。</p></header>
-              <div className="table-scroll"><table>
-                <caption className="sr-only">每周运行结果</caption>
-                <thead><tr><th scope="col">内容周次</th><th scope="col">最近检查（北京时间）</th><th scope="col">结果 / 原因</th></tr></thead>
+              <header><h2 id="newsletter-runs-title">{t("m_38d80c471e")}</h2><p>{t("m_56de601d6e")}</p></header>
+              <div className="table-scroll"><table hidden={!r.data.runs?.length}>
+                <caption className="sr-only">{t("m_bf14afdcdc")}</caption>
+                <thead><tr><th scope="col">{t("m_37eaeef9ce")}</th><th scope="col">{t("m_8818829635")}</th><th scope="col">{t("m_033d3c9031")}</th></tr></thead>
                 <tbody>
-                  {!r.data.runs?.length && <tr><td colSpan={3}>暂无运行记录，从本次更新后开始记录。</td></tr>}
                   {r.data.runs?.map((run: any) => <tr key={run.week_start}>
                     <td>{formatDate(run.week_start)}</td>
-                    <td>{run.last_checked_at ? new Date(run.last_checked_at).toLocaleString('zh-CN', {timeZone:'Asia/Shanghai', hour12:false}) : '—'}</td>
+                    <td>{run.last_checked_at ? new Date(run.last_checked_at).toLocaleString(locale, {timeZone:'Asia/Shanghai', hour12:false}) : '—'}</td>
                     <td>{run.reason}</td>
                   </tr>)}
                 </tbody>
               </table></div>
+              {!r.data.runs?.length && <div className="admin-empty-result"><AdminEmpty title={t("m_c3c7e61d55")} /></div>}
             </section>
-            <section className="newsletter-section" aria-labelledby="delivery-title"><header><h2 id="delivery-title">投递记录</h2><p>查看每期周报的发送状态。</p></header>
+            <section className="newsletter-section" aria-labelledby="delivery-title"><header><h2 id="delivery-title">{t("m_f0c5fa02c9")}</h2><p>{t("m_9e438423a2")}</p></header>
             <div className="table-scroll">
-              <table><caption className="sr-only">周报投递记录</caption>
+              <table hidden={!r.data.deliveries.items.length}><caption className="sr-only">{t("m_ce58d74325")}</caption>
                 <thead>
                   <tr>
-                    <th scope="col">邮箱</th>
-                    <th scope="col">周次</th>
-                    <th scope="col">状态</th>
-                    <th scope="col">尝试</th>
-                    <th scope="col">处理</th>
+                    <th scope="col">{t("m_73075237fd")}</th>
+                    <th scope="col">{t("m_b869d2730b")}</th>
+                    <th scope="col">{t("m_6320b4a872")}</th>
+                    <th scope="col">{t("m_58a823852f")}</th>
+                    <th scope="col">{t("m_e99a6717b6")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {!r.data.deliveries.items.length&&<tr><td colSpan={5}>暂无投递记录。</td></tr>}
                   {r.data.deliveries.items.map((d: any) => (
                     <tr key={d.id}>
                       <td>{d.email}</td>
                       <td>{formatDate(d.week_start)}</td>
                       <td>
-                        {labels[d.status]}
+                        {t(labels[d.status])}
                         <small className="block">{d.error}</small>
                       </td>
                       <td>{d.attempts}</td>
@@ -624,8 +538,7 @@ export function AdminNewsletterPage() {
                                 })
                               }
                             >
-                              已核对发送
-                            </button>
+                               {t("m_8df38dc381")} </button>
                             <button
                               disabled={busy}
                               onClick={() =>
@@ -634,8 +547,7 @@ export function AdminNewsletterPage() {
                                 })
                               }
                             >
-                              跳过
-                            </button>
+                               {t("m_fc50a99caa")} </button>
                           </>
                         )}
                       </td>
@@ -644,21 +556,23 @@ export function AdminNewsletterPage() {
                 </tbody>
               </table>
             </div>
-            <Pagination data={r.data.deliveries} onPage={setPage} /></section>
+            {!r.data.deliveries.items.length && <div className="admin-empty-result"><AdminEmpty title={t("m_7bf308b00b")} /></div>}
+            {r.data.deliveries.total > 0 && <Pagination data={r.data.deliveries} onPage={setPage} />}</section>
+            </div>
           </>
         )}
       </ResourceState>
-      <section className="newsletter-section" aria-labelledby="subscriber-title"><header><h2 id="subscriber-title">订阅者</h2><p>管理已确认和等待确认的订阅。</p></header>
+      <section id="newsletter-subscribers" hidden={section !== 'subscribers' || !r.data} className="newsletter-section" aria-labelledby="subscriber-title"><header><h2 id="subscriber-title">{t("m_1d8f926772")}</h2><p>{t("m_2606b80a8e")}</p></header>
       <ResourceState resource={sub}>
         {sub.data && (
           <>
             <div className="admin-records">
-              {!sub.data.items.length&&<p className="settings-empty">暂无订阅者。</p>}
+              {!sub.data.items.length&&<div className="admin-empty-result"><AdminEmpty title={t("m_bb18c45617")} /></div>}
               {sub.data.items.map((s: any) => (
                 <article key={s.id}>
                   <p>
                     {s.email} ·{' '}
-                    {s.status === 'active' ? '已订阅' : s.status === 'pending' ? '等待邮箱确认' : labels[s.status]}
+                    {s.status === 'active' ? t("m_5ac3c37374") : s.status === 'pending' ? t("m_6a49d88efa") : t(labels[s.status])}
                   </p>
                   <button
                     disabled={busy || s.status === 'unsubscribed'}
@@ -668,12 +582,11 @@ export function AdminNewsletterPage() {
                       })
                     }
                   >
-                    取消订阅
-                  </button>
+                     {t("m_6af7023b9f")} </button>
                 </article>
               ))}
             </div>
-            <Pagination data={sub.data} onPage={setSubPage} />
+            {sub.data.total > 0 && <Pagination data={sub.data} onPage={setSubPage} />}
           </>
         )}
       </ResourceState>

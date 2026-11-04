@@ -1,7 +1,9 @@
+import { useI18n } from '../i18n';
 import { useContentListQuery } from '../lib/useContentListQuery';
 import { articlePath } from '../lib/articleUrl';
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+
+import {Link} from '../components/LocaleLink';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
 import { notify } from '../lib/feedback';
@@ -22,6 +24,7 @@ type Filter = 'all' | 'published' | 'draft';
 const filters: { value: Filter; label: string }[] = [{ value: 'all', label: '全部' }, { value: 'published', label: '已发布' }, { value: 'draft', label: '草稿' }];
 
 export default function AdminPostsPage() {
+  const { locale,  t } = useI18n();
   const { user } = useAuth();
   const manager = ['owner', 'admin'].includes(user?.role || '');
   // The dialog may unmount, but the original import keeps its pending/result state.
@@ -64,7 +67,7 @@ export default function AdminPostsPage() {
         }
         if (data.page !== page) setPage(data.page, true);
       } catch (error: any) {
-        if (version === requestVersion.current) setLoadError(error.message || '文章加载失败');
+        if (version === requestVersion.current) setLoadError(error.message || t("m_2675556aa7"));
       } finally {
         if (version === requestVersion.current) setLoading(false);
       }
@@ -86,21 +89,21 @@ export default function AdminPostsPage() {
   const pages = Math.max(1, Math.ceil(total / 50));
 
   async function removePost(id: number) {
-    if (!(await confirmAction('确定要删除这篇文章吗？'))) return;
+    if (!(await confirmAction(t("m_56e1da0b1d")))) return;
     setRemoving(`post-${id}`);
     try {
       await api(`/posts/${id}`, { method: 'DELETE' });
       requestVersion.current++; setDraftsLoaded(false);
-      notify.success('删除成功');
+      notify.success(t("m_5223f91b96"));
       setAllPosts(null); setAllTotal(previous => previous === null ? null : Math.max(0, previous - 1));
       setRefresh(value => value + 1);
     } catch (error: any) {
-      setMessage(error.message || '删除失败'); notify.error(error.message || '删除失败');
+      setMessage(error.message || t("m_c228558cf2")); notify.error(error.message || t("m_c228558cf2"));
     } finally { setRemoving(null); }
   }
 
   async function removeDraft(draft: Draft) {
-    if (!(await confirmAction('删除这份未发布草稿？'))) return;
+    if (!(await confirmAction(t("m_e92ff50de5")))) return;
     setRemoving(`draft-${draft.id}`);
     try {
       await api(`/article-drafts/${draft.id}`, { method: 'DELETE', body: JSON.stringify({ version: draft.version }) });
@@ -113,13 +116,13 @@ export default function AdminPostsPage() {
 
   function rowActions(edit: string, title: string, key: string, remove: () => void, draft = false, view?: string) {
     return <div className="admin-posts-actions">
-      <AdminButton asChild variant="ghost" className="ui-btn ui-btn--ghost"><Link to={edit}>编辑</Link></AdminButton>
+      <AdminButton asChild variant="ghost" className="ui-btn ui-btn--ghost"><Link to={edit}>{t("m_0518365699")}</Link></AdminButton>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild><AdminButton variant="ghost" size="icon" aria-label={`更多操作：${title}`} className="ui-btn ui-btn--ghost ui-btn--icon"><MoreHorizontal aria-hidden="true" size={18} /></AdminButton></DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild><AdminButton variant="ghost" size="icon" aria-label={t("m_1a42d3b521", {v0: title})} className="ui-btn ui-btn--ghost ui-btn--icon"><MoreHorizontal aria-hidden="true" size={18} /></AdminButton></DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="admin-portal ui-v2 admin-posts-menu">
-          <DropdownMenuItem asChild><Link to={edit}>{draft ? '继续编辑 / 预览' : '编辑'}</Link></DropdownMenuItem>
-          {view && <DropdownMenuItem asChild><Link to={view}>查看</Link></DropdownMenuItem>}
-          <DropdownMenuItem variant="destructive" disabled={removing === key} onSelect={remove}>{draft ? '删除草稿' : '删除'}</DropdownMenuItem>
+          <DropdownMenuItem asChild><Link to={edit}>{draft ? t("m_41c44e1c68") : t("m_0518365699")}</Link></DropdownMenuItem>
+          {view && <DropdownMenuItem asChild><Link to={view}>{t("m_db8db05304")}</Link></DropdownMenuItem>}
+          <DropdownMenuItem variant="destructive" disabled={removing === key} onSelect={remove}>{draft ? t("m_1dfe58237b") : t("m_2f9daa8289")}</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>;
@@ -128,53 +131,54 @@ export default function AdminPostsPage() {
   return <div className="admin-page admin-posts-page ui-v2">
     <div className="admin-page-body">
       <header className="admin-posts-header">
-        <div><Link to="/admin" className="admin-posts-back">返回后台</Link><div className="admin-posts-heading"><h1>文章管理</h1>{knownTotal !== null && <span>共 {knownTotal} 篇</span>}</div></div>
+        <div><Link to="/admin" className="admin-posts-back">{t("m_280dc8a5a1")}</Link><div className="admin-posts-heading"><h1>{t("m_4e7cb68111")}</h1>{knownTotal !== null && <span>{t("m_76e547a8fa")} {knownTotal} {t("m_4e7b9204a9")}</span>}</div></div>
         <div className="admin-posts-header-actions">
+          {manager&&<AdminButton asChild variant="ghost"><Link to="/admin/taxonomy">{t("m_3fcdff8677")}</Link></AdminButton>}
           {manager && <Dialog>
-            <DialogTrigger asChild><AdminButton variant="soft" className="ui-btn ui-btn--soft">从旧站导入</AdminButton></DialogTrigger>
+            <DialogTrigger asChild><AdminButton variant="soft" className="ui-btn ui-btn--soft">{t("m_6ef7cc9ac5")}</AdminButton></DialogTrigger>
             <DialogContent className="admin-portal ui-v2 admin-posts-import-dialog" aria-describedby={undefined}>
-              <DialogTitle>从旧站导入</DialogTitle>
+              <DialogTitle>{t("m_6ef7cc9ac5")}</DialogTitle>
               <div ref={element => { if (element && importHost && !element.contains(importHost)) element.appendChild(importHost); }} />
             </DialogContent>
           </Dialog>}
-          <AdminButton asChild variant="solid" className="ui-btn ui-btn--solid"><Link to="/admin/write">写文章</Link></AdminButton>
+          <AdminButton asChild variant="solid" className="ui-btn ui-btn--solid"><Link to="/admin/write">{t("m_13b195d6cc")}</Link></AdminButton>
         </div>
       </header>
       {manager && importHost && createPortal(<ArticleImport />, importHost)}
-      <div className="admin-posts-filters" role="group" aria-label="筛选文章状态">
-        {filters.map(item => <AdminButton key={item.value} variant="ghost" aria-pressed={filter === item.value} onClick={() => updateQuery({ status: item.value === 'all' ? '' : item.value, page: '' })} className="ui-btn ui-btn--ghost">{item.label}{counts && <span className="admin-posts-filter-count">{counts[item.value]}</span>}</AdminButton>)}
+      <div className="admin-posts-filters" role="group" aria-label={t("m_ca971a625d")}>
+        {filters.map(item => <AdminButton key={item.value} variant="ghost" aria-pressed={filter === item.value} onClick={() => updateQuery({ status: item.value === 'all' ? '' : item.value, page: '' })} className="ui-btn ui-btn--ghost">{t(item.label)}{counts && <span className="admin-posts-filter-count">{counts[item.value]}</span>}</AdminButton>)}
       </div>
-      {message && <div className="admin-posts-message" role="alert">{message}</div>}
-      {loadError && <div className="admin-posts-message" role="alert">{loadError} <AdminButton disabled={loading} variant="ghost" onClick={() => setRefresh(value => value + 1)}>重试</AdminButton></div>}
-      {loading ? <div className="admin-posts-skeleton" role="status" aria-label="正在加载文章…">
+      {message && <div className="admin-posts-message" role="alert">{t(message || '')}</div>}
+      {loadError && <div className="admin-posts-message" role="alert">{t(loadError || '')} <AdminButton disabled={loading} variant="ghost" onClick={() => setRefresh(value => value + 1)}>{t("m_b8784c8dd5")}</AdminButton></div>}
+      {loading ? <div className="admin-posts-skeleton" role="status" aria-label={t("m_743ae605de")}>
         {[0, 1, 2].map(index => <div className="admin-posts-skeleton-row" key={index}><Skeleton className="admin-posts-skeleton-title" /><Skeleton className="admin-posts-skeleton-meta" /><Skeleton className="admin-posts-skeleton-summary" /></div>)}
       </div> : <div className="admin-posts-list">
         {shownDrafts.map(draft => {
-          const title = draft.payload.title || '未命名草稿', edit = `/admin/write?draft=${draft.id}`;
+          const title = draft.payload.title || t("m_865f0a03ab"), edit = `/admin/write?draft=${draft.id}`;
           return <article className="admin-posts-row" key={`draft-${draft.id}`}>
-            <Link to={edit} className="admin-posts-main"><h2>{title}</h2><p className="admin-posts-meta">草稿 · {new Date(draft.updated_at).toLocaleString()}</p></Link>
-            <div className="admin-posts-row-end"><span className="admin-posts-status"><span aria-hidden="true" className="admin-posts-status-dot" />草稿</span>{rowActions(edit, title, `draft-${draft.id}`, () => void removeDraft(draft), true)}</div>
+            <Link to={edit} className="admin-posts-main"><h2>{title}</h2><p className="admin-posts-meta">{t("m_a94a50985d")} {new Date(draft.updated_at).toLocaleString(locale,{timeZone:'Asia/Shanghai'})}</p></Link>
+            <div className="admin-posts-row-end"><span className="admin-posts-status"><span aria-hidden="true" className="admin-posts-status-dot" />{t("m_2a2fd29bd2")}</span>{rowActions(edit, title, `draft-${draft.id}`, () => void removeDraft(draft), true)}</div>
           </article>;
         })}
         {posts.map(post => {
           const edit = `/admin/posts/${post.id}/edit`;
           return <article className="admin-posts-row" key={`post-${post.id}`}>
-            <Link to={edit} className="admin-posts-main"><h2>{post.title}</h2><p className="admin-posts-meta">分类：{post.category || '-'} · 作者：{post.author_name || '-'}</p>{post.summary && <p className="admin-posts-summary">{post.summary}</p>}</Link>
+            <Link to={edit} className="admin-posts-main"><h2>{post.title}</h2><p className="admin-posts-meta">{t("m_f5179cc500")}{post.category || '-'} {t("m_1f4db8c236")}{post.author_name || '-'}</p>{post.summary && <p className="admin-posts-summary">{post.summary}</p>}</Link>
             <div className="admin-posts-row-end">
-              {Boolean(Number(post.has_unpublished)) && <span className="admin-posts-unpublished">有未发布修改</span>}
-              <span className="admin-posts-status" data-status={post.status}><span aria-hidden="true" className="admin-posts-status-dot" />{post.status === 'published' ? '已发布' : '草稿'}</span>
+              {Boolean(Number(post.has_unpublished)) && <span className="admin-posts-unpublished">{t("m_41df60ffba")}</span>}
+              <span className="admin-posts-status" data-status={post.status}><span aria-hidden="true" className="admin-posts-status-dot" />{post.status === 'published' ? t("m_d334724d6b") : t("m_2a2fd29bd2")}</span>
               {rowActions(edit, post.title, `post-${post.id}`, () => void removePost(post.id), false, post.status === 'published' ? articlePath(post) : undefined)}
             </div>
           </article>;
         })}
-        {!message && !loadError && shown === 0 && <div className="admin-posts-empty"><p>还没有文章，先点击右上角写文章。</p><AdminButton asChild variant="solid" className="ui-btn ui-btn--solid"><Link to="/admin/write">写文章</Link></AdminButton></div>}
+        {!message && !loadError && shown === 0 && <div className="admin-posts-empty"><p>{t("m_5c5cb3d539")}</p><AdminButton asChild variant="solid" className="ui-btn ui-btn--solid"><Link to="/admin/write">{t("m_13b195d6cc")}</Link></AdminButton></div>}
       </div>}
-      {filter !== 'published' && draftPage * 20 < draftTotal && <div className="admin-posts-more"><AdminButton variant="ghost" disabled={loading} onClick={() => setDraftPage(value => value + 1)} className="ui-btn ui-btn--ghost">加载更多草稿</AdminButton></div>}
-      {pages > 1 ? <nav className="admin-posts-pagination" aria-label="文章管理分页">
-        <AdminButton variant="ghost" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="ui-btn ui-btn--ghost">上一页</AdminButton>
-        <span>共 {total} 条，第 {page} / {pages} 页</span>
-        <AdminButton variant="ghost" disabled={loading || page >= pages} onClick={() => setPage(page + 1)} className="ui-btn ui-btn--ghost">下一页</AdminButton>
-      </nav> : !loading && <p className="admin-posts-shown">已显示 {shown} 篇</p>}
+      {filter !== 'published' && draftPage * 20 < draftTotal && <div className="admin-posts-more"><AdminButton variant="ghost" disabled={loading} onClick={() => setDraftPage(value => value + 1)} className="ui-btn ui-btn--ghost">{t("m_1566278f13")}</AdminButton></div>}
+      {pages > 1 ? <nav className="admin-posts-pagination" aria-label={t("m_5cd2beebea")}>
+        <AdminButton variant="ghost" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="ui-btn ui-btn--ghost">{t("m_c9b9ae7a61")}</AdminButton>
+        <span>{t("m_76e547a8fa")} {total} {t("m_dfff79c31c")} {page} / {pages} {t("m_d24d3c9946")}</span>
+        <AdminButton variant="ghost" disabled={loading || page >= pages} onClick={() => setPage(page + 1)} className="ui-btn ui-btn--ghost">{t("m_8a8542f696")}</AdminButton>
+      </nav> : !loading && <p className="admin-posts-shown">{t("m_326fee0b90")} {shown} {t("m_4e7b9204a9")}</p>}
     </div>
   </div>;
 }

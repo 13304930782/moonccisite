@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PageHeading, SitePage } from '../components/ContentUI';
@@ -10,6 +11,7 @@ function emailAddress(value: string) {
   return `${parts[0]}@${config.domain}`;
 }
 export default function MailSetupPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const [input, setInput] = useState(() => emailAddress(searchParams.get('email') || '')), [status, setStatus] = useState('');
   const [error, setError] = useState(''), [busy, setBusy] = useState(false);
@@ -18,74 +20,74 @@ export default function MailSetupPage() {
   const manualCopy = useRef<HTMLTextAreaElement>(null), controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => { if (fallback) { manualCopy.current?.focus(); manualCopy.current?.select(); } }, [fallback]);
-  useEffect(() => { if (!download) return; const timer = window.setTimeout(() => { setDownload(''); setStatus('下载链接已过期，请重新生成。'); }, 110000); return () => clearTimeout(timer); }, [download]);
+  useEffect(() => { if (!download) return; const timer = window.setTimeout(() => { setDownload(''); setStatus(t("m_afcd233f8e")); }, 110000); return () => clearTimeout(timer); }, [download]);
   const email = emailAddress(input);
   const invalid = input !== '' && !email;
-  const parameters = `${config.displayName}\n邮箱 / IMAP 与 SMTP 用户名：${email}\nIMAP：${config.imap.host}\n端口：${config.imap.port}\n加密：SSL/TLS（隐式 TLS）\nSMTP：${config.smtp.host}\n端口：${config.smtp.port}\n加密：SSL/TLS（隐式 TLS）\nSMTP 需要认证：是\n密码：在邮件客户端填写自己的邮箱密码`;
+  const parameters = t("m_b3e79af5a1", {v0: config.displayName, v1: email, v2: config.imap.host, v3: config.imap.port, v4: config.smtp.host, v5: config.smtp.port});
   async function copy(value: string) {
     setFallback('');
-    try { await navigator.clipboard.writeText(value); setStatus('已复制。'); }
-    catch { setFallback(value); setStatus('自动复制未获允许，请在下方选中的文本中长按复制，或按 Ctrl/Cmd + C。'); }
+    try { await navigator.clipboard.writeText(value); setStatus(t("m_591b281ea7")); }
+    catch { setFallback(value); setStatus(t("m_7d28faa06c")); }
   }
   async function generate() {
-    if (!email) { setError('请输入有效的 @mooncci.site 完整邮箱地址。'); return; }
+    if (!email) { setError(t("m_0a28cf806a")); return; }
     setBusy(true); setError(''); setDownload('');
     const request = new AbortController(); controller.current = request;
     const timer = window.setTimeout(() => request.abort(), 15000);
     try {
       const response = await fetch('/api/mail-setup/profile', { method: 'POST', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', signal: request.signal,
         headers: { 'Content-Type': 'text/plain', 'X-Requested-With': 'XMLHttpRequest' }, body: email });
-      if (!response.ok) throw new Error('暂时无法生成配置。请重试，或使用下方手动设置。');
+      if (!response.ok) throw new Error(t("m_2131144a06"));
       const result = await response.json();
-      if (typeof result.download !== 'string' || !/^\/api\/mail-setup\/profile\/[a-f0-9]{64}\.mobileconfig$/.test(result.download)) throw new Error('下载服务返回异常，请使用手动设置。');
-      setDownload(result.download); setStatus('配置已生成，请点击下载；链接约两分钟内有效。');
-    } catch (e) { setError(e instanceof Error && e.name !== 'AbortError' ? e.message : '生成超时或已取消，请重试。'); }
+      if (typeof result.download !== 'string' || !/^\/api\/mail-setup\/profile\/[a-f0-9]{64}\.mobileconfig$/.test(result.download)) throw new Error(t("m_1d08d48779"));
+      setDownload(result.download); setStatus(t("m_c53c7a8f4e"));
+    } catch (e) { setError(e instanceof Error && e.name !== 'AbortError' ? e.message : t("m_f795a47263")); }
     finally { clearTimeout(timer); setBusy(false); }
   }
   return <SitePage narrow>
-    <PageHeading eyebrow="mooncci / Mail" title="在熟悉的客户端，收发邮件。">
-      <p>配置已有的 {config.displayName} 邮箱。这里不会创建账号，也不会验证邮箱是否存在。</p>
+    <PageHeading eyebrow="mooncci / Mail" title={t("m_31bebb78e2")}>
+      <p>{t("m_84fe7227a5")} {config.displayName}  {t("m_2704328341")}</p>
     </PageHeading>
     <div className="mail-setup">
       <section aria-labelledby="mail-address-heading">
-        <h2 id="mail-address-heading">你的邮箱</h2>
-        <label htmlFor="mail-address">完整邮箱地址</label>
+        <h2 id="mail-address-heading">{t("m_27558ddc98")}</h2>
+        <label htmlFor="mail-address">{t("m_98890631b8")}</label>
         <input id="mail-address" type="email" inputMode="email" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={254}
           placeholder="mooncci@mooncci.site" value={input} disabled={busy} aria-invalid={invalid} aria-describedby="mail-address-help"
           onChange={e => { setInput(e.target.value); setDownload(''); setStatus(''); setError(''); setFallback(''); }} />
-        <p id="mail-address-help" className="muted">仅支持 @{config.domain}。保留 @ 前的大小写和字符；不支持带引号或国际化地址。不收集密码，不保存到网站账号、浏览器存储或分析事件。只有生成 Apple 配置时才会提交邮箱，并短暂保留在服务内存中。</p>
-        {invalid && <p role="alert">请输入有效的 @mooncci.site 完整邮箱地址；不支持其他域名或空格。</p>}
+        <p id="mail-address-help" className="muted">{t("m_687cf9477e")}{config.domain}{t("m_230fc12654")}</p>
+        {invalid && <p role="alert">{t("m_06e19c6f7f")}</p>}
       </section>
       <section aria-labelledby="mail-parameters-heading">
-        <h2 id="mail-parameters-heading">连接参数</h2>
+        <h2 id="mail-parameters-heading">{t("m_72251455f2")}</h2>
         <div className="mail-server-grid">
-          {[['IMAP · 收件', config.imap, 'SSL/TLS（隐式 TLS）'], ['SMTP · 发件', config.smtp, 'SSL/TLS（隐式 TLS）']].map(([title, settings, tls]) => {
+          {[[t("m_310e72658c"), config.imap, t("m_4f3be86b7b")], [t("m_99a58c3497"), config.smtp, t("m_4f3be86b7b")]].map(([title, settings, tls]) => {
             const server = settings as typeof config.imap;
             return <div className="mail-server" key={String(title)}><h3>{String(title)}</h3><dl>
-              <dt>服务器</dt><dd>{server.host}</dd><dt>端口</dt><dd>{server.port}</dd><dt>加密</dt><dd>{String(tls)}</dd>
-              <dt>认证</dt><dd>自己的邮箱密码（仅在 TLS 保护下）</dd></dl>
-              <button className="quiet-button" onClick={() => copy(server.host)}>复制{String(title).startsWith('IMAP') ? '收件' : '发件'}服务器</button>
+              <dt>{t("m_2388cbc6a4")}</dt><dd>{server.host}</dd><dt>{t("m_e71ac32b54")}</dt><dd>{server.port}</dd><dt>{t("m_320c254572")}</dt><dd>{String(tls)}</dd>
+              <dt>{t("m_d2d648bd1c")}</dt><dd>{t("m_de3529d004")}</dd></dl>
+              <button className="quiet-button" onClick={() => copy(server.host)}>{t("m_63d90d9773")}{String(title).startsWith('IMAP') ? t("m_f1fe2008f3") : t("m_d5f01fb344")}{t("m_2388cbc6a4")}</button>
             </div>;
           })}
         </div>
-        <p>收发件用户名：<strong className="mail-username">{email || '你自己的完整邮箱地址'}</strong>。SMTP 必须认证，密码与收件相同。</p>
-        <div className="inline-actions"><button className="quiet-button" disabled={!email} onClick={() => copy(email)}>复制用户名</button><button className="quiet-button" disabled={!email} onClick={() => copy(parameters)}>复制整套参数</button></div>
+        <p>{t("m_e615db8085")}<strong className="mail-username">{email || t("m_f80f3c53a5")}</strong>{t("m_7731543c73")}</p>
+        <div className="inline-actions"><button className="quiet-button" disabled={!email} onClick={() => copy(email)}>{t("m_ac859f1f27")}</button><button className="quiet-button" disabled={!email} onClick={() => copy(parameters)}>{t("m_457b9f6325")}</button></div>
         <p role="status" aria-live="polite">{status}</p>
-        {fallback && <textarea aria-label="手动复制内容" ref={manualCopy} value={fallback} readOnly rows={8} />}
+        {fallback && <textarea aria-label={t("m_4f5abe5e91")} ref={manualCopy} value={fallback} readOnly rows={8} />}
       </section>
       <section aria-labelledby="mail-clients-heading">
-        <h2 id="mail-clients-heading">按客户端设置</h2>
-        <details open><summary>Thunderbird</summary><ol><li>选择添加已有邮件账户，填写自己的姓名、完整邮箱和密码。</li><li>继续后检查发现的参数是否与上表一致。自动发现尚未可用或失败时，选择手动配置。</li><li>IMAP 和 SMTP 均选择 SSL/TLS；认证方式选择“普通密码”。普通密码认证必须在 TLS 加密连接内进行。</li></ol></details>
-        <details open><summary>Apple 自带“邮件”</summary>
-          <p>可下载未签名的配置描述文件，仅配置 Apple 自带邮件，不会配置 Gmail App。文件不含密码、证书、MDM、VPN 或代理。</p>
-          <ol><li>填写上方邮箱，生成并下载描述文件。iPhone / iPad 请用 Safari 打开本页。</li><li>系统询问时允许下载，再到“设置”中打开“已下载描述文件”（或“通用 → VPN 与设备管理”），查看内容并自行确认安装。</li><li>在系统安装或邮件设置中填写自己的邮箱密码。macOS 在系统设置中确认描述文件安装。</li><li>核对收件 {config.imap.port}、发件 {config.smtp.port} 且启用 SSL；连接建立时即启用 TLS。不要接受不安全连接或证书警告。</li></ol>
-          <p className="muted">若系统不接受下载或配置，请按连接参数手动添加“其他”邮件账户。</p>
-          <div className="inline-actions"><button className="quiet-button" disabled={!email || busy} onClick={generate}>{busy ? '正在生成…' : '生成 Apple 配置'}</button>
-            {download && <a className="quiet-button" href={download} referrerPolicy="no-referrer">下载未签名描述文件</a>}</div>
-          {error && <p role="alert">{error}</p>}
+        <h2 id="mail-clients-heading">{t("m_35f6f62a31")}</h2>
+        <details open><summary>Thunderbird</summary><ol><li>{t("m_f36ef4dd76")}</li><li>{t("m_306dec88d4")}</li><li>{t("m_4d099eca5d")}</li></ol></details>
+        <details open><summary>{t("m_27de782a98")}</summary>
+          <p>{t("m_88dfb037a5")}</p>
+          <ol><li>{t("m_def9915a27")}</li><li>{t("m_f7911af15c")}</li><li>{t("m_e512d82ffc")}</li><li>{t("m_32aeafeee5")} {config.imap.port}{t("m_326fafce9d")} {config.smtp.port}  {t("m_f3c3f5b7b1")}</li></ol>
+          <p className="muted">{t("m_9240159b57")}</p>
+          <div className="inline-actions"><button className="quiet-button" disabled={!email || busy} onClick={generate}>{busy ? t("m_a8b8730c96") : t("m_02983d3ca3")}</button>
+            {download && <a className="quiet-button" href={download} referrerPolicy="no-referrer">{t("m_22e2709267")}</a>}</div>
+          {error && <p role="alert">{t(error || '')}</p>}
         </details>
-        <details open><summary>Gmail · iOS / Android</summary><ol><li>点击头像 → 添加其他账户 → 其他（IMAP）。界面名称可能随版本变化。</li><li>填写完整邮箱及自己的邮箱密码，手动设置收件服务器 {config.imap.host}，端口 {config.imap.port}，SSL/TLS。</li><li>发件服务器填 {config.smtp.host}，端口 {config.smtp.port}，SSL/TLS；启用身份验证，用户名填完整邮箱。</li></ol><p>不保证 Gmail 读取 Mozilla Autoconfig。若无法自动识别，请按上方参数手动设置。</p></details>
-        <details><summary>Outlook 与其他客户端</summary><p>如果客户端支持普通 IMAP，可按上表手动配置。本功能不提供 Exchange / Autodiscover，不承诺自动发现。</p></details>
+        <details open><summary>Gmail · iOS / Android</summary><ol><li>{t("m_ceb00d31dc")}</li><li>{t("m_a703fe6aa1")} {config.imap.host}{t("m_a2c8401e16")} {config.imap.port}，SSL/TLS。</li><li>{t("m_e81acfcc02")} {config.smtp.host}{t("m_a2c8401e16")} {config.smtp.port}{t("m_bc2bc3f018")}</li></ol><p>{t("m_200d1cf37a")}</p></details>
+        <details><summary>{t("m_5e5f67146a")}</summary><p>{t("m_653b05e7bf")}</p></details>
       </section>
     </div>
   </SitePage>;

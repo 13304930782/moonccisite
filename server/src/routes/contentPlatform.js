@@ -1,4 +1,5 @@
 const {publicRelease}=require('../lib/publicContent');
+const {localize}=require('../lib/contentTranslations');
 const express = require('express');
 const db = require('../platformDb');
 const { authRequired, adminOnly, ownerOnly } = require('../middleware/auth');
@@ -20,9 +21,9 @@ router.get(
 );
 router.get(
   '/now',
-  a(async (_req, res) => {
+  a(async (req, res) => {
     const [rows] = await db.query('SELECT content,updated_at FROM site_now WHERE id=1');
-    res.json(rows[0] || { content: '', updated_at: null });
+    res.json(await localize(db,'now',rows[0]||{content:'',updated_at:null},req.query.locale,{id:'1'}));
   }),
 );
 admin.put(
@@ -48,7 +49,7 @@ router.get(
       "SELECT id,content,image_url,published_at,updated_at FROM updates WHERE status='published' ORDER BY published_at DESC,id DESC LIMIT ? OFFSET ?",
       [pageSize, offset],
     );
-    res.json({ items, total: Number(total), page, pageSize });
+    res.json({ items:await Promise.all(items.map(item=>localize(db,'update',item,req.query.locale))), total: Number(total), page, pageSize });
   }),
 );
 router.get(
@@ -59,7 +60,7 @@ router.get(
       [req.params.id],
     );
     if (!rows[0]) throw fail('动态不存在', 404);
-    res.json(rows[0]);
+    res.json(await localize(db,'update',rows[0],req.query.locale,{strict:true}));
   }),
 );
 admin.get(
@@ -109,7 +110,7 @@ router.get(
       `SELECT id,slug,name,summary,cover_image,icon_image,tech_stack,stage,demo_url,repo,featured_rank FROM projects WHERE ${where} ORDER BY featured_rank IS NULL,featured_rank,id DESC LIMIT ? OFFSET ?`,
       [req.query.featured === 'true' ? 3 : pageSize, offset],
     );
-    res.json({ items, total: Number(total), page, pageSize });
+    res.json({ items:await Promise.all(items.map(item=>localize(db,'project',item,req.query.locale))), total: Number(total), page, pageSize });
   }),
 );
 router.get(
@@ -125,7 +126,7 @@ router.get(
     try { image_dimensions = await require('../lib/articleImages').articleImageDimensions({ cover_image: rows[0].cover_image }, db); }
     catch (error) { console.warn('[projects/image-dimensions]', error.code || 'unavailable'); }
     const { page, pageSize, offset } = pagination(req.query);
-    const p = rows[0];
+    const p = await localize(db,'project',rows[0],req.query.locale,{strict:true});
     const [[{ total }]] = await db.query(
       `SELECT COUNT(*) total FROM project_releases r WHERE r.project_id=? AND r.repo=? AND ${publicRelease('r')}`,
       [p.id, p.repo],

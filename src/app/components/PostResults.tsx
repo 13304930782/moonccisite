@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useEffect } from 'react';
 import '../../styles/content-discovery.css';
 import { searchExcerpt } from '../lib/searchExcerpt';
@@ -17,6 +18,7 @@ export function PostResults({
   empty?: string;
   emptyAction?: React.ReactNode;
 }) {
+  const { t } = useI18n();
   const [params,setParams]=useSearchParams();
   const requestedPage=Number(params.get('page'));
   const page=Number.isSafeInteger(requestedPage)&&requestedPage>=1?Math.min(requestedPage,100000):1;
@@ -35,8 +37,8 @@ export function PostResults({
 
   return (
     <ResourceState resource={resource}>
-      {resource.data && <p className="muted" role="status">共 {resource.data.total} 篇文章</p>}
-      {!posts.length && <div className="quiet-state"><p>{empty}</p>{emptyAction}</div>}
+      {resource.data && <p className="muted" role="status">{t("m_76e547a8fa")} {resource.data.total}  {t("m_9f115826f3")}</p>}
+      {!posts.length && <div className="quiet-state"><p>{t(empty)}</p>{emptyAction}</div>}
       <div className="post-grid discovery-results">
         {posts.map((post:any) => {
           let tags: string[] = [];
@@ -52,14 +54,15 @@ export function PostResults({
               key={post.id}
               id={post.id}
               slug={post.slug}
+              contentLocale={post.content_locale}
               title={post.title}
               excerpt={searchQuery ? searchExcerpt(post, searchQuery) : post.summary}
               date={post.updated_at || post.published_at || post.created_at}
-              dateLabel="更新于"
-              tags={tags}
+              dateLabel={t("m_7153f0918a")}
+              tags={post.tags_display || tags}
               image={post.cover_image}
               coverCrop={post.cover_crop}
-              category={post.category}
+              category={post.category_display_name || post.category}
             />
           );
         })}

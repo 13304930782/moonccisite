@@ -1,6 +1,7 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
 const React=require('react'),{act,create}=require('react-test-renderer');
-const articleUrl={};new Function('exports',ts.transpileModule(fs.readFileSync('src/app/lib/articleUrl.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(articleUrl);
+const articleUrl={};new Function('exports','require',ts.transpileModule(fs.readFileSync('src/app/lib/articleUrl.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(articleUrl,i18nFixture);
 function load(file,api,role='owner',confirm=async()=>true,extra={}){
  const mod={exports:{}},box=({children,...props})=>React.createElement('box',props,children);
  const button=({asChild,children,...props})=>asChild?React.cloneElement(children,props):React.createElement('button',props,children);
@@ -17,7 +18,7 @@ function load(file,api,role='owner',confirm=async()=>true,extra={}){
  };
  Object.assign(mocks,extra);
  const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- new Function('exports','require','document',code)(mod.exports,name=>name.endsWith('.css')?{}:mocks[name]||require(name),{createElement:()=>({querySelector:()=>null})});return mod.exports.default;
+ new Function('exports','require','document',code)(mod.exports,name=>i18nFixture(name)?i18nFixture(name):name.endsWith('.css')?{}:mocks[name]||require(name),{createElement:()=>({querySelector:()=>null})});return mod.exports.default;
 }
 const text=node=>typeof node==='string'?node:Array.isArray(node)?node.map(text).join(''):node?.children?text(node.children):'';
 const draft=(id,post_id=null)=>({id,post_id,version:7,updated_at:'2026-10-15T00:00:00Z',payload:{title:id}});

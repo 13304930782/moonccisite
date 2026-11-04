@@ -1,25 +1,29 @@
+import { useI18n } from '../../i18n';
 import type { ReactNode } from 'react';
 import '../../../styles/admin-feedback.css';
 
 /** Shared loading / error / empty states so every admin list reads the same way. */
 export function AdminLoading({ label = '正在加载…' }: { label?: string }) {
+  const {t}=useI18n();
   return <div className="admin-state" role="status" aria-live="polite">
     <span className="admin-state-spinner" aria-hidden="true" />
-    <span>{label}</span>
+    <span>{t(label)}</span>
   </div>;
 }
 
 export function AdminError({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const { t } = useI18n();
   return <div className="admin-state admin-state--error" role="alert">
-    <p>{message}</p>
-    {onRetry && <button type="button" className="quiet-button" onClick={onRetry}>重试</button>}
+    <p>{t(message || '')}</p>
+    {onRetry && <button type="button" className="quiet-button" onClick={onRetry}>{t("m_b8784c8dd5")}</button>}
   </div>;
 }
 
 export function AdminEmpty({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
+  const {t}=useI18n();
   return <div className="admin-state admin-state--empty">
-    <p className="admin-state-title">{title}</p>
-    {hint && <p className="admin-state-hint">{hint}</p>}
+    <p className="admin-state-title">{t(title)}</p>
+    {hint && <p className="admin-state-hint">{t(hint)}</p>}
     {action}
   </div>;
 }

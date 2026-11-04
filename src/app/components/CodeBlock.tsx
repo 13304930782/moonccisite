@@ -1,8 +1,10 @@
+import { useI18n } from '../i18n';
 import {highlightCode} from '../lib/codeHighlight';
 import {Children,isValidElement,useMemo,useEffect,useRef,useState, type ReactNode} from 'react';
 import {Check,Copy} from 'lucide-react';
 import '../../styles/code-block.css';
 export function CodeBlock({children}:{children:ReactNode}){
+  const { t } = useI18n();
  const child=Children.toArray(children).find(isValidElement);
  const props=child?.props as {children?:ReactNode;className?:string}|undefined;
  const source=typeof props?.children==='string'?props.children:null;
@@ -26,6 +28,6 @@ export function CodeBlock({children}:{children:ReactNode}){
   }catch{if(alive.current)setState('error');}
   finally{if(alive.current){setBusy(false);timer.current=setTimeout(()=>setState('idle'),2500);}}
  }
- const label=state==='copied'?'已复制':state==='error'?'复制失败，请手动选择代码':'复制代码';
- return <div className="code-block"><span className="code-language" data-reading-ignore>{highlighted.label}{highlighted.automatic?' · 自动':''}</span><button type="button" className="code-copy" onClick={()=>void copy()} disabled={busy} aria-label={label} title={label} data-reading-ignore>{state==='copied'?<Check size={16}/>:<Copy size={16}/>}</button><span className={state==='error'?'code-copy-feedback':'sr-only'} role="status" aria-live="polite" data-reading-ignore>{state==='idle'?'':label}</span><pre ref={pre}>{source===null?children:highlighted.html===null?<code>{source}</code>:<code className="hljs" dangerouslySetInnerHTML={{__html:highlighted.html}}/>}</pre></div>;
+ const label=state==='copied'?t("m_8f6f8d979c"):state==='error'?t("m_bc31718db9"):t("m_420c20dd9f");
+ return <div className="code-block"><span className="code-language" data-reading-ignore>{t(highlighted.label)}{highlighted.automatic?t("m_fe5e614bc9"):''}</span><button type="button" className="code-copy" onClick={()=>void copy()} disabled={busy} aria-label={label} title={label} data-reading-ignore>{state==='copied'?<Check size={16}/>:<Copy size={16}/>}</button><span className={state==='error'?'code-copy-feedback':'sr-only'} role="status" aria-live="polite" data-reading-ignore>{state==='idle'?'':label}</span><pre ref={pre}>{source===null?children:highlighted.html===null?<code>{source}</code>:<code className="hljs" dangerouslySetInnerHTML={{__html:highlighted.html}}/>}</pre></div>;
 }

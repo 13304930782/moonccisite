@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import '../../styles/electricity.css';
 import { useUnsavedLeave } from '../lib/useUnsavedLeave';
 import { ThemeSelect } from '../components/ThemeSelect';
@@ -71,13 +72,13 @@ const number = (value: number | null) =>
   value === null ? '—' : Number(value).toFixed(2);
 
 const timeLabel = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
-const dateTime = (value?: string | null) => {
+const dateTime = (value: string | null | undefined, locale = 'zh-CN') => {
   if (!value) return '—';
   const date = new Date(
     value.includes('T') ? value : `${value.replace(' ', 'T')}+08:00`,
   );
   if (!Number.isFinite(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: 'Asia/Shanghai',
     year: 'numeric',
     month: '2-digit',
@@ -96,6 +97,7 @@ export default function AdminElectricityPage() {
   );
 }
 function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyChange: (busy: boolean) => void }) {
+  const { locale,  t } = useI18n();
   const roomApi = (path: string, options?: Parameters<typeof api>[1]) =>
     api(`${path}?roomId=${encodeURIComponent(room.id)}`, options);
   const [data, setData] = useState<SettingsData | null>(null);
@@ -121,7 +123,7 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
       });
       setHistoryMessage(response.message);
     } catch (err) {
-      setHistoryError(err instanceof Error ? err.message : '历史同步失败。');
+      setHistoryError(err instanceof Error ? err.message : t("m_167eedc4fa"));
     } finally {
       setBusy('');
     }
@@ -155,7 +157,7 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
       setNotice(success);
       await load(name === 'save');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '操作失败。');
+      setError(err instanceof Error ? err.message : t("m_b3b75bd055"));
     } finally {
       setBusy('');
     }
@@ -170,7 +172,7 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
           method: 'PUT',
           body: JSON.stringify(form),
         }),
-      '设置已保存，运行计划将在 30 秒内生效。',
+      t("m_41c7fd9ce4"),
     );
   };
 
@@ -214,19 +216,19 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
         aria-labelledby="electricity-current-heading"
       >
         <div className="electricity-manage-heading">
-          <h2 id="electricity-current-heading">当前电量</h2>
+          <h2 id="electricity-current-heading">{t("m_2686e3fd1f")}</h2>
           <span>
             {data?.current
-              ? `采集于 ${dateTime(data.current.recordedAt)} · 北京时间`
-              : '尚未采集数据'}
+              ? t("m_f5112fa1b8", {v0: dateTime(data.current.recordedAt,locale)})
+              : t("m_2181d39595")}
           </span>
         </div>
         <div className="electricity-manage-metrics">
           {[
-            ['总余量', data?.current?.totalRemaining],
-            ['自购剩余', data?.current?.purchasedRemaining],
-            ['补贴剩余', data?.current?.subsidyRemaining],
-            ['今日用电', data?.current?.todayUse],
+            [t("m_e14cbbbb24"), data?.current?.totalRemaining],
+            [t("m_fe47a703f2"), data?.current?.purchasedRemaining],
+            [t("m_8ed29b1286"), data?.current?.subsidyRemaining],
+            [t("m_e192c06692"), data?.current?.todayUse],
           ].map(([label, value]) => (
             <div key={String(label)}>
               <span>{label}</span>
@@ -246,14 +248,14 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
               run(
                 'refresh',
                 () => roomApi('/admin/electricity/refresh', { method: 'POST' }),
-                '电量数据已刷新。',
+                t("m_b4c54e03b0"),
               )
             }
           >
             <RefreshCw
               className={busy === 'refresh' ? 'electricity-spin' : ''}
             />
-            {busy === 'refresh' ? '查询中…' : '立即查询'}
+            {busy === 'refresh' ? t("m_d302f90b09") : t("m_acc5822fdb")}
           </button>
           <button
             type="button"
@@ -262,9 +264,9 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
             onClick={syncHistory}
           >
             <Clock3 className={busy === 'history' ? 'electricity-spin' : ''} />
-            {busy === 'history' ? '同步中…' : '同步学校历史用电'}
+            {busy === 'history' ? t("m_4e2238b74e") : t("m_23fecd8c5b")}
           </button>
-          <p>同步最近 7 个完整日，间隔 15 分钟；预测仍在零点更新。</p>
+          <p>{t("m_cc9e39f49a")}</p>
         </div>
         {(historyMessage || historyError) && (
           <div
@@ -289,19 +291,18 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
               <div className="electricity-manage-heading">
                 <h2 id="electricity-plan-heading">
                   <Zap />
-                  运行计划
-                </h2>
-                <span>北京时间 · 每日重复</span>
+                   {t("m_0bf826007f")} </h2>
+                <span>{t("m_43cc0bb833")}</span>
               </div>
               <label className="electricity-switch-row">
                 <span>
-                  <strong>启用电量监控</strong>
-                  <small>关闭后暂停自动采集</small>
+                  <strong>{t("m_39dba20cee")}</strong>
+                  <small>{t("m_2df64c1efe")}</small>
                 </span>
                 <input
                   type="checkbox"
                   role="switch"
-                  aria-label="启用电量监控"
+                  aria-label={t("m_39dba20cee")}
                   checked={form.enabled}
                   onChange={(event) =>
                     setForm({ ...form, enabled: event.target.checked })
@@ -309,8 +310,8 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                 />
               </label>
               <div className="electricity-schedule-labels" aria-hidden="true">
-                <span>运行时间</span>
-                <span>执行任务</span>
+                <span>{t("m_5986e9d976")}</span>
+                <span>{t("m_57b0c73f09")}</span>
                 <span />
               </div>
               <div className="electricity-schedule-list">
@@ -322,14 +323,13 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                           00:00
                         </span>
                         <span className="electricity-schedule-fixed">
-                          零点采集
-                        </span>
-                        <span className="electricity-schedule-lock">固定</span>
+                           {t("m_67c02056fc")} </span>
+                        <span className="electricity-schedule-lock">{t("m_d4b3f49cd2")}</span>
                       </>
                     ) : (
                       <>
                         <ThemeSelect
-                          aria-label={`第 ${index + 1} 行运行时间`}
+                          aria-label={t("m_e130e1d08d", {v0: index + 1})}
                           value={String(row.hour)}
                           onValueChange={(value) =>
                             updateSchedule(index, {
@@ -353,7 +353,7 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                           )}
                         </ThemeSelect>
                         <ThemeSelect
-                          aria-label={`第 ${index + 1} 行执行任务`}
+                          aria-label={t("m_49a40dfe27", {v0: index + 1})}
                           value={row.type}
                           onValueChange={(value) =>
                             updateSchedule(index, {
@@ -361,7 +361,7 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                             })
                           }
                         >
-                          <option value="collect">仅采集</option>
+                          <option value="collect">{t("m_0447ba6a0c")}</option>
                           <option
                             value="morning"
                             disabled={form.schedule.some(
@@ -369,8 +369,7 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                                 i !== index && other.type === 'morning',
                             )}
                           >
-                            采集并生成早报
-                          </option>
+                             {t("m_3e205d8706")} </option>
                           <option
                             value="evening"
                             disabled={form.schedule.some(
@@ -378,13 +377,12 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                                 i !== index && other.type === 'evening',
                             )}
                           >
-                            采集并生成晚报
-                          </option>
+                             {t("m_b1dc3f5151")} </option>
                         </ThemeSelect>
                         <button
                           type="button"
                           className="electricity-schedule-remove"
-                          aria-label={`删除 ${timeLabel(row.hour)} 计划`}
+                          aria-label={t("m_94c5f96f12", {v0: timeLabel(row.hour)})}
                           onClick={() =>
                             setForm({
                               ...form,
@@ -408,11 +406,9 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                 onClick={addTime}
               >
                 <Plus />
-                添加时间
-              </button>
+                 {t("m_526fed2956")} </button>
               <p className="electricity-manage-help">
-                每天北京时间 00:00 固定采集，保存零点余量并同步历史，用于用电估算；不发送日报。
-              </p>
+                 {t("m_d2c291aeed")} </p>
             </section>
 
             <section
@@ -422,18 +418,17 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
               <div className="electricity-manage-heading">
                 <h2 id="electricity-notify-heading">
                   <MailCheck />
-                  通知与阈值
-                </h2>
+                   {t("m_a45f94e638")} </h2>
               </div>
               <label className="electricity-switch-row">
                 <span>
-                  <strong>发送早晚电量简报</strong>
-                  <small>按运行计划中的早报、晚报时间发送</small>
+                  <strong>{t("m_a9f09d9bba")}</strong>
+                  <small>{t("m_6a912e21b6")}</small>
                 </span>
                 <input
                   type="checkbox"
                   role="switch"
-                  aria-label="发送早晚电量简报"
+                  aria-label={t("m_a9f09d9bba")}
                   checked={form.dailyNotify}
                   onChange={(event) =>
                     setForm({ ...form, dailyNotify: event.target.checked })
@@ -442,13 +437,13 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
               </label>
               <div className="electricity-field-grid">
                 <label className="electricity-field-full">
-                  <span>通知收件人</span>
+                  <span>{t("m_b836608abe")}</span>
                   <input
                     type="email"
                     placeholder={
                       room.legacy
-                        ? '留空则使用邮件设置收件人'
-                        : '留空则不发送邮件'
+                        ? t("m_df1e800399")
+                        : t("m_d1313cca0d")
                     }
                     value={form.notifyTo}
                     onChange={(event) =>
@@ -457,7 +452,7 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                   />
                 </label>
                 <label>
-                  <span>自购剩余警戒值 · kWh</span>
+                  <span>{t("m_9cd7cd5c14")}</span>
                   <input
                     type="number"
                     required
@@ -473,7 +468,7 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                   />
                 </label>
                 <label>
-                  <span>总余量警戒值 · kWh</span>
+                  <span>{t("m_6c9221d7b2")}</span>
                   <input
                     type="number"
                     required
@@ -500,16 +495,15 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                       roomApi('/admin/electricity/test-email', {
                         method: 'POST',
                       }),
-                    '测试日报已发送。',
+                    t("m_7dbfe669cf"),
                   )
                 }
               >
                 <MailCheck />
-                {busy === 'email' ? '发送中…' : '发送测试日报'}
+                {busy === 'email' ? t("m_364970d816") : t("m_a660b3773b")}
               </button>
               <p className="electricity-manage-help">
-                测试邮件使用已保存的收件人设置。
-              </p>
+                 {t("m_d6af654d45")} </p>
             </section>
           </div>
           <div className="electricity-manage-save">
@@ -519,10 +513,10 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
               className="electricity-button electricity-button--primary"
             >
               <Save />
-              {busy === 'save' ? '保存中…' : '保存设置'}
+              {busy === 'save' ? t("m_ff509c9ba0") : t("m_c8550237ba")}
             </button>
-            <button type="button" className="electricity-button" disabled={!dirty} onClick={() => { if (saved) setForm(saved); setError(''); setNotice(''); }}>放弃更改</button>
-            <span role="status">{dirty ? '有未保存的更改' : '已保存'}，运行计划在 30 秒内生效。</span>
+            <button type="button" className="electricity-button" disabled={!dirty} onClick={() => { if (saved) setForm(saved); setError(''); setNotice(''); }}>{t("m_ef804eda90")}</button>
+            <span role="status">{dirty ? t("m_6265f9d3f3") : t("m_1bd91a7d0c")}{t("m_035d101488")}</span>
           </div>
         </fieldset>
       </form>
@@ -533,48 +527,47 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
       >
         <h2 id="electricity-status-heading">
           <ShieldCheck />
-          服务状态
-        </h2>
+           {t("m_e8a4f7c09d")} </h2>
         <dl>
           <div>
-            <dt>学校账号</dt>
+            <dt>{t("m_9a8ddf1a5e")}</dt>
             <dd>
               {!data
                 ? '—'
                 : data.credentials.accountConfigured
-                  ? '已配置'
-                  : '未配置'}
+                  ? t("m_de8184da1e")
+                  : t("m_80a57e03f0")}
             </dd>
           </div>
           <div>
-            <dt>宿舍凭据</dt>
+            <dt>{t("m_ee3c2afa0b")}</dt>
             <dd>
               {!data
                 ? '—'
                 : data.credentials.roomVerifyConfigured
-                  ? '已配置'
-                  : '未配置'}
+                  ? t("m_de8184da1e")
+                  : t("m_80a57e03f0")}
             </dd>
           </div>
           <div>
-            <dt>最近采集成功 · 北京时间</dt>
-            <dd>{dateTime(data?.state.lastSuccessAt)}</dd>
+            <dt>{t("m_b1fbb617f2")}</dt>
+            <dd>{dateTime(data?.state.lastSuccessAt,locale)}</dd>
           </div>
           <div>
-            <dt>电量告警</dt>
+            <dt>{t("m_30abde581c")}</dt>
             <dd>
               {!data
                 ? '—'
                 : data.state.lowAlertActive
-                  ? '低电量告警中'
-                  : '未触发'}
+                  ? t("m_88da0a06bb")
+                  : t("m_c4440e9511")}
             </dd>
           </div>
         </dl>
         {data?.state.lastErrorCode && (
           <p className="electricity-manage-error">
-            最近错误：{data.state.lastErrorCode} ·{' '}
-            {dateTime(data.state.lastErrorAt)}
+             {t("m_b5a4ed38fd")}{data.state.lastErrorCode} ·{' '}
+            {dateTime(data.state.lastErrorAt,locale)}
           </p>
         )}
       </section>

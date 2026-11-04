@@ -1,8 +1,13 @@
+import { Info, CircleAlert, LoaderCircle } from 'lucide-react';
+import { useI18n } from '../i18n';
 import { useDocumentResource } from '../context/DocumentData';
+import {useLocale} from '../context/LocaleContext';
+import {localeResource} from '../lib/locale';
 import { readSnapshot, writeSnapshot, snapshotGeneration, deleteSnapshot, subscribeSnapshotInvalidation } from '../lib/publicSnapshots';
 import { notify } from '../lib/feedback';
 import { FormEvent, ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import {Link} from './LocaleLink';
 import { api } from '../lib/api';
 import { publicRead, publicReadPath } from '../lib/publicRead';
 import { Header } from './Header';
@@ -11,15 +16,24 @@ import { SiteBack } from './SiteBack';
 import { visibleDiagnostic } from '../lib/browserDiagnostics';
 import '../../styles/resource-state.css';
 
+export function StatusNotice({children, state = 'info', action, className = ''}: {children: ReactNode; state?: 'info' | 'error' | 'loading'; action?: ReactNode; className?: string}) {
+  return <div className={`status-notice ${className}`} data-state={state} role={state === 'error' ? 'alert' : 'status'} aria-busy={state === 'loading'}>
+    {state === 'error' ? <CircleAlert aria-hidden="true" /> : state === 'loading' ? <LoaderCircle aria-hidden="true" /> : <Info aria-hidden="true" />}
+    <div><p>{children}</p>{action}</div>
+  </div>;
+}
+
 export type PageData<T = any> = { items: T[]; total: number; page: number; pageSize: number };
 // Only published, user-independent endpoints may share an in-memory snapshot.
 
 const cacheable = publicReadPath;
 export function useResource<T = any>(path: string, enabled = true) {
+  const { t,locale } = useI18n();
+  path = localeResource(path,useLocale().contentLocale);
   const initial = useDocumentResource(path, enabled);
   const snapshot = initial.data ?? (cacheable(path) ? readSnapshot(path) : null);
   const [state, setState] = useState<{ path: string; data: T | null }>({ path, data: snapshot }),
-    [error, setError] = useState(initial.status ? '内容不存在或未公开。' : ''),
+    [error, setError] = useState(initial.status ? t("m_9f738df452") : ''),
     [errorStatus,setErrorStatus]=useState<number|null>(initial.status || null),
     [loading, setLoading] = useState(!snapshot && !initial.status),
     [version, setVersion] = useState(0);
@@ -71,10 +85,11 @@ export function useResource<T = any>(path: string, enabled = true) {
   return { cancel, errorStatus:enabled&&state.path===path?errorStatus:null, data: enabled ? (state.path === path ? state.data : snapshot) : null, error: enabled&&state.path===path ? error : '', loading: loading || state.path !== path, reload };
 }
 export function ContentSkeleton() {
-  return <div className="content-skeleton" role="status" aria-label="正在加载内容" aria-busy="true">
+  const { t,locale } = useI18n();
+  return <div className="content-skeleton" role="status" aria-label={t("m_aaca7d941e")} aria-busy="true">
     <span className="skeleton-line skeleton-heading" /><span className="skeleton-line" />
     <span className="skeleton-line" /><span className="skeleton-block" />
-    <span className="sr-only">正在加载内容…</span>
+    <span className="sr-only">{t("m_2b1fde913d")}</span>
   </div>;
 }
 export function ResourceState({
@@ -84,6 +99,7 @@ export function ResourceState({
   resource: Omit<ReturnType<typeof useResource>,'errorStatus'|'cancel'> & {errorStatus?:number|null;cancel?:()=>void};
   children: ReactNode;
 }) {
+  const { t,locale } = useI18n();
   const location=useLocation();
   useEffect(() => {
     if (!resource.loading && resource.data !== null) {
@@ -92,25 +108,26 @@ export function ResourceState({
     }
   }, [resource.loading, resource.data, location.pathname]);
   const group=location.pathname.startsWith('/admin/')?'/admin':location.pathname.startsWith('/account/')?'/account/settings':location.pathname.startsWith('/projects/')?'/projects':location.pathname.startsWith('/updates/')?'/updates':location.pathname.startsWith('/series/')?'/series':'/articles';
-  if (resource.loading && resource.data === null) return <div className="resource-loading"><div role="status" aria-label="正在加载内容"><span className="resource-loading-line" aria-hidden="true"/><span className="sr-only">正在加载内容…</span></div>{resource.cancel && <button type="button" className="resource-cancel" onClick={resource.cancel}>取消加载</button>}</div>;
+  if (resource.loading && resource.data === null) return <div className="resource-loading"><div role="status" aria-label={t("m_aaca7d941e")}><span className="resource-loading-line" aria-hidden="true"/><span className="sr-only">{t("m_2b1fde913d")}</span></div>{resource.cancel && <button type="button" className="resource-cancel" onClick={resource.cancel}>{t("m_4740238092")}</button>}</div>;
   if (resource.error && resource.data === null)
     return (
       <div className="resource-notice" role="alert">
-        <p>{resource.error}</p>
-        {resource.errorStatus===401?<Link className="quiet-button" to={'/login?redirect='+encodeURIComponent(location.pathname+location.search)}>重新登录后继续</Link>:[403,404].includes(resource.errorStatus||0)?<Link className="quiet-button" to={group}>返回{group==='/admin'?'后台':group.startsWith('/account')?'个人中心':'内容列表'}</Link>:<button className="quiet-button" onClick={resource.reload}>重试</button>}
+        <p>{t(resource.error || '')}</p>
+        {resource.errorStatus===401?<Link className="quiet-button" to={'/login?redirect='+encodeURIComponent(location.pathname+location.search)}>{t("m_17ecf2c2e3")}</Link>:[403,404].includes(resource.errorStatus||0)?<Link className="quiet-button" to={group}>{t("m_572cf45ba4")}{group==='/admin'?t("m_f97de1b381"):group.startsWith('/account')?t("m_5a2cac68fd"):t("m_da82626e48")}</Link>:<button className="quiet-button" onClick={resource.reload}>{t("m_b8784c8dd5")}</button>}
       </div>
     );
   return <div className="resource-content" aria-busy={resource.loading}>
-    {resource.error && <div className="resource-notice" role="status"><div><strong>暂时无法更新</strong><p>保留上次加载的内容，你可以稍后重试。</p></div><button className="quiet-button" disabled={resource.loading} onClick={resource.reload}>重新加载</button></div>}
-    {resource.loading && resource.data !== null && <p className="sr-only" role="status">正在刷新，当前内容仍可查看。</p>}
+    {resource.error && <div className="resource-notice" role="status"><div><strong>{t("m_86b45a1c0f")}</strong><p>{t("m_d82945caac")}</p></div><button className="quiet-button" disabled={resource.loading} onClick={resource.reload}>{t("m_7bdd5ce1e2")}</button></div>}
+    {resource.loading && resource.data !== null && <p className="sr-only" role="status">{t("m_1ae13f9104")}</p>}
     {children}
   </div>;
 }
 export function SitePage({ children, narrow = false, detail = false,className='',footerContent }: { children: ReactNode; narrow?: boolean; detail?: boolean;className?:string;footerContent?:ReactNode }) {
   const location=useLocation();
+  const {locale}=useI18n();
   useLayoutEffect(() => { visibleDiagnostic(location.pathname, 'code-ready'); }, [location.key]);
   return (
-    <div className={`neo-page ${className}`}>
+    <div lang={locale} className={`neo-page ${className}`}>
       <Header />
       <main onAnimationEnd={event=>{if(event.target===event.currentTarget) visibleDiagnostic(location.pathname,'motion-complete');}} className={`site-container page-content ${narrow ? 'reading-page' : ''} ${detail ? 'detail-container' : ''}`}>
         {narrow ? <div className="page-reading-column">{children}</div> : children}
@@ -138,12 +155,12 @@ export function PageHeading({
     </div>
   );
 }
-export function formatDate(value: string | null) {
+export function formatDate(value: string | null, locale = 'zh-CN') {
   if (!value) return '';
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? value.slice(0, 10)
-    : date.toLocaleDateString('zh-CN', {
+    : date.toLocaleDateString(locale, {
         timeZone: 'Asia/Shanghai',
         year: 'numeric',
         month: '2-digit',
@@ -169,19 +186,20 @@ export const labels: Record<string, string> = {
   unsubscribed: '已退订',
 };
 export function ActivityList({ items }: { items: any[] }) {
+  const { t,locale , formatDate} = useI18n();
   return (
     <div className="activity-list">
-      {!items.length && <p className="quiet-state">暂时没有更新。</p>}
+      {!items.length && <p className="quiet-state">{t("m_722b9e62fa")}</p>}
       {items.map((item) => (
         <Link to={item.path} className="activity-row" key={item.activity_id}>
           <div className="activity-meta">
-            <span>{labels[item.type]}</span>
+            <span>{t(labels[item.type])}</span>
             <time>{formatDate(item.published_at)}</time>
           </div>
           <div>
             <h3>{item.title}</h3>
             <p>{item.excerpt}</p>
-            {item.type === 'release' && <small className="muted">来自 GitHub Releases</small>}
+            {item.type === 'release' && <small className="muted">{t("m_0a1ad2d284")}</small>}
           </div>
           <span className="activity-arrow" aria-hidden="true">↗</span>
         </Link>
@@ -190,6 +208,7 @@ export function ActivityList({ items }: { items: any[] }) {
   );
 }
 export function Pagination({ data, onPage }: { data: PageData; onPage: (page: number) => void }) {
+  const { t,locale } = useI18n();
   const location = useLocation();
   const pages = Math.max(1, Math.ceil(data.total / data.pageSize));
   if (pages <= 1) return null;
@@ -197,13 +216,14 @@ export function Pagination({ data, onPage }: { data: PageData; onPage: (page: nu
   const control = (page: number, label: string, disabled: boolean) => disabled
     ? <span className="quiet-button" aria-disabled="true">{label}</span>
     : <Link className="quiet-button" to={link(page)} onClick={event=>{if(event.button===0&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();onPage(page);}}}>{label}</Link>;
-  return <nav className="pagination" aria-label="分页">
-    {control(data.page-1,'上一页',data.page<=1)}
+  return <nav className="pagination" aria-label={t("m_41299d9be8")}>
+    {control(data.page-1,t("m_c9b9ae7a61"),data.page<=1)}
     <span aria-live="polite" aria-atomic="true">{data.page} / {pages}</span>
-    {control(data.page+1,'下一页',data.page>=pages)}
+    {control(data.page+1,t("m_8a8542f696"),data.page>=pages)}
   </nav>;
 }
 export function SubscribeForm() {
+  const { t,locale } = useI18n();
   const [email, setEmail] = useState(''),
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false);
@@ -217,10 +237,10 @@ export function SubscribeForm() {
     try {
       const result = await api('/subscriptions', {
         method: 'POST',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email,locale }),
       });
       notify.success(result.message);
-      setMessage(result.message || '请查收订阅确认邮件，点击邮件中的链接完成订阅。');
+      setMessage(result.message || t("m_700148ee4c"));
       setSubmitted(true);
     } catch (e: any) {
       setMessage(e.message); notify.error(e.message);
@@ -231,18 +251,17 @@ export function SubscribeForm() {
   return (
     <section className="subscribe-section" id="subscribe">
       <div className="subscribe-inner">
-      <div>
+      <div className="subscribe-copy">
         <p className="eyebrow">KEEP IN TOUCH</p>
-        <h2>有新的记录时，再见。</h2>
-        <p className="muted">每周一，一封关于文章、近况与作品的摘要。无更新不打扰。</p>
+        <h2>{t("m_4eaa3e1390")}</h2>
+        <p className="muted">{t("m_23c06fd368")}</p>
         <Link className="text-link" to="/rss">
-          通过 RSS 订阅 ↗
-        </Link>
+           {t("m_005219f780")} </Link>
       </div>
-      <div>
-        {submitted ? <div className="resource-notice" role="status"><div><strong>订阅申请已提交</strong><p>{message}</p><p>确认邮件中的链接后，订阅才会生效。</p></div><button type="button" className="quiet-button" onClick={() => { setSubmitted(false); setMessage(''); }}>修改邮箱或重新申请</button></div> : status.data?.available ? (
+      <div className={`subscribe-actions${!submitted && !status.data?.available ? " subscribe-feedback" : ""}`} >
+        {submitted ? <div className="resource-notice" role="status"><div><strong>{t("m_ad74652984")}</strong><p>{t(message || '')}</p><p>{t("m_615b9f23a9")}</p></div><button type="button" className="quiet-button" onClick={() => { setSubmitted(false); setMessage(''); }}>{t("m_852471581c")}</button></div> : status.data?.available ? (
           <form onSubmit={submit}>
-            <label htmlFor="subscribe-email">邮箱地址</label>
+            <label htmlFor="subscribe-email">{t("m_2e412e0383")}</label>
             <div className="subscribe-form">
               <input
                 id="subscribe-email"
@@ -255,21 +274,16 @@ export function SubscribeForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
               />
-              <button disabled={busy}>{busy ? '正在提交…' : '订阅周报'}</button>
+              <button disabled={busy}>{busy ? t("m_26ef00b7d0") : t("m_80d5498052")}</button>
             </div>
-            <small className="muted">确认邮箱后生效，随时可以退订。</small>
+            <small className="muted">{t("m_977837d429")}</small>
           </form>
         ) : (
-          <p className="muted">
-            {status.error
-              ? '邮件订阅状态暂不可用。'
-              : status.loading
-                ? '正在检查订阅状态…'
-                : '邮件订阅尚未开放，欢迎先使用 RSS。'}
-          </p>
+          <StatusNotice className="subscribe-status" state={status.error ? 'error' : status.loading ? 'loading' : 'info'} action={status.error ? <button type="button" className="quiet-button" onClick={status.reload}>{t("m_bed6f56f48")}</button> : undefined}>
+            {status.error ? t("m_9041a164ad") : status.loading ? t("m_63bfa64e1c") : t("m_82c092840e")}
+          </StatusNotice>
         )}
-        {status.error && !submitted && <button type="button" className="quiet-button" onClick={status.reload}>重新检查订阅状态</button>}
-        {!submitted && message && <p id="subscribe-message" role="alert" className="form-message">{message}</p>}
+        {!submitted && message && <p id="subscribe-message" role="alert" className="form-message">{t(message || '')}</p>}
       </div>
       </div>
     </section>

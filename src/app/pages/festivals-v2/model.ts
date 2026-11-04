@@ -49,7 +49,8 @@ export function timelinePosition(window: Pick<Window, 'start' | 'end'>, year: nu
   if (![start, end, left, right].every(Number.isFinite) || right <= left) return null;
   return { left: (left - start) / (end - start) * 100, width: (right - left) / (end - start) * 100 };
 }
-export function ruleSummary(rule: Rule) {
+export function ruleSummary(rule: Rule, t?: (key:string,params?:Record<string,string|number|undefined>)=>string) {
+  if(t){const date=rule.type==='fixed'?t("m_d81efc988e",{month:rule.month,day:rule.day}):rule.type==='lunar'?t("m_3468b1eabf",{month:rule.month,day:rule.day}):t(rule.type==='annual'?'清明年度日期表':rule.type==='floating'&&rule.kind==='easter'?'西方复活节':'11月第4个星期四（美国）');return rule.durationDays===1?t("{date} · 持续 1 天",{date}):t("m_000b946028",{date,days:rule.durationDays});}
   const date = rule.type === 'fixed' ? `${rule.month}月${rule.day}日` : rule.type === 'lunar' ? `农历${rule.month}月${rule.day}日` : rule.type === 'annual' ? '清明年度日期表' : rule.type === 'floating' && rule.kind === 'easter' ? '西方复活节' : '11月第4个星期四（美国）';
   return `${date} · 持续 ${rule.durationDays} 天`;
 }

@@ -31,8 +31,19 @@ async function activity(query = {}, period = null) {
     `SELECT * ${base} ORDER BY published_at DESC, activity_id DESC LIMIT ? OFFSET ?`,
     [...params, pageSize, offset],
   );
+  const localized = query.locale==='en' ? await Promise.all(items.map(async item=>{
+    if(item.type==='post'){
+      const row=await require('../lib/articleTranslations').publicPost(db,{...item,summary:item.excerpt},'en',{strict:false});
+      return {...item,title:row.title,excerpt:row.summary,path:(row.content_locale==='en'?'/en':'')+articlePath(item),content_locale:row.content_locale,available_locales:row.available_locales};
+    }
+    if(item.type==='update'){
+      const row=await require('../lib/contentTranslations').localize(db,'update',{id:item.id,content:item.excerpt},'en');
+      return {...item,title:row.content.slice(0,100),excerpt:row.content,path:(row.content_locale==='en'?'/en':'')+item.path,content_locale:row.content_locale,available_locales:row.available_locales};
+    }
+    return {...item,content_locale:'zh-CN',available_locales:['zh-CN']};
+  })) : items;
   return {
-    items: items.map((i) => ({ ...i, path: i.type === 'post' ? articlePath(i) : i.path, excerpt: plain(i.excerpt), title: plain(i.title) })),
+    items: localized.map((i) => ({ ...i, path: i.type === 'post' && query.locale!=='en' ? articlePath(i) : i.path, excerpt: plain(i.excerpt), title: plain(i.title) })),
     total: Number(count.total),
     page,
     pageSize,

@@ -1,3 +1,6 @@
+import { useI18n } from '../i18n';
+import {useLocale} from './LocaleContext';
+import {localeResource} from '../lib/locale';
 import {useDocumentResource} from './DocumentData';
 import {
   createContext,
@@ -6,6 +9,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
 } from 'react';
 import { api } from '../lib/api';
 
@@ -24,7 +28,7 @@ const Context = createContext<(SettingsState & { reload: () => void }) | null>(
 );
 
 const snapshotKey = 'mooncci-public-settings-v1';
-function readSnapshot(): SiteSettings | null {
+function readSnapshot(snapshotKey:string): SiteSettings | null {
   try {
     const saved = JSON.parse(sessionStorage.getItem(snapshotKey) || 'null');
     if (!saved || Date.now() - saved.time > 300000) return null;
@@ -33,15 +37,21 @@ function readSnapshot(): SiteSettings | null {
 }
 
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
-  const initial = useDocumentResource('/settings/site');
-  const [state, setState] = useState<SettingsState>(() => { const data = initial.data || readSnapshot(); return { data, loading: !data, error: '' }; });
+  const { t } = useI18n();
+  const {contentLocale}=useLocale();
+  const resourcePath=localeResource('/settings/site',contentLocale);
+  const key=snapshotKey+':'+contentLocale;
+  const initial=useDocumentResource(resourcePath);
+  const [state, setState] = useState<SettingsState>(() => { const data = initial.data || readSnapshot(key); return { data, loading: !data, error: '' }; });
   const [version, setVersion] = useState(0);
-  const reload = useCallback(() => setVersion((value) => value + 1), []);
+  const epoch=useRef(0);
+  const reload = useCallback(() => {epoch.current++;setVersion((value) => value + 1);}, []);
   useEffect(() => {
     if(initial.data && version===0)return;
     const controller = new AbortController();
+    const generation=epoch.current;
     setState((current) => ({ ...current, loading: !current.data, error: '' }));
-    api('/settings/site', { signal: controller.signal, cache: 'no-store' })
+    api(resourcePath, { signal: controller.signal, cache: 'no-store' })
       .then((data) => {
         if (
           !['brand', 'hero', 'footer'].every(
@@ -51,11 +61,11 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
               !Array.isArray(data[key]),
           )
         ) {
-          throw new Error('站点配置格式不正确，请稍后重试。');
+          throw new Error(t("m_23af90b846"));
         }
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && generation===epoch.current) {
           setState({ data, loading: false, error: '' });
-          try { sessionStorage.setItem(snapshotKey, JSON.stringify({ data, time: Date.now() })); } catch {}
+          try { sessionStorage.setItem(key, JSON.stringify({ data, time: Date.now() })); } catch {}
         }
       })
       .catch((error) => {
@@ -64,14 +74,15 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
             ...current,
             loading: false,
             error:
-              error instanceof Error ? error.message : '暂时无法读取站点配置。',
+              error instanceof Error ? error.message : t("m_d993e4c87d"),
           }));
       });
     return () => controller.abort();
-  }, [version]);
+  }, [version,resourcePath,key]);
   useEffect(() => {
-    window.addEventListener('site-settings-updated', reload);
-    return () => window.removeEventListener('site-settings-updated', reload);
+    const update=()=>{try{for(const locale of ['zh-CN','en'])sessionStorage.removeItem(snapshotKey+':'+locale);}catch{}reload();};
+    window.addEventListener('site-settings-updated', update);
+    return () => window.removeEventListener('site-settings-updated', update);
   }, [reload]);
   return (
     <Context.Provider value={{ ...state, reload }}>{children}</Context.Provider>

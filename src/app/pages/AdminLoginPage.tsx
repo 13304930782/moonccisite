@@ -1,8 +1,10 @@
+import { useI18n } from '../i18n';
 import { FormInput } from '../components/FormInput';
 import { AuthShell } from '../components/AuthShell';
 import { FormEvent, useEffect, useState } from 'react';
 import { Lock, Mail, ShieldCheck } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import {Link} from '../components/LocaleLink';
 import { safeRoutePath } from '../lib/safeUrl';
 import { clearAuthCache } from '../lib/authToken';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 const DEFAULT_REDIRECT = '/admin/comments?status=pending';
 
 export default function AdminLoginPage() {
+  const { t } = useI18n();
   const { login } = useAuth();
   const [params] = useSearchParams();
   const redirect = safeAdminRedirect(params.get('redirect'));
@@ -19,8 +22,8 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState(
     ownerRequired
-      ? '请使用站长账号审核 Early Access 申请。'
-      : '为了审核评论，请登录管理员账号。',
+      ? t("m_fb8c2d81a7")
+      : t("m_57ac3a7149"),
   );
   const [loading, setLoading] = useState(false);
 
@@ -32,7 +35,7 @@ export default function AdminLoginPage() {
     event.preventDefault();
 
     if (!email || !password) {
-      setMessage('请填写管理员邮箱和密码');
+      setMessage(t("m_fa233796f5"));
       return;
     }
 
@@ -47,14 +50,14 @@ export default function AdminLoginPage() {
       if (!['owner', 'admin'].includes(data.user?.role)) {
         clearAuthCache();
         setMessage(
-          '这个账号不是站长或管理员账号，不能进入审核后台。请使用站长或管理员账号登录。',
+          t("m_fef870ee13"),
         );
         return;
       }
 
       if (ownerRequired && data.user?.role !== 'owner') {
         clearAuthCache();
-        setMessage('Early Access 申请包含个人资料，仅站长账号可以查看和审核。');
+        setMessage(t("m_cd90dd635f"));
         return;
       }
 
@@ -64,7 +67,7 @@ export default function AdminLoginPage() {
 
       window.location.replace(target);
     } catch (err: any) {
-      setMessage(err.message || '登录失败');
+      setMessage(err.message || t("m_e4343921c9"));
     } finally {
       setLoading(false);
     }
@@ -76,24 +79,23 @@ export default function AdminLoginPage() {
       modeLabel=""
       storyTitle=""
       storyDescription=""
-      formTitle="管理员登录"
+      formTitle={t("m_c454c61e78")}
       formDescription={
-        ownerRequired ? '使用站长账号审核 Early Access 申请。' : '使用管理员账号继续审核。'
+        ownerRequired ? t("m_7af327d229") : t("m_b065732b4b")
       }
-      alternatePrompt="返回阅读"
-      alternateLabel="首页"
+      alternatePrompt={t("m_54c1945a1c")}
+      alternateLabel={t("m_203c08e0d4")}
       alternateTo="/"
     >
       {message && (
         <p className="auth-message" role="status">
-          {message}
+          {t(message || '')}
         </p>
       )}
       <form className="auth-form" onSubmit={submit}>
         <div>
           <label className="auth-field-label" htmlFor="review-email">
-            邮箱
-          </label>
+             {t("m_73075237fd")} </label>
           <div className="auth-field-control">
             <Mail />
             <FormInput
@@ -108,8 +110,7 @@ export default function AdminLoginPage() {
         </div>
         <div>
           <label className="auth-field-label" htmlFor="review-password">
-            密码
-          </label>
+             {t("m_a621ab606d")} </label>
           <div className="auth-field-control">
             <Lock />
             <FormInput
@@ -118,12 +119,12 @@ export default function AdminLoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="请输入密码"
+              placeholder={t("m_728a7b601c")}
             />
           </div>
         </div>
         <button className="auth-submit" disabled={loading}>
-          {loading ? '登录中…' : '登录并进入审核'}
+          {loading ? t("m_3f06ed8f8c") : t("m_bdfbead84a")}
         </button>
       </form>
     </AuthShell>

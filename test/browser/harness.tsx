@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AuthProvider, useAuth } from '../../src/app/context/AuthContext';
 import VisualMarkdownEditor from '../../src/app/components/VisualMarkdownEditor';
+import { ensureMessages } from '../../src/app/i18n';
 function Harness() {
   const auth = useAuth();
   const [content, setContent] = useState('# 浏览器回归\n\n保留正常内容\n\n<img src=x onerror="window.__xss=1"><script>window.__xss=1</script>');
@@ -14,4 +15,4 @@ function Harness() {
     <output data-testid="markdown">{content}</output>
   </main>;
 }
-createRoot(document.getElementById('root')!).render(<AuthProvider><Harness /></AuthProvider>);
+void ensureMessages('zh-CN').then(() => createRoot(document.getElementById('root')!).render(<AuthProvider><Harness /></AuthProvider>));

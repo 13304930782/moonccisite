@@ -1,7 +1,10 @@
+import { useI18n } from '../i18n';
 import { notify } from '../lib/feedback';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
-import { ThemeSelect } from './ThemeSelect';
+import { ChevronDown } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem } from './ui/dropdown-menu';
+import '../../styles/language-switch.css';
 type Override = {
   emotionId: string;
   name: string;
@@ -13,6 +16,7 @@ type Settings = {
   moods: { emotionId: string; name: string }[];
 };
 export function AdminWeatherCompanionSettings() {
+  const { locale,  t } = useI18n();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [emotionId, setEmotionId] = useState('10');
   const [days, setDays] = useState('1');
@@ -28,7 +32,7 @@ export function AdminWeatherCompanionSettings() {
       }
       setMessage('');
     } catch (error: any) {
-      setMessage(error.message || '小球设置读取失败');
+      setMessage(error.message || t("m_3b29c9882b"));
     }
   }
   useEffect(() => {
@@ -47,10 +51,10 @@ export function AdminWeatherCompanionSettings() {
       });
       setSettings(response.data);
       notify.success(event
-          ? '已设置；已打开的前台页面会在一分钟内更新。'
-          : '已恢复根据访客所选城市的天气决定心情。');
+          ? t("m_fbc4006266")
+          : t("m_1fe9c135d6"));
     } catch (error: any) {
-      setMessage(error.message || '保存失败，请重试'); notify.error(error.message || '保存失败，请重试');
+      setMessage(error.message || t("m_f42a1238b4")); notify.error(error.message || t("m_f42a1238b4"));
     } finally {
       setBusy(false);
     }
@@ -62,36 +66,29 @@ export function AdminWeatherCompanionSettings() {
   return (
     <form id="weather-companion" className="settings-section" onSubmit={save}>
       <div className="settings-section-heading">
-        <h2>天气小球</h2>
+        <h2>{t("m_acf6ef3f39")}</h2>
         <p>
-          默认跟随访客所选城市的天气。临时指定心情后，到期自动恢复天气模式。
-        </p>
+           {t("m_ffd3eb05c4")} </p>
       </div>
       <fieldset disabled={busy || !settings}>
         <p className="settings-hint">
           {active
-            ? `当前手动状态：${active.name}，持续至 ${new Date(active.endsAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })}（北京时间）。`
-            : '当前根据访客所选城市的当日天气自动选择原版表情。'}
+            ? t("m_96fb48c6d1", {v0: active.name, v1: new Date(active.endsAt).toLocaleString(locale, { timeZone: 'Asia/Shanghai', hour12: false })})
+            : t("m_7c1c29316e")}
         </p>
         <div className="settings-two-columns">
           <label className="settings-field">
-            <span>临时心情</span>
-            <ThemeSelect
-              value={emotionId}
-              onValueChange={setEmotionId}
-              aria-label="临时心情"
-            >
-              {(settings?.moods || []).map((mood) => (
-                <option key={mood.emotionId} value={mood.emotionId}>
-                  {mood.name}
-                </option>
-              ))}
-            </ThemeSelect>
+            <span>{t("m_b45dbba5df")}</span>
+            <DropdownMenu><DropdownMenuTrigger asChild><button type="button" className="language-trigger weather-mood-trigger" disabled={busy||!settings} aria-label={t("m_b45dbba5df")}><span>{t(settings?.moods.find(m=>m.emotionId===emotionId)?.name||'')}</span><ChevronDown size={16} aria-hidden="true"/></button></DropdownMenuTrigger>
+              <DropdownMenuContent className="language-menu weather-mood-menu" align="start" sideOffset={6}><DropdownMenuRadioGroup value={emotionId} onValueChange={setEmotionId}>
+                {(settings?.moods||[]).map(mood=><DropdownMenuRadioItem key={mood.emotionId} value={mood.emotionId}>{t(mood.name)}</DropdownMenuRadioItem>)}
+              </DropdownMenuRadioGroup></DropdownMenuContent>
+            </DropdownMenu>
           </label>
           <label className="settings-field">
-            <span>持续天数</span>
+            <span>{t("m_8435f893fe")}</span>
             <input
-              aria-label="持续天数"
+              aria-label={t("m_8435f893fe")}
               type="number"
               min="1"
               max="365"
@@ -100,12 +97,12 @@ export function AdminWeatherCompanionSettings() {
               value={days}
               onChange={(event) => setDays(event.target.value)}
             />
-            <small>默认 1 天，从保存时起算 24 小时；再次保存会重新计时。</small>
+            <small>{t("m_e67afad6f8")}</small>
           </label>
         </div>
         <div className="settings-save">
           <button type="submit" className="button-primary">
-            {busy ? '保存中…' : '设置小球心情'}
+            {busy ? t("m_ff509c9ba0") : t("m_036ab17365")}
           </button>
           <button
             type="button"
@@ -113,17 +110,15 @@ export function AdminWeatherCompanionSettings() {
             onClick={() => save()}
             disabled={!active}
           >
-            恢复天气模式
-          </button>
+             {t("m_ed3ed9aceb")} </button>
         </div>
       </fieldset>
       {message && (
         <p role="status">
-          {message}
+          {t(message || '')}
           {!settings && (
             <button type="button" className="quiet-button" onClick={load}>
-              重新读取
-            </button>
+               {t("m_df7392cc96")} </button>
           )}
         </p>
       )}

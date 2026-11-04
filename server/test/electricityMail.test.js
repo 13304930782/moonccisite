@@ -36,6 +36,7 @@ test('mail preserves genuine missing data, zero and wrong-meter isolation', () =
 });
 
 test('real mail HTML and text use compact fields; retry preserves captured total', async (t) => {
+  t.mock.method(require('../src/db'),'query',async sql=>{assert.match(sql,/SELECT ui_locale FROM users/);return [[{ui_locale:'zh-CN'}]];});
   const mailerPath = require.resolve('../src/lib/mailer');
   const target = require.resolve('../src/lib/electricityMailer');
   const original = require.cache[mailerPath];

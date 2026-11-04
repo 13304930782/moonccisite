@@ -1,5 +1,7 @@
+import { useI18n } from '../i18n';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+
+import {Link} from '../components/LocaleLink';
 import {
   Ban,
   FileText,
@@ -50,6 +52,7 @@ function getRoleTip(role?: string) {
 }
 
 export default function AdminPage() {
+  const { t } = useI18n();
   const { user } = useAuth();
 
   const role = user?.role || 'user';
@@ -80,7 +83,7 @@ export default function AdminPage() {
       } catch (error: any) {
         // 统计只是概览信息，失败时仍展示常用操作，但要告诉用户并允许重试。
         if (cancelled) return;
-        setStatsError(error?.message || '统计数据暂时无法加载。');
+        setStatsError(error?.message || t("m_2c760f406b"));
         setStatsState('error');
       }
     }
@@ -94,25 +97,25 @@ export default function AdminPage() {
 
   const statCards = [
     {
-      title: '文章总数',
+      title: t("m_bfc51592b2"),
       value: stats.posts,
       icon: FileText,
       show: writer,
     },
     {
-      title: '用户总数',
+      title: t("m_545a676083"),
       value: stats.users,
       icon: Users,
       show: manager,
     },
     {
-      title: '评论总数',
+      title: t("m_fa1ac4351a"),
       value: stats.comments,
       icon: MessageCircle,
       show: manager,
     },
     {
-      title: '违禁词总数',
+      title: t("m_3a34ce64cd"),
       value: stats.bannedWords,
       icon: Ban,
       show: manager,
@@ -121,85 +124,85 @@ export default function AdminPage() {
 
   const actions = [
     {
-      title: '文章管理',
-      desc: '查看、编辑和管理文章',
+      title: t("m_4e7cb68111"),
+      desc: t("m_51144ab3a7"),
       to: '/admin/posts',
       icon: FileText,
       show: writer,
     },
     {
-      title: '写文章',
-      desc: '发布新的博客文章',
+      title: t("m_13b195d6cc"),
+      desc: t("m_bbc8fe37f0"),
       to: '/admin/write',
       icon: PenLine,
       show: writer,
     },
     {
-      title: '评论管理',
-      desc: '审核、通过、驳回或删除评论',
+      title: t("m_e7c87ea7ef"),
+      desc: t("m_44484afd3f"),
       to: '/admin/comments',
       icon: MessageCircle,
       show: manager,
     },
     {
-      title: '用户管理',
-      desc: '管理用户身份、评论权限和账号状态',
+      title: t("m_fbf413d429"),
+      desc: t("m_94c3a4aaec"),
       to: '/admin/users',
       icon: Users,
       show: manager,
     },
     {
-      title: '编辑申请审核',
-      desc: '审核普通用户的编辑申请',
+      title: t("m_70dfdc8440"),
+      desc: t("m_34129f6ab0"),
       to: '/admin/editor-applications',
       icon: UserRoundCheck,
       show: manager,
     },
     {
-      title: '违禁词设置',
-      desc: '设置评论违禁词和拦截规则',
+      title: t("m_e2c664697f"),
+      desc: t("m_bdd1d5ead5"),
       to: '/admin/banned-words',
       icon: Ban,
       show: manager,
     },
     {
-      title: '站点设置',
-      desc: '修改网站标题、Logo、备案和首页资料',
+      title: t("m_f0cac3fe1a"),
+      desc: t("m_b00d2bd50e"),
       to: '/admin/site-settings',
       icon: Settings,
       show: manager,
     },
     {
-      title: '第三方登录',
-      desc: '管理 GitHub、Google、QQ、微信和 Gitee 登录',
+      title: t("m_e37441c86c"),
+      desc: t("m_968815165c"),
       to: '/admin/login-settings',
       icon: KeyRound,
       show: user?.role === 'owner',
     },
     {
-      title: '邮件设置',
-      desc: '配置 SMTP、评论提醒和审核通知',
+      title: t("m_177aab06c8"),
+      desc: t("m_e13946ec85"),
       to: '/admin/mail-settings',
       icon: AtSign,
       show: manager,
     },
     {
-      title: '站点通知',
-      desc: '使用站点 SMTP 配置，给已注册用户发送通知',
+      title: t("m_2ea2bbfe61"),
+      desc: t("m_96a256decd"),
       to: '/admin/send-mail',
       icon: Bell,
       show: manager,
     },
     {
-      title: '我的邮箱',
-      desc: '申请专属邮箱、发送邮件和查看审批状态',
+      title: t("m_2d7256702a"),
+      desc: t("m_fad731d0b3"),
       to: '/admin/mailbox',
       icon: Mailbox,
       show: true,
     },
     {
-      title: '申请成为编辑',
-      desc: '提交申请，通过后即可写文章',
+      title: t("m_6ef4c0ce0a"),
+      desc: t("m_4b00513c49"),
       to: '/admin/editor-apply',
       icon: FilePenLine,
       show: !writer,
@@ -209,14 +212,14 @@ export default function AdminPage() {
   return (
     <div>
       <header className="admin-overview-head">
-        <p className="eyebrow">工作区</p>
-        <h1>后台管理</h1>
+        <p className="eyebrow">{t("m_3797982942")}</p>
+        <h1>{t("m_41119ecad8")}</h1>
         <p>
-          {user?.username}，{getRoleTip(role)}
+          {user?.username}，{t(getRoleTip(role))}
         </p>
       </header>
       {statCards.length > 0 && (
-        <section className="admin-stats" aria-label="内容统计" aria-busy={statsState === 'loading'}>
+        <section className="admin-stats" aria-label={t("m_5bb7cc1ec1")} aria-busy={statsState === 'loading'}>
           {statCards.map((item) => (
             <div key={item.title}>
               <strong data-pending={statsState !== 'ready'}>{statsState === 'ready' ? item.value : '—'}</strong>
@@ -226,10 +229,10 @@ export default function AdminPage() {
         </section>
       )}
       {statsState === 'error' && (
-        <AdminError message={`${statsError} 下方的常用操作不受影响。`} onRetry={() => setStatsVersion((value) => value + 1)} />
+        <AdminError message={t("m_e4f09d658e", {v0: statsError})} onRetry={() => setStatsVersion((value) => value + 1)} />
       )}
       <section>
-        <h2>常用操作</h2>
+        <h2>{t("m_e0782ab38f")}</h2>
         <div className="admin-quick-links">
           {actions.map((item) => (
             <Link key={item.to} to={item.to}>
