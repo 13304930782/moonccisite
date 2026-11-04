@@ -1,3 +1,4 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
@@ -8,6 +9,7 @@ async function loadPage(name, request, options = {}) {
   const listeners = new Set();
   const mocks = {
     ...options.mocks,
+    i18n:i18nFixture('../i18n'), LocaleContext:i18nFixture('../LocaleContext'), LocaleLink:i18nFixture('../LocaleLink'), ContentTranslationEditor:i18nFixture('../ContentTranslationEditor'),
     api: {api: request},
     AuthContext: {useAuth: () => ({user: {role: 'owner'}})},
     MarkdownContent: {MarkdownContent: () => null},
@@ -21,7 +23,7 @@ async function loadPage(name, request, options = {}) {
     platform: 'node', format: 'cjs', packages: 'external', loader: {'.css': 'empty'},
     plugins: [{name: 'settings-test-services', setup(build) {
       if (options.mocks) build.onResolve({filter: /\/(confirmAction|useUnsavedLeave)$/}, args => ({path: `mock:${args.path.split('/').at(-1)}`, external: true}));
-      build.onResolve({filter: /\/(api|feedback|ThemeSelect|AuthContext|MarkdownContent|ArticleMediaPicker|AdminWeatherCompanionSettings)$/}, args => ({path: `mock:${args.path.split('/').at(-1)}`, external: true}));
+      build.onResolve({filter: /\/(i18n|LocaleContext|LocaleLink|ContentTranslationEditor|api|feedback|ThemeSelect|AuthContext|MarkdownContent|ArticleMediaPicker|AdminWeatherCompanionSettings)$/}, args => ({path: `mock:${args.path.split('/').at(-1)}`, external: true}));
     }}],
   });
   const context = {module: {exports: {}}, console, URLSearchParams, window: {
@@ -180,5 +182,27 @@ test('room switching and room editing confirm pending settings; active settings 
   Renderer.act(() => button(tree, 'busy-two').props.onClick());
   assert.equal(select().props.disabled, true);
   assert.equal(button(tree, '添加宿舍').props.disabled, true);
+  Renderer.act(() => tree.unmount());
+});
+
+test('empty rooms hide management controls, retain add/import, and load failures retry separately', async () => {
+  let fail = true;
+  const {tree} = await loadPage('../components/AdminElectricityRooms', async () => {
+    if (fail) throw Error('room load failed');
+    return {data: []};
+  }, {mocks: {useUnsavedLeave: {hasUnsavedChanges: () => false}, confirmAction: {confirmAction: async () => true}}, props: {children: () => null}});
+  assert.equal(tree.root.findAllByType('select').length, 0);
+  assert.equal(tree.root.findAllByProps({role: 'alert'}).length, 1);
+  assert.doesNotMatch(JSON.stringify(tree.toJSON()), /添加第一个宿舍/);
+  fail = false;
+  await Renderer.act(async () => button(tree, '重试').props.onClick());
+  assert.match(JSON.stringify(tree.toJSON()), /添加第一个宿舍/);
+  assert.equal(tree.root.findAllByType('select').length, 0);
+  assert.equal(tree.root.findAllByProps({className: 'electricity-room-toolbar'}).length, 0);
+  await Renderer.act(async () => button(tree, '添加宿舍').props.onClick());
+  assert.equal(tree.root.findAllByProps({id: 'room-editor-title'}).length, 1);
+  await Renderer.act(async () => button(tree, '取消').props.onClick());
+  await Renderer.act(async () => button(tree, '批量导入').props.onClick());
+  assert.equal(tree.root.findAllByType('textarea').length, 1);
   Renderer.act(() => tree.unmount());
 });

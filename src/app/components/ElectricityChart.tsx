@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useId, useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { area, line, curveMonotoneX } from 'd3-shape';
 import { observeElectricityReveals } from '../lib/electricityMotion';
@@ -10,6 +11,7 @@ type Point = { date: string; total: number | null; usage: number | null; usageSt
 type Props = { plotData: Point[]; chartMode: 'balance' | 'usage'; tooltipTrigger: 'click' | 'hover'; reduceMotion: boolean };
 
 export function Plot({plotData, chartMode, tooltipTrigger, reduceMotion, width, height}: Props & {width: number; height: number}) {
+  const { t } = useI18n();
   const revealRoot = useRef<HTMLDivElement>(null);
   useClientLayoutEffect(() => {
     if (revealRoot.current) return observeElectricityReveals(revealRoot.current, reduceMotion);
@@ -37,7 +39,7 @@ export function Plot({plotData, chartMode, tooltipTrigger, reduceMotion, width, 
   const selected = selectedDate === null ? -1 : plotData.findIndex(p => p.date === selectedDate);
   const active = selected >= 0 ? selected : latest;
   const point = plotData[active];
-  const label = point ? `${point.date.slice(5)} · ${valid(point) ? amount(value(point)) + ' kWh' : chartMode === 'usage' ? point.usageStatus || '暂无数据' : '暂无数据'}` : '';
+  const label = point ? `${point.date.slice(5)} · ${valid(point) ? amount(value(point)) + ' kWh' : chartMode === 'usage' ? point.usageStatus || t("m_497c85690c") : t("m_497c85690c")}` : '';
   const labelWidth = Math.min(Math.max(116, label.length * 7 + 20), Math.max(1, width - 16));
   const pointY = point && valid(point) ? y(value(point)!) : bottom;
   const selectAt = (event: React.MouseEvent<SVGSVGElement>) => {
@@ -51,7 +53,7 @@ export function Plot({plotData, chartMode, tooltipTrigger, reduceMotion, width, 
   const tickEvery = Math.max(1, Math.ceil(plotData.length / Math.max(2, Math.floor((right - left) / 75))));
   return <div ref={revealRoot} data-elec-reveal="" data-visible={reduceMotion ? true : undefined} className="elec-v2Chart-plot" data-motion={reduceMotion ? "reduced" : "enabled"} style={{position: 'relative', width, height, animation: reduceMotion ? 'none' : undefined}}>
     <svg width={width} height={height} role="application" tabIndex={0} aria-describedby={point ? `${id}-label` : undefined}
-      aria-label={`${chartMode === 'balance' ? '总余量' : '日用电'}图表。左右方向键选择日期，Escape 恢复最新日期。`}
+      aria-label={t("m_2c6c3bd5e3", {v0: chartMode === 'balance' ? t("m_e14cbbbb24") : t("m_8865f61275")})}
       onKeyDown={event => {
         if (event.key === 'Escape') { setSelectedDate(null); return; }
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !plotData.length) return;
@@ -69,7 +71,7 @@ export function Plot({plotData, chartMode, tooltipTrigger, reduceMotion, width, 
       {chartMode === 'usage' && latest >= 0 && <circle className="elec-v2Chart-latest" cx={x(latest)} cy={y(value(plotData[latest])!)} r={3.5} fill="var(--foreground)"/>}
       {selected >= 0 && point && <g pointerEvents="none"><line x1={x(selected)} x2={x(selected)} y1={top} y2={bottom} stroke="var(--muted-foreground)" strokeOpacity={.35} strokeDasharray="2 5"/>{valid(point) && <circle cx={x(selected)} cy={pointY} r={4} fill="var(--foreground)"/>}</g>}
     </svg>
-    {point && <div id={`${id}-label`} className="elec-v2Chart-tooltip" role={selected >= 0 ? 'status' : undefined} title={point.recordedAt ? `余额采集于 ${point.recordedAt}` : undefined} style={{position: 'absolute', pointerEvents: 'none', width: labelWidth, maxWidth: 'calc(100% - 16px)', left: Math.max(8, Math.min(width - labelWidth - 8, x(active) - labelWidth / 2)), top: Math.max(0, Math.min(height - 36, pointY < 48 ? pointY + 12 : pointY - 40))}}>{label}</div>}
+    {point && <div id={`${id}-label`} className="elec-v2Chart-tooltip" role={selected >= 0 ? 'status' : undefined} title={point.recordedAt ? t("m_19c47e6731", {v0: point.recordedAt}) : undefined} style={{position: 'absolute', pointerEvents: 'none', width: labelWidth, maxWidth: 'calc(100% - 16px)', left: Math.max(8, Math.min(width - labelWidth - 8, x(active) - labelWidth / 2)), top: Math.max(0, Math.min(height - 36, pointY < 48 ? pointY + 12 : pointY - 40))}}>{label}</div>}
   </div>;
 }
 export default function ElectricityChart(props: Props) {

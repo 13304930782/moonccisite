@@ -1,3 +1,4 @@
+import { useI18n } from '../../../app/i18n';
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
@@ -119,6 +120,7 @@ const MainToolbarContent = ({
   compact?: boolean
   disabled?: boolean
 }) => {
+  const { t } = useI18n();
   return (
     <>
 
@@ -174,7 +176,7 @@ const MainToolbarContent = ({
       <ToolbarSeparator />
 
       <ToolbarGroup>
-        <ImageUploadButton text={isMobile ? undefined : "图片"} />
+        <ImageUploadButton text={isMobile ? undefined : t("m_d24c10d37d")} />
         <TableMenu />
         <YouTubeInsert />
       </ToolbarGroup>
@@ -183,7 +185,7 @@ const MainToolbarContent = ({
       {isMobile && <ToolbarSeparator />}
 
       <ToolbarGroup>
-        <Button aria-label="查找替换" tooltip="查找替换"
+        <Button aria-label={t("m_d688f87171")} tooltip={t("m_d688f87171")}
           ref={searchAndReplaceButtonRef}
           aria-expanded={isSearchAndReplaceOpen}
           data-active-state={isSearchAndReplaceOpen ? "on" : "off"}
@@ -197,14 +199,15 @@ const MainToolbarContent = ({
 }
 
 function WritingMoreTools({compact,disabled,onSearch,searchOpen,triggerRef}:{compact:boolean;disabled:boolean;onSearch:()=>void;searchOpen:boolean;triggerRef:React.RefObject<HTMLButtonElement>}){
+  const { t } = useI18n();
   const [open,setOpen]=useState(false);
-  return <ToolbarGroup><Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild><Button className="writing-toolbar-more-trigger" ref={triggerRef} disabled={disabled} aria-label="更多编辑工具" tooltip="更多编辑工具"><span>更多</span><ChevronDown className="tiptap-button-dropdown-small"/></Button></PopoverTrigger>
-    <PopoverContent className="writing-toolbar-more ui-v2" align="end" aria-label="更多编辑工具">
-      <Toolbar variant="floating" aria-label="更多编辑工具">
+  return <ToolbarGroup><Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild><Button className="writing-toolbar-more-trigger" ref={triggerRef} disabled={disabled} aria-label={t("m_bd2a812ac9")} tooltip={t("m_bd2a812ac9")}><span>{t("m_38844b135c")}</span><ChevronDown className="tiptap-button-dropdown-small"/></Button></PopoverTrigger>
+    <PopoverContent className="writing-toolbar-more ui-v2" align="end" aria-label={t("m_bd2a812ac9")}>
+      <Toolbar variant="floating" aria-label={t("m_bd2a812ac9")}>
         {compact&&<ToolbarGroup><BlockquoteButton/><CodeBlockButton/></ToolbarGroup>}
         <ToolbarGroup><MarkButton type="superscript"/><MarkButton type="subscript"/></ToolbarGroup>
         <ToolbarGroup><TextAlignButton align="left"/><TextAlignButton align="center"/><TextAlignButton align="right"/><TextAlignButton align="justify"/></ToolbarGroup>
-        <ToolbarGroup><TableMenu disabled={disabled}/><YouTubeInsert disabled={disabled}/><Button disabled={disabled} aria-label="查找替换" tooltip="查找替换" aria-expanded={searchOpen} onClick={()=>{setOpen(false);onSearch();}}><SearchIcon className="tiptap-button-icon"/></Button></ToolbarGroup>
+        <ToolbarGroup><TableMenu disabled={disabled}/><YouTubeInsert disabled={disabled}/><Button disabled={disabled} aria-label={t("m_d688f87171")} tooltip={t("m_d688f87171")} aria-expanded={searchOpen} onClick={()=>{setOpen(false);onSearch();}}><SearchIcon className="tiptap-button-icon"/></Button></ToolbarGroup>
       </Toolbar>
     </PopoverContent>
   </Popover></ToolbarGroup>;
@@ -216,10 +219,10 @@ const MobileToolbarContent = ({
 }: {
   type: "highlighter" | "link"
   onBack: () => void
-}) => (
+}) => { const {t}=useI18n(); return (
   <>
     <ToolbarGroup>
-      <Button variant="ghost" aria-label="返回编辑工具" onClick={onBack}>
+      <Button variant="ghost" aria-label={t("m_b41c89a2e0")} onClick={onBack}>
         <ArrowLeftIcon className="tiptap-button-icon" />
         {type === "highlighter" ? (
           <HighlighterIcon className="tiptap-button-icon" />
@@ -237,9 +240,11 @@ const MobileToolbarContent = ({
       <LinkContent />
     )}
   </>
-)
+ )}
+
 
 export function SimpleEditor(props: SimpleEditorProps) {
+  const { t } = useI18n();
   const current = useRef(props); current.current = props;
   const lastValue = useRef(props.value);
   const alive = useRef(true);
@@ -276,7 +281,7 @@ export function SimpleEditor(props: SimpleEditorProps) {
         autocomplete: "off",
         autocorrect: "off",
         autocapitalize: "off",
-        "aria-label": "文章正文",
+        "aria-label": t("m_ae513850b3"),
         role: "textbox",
         "aria-multiline": "true",
         class: "simple-editor",
@@ -312,10 +317,10 @@ export function SimpleEditor(props: SimpleEditorProps) {
         limit: 1,
         upload: async (file) => {
           const url = await current.current.uploadImage(file);
-          if (!alive.current) throw new Error('编辑器已关闭');
+          if (!alive.current) throw new Error(t("m_07b1f4fd11"));
           return url;
         },
-        onError: (error) => current.current.onError(error.message || "图片上传失败，请重试"),
+        onError: (error) => current.current.onError(error.message || t("m_8a09ac140a")),
       }),
     ],
     content: initialHTML(props.value, props.parseLegacy),
@@ -384,7 +389,7 @@ export function SimpleEditor(props: SimpleEditorProps) {
         <div className="editor-toolbar-frame" ref={toolbarFrame} data-compact={isMobile} data-view={mobileView} data-overflow={scrollEdges.overflow && !isMobile && mobileView === "main"}>
         {props.writingToolbar!==undefined&&<div className="writing-toolbar-image">{props.writingToolbar}</div>}
         <ImageControls />
-        {props.writingToolbar===undefined&&scrollEdges.overflow&&!isMobile&&mobileView === "main"&&<button type="button" className="editor-scroll-control" aria-label="查看左侧工具" disabled={!scrollEdges.left} onMouseDown={e=>e.preventDefault()} onClick={()=>scrollTools(-1)}><ChevronLeft size={18}/></button>}
+        {props.writingToolbar===undefined&&scrollEdges.overflow&&!isMobile&&mobileView === "main"&&<button type="button" className="editor-scroll-control" aria-label={t("m_2c2eae2fdb")} disabled={!scrollEdges.left} onMouseDown={e=>e.preventDefault()} onClick={()=>scrollTools(-1)}><ChevronLeft size={18}/></button>}
         <Toolbar
           ref={toolbarRef}
           onKeyDown={e=>{if(e.key === "Escape" && mobileView !== "main"){e.preventDefault();setMobileView("main");editor?.commands.focus()}}}
@@ -409,7 +414,7 @@ export function SimpleEditor(props: SimpleEditorProps) {
             />
           )}
         </Toolbar>
-        {props.writingToolbar===undefined&&scrollEdges.overflow&&!isMobile&&mobileView === "main"&&<button type="button" className="editor-scroll-control" aria-label="查看右侧工具" disabled={!scrollEdges.right} onMouseDown={e=>e.preventDefault()} onClick={()=>scrollTools(1)}><ChevronRight size={18}/></button>}
+        {props.writingToolbar===undefined&&scrollEdges.overflow&&!isMobile&&mobileView === "main"&&<button type="button" className="editor-scroll-control" aria-label={t("m_201ccc45ec")} disabled={!scrollEdges.right} onMouseDown={e=>e.preventDefault()} onClick={()=>scrollTools(1)}><ChevronRight size={18}/></button>}
         </div>
 
         {searchLoaded && <AsyncSearchPanel
@@ -432,33 +437,36 @@ export function SimpleEditor(props: SimpleEditorProps) {
 }
 
 function TableMenu({text,disabled}:{text?:string;disabled?:boolean}){
+  const { t } = useI18n();
  const {editor}=useCurrentEditor();
  const active=useEditorState({editor,selector:({editor})=>editor?.isActive('table')});
- return <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button disabled={disabled===undefined?undefined:disabled||!editor?.isEditable} tooltip="表格" aria-label="表格"><Table2 className="tiptap-button-icon"/>{text&&<span>{text}</span>}</Button></DropdownMenuTrigger><DropdownMenuContent collisionPadding={12}>
- <DropdownMenuItem onSelect={()=>editor?.chain().focus().insertTable({rows:3,cols:3,withHeaderRow:true}).run()}>插入表格</DropdownMenuItem>
- {active&&<><DropdownMenuItem onSelect={()=>editor?.chain().focus().addRowAfter().run()}>添加行</DropdownMenuItem><DropdownMenuItem onSelect={()=>editor?.chain().focus().addColumnAfter().run()}>添加列</DropdownMenuItem><DropdownMenuItem onSelect={()=>editor?.chain().focus().deleteRow().run()}>删除行</DropdownMenuItem><DropdownMenuItem onSelect={()=>editor?.chain().focus().deleteColumn().run()}>删除列</DropdownMenuItem><DropdownMenuItem onSelect={()=>editor?.chain().focus().deleteTable().run()}>删除表格</DropdownMenuItem></>}
+ return <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button disabled={disabled===undefined?undefined:disabled||!editor?.isEditable} tooltip={t("m_22d9e7c54b")} aria-label={t("m_22d9e7c54b")}><Table2 className="tiptap-button-icon"/>{text&&<span>{text}</span>}</Button></DropdownMenuTrigger><DropdownMenuContent collisionPadding={12}>
+ <DropdownMenuItem onSelect={()=>editor?.chain().focus().insertTable({rows:3,cols:3,withHeaderRow:true}).run()}>{t("m_43f006bd43")}</DropdownMenuItem>
+ {active&&<><DropdownMenuItem onSelect={()=>editor?.chain().focus().addRowAfter().run()}>{t("m_371b80cec1")}</DropdownMenuItem><DropdownMenuItem onSelect={()=>editor?.chain().focus().addColumnAfter().run()}>{t("m_143eb0bfdf")}</DropdownMenuItem><DropdownMenuItem onSelect={()=>editor?.chain().focus().deleteRow().run()}>{t("m_8ed1bd0881")}</DropdownMenuItem><DropdownMenuItem onSelect={()=>editor?.chain().focus().deleteColumn().run()}>{t("m_e9f365447d")}</DropdownMenuItem><DropdownMenuItem onSelect={()=>editor?.chain().focus().deleteTable().run()}>{t("m_0447637cce")}</DropdownMenuItem></>}
  </DropdownMenuContent></DropdownMenu>;
 }
 function ExitCodeButton({disabled=false}:{disabled?:boolean}){
+  const { t } = useI18n();
  const {editor}=useCurrentEditor();
  const active=useEditorState({editor,selector:({editor})=>editor?.isActive('codeBlock')});
- return active ? <Button disabled={disabled} tooltip="退出代码块，继续正文" aria-label="退出代码块" onClick={()=>editor?.chain().focus().exitCode().run()}><CornerDownLeft className="tiptap-button-icon"/></Button> : null;
+ return active ? <Button disabled={disabled} tooltip={t("m_158a6b8a01")} aria-label={t("m_dc1ccc63b4")} onClick={()=>editor?.chain().focus().exitCode().run()}><CornerDownLeft className="tiptap-button-icon"/></Button> : null;
 }
 
 function YouTubeInsert({disabled=false}:{disabled?:boolean}) {
+  const { t } = useI18n();
   const {editor}=useCurrentEditor();
   const [open,setOpen]=useState(false);
   const [url,setUrl]=useState('');
   const [error,setError]=useState('');
   return <Popover open={open} onOpenChange={next=>{setOpen(next);setError('');if(next)setUrl('')}}>
-    <PopoverTrigger asChild><Button className="editor-youtube-trigger" disabled={disabled||!editor?.isEditable} aria-label="插入 YouTube 视频" tooltip="插入 YouTube 视频">YouTube</Button></PopoverTrigger>
+    <PopoverTrigger asChild><Button className="editor-youtube-trigger" disabled={disabled||!editor?.isEditable} aria-label={t("m_183712560c")} tooltip={t("m_183712560c")}>YouTube</Button></PopoverTrigger>
     <PopoverContent className="editor-youtube-insert" align="end" collisionPadding={12} onCloseAutoFocus={event=>event.preventDefault()}>
-      <form onSubmit={event=>{event.preventDefault();const video=url.trim().startsWith('<') ? parseYoutubeEmbed(url) : null;if(!video){setError('请粘贴有效的 YouTube iframe 嵌入代码');return}if(editor?.chain().focus().insertContent({type:'youtube',attrs:{videoId:video.id,start:video.start}}).run())setOpen(false)}}>
-        <label htmlFor="editor-youtube-url">YouTube 嵌入代码</label>
+      <form onSubmit={event=>{event.preventDefault();const video=url.trim().startsWith('<') ? parseYoutubeEmbed(url) : null;if(!video){setError(t("m_dda69b278f"));return}if(editor?.chain().focus().insertContent({type:'youtube',attrs:{videoId:video.id,start:video.start}}).run())setOpen(false)}}>
+        <label htmlFor="editor-youtube-url">{t("m_e44148f03b")}</label>
         <textarea id="editor-youtube-url" rows={3} placeholder="<iframe …></iframe>" value={url} onChange={event=>{setUrl(event.target.value);setError('')}} aria-invalid={!!error} required/>
-        <p>粘贴代码嵌入视频；普通链接保持为链接。</p>
+        <p>{t("m_c068eb9bad")}</p>
         {error&&<p role="alert">{error}</p>}
-        <Button type="submit" disabled={!url.trim()}>插入视频</Button>
+        <Button type="submit" disabled={!url.trim()}>{t("m_353b4599ae")}</Button>
       </form>
     </PopoverContent>
   </Popover>

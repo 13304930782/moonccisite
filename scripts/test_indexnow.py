@@ -69,6 +69,13 @@ class IndexNowTest(unittest.TestCase):
         target.write_text(json.dumps(data), encoding='utf-8')
         return target
 
+    def test_english_urls_share_published_sitemap_validation(self):
+        for path in ['/en', '/en/articles', '/en/article/hello-world', '/en/projects/demo']:
+            self.assertEqual(index.public_url(BASE + path), BASE + path)
+        for path in ['/en/admin', '/en/account/settings', '/en/api/posts', '/en/article/%2Fsecret', '/en/articles?locale=en']:
+            with self.assertRaises(ValueError):
+                index.public_url(BASE + path)
+
     def test_status_pending_urls_contract_is_bounded_and_sanitized(self):
         self.current.update({BASE + '/updates/' + str(n): None for n in range(1, 151)})
         self.http = 503

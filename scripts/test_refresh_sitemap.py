@@ -26,6 +26,12 @@ class SitemapTest(unittest.TestCase):
                     refresh.publish(bad, target)
                 self.assertEqual(target.read_bytes(), xml(['/']))
 
+    def test_bilingual_routes_keep_private_pages_out(self):
+        self.assertEqual(refresh.validate(xml(['/en', '/en/article/hello-world', '/en/projects/demo'])), 3)
+        for path in ['/en/admin', '/en/account/settings', '/api/posts', '/en/article/%2Fsecret', '/en/articles?preview=true']:
+            with self.assertRaises(ValueError):
+                refresh.validate(xml([path]))
+
     def test_atomic_failure_keeps_valid_file(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(refresh.os, 'fchmod', create=True):
             target = Path(directory) / 'sitemap.xml'

@@ -116,20 +116,21 @@ test('only HomePage imports the new stylesheet, with no replacement global style
  }
 });
 
-test('shared shell, content components and theme retain pinned Git blobs (approved press-motion removal, updates navigation label, Early Access destination, article label style import and public slug links)',()=>{
+test('shared shell, content components and theme retain approved bilingual navigation and subscription feedback baselines',()=>{
+ // Approved bilingual navigation and subscription notice alignment/feedback; other shared styles retain their pins.
  // Canonical LF blobs work on Windows and in shallow CI without historical commits.
  const pins={
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
   'src/styles/globals.css':'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391',
-  'src/styles/editorial.css':'9f8cedc46f1d2bb7310e77a7934ae122e456215a',
+  'src/styles/editorial.css':'a2f008dbc24e8ff199850d0291b526a15039f2cf',
   'src/styles/project-card.css':'08306a6737ea3bbf30b5792d54fe0c43a12421b7',
-  'src/app/components/Header.tsx':'08c11d83438f429a6e3d5a328c52ba7bc63ff226', // Restore the homepage-only festival logo slot.
-  'src/app/components/SiteFooter.tsx':'85bdf27069f292558f00aee14711f76254ea4add',
-  'src/app/components/ContentUI.tsx':'46856b049ce31b9acc74a187e307bc1ffcd2a2bf',
+  'src/app/components/Header.tsx':'0d1804b5084fd64d80d3d624d026909ad2a2ed6e', // Homepage-only festival slot and menu-contained language control.
+  'src/app/components/SiteFooter.tsx':'38865f1588f7c257ad30e46f0168bac802c6e9af',
+  'src/app/components/ContentUI.tsx':'332bca2704b39848b7632bafd4a96b674ca8d406',
   // Approved slug URL wiring; card markup and styles are unchanged.
-  'src/app/components/BlogCard.tsx':'e66e6b1d7091170b25ed150548ca1c219559d51c',
-  'src/app/components/ProjectCard.tsx':'623c271e352de63b85cf74ac060da22d8684fbc8',
-  'src/app/context/ThemeContext.tsx':'7a26de5852af1986d6dff091ac80336786633488',
+  'src/app/components/BlogCard.tsx':'7eecded041ce5501961d45ebbacd21e0924ba927',
+  'src/app/components/ProjectCard.tsx':'1cef15845c7312d82533b7344f23c96f76e1008f',
+  'src/app/context/ThemeContext.tsx':'932fb812fd54cfdbbe367c89771120c7db6cd193',
  };
  for(const [path,pin] of Object.entries(pins)){
   let source=fs.readFileSync(path,'utf8').replace(/\r\n/g,'\n');

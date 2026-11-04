@@ -1,7 +1,9 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
 const React=require('react'),{act,create}=require('react-test-renderer');
+function loadStates(){const m={exports:{}};const code=ts.transpileModule(fs.readFileSync('src/app/components/admin/AdminState.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;new Function('require','exports',code)(n=>i18nFixture(n)|| (n.endsWith('.css')?{}:require(n)),m.exports);return m.exports;}
 function load(api){const m={exports:{}}; const code=ts.transpileModule(fs.readFileSync('src/app/components/admin/NewsletterPreview.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
-new Function('require','exports',code)(n=>n==='../../lib/api'?{api}:n==='../../lib/safeUrl'?{safeHref:x=>x}:require(n),m.exports);return m.exports.NewsletterPreview;}
+new Function('require','exports',code)(n=>i18nFixture(n)?i18nFixture(n):n==='./AdminState'?loadStates():n==='../../lib/api'?{api}:n==='../../lib/safeUrl'?{safeHref:x=>x}:require(n),m.exports);return m.exports.NewsletterPreview;}
 const data={period:{key:'2026-10-12',scheduledAt:'2026-10-19T01:00:00Z'},editable:true,items:[{id:19,type:'post',activity_id:'post-19',title:'文章',excerpt:'摘要',path:'/article/19',published_at:'2026-10-12T01:00:00Z',included:true}]};
 const text=n=>typeof n==='string'?n:Array.isArray(n)?n.map(text).join(''):n?.children?text(n.children):'';
 test('selection persists scoped identity, disables while saving and shows only confirmed result',async()=>{let resolve,call;const C=load((url,opts)=>{call={url,body:JSON.parse(opts.body)};return new Promise(r=>resolve=r)});let r;await act(async()=>{r=create(React.createElement(C,{data,reload(){}}))});

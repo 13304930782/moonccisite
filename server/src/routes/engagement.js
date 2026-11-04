@@ -41,7 +41,7 @@ router.post('/verify-email',async(req,res)=>{
  const p=await service.preferences(c,req.user.id,true);if(Date.now()-Number(p.verify_sent)<60000)throw fail('请一分钟后重试。',429);
  await c.query('UPDATE engagement_preferences SET verify_hash=?,verify_expires=?,verify_sent=?,verify_attempts=0 WHERE user_id=?',[crypto.createHash('sha256').update(req.user.email+':'+code).digest('hex'),Date.now()+600000,Date.now(),req.user.id]);
  });
- const r=await require('../lib/mailer').sendMail({to:req.user.email,subject:'[mooncci] 验证通知邮箱',text:'验证码：'+code+'，10 分钟内有效。'});
+ const r=await require('../lib/mailer').sendMail({to:req.user.email,...require('../lib/serverMessages').challenge('verifyNotifications',code,req.user.ui_locale)});
  if(!r?.sent)throw fail('邮件服务尚未开启。',503);res.json({ok:true});
 });
 router.post('/verify-email/confirm',async(req,res)=>{
@@ -58,7 +58,8 @@ router.get('/notifications',async(req,res)=>{
  const page=Math.max(1,Math.min(100000,Math.floor(Number(req.query.page))||1)),size=20;
  const [rows]=await db.query('SELECT * FROM account_notifications WHERE user_id=?'+(kind?' AND kind=?':'')+' ORDER BY id DESC LIMIT ? OFFSET ?',[req.user.id,...(kind?[kind]:[]),size,(Math.floor(page)-1)*size]);
  const [[count]]=await db.query('SELECT COUNT(*) total,SUM(is_read=0) unread FROM account_notifications WHERE user_id=?',[req.user.id]);
- const items=[];for(const n of rows){const v=await service.visible(db,n);items.push({id:n.id,kind:n.kind,is_read:!!n.is_read,created_at:n.created_at,...v,title:v.available?service.titles[n.kind]:'内容已不可用',message:v.available?n.message:''});}
+ const language=require('../lib/articleTranslations').locale(req.query.locale||req.user.ui_locale);
+ const items=[];for(const n of rows){const v=await service.visible(db,n);items.push({id:n.id,kind:n.kind,is_read:!!n.is_read,created_at:n.created_at,...v,title:v.available?require('../lib/serverMessages').message(n.kind,language):(language==='en'?'Content no longer available':'内容已不可用'),message:v.available?n.message:''});}
  res.json({items,total:Number(count.total),unread:Number(count.unread||0),page,pageSize:size});
 });
 router.get('/notifications/unread',async(req,res)=>{const [[r]]=await db.query('SELECT COUNT(*) unread FROM account_notifications WHERE user_id=? AND is_read=0',[req.user.id]);res.json(r);});

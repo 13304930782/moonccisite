@@ -55,7 +55,7 @@ async function getUserFromRequest(req) {
   const payload = jwt.verify(token, process.env.JWT_SECRET);
 
   const [rows] = await db.query(
-    `SELECT id, username, email, role, status, can_comment FROM users
+    `SELECT id, username, email, role, status, can_comment, ui_locale FROM users
      WHERE id=?
        AND NOT EXISTS (SELECT 1 FROM auth_revocations WHERE token_hash=?)
        AND NOT EXISTS (SELECT 1 FROM auth_invalidations WHERE user_id=users.id AND invalid_before>=?)

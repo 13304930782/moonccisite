@@ -1,3 +1,4 @@
+import { useI18n } from '../../../app/i18n';
 "use client"
 
 import { forwardRef, useCallback, useEffect, useRef } from "react"
@@ -151,6 +152,7 @@ export const SearchAndReplaceButton = forwardRef<
   HTMLButtonElement,
   ButtonProps
 >(({ className, children, ...props }, ref) => {
+  const { t } = useI18n();
   return (
     <Button
       type="button"
@@ -158,8 +160,8 @@ export const SearchAndReplaceButton = forwardRef<
       variant="ghost"
       role="button"
       tabIndex={-1}
-      aria-label="Search and replace"
-      tooltip="Search and replace"
+      aria-label={t("Search and replace")}
+      tooltip={t("Search and replace")}
       shortcutKeys={SEARCH_AND_REPLACE_SHORTCUT_KEY}
       ref={ref}
       {...props}
@@ -199,6 +201,7 @@ export const SearchAndReplace = forwardRef<
     },
     ref
   ) => {
+  const { t } = useI18n();
     const searchAndReplace = useSearchAndReplace({
       editor: providedEditor,
       hideWhenUnavailable,
@@ -436,7 +439,7 @@ export const SearchAndReplace = forwardRef<
         className={cn("tiptap-search-replace", className)}
         data-open={open ? "true" : "false"}
         role="dialog"
-        aria-label="Search and replace"
+        aria-label={t("Search and replace")}
         onKeyDown={handlePanelKeyDown}
         ref={composedPanelRef}
         {...divProps}
@@ -455,8 +458,8 @@ export const SearchAndReplace = forwardRef<
                   variant="ghost"
                   size="small"
                   disabled={!canNavigate}
-                  aria-label="Previous result"
-                  tooltip="Previous result"
+                  aria-label={t("Previous result")}
+                  tooltip={t("Previous result")}
                   shortcutKeys={PREVIOUS_RESULT_SHORTCUT_KEY}
                   onClick={goToPrevious}
                 >
@@ -470,8 +473,8 @@ export const SearchAndReplace = forwardRef<
                   variant="ghost"
                   size="small"
                   disabled={!canNavigate}
-                  aria-label="Next result"
-                  tooltip="Next result"
+                  aria-label={t("Next result")}
+                  tooltip={t("Next result")}
                   shortcutKeys={NEXT_RESULT_SHORTCUT_KEY}
                   onClick={goToNext}
                 >
@@ -486,8 +489,8 @@ export const SearchAndReplace = forwardRef<
                 data-search-replace-action="close"
                 variant="ghost"
                 size="small"
-                aria-label="Close"
-                tooltip="Close"
+                aria-label={t("Close")}
+                tooltip={t("Close")}
                 shortcutKeys="esc"
                 onClick={onClose}
               >
@@ -503,8 +506,8 @@ export const SearchAndReplace = forwardRef<
               <InputGroup className="tiptap-search-replace-input-group">
                 <InputGroupInput
                   data-field="search-query"
-                  placeholder="Search"
-                  aria-label="Search"
+                  placeholder={t("Search")}
+                  aria-label={t("Search")}
                   value={searchTerm}
                   autoFocus={open && autoFocusSearch}
                   autoComplete="off"
@@ -532,8 +535,8 @@ export const SearchAndReplace = forwardRef<
               <InputGroup className="tiptap-search-replace-input-group">
                 <InputGroupInput
                   data-field="replace-query"
-                  placeholder="Replace"
-                  aria-label="Replace"
+                  placeholder={t("Replace")}
+                  aria-label={t("Replace")}
                   value={replaceTerm}
                   autoComplete="off"
                   autoCorrect="off"
@@ -570,7 +573,7 @@ export const SearchAndReplace = forwardRef<
                   className="tiptap-button-icon"
                   aria-hidden="true"
                 />
-                <span className="tiptap-button-text">Match case</span>
+                <span className="tiptap-button-text">{t("Match case")}</span>
               </Button>
 
               <Button
@@ -585,7 +588,7 @@ export const SearchAndReplace = forwardRef<
                   className="tiptap-button-icon"
                   aria-hidden="true"
                 />
-                <span className="tiptap-button-text">Whole words</span>
+                <span className="tiptap-button-text">{t("Whole words")}</span>
               </Button>
             </div>
           </div>
@@ -598,8 +601,7 @@ export const SearchAndReplace = forwardRef<
               className="tiptap-search-replace-regex-toggle-row"
             >
               <span className="tiptap-search-replace-regex-toggle-label">
-                Use regular expression
-              </span>
+                 {t("Use regular expression")} </span>
               <Switch
                 checked={useRegex}
                 onCheckedChange={toggleUseRegex}
@@ -611,8 +613,7 @@ export const SearchAndReplace = forwardRef<
               <div className="tiptap-search-replace-regex-help">
                 <div className="tiptap-search-replace-regex-help-section">
                   <span className="tiptap-search-replace-regex-help-label">
-                    Try a search pattern
-                  </span>
+                     {t("Try a search pattern")} </span>
 
                   <ButtonGroup
                     orientation="vertical"
@@ -624,7 +625,7 @@ export const SearchAndReplace = forwardRef<
                         pattern={pattern}
                         onApply={() => applyRegexExample(pattern)}
                       >
-                        {label} <code>{pattern}</code>
+                        {t(label)} <code>{pattern}</code>
                       </RegexExampleButton>
                     ))}
                   </ButtonGroup>
@@ -637,8 +638,7 @@ export const SearchAndReplace = forwardRef<
 
                 <div className="tiptap-search-replace-regex-help-section">
                   <span className="tiptap-search-replace-regex-help-label">
-                    Try search and replace
-                  </span>
+                     {t("Try search and replace")} </span>
 
                   <ButtonGroup
                     orientation="vertical"
@@ -650,7 +650,7 @@ export const SearchAndReplace = forwardRef<
                         pattern={pattern}
                         onApply={() => applyRegexExample(pattern, replacement)}
                       >
-                        <code>{pattern}</code> to <code>{replacement}</code>
+                        <code>{pattern}</code>  {t("to")} <code>{replacement}</code>
                       </RegexExampleButton>
                     ))}
                   </ButtonGroup>
@@ -662,8 +662,7 @@ export const SearchAndReplace = forwardRef<
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Learn about regular expressions
-                    <ExternalLinkIcon
+                     {t("Learn about regular expressions")} <ExternalLinkIcon
                       className="tiptap-search-replace-regex-docs-link-icon"
                       aria-hidden="true"
                     />
@@ -683,22 +682,20 @@ export const SearchAndReplace = forwardRef<
                 type="button"
                 data-search-replace-action="replace"
                 disabled={!canReplace}
-                aria-label="Replace current result"
+                aria-label={t("Replace current result")}
                 onClick={replaceCurrent}
               >
-                Replace
-              </Button>
+                 {t("Replace")} </Button>
             </ButtonGroup>
             <ButtonGroup>
               <Button
                 type="button"
                 data-search-replace-action="replace-all"
                 disabled={!canReplaceAll}
-                aria-label="Replace all results"
+                aria-label={t("Replace all results")}
                 onClick={replaceAll}
               >
-                Replace all
-              </Button>
+                 {t("Replace all")} </Button>
             </ButtonGroup>
           </ButtonGroup>
         </CardFooter>

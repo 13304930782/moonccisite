@@ -1,3 +1,6 @@
+import {seedEnglishMessages, seedChineseMessages} from '../../src/app/i18n';
+import chineseMessages from '../../src/app/i18n/zh.json';
+import englishMessages from '../../src/app/i18n/en.json';
 import {renderToPipeableStream} from 'react-dom/server';
 import {PassThrough} from 'node:stream';
 import App from '../../src/app/App';
@@ -22,8 +25,10 @@ function render(url: string, data: any): Promise<string> {
     const timer = setTimeout(() => { stream.abort(); reject(new Error('Document render timed out')); }, 10000);
   });
 }
+seedEnglishMessages(englishMessages);
+seedChineseMessages(chineseMessages);
 export async function renderDocument(url: string, load: (path: string) => Promise<any>, status = 200) {
-  const data: any = {resources: {}, errors: {}, status, url};
+  const data: any = {resources: {}, errors: {}, status, url, locale: new URL(url, 'http://local').pathname.match(/^\/en(?:\/|$)/) ? 'en' : 'zh-CN'};
   for (let pass = 0; pass < 5; pass++) {
     const collect = new Set<string>();
     const html = await render(url, {...data, collect});

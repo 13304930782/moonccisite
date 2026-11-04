@@ -1,0 +1,1328 @@
+{
+  "catalogKeys": 3552,
+  "sourceKeys": 2741,
+  "translatedReferences": 3460,
+  "inventory": [
+    {
+      "file": "src/app/components/AboutContent.tsx",
+      "messageReferences": 7
+    },
+    {
+      "file": "src/app/components/AccountEmailForm.tsx",
+      "messageReferences": 13
+    },
+    {
+      "file": "src/app/components/AccountProfileForm.tsx",
+      "messageReferences": 10
+    },
+    {
+      "file": "src/app/components/AccountWorkspace.tsx",
+      "messageReferences": 17
+    },
+    {
+      "file": "src/app/components/admin/AdminButton.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/admin/AdminShell.tsx",
+      "messageReferences": 48
+    },
+    {
+      "file": "src/app/components/admin/AdminState.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/app/components/admin/ArticleImageMenu.tsx",
+      "messageReferences": 23
+    },
+    {
+      "file": "src/app/components/admin/NewsletterPreview.tsx",
+      "messageReferences": 14
+    },
+    {
+      "file": "src/app/components/AdminElectricityRooms.tsx",
+      "messageReferences": 62
+    },
+    {
+      "file": "src/app/components/AdminPagination.tsx",
+      "messageReferences": 5
+    },
+    {
+      "file": "src/app/components/AdminWeatherCompanionSettings.tsx",
+      "messageReferences": 18
+    },
+    {
+      "file": "src/app/components/AppErrorBoundary.tsx",
+      "messageReferences": 3
+    },
+    {
+      "file": "src/app/components/ArticleAiSummary.tsx",
+      "messageReferences": 7
+    },
+    {
+      "file": "src/app/components/ArticleConflict.tsx",
+      "messageReferences": 32
+    },
+    {
+      "file": "src/app/components/ArticleDiscovery.tsx",
+      "messageReferences": 13
+    },
+    {
+      "file": "src/app/components/ArticleEditor.tsx",
+      "messageReferences": 10
+    },
+    {
+      "file": "src/app/components/ArticleImport.tsx",
+      "messageReferences": 19
+    },
+    {
+      "file": "src/app/components/ArticleLanguages.tsx",
+      "messageReferences": 5
+    },
+    {
+      "file": "src/app/components/ArticleMediaPicker.tsx",
+      "messageReferences": 18
+    },
+    {
+      "file": "src/app/components/ArticlePresentation.tsx",
+      "messageReferences": 15
+    },
+    {
+      "file": "src/app/components/ArticleReview.tsx",
+      "messageReferences": 66
+    },
+    {
+      "file": "src/app/components/ArticleRevisionHistory.tsx",
+      "messageReferences": 21
+    },
+    {
+      "file": "src/app/components/ArticleSeries.tsx",
+      "messageReferences": 9
+    },
+    {
+      "file": "src/app/components/ArticleSummaryFields.tsx",
+      "messageReferences": 14
+    },
+    {
+      "file": "src/app/components/ArticleTableOfContents.tsx",
+      "messageReferences": 5
+    },
+    {
+      "file": "src/app/components/AuthShell.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/app/components/blog-pages/AboutPreview.tsx",
+      "messageReferences": 4
+    },
+    {
+      "file": "src/app/components/blog-pages/LinkCard.tsx",
+      "messageReferences": 13
+    },
+    {
+      "file": "src/app/components/blog-pages/ModuleRow.tsx",
+      "messageReferences": 24
+    },
+    {
+      "file": "src/app/components/blog-pages/SaveBar.tsx",
+      "messageReferences": 8
+    },
+    {
+      "file": "src/app/components/blog-pages/SortableList.tsx",
+      "messageReferences": 4
+    },
+    {
+      "file": "src/app/components/blog-pages/Switch.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/BlogCard.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/app/components/BookmarkButton.tsx",
+      "messageReferences": 7
+    },
+    {
+      "file": "src/app/components/CardCoverImage.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ChartViewport.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/CodeBlock.tsx",
+      "messageReferences": 4
+    },
+    {
+      "file": "src/app/components/CommentSection.tsx",
+      "messageReferences": 78
+    },
+    {
+      "file": "src/app/components/ContentTranslationEditor.tsx",
+      "messageReferences": 13
+    },
+    {
+      "file": "src/app/components/ContentUI.tsx",
+      "messageReferences": 36
+    },
+    {
+      "file": "src/app/components/CoverDisplayPreviews.tsx",
+      "messageReferences": 7
+    },
+    {
+      "file": "src/app/components/CoverFramingDialog.tsx",
+      "messageReferences": 28
+    },
+    {
+      "file": "src/app/components/CoverImage.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/DetailUI.tsx",
+      "messageReferences": 7
+    },
+    {
+      "file": "src/app/components/DiagnosticNavigation.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ElectricityChart.tsx",
+      "messageReferences": 6
+    },
+    {
+      "file": "src/app/components/ElectricityRssSubscription.tsx",
+      "messageReferences": 23
+    },
+    {
+      "file": "src/app/components/FeedbackHost.tsx",
+      "messageReferences": 3
+    },
+    {
+      "file": "src/app/components/FeedbackToast.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/app/components/Festivals/Entry.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/Festivals/lifecycle.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/Festivals/Runtime.tsx",
+      "messageReferences": 9
+    },
+    {
+      "file": "src/app/components/figma/ImageWithFallback.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/FormInput.tsx",
+      "messageReferences": 5
+    },
+    {
+      "file": "src/app/components/GoogleSignInButton.tsx",
+      "messageReferences": 6
+    },
+    {
+      "file": "src/app/components/Halloween/confetti.d.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/Halloween/Decorations.tsx",
+      "messageReferences": 3
+    },
+    {
+      "file": "src/app/components/Halloween/geometry.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/Halloween/styles.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/Header.tsx",
+      "messageReferences": 22
+    },
+    {
+      "file": "src/app/components/home/activityText.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/home/HomeActivityList.tsx",
+      "messageReferences": 7
+    },
+    {
+      "file": "src/app/components/LanguageSwitch.tsx",
+      "messageReferences": 4
+    },
+    {
+      "file": "src/app/components/LocaleEffects.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/LocaleLink.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/MailChannelSettings.tsx",
+      "messageReferences": 23
+    },
+    {
+      "file": "src/app/components/MailFailureTasks.tsx",
+      "messageReferences": 16
+    },
+    {
+      "file": "src/app/components/MarkdownContent.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/app/components/NavigationProtection.tsx",
+      "messageReferences": 2
+    },
+    {
+      "file": "src/app/components/NodeMonitorPermission.tsx",
+      "messageReferences": 11
+    },
+    {
+      "file": "src/app/components/PageAnalytics.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/PasswordField.tsx",
+      "messageReferences": 5
+    },
+    {
+      "file": "src/app/components/PostResults.tsx",
+      "messageReferences": 3
+    },
+    {
+      "file": "src/app/components/ProjectCard.tsx",
+      "messageReferences": 5
+    },
+    {
+      "file": "src/app/components/PublicationHealth.tsx",
+      "messageReferences": 53
+    },
+    {
+      "file": "src/app/components/ReadingProgress.tsx",
+      "messageReferences": 7
+    },
+    {
+      "file": "src/app/components/ReadingTools.tsx",
+      "messageReferences": 24
+    },
+    {
+      "file": "src/app/components/RichTextContent.tsx",
+      "messageReferences": 4
+    },
+    {
+      "file": "src/app/components/RoutePosition.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/RoutePreload.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/SecondaryActions.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/app/components/SiteBack.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/app/components/SiteFooter.tsx",
+      "messageReferences": 9
+    },
+    {
+      "file": "src/app/components/SiteMeta.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/SocialLoginButtons.tsx",
+      "messageReferences": 8
+    },
+    {
+      "file": "src/app/components/TagInput.tsx",
+      "messageReferences": 4
+    },
+    {
+      "file": "src/app/components/ThemeSelect.tsx",
+      "messageReferences": 2
+    },
+    {
+      "file": "src/app/components/ui/accordion.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/alert-dialog.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/alert.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/aspect-ratio.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/avatar.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/badge.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/breadcrumb.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/button.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/calendar.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/card.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/carousel.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/chart.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/checkbox.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/collapsible.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/command.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/context-menu.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/dialog.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/app/components/ui/drawer.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/dropdown-menu.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/form.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/hover-card.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/input-otp.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/input.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/label.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/menubar.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/navigation-menu.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/pagination.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/popover.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/progress.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/radio-group.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/resizable.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/scroll-area.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/select.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/separator.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/sheet.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/sidebar.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/skeleton.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/slider.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/sonner.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/switch.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/table.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/tabs.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/textarea.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/toggle-group.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/toggle.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/tooltip.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/use-mobile.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/ui/utils.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/components/VisualMarkdownEditor.tsx",
+      "messageReferences": 3
+    },
+    {
+      "file": "src/app/components/WeatherCityPicker.tsx",
+      "messageReferences": 47
+    },
+    {
+      "file": "src/app/components/WeatherCompanion.tsx",
+      "messageReferences": 41
+    },
+    {
+      "file": "src/app/components/YouTubeLink.tsx",
+      "messageReferences": 5
+    },
+    {
+      "file": "src/app/pages/AccountSettingsPage.tsx",
+      "messageReferences": 37
+    },
+    {
+      "file": "src/app/pages/AdminAiSettingsPage.tsx",
+      "messageReferences": 17
+    },
+    {
+      "file": "src/app/pages/AdminAnalyticsPage.tsx",
+      "messageReferences": 36
+    },
+    {
+      "file": "src/app/pages/AdminBannedWordsPage.tsx",
+      "messageReferences": 34
+    },
+    {
+      "file": "src/app/pages/AdminBlogPages.tsx",
+      "messageReferences": 33
+    },
+    {
+      "file": "src/app/pages/AdminCommentsPage.tsx",
+      "messageReferences": 40
+    },
+    {
+      "file": "src/app/pages/AdminContentPage.tsx",
+      "messageReferences": 132
+    },
+    {
+      "file": "src/app/pages/AdminEarlyAccessDetailPage.tsx",
+      "messageReferences": 31
+    },
+    {
+      "file": "src/app/pages/AdminEarlyAccessPage.tsx",
+      "messageReferences": 19
+    },
+    {
+      "file": "src/app/pages/AdminEditorApplicationsPage.tsx",
+      "messageReferences": 39
+    },
+    {
+      "file": "src/app/pages/AdminElectricityPage.tsx",
+      "messageReferences": 64
+    },
+    {
+      "file": "src/app/pages/AdminFestivalsPage.tsx",
+      "messageReferences": 62
+    },
+    {
+      "file": "src/app/pages/AdminLoginPage.tsx",
+      "messageReferences": 16
+    },
+    {
+      "file": "src/app/pages/AdminLoginSettingsPage.tsx",
+      "messageReferences": 26
+    },
+    {
+      "file": "src/app/pages/AdminMailboxRequestsPage.tsx",
+      "messageReferences": 57
+    },
+    {
+      "file": "src/app/pages/AdminMailSettingsPage.tsx",
+      "messageReferences": 49
+    },
+    {
+      "file": "src/app/pages/AdminMediaPage.tsx",
+      "messageReferences": 116
+    },
+    {
+      "file": "src/app/pages/AdminNodeMonitorPage.tsx",
+      "messageReferences": 25
+    },
+    {
+      "file": "src/app/pages/AdminPage.tsx",
+      "messageReferences": 34
+    },
+    {
+      "file": "src/app/pages/AdminPostsPage.tsx",
+      "messageReferences": 42
+    },
+    {
+      "file": "src/app/pages/AdminRuntimePage.tsx",
+      "messageReferences": 33
+    },
+    {
+      "file": "src/app/pages/AdminSendMailPage.tsx",
+      "messageReferences": 28
+    },
+    {
+      "file": "src/app/pages/AdminSeriesPage.tsx",
+      "messageReferences": 48
+    },
+    {
+      "file": "src/app/pages/AdminSiteSettingsPage.tsx",
+      "messageReferences": 66
+    },
+    {
+      "file": "src/app/pages/AdminUserSettingsPage.tsx",
+      "messageReferences": 35
+    },
+    {
+      "file": "src/app/pages/AdminUsersPage.tsx",
+      "messageReferences": 25
+    },
+    {
+      "file": "src/app/pages/AdminWritePage.tsx",
+      "messageReferences": 144
+    },
+    {
+      "file": "src/app/pages/ArchivesPage.tsx",
+      "messageReferences": 8
+    },
+    {
+      "file": "src/app/pages/ArticlePage.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/pages/ArticlesPage.tsx",
+      "messageReferences": 8
+    },
+    {
+      "file": "src/app/pages/BlogInfoPages.tsx",
+      "messageReferences": 6
+    },
+    {
+      "file": "src/app/pages/BookmarksPage.tsx",
+      "messageReferences": 38
+    },
+    {
+      "file": "src/app/pages/CategoriesPage.tsx",
+      "messageReferences": 4
+    },
+    {
+      "file": "src/app/pages/CategoryPage.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/app/pages/CompleteRegistrationPage.tsx",
+      "messageReferences": 14
+    },
+    {
+      "file": "src/app/pages/DiagnosticsPage.tsx",
+      "messageReferences": 30
+    },
+    {
+      "file": "src/app/pages/EarlyAccessPage.tsx",
+      "messageReferences": 37
+    },
+    {
+      "file": "src/app/pages/EditorApplyPage.tsx",
+      "messageReferences": 14
+    },
+    {
+      "file": "src/app/pages/ElectricityPage.tsx",
+      "messageReferences": 62
+    },
+    {
+      "file": "src/app/pages/festivals-v2/Editor.tsx",
+      "messageReferences": 59
+    },
+    {
+      "file": "src/app/pages/festivals-v2/model.ts",
+      "messageReferences": 3
+    },
+    {
+      "file": "src/app/pages/festivals-v2/Select.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/pages/ForgotPasswordPage.tsx",
+      "messageReferences": 16
+    },
+    {
+      "file": "src/app/pages/HomePage.tsx",
+      "messageReferences": 19
+    },
+    {
+      "file": "src/app/pages/LoginPage.tsx",
+      "messageReferences": 20
+    },
+    {
+      "file": "src/app/pages/MailboxPage.tsx",
+      "messageReferences": 114
+    },
+    {
+      "file": "src/app/pages/MailSetupPage.tsx",
+      "messageReferences": 62
+    },
+    {
+      "file": "src/app/pages/NodeMonitorPage.tsx",
+      "messageReferences": 29
+    },
+    {
+      "file": "src/app/pages/NoteDetailPage.tsx",
+      "messageReferences": 14
+    },
+    {
+      "file": "src/app/pages/NotFoundPage.tsx",
+      "messageReferences": 6
+    },
+    {
+      "file": "src/app/pages/NotificationsPage.tsx",
+      "messageReferences": 49
+    },
+    {
+      "file": "src/app/pages/OperationsPage.tsx",
+      "messageReferences": 55
+    },
+    {
+      "file": "src/app/pages/ProjectsPage.tsx",
+      "messageReferences": 21
+    },
+    {
+      "file": "src/app/pages/PublishingQueuePage.tsx",
+      "messageReferences": 50
+    },
+    {
+      "file": "src/app/pages/ReadingHistoryPage.tsx",
+      "messageReferences": 23
+    },
+    {
+      "file": "src/app/pages/RegisterPage.tsx",
+      "messageReferences": 23
+    },
+    {
+      "file": "src/app/pages/ResetPasswordPage.tsx",
+      "messageReferences": 18
+    },
+    {
+      "file": "src/app/pages/RssPage.tsx",
+      "messageReferences": 26
+    },
+    {
+      "file": "src/app/pages/SearchPage.tsx",
+      "messageReferences": 16
+    },
+    {
+      "file": "src/app/pages/SeriesPage.tsx",
+      "messageReferences": 6
+    },
+    {
+      "file": "src/app/pages/SessionsPage.tsx",
+      "messageReferences": 29
+    },
+    {
+      "file": "src/app/pages/SubmissionsPage.tsx",
+      "messageReferences": 24
+    },
+    {
+      "file": "src/app/pages/SubscriptionPage.tsx",
+      "messageReferences": 28
+    },
+    {
+      "file": "src/app/pages/TagPage.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/app/pages/TagsPage.tsx",
+      "messageReferences": 4
+    },
+    {
+      "file": "src/app/pages/updates-v2-data.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/app/pages/UpdatesPage.tsx",
+      "messageReferences": 26
+    },
+    {
+      "file": "src/components/tiptap-extension/node-background-extension.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/align-center-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/align-justify-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/align-left-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/align-right-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/arrow-left-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/arrow-right-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/ban-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/blockquote-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/bold-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/case-sensitive-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/check-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/chevron-down-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/chevron-up-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/close-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/code-block-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/code2-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/corner-down-left-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/external-link-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/heading-five-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/heading-four-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/heading-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/heading-one-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/heading-six-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/heading-three-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/heading-two-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/highlighter-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/image-plus-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/italic-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/link-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/list-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/list-ordered-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/list-todo-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/moon-star-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/redo2-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/search-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/strike-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/subscript-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/sun-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/superscript-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/trash-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/underline-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/undo2-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-icons/whole-word-icon.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-node/horizontal-rule-node/horizontal-rule-node-extension.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-node/image-node/editor-image.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-node/image-node/image-controls.tsx",
+      "messageReferences": 25
+    },
+    {
+      "file": "src/components/tiptap-node/image-upload-node/image-upload-node-extension.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-node/image-upload-node/image-upload-node.tsx",
+      "messageReferences": 11
+    },
+    {
+      "file": "src/components/tiptap-node/image-upload-node/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-node/youtube-node.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-templates/simple/async-search-panel.tsx",
+      "messageReferences": 4
+    },
+    {
+      "file": "src/components/tiptap-templates/simple/simple-editor.tsx",
+      "messageReferences": 32
+    },
+    {
+      "file": "src/components/tiptap-templates/simple/theme-toggle.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/blockquote-button/blockquote-button.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/components/tiptap-ui/blockquote-button/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/blockquote-button/use-blockquote.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/code-block-button/code-block-button.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/components/tiptap-ui/code-block-button/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/code-block-button/use-code-block.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/color-highlight-button/color-highlight-button.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/components/tiptap-ui/color-highlight-button/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/color-highlight-button/use-color-highlight.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/color-highlight-popover/color-highlight-popover.tsx",
+      "messageReferences": 4
+    },
+    {
+      "file": "src/components/tiptap-ui/color-highlight-popover/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/heading-button/heading-button.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/heading-button/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/heading-button/use-heading.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/heading-dropdown-menu/heading-dropdown-menu.tsx",
+      "messageReferences": 2
+    },
+    {
+      "file": "src/components/tiptap-ui/heading-dropdown-menu/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/heading-dropdown-menu/use-heading-dropdown-menu.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/image-upload-button/image-upload-button.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/image-upload-button/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/image-upload-button/use-image-upload.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/link-popover/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/link-popover/link-popover.tsx",
+      "messageReferences": 7
+    },
+    {
+      "file": "src/components/tiptap-ui/link-popover/use-link-popover.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/list-button/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/list-button/list-button.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/list-button/use-list.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/list-dropdown-menu/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/list-dropdown-menu/list-dropdown-menu.tsx",
+      "messageReferences": 2
+    },
+    {
+      "file": "src/components/tiptap-ui/list-dropdown-menu/use-list-dropdown-menu.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/mark-button/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/mark-button/mark-button.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/mark-button/use-mark.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/search-and-replace/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/search-and-replace/search-and-replace.tsx",
+      "messageReferences": 24
+    },
+    {
+      "file": "src/components/tiptap-ui/search-and-replace/use-search-and-replace.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/text-align-button/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/text-align-button/text-align-button.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/text-align-button/use-text-align.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/undo-redo-button/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/undo-redo-button/undo-redo-button.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui/undo-redo-button/use-undo-redo.ts",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/badge/badge.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/badge/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/button/button.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/button/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/button-group/button-group.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/button-group/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/card/card.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/card/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/dropdown-menu/dropdown-menu.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/dropdown-menu/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/input/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/input/input.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/input-group/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/input-group/input-group.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/popover/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/popover/popover.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/separator/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/separator/separator.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/spacer/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/spacer/spacer.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/switch/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/switch/switch.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/textarea/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/textarea/textarea.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/toolbar/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/toolbar/toolbar.tsx",
+      "messageReferences": 1
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/tooltip/index.tsx",
+      "messageReferences": 0
+    },
+    {
+      "file": "src/components/tiptap-ui-primitive/tooltip/tooltip.tsx",
+      "messageReferences": 0
+    }
+  ],
+  "violations": []
+}

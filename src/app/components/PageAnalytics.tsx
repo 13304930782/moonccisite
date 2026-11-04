@@ -1,3 +1,4 @@
+import {splitLocalePath} from '../lib/locale';
 import { afterInitialLoad } from '../lib/afterInitialLoad';
 import {useEffect,useState} from 'react';
 import {useLocation} from 'react-router-dom';
@@ -28,7 +29,7 @@ export function usePageView(path:string|null,postId?:number){
  return views;
 }
 export function PageAnalytics(){
- const {pathname}=useLocation();
+ const location=useLocation();const {pathname}=splitLocalePath(location.pathname);
  const allowed=/^\/(?:$|articles$|updates(?:\/[^/]+)?$|projects(?:\/[^/]+)?$|tags$|categories$|search$|early-access$|electricity$|rss$)/.test(pathname);
  usePageView(allowed?pathname:null);
  return null;

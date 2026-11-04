@@ -1,5 +1,8 @@
+import {TranslationFields} from '../components/ContentTranslationEditor';
+import { useI18n } from '../i18n';
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+
+import {Link} from '../components/LocaleLink';
 import { UploadCloud } from 'lucide-react';
 import { api } from '../lib/api';
 import { useUnsavedLeave } from '../lib/useUnsavedLeave';
@@ -8,6 +11,7 @@ import { MarkdownContent } from '../components/MarkdownContent';
 import { ArticleMediaPicker } from '../components/ArticleMediaPicker';
 import '../../styles/article-workspace.css';
 import '../../styles/site-settings.css';
+import '../../styles/admin-site-settings.css';
 import { AdminWeatherCompanionSettings } from '../components/AdminWeatherCompanionSettings';
 
 const IMAGE_ACCEPT =
@@ -34,14 +38,14 @@ function Field({
         <textarea
           aria-label={label}
           rows={3}
-          value={value}
+          value={value ?? ''}
           onChange={(e) => onChange(e.target.value)}
           required={required}
         />
       ) : (
         <input
           aria-label={label}
-          value={value}
+          value={value ?? ''}
           onChange={(e) => onChange(e.target.value)}
           required={required}
         />
@@ -65,6 +69,7 @@ function ImageSetting({
   onError: (message: string) => void;
   onChoose?: () => void;
 }) {
+  const { locale,  t } = useI18n();
   const [uploading, setUploading] = useState(false);
   async function upload(file?: File) {
     if (!file) return;
@@ -77,7 +82,7 @@ function ImageSetting({
       const result = await api('/upload/image', { method: 'POST', body });
       onChange(result.url);
     } catch (error: any) {
-      onError(error.message || '图片上传失败，请重试');
+      onError(error.message || t("m_8a09ac140a"));
     } finally {
       setUploading(false);
       onBusy(false);
@@ -87,18 +92,18 @@ function ImageSetting({
     <div className="settings-image">
       <div className="settings-image-preview">
         {safeImageSrc(value) ? (
-          <img src={safeImageSrc(value)} alt={`${label}预览`} />
+          <img src={safeImageSrc(value)} alt={t("m_38eaa526a2", {v0: label})} />
         ) : (
-          <span>未设置</span>
+          <span>{t("m_2f5f1d6fbf")}</span>
         )}
       </div>
       <div>
-        <Field label={`${label}地址`} value={value} onChange={onChange} />
+        <Field label={t("m_93f2a601fb", {v0: label})} value={value} onChange={onChange} />
         <div className="settings-image-actions">
-          {onChoose && <button type="button" className="quiet-button" style={{ minHeight: 44 }} onClick={onChoose}>从媒体库选择</button>}
+          {onChoose && <button type="button" className="quiet-button" onClick={onChoose}>{t("m_b1a53ac1d4")}</button>}
           <label className="settings-upload">
             <UploadCloud size={16} />
-            {uploading ? '上传中…' : `上传${label}`}
+            {uploading ? t("m_ce1c9d6156") : t("m_65d605c180", {v0: label})}
             <input
               type="file"
               accept={IMAGE_ACCEPT}
@@ -115,8 +120,7 @@ function ImageSetting({
               className="text-link"
               onClick={() => onChange('')}
             >
-              清除
-            </button>
+               {t("m_bce2377283")} </button>
           )}
         </div>
       </div>
@@ -124,6 +128,18 @@ function ImageSetting({
   );
 }
 export default function AdminSiteSettingsPage() {
+  const { locale,  t } = useI18n();
+  const sectionIds = ['brand', 'hero', 'now', 'footer', 'weather-companion'];
+  const hashSection = () => {
+    const id = typeof window === 'undefined' ? '' : window.location?.hash?.slice(1);
+    return id && sectionIds.includes(id) ? id : 'brand';
+  };
+  const [activeSection, setActiveSection] = useState(hashSection);
+  useEffect(() => {
+    const updateSection = () => setActiveSection(hashSection());
+    window.addEventListener('hashchange', updateSection);
+    return () => window.removeEventListener('hashchange', updateSection);
+  }, []);
   const [faviconPickerOpen, setFaviconPickerOpen] = useState(false);
   const [brand, setBrand] = useState<any>({});
   const [hero, setHero] = useState<any>({});
@@ -158,7 +174,7 @@ export default function AdminSiteSettingsPage() {
         title:
           site.hero.title ||
           `${site.hero.title_before || ''}${site.hero.title_highlight || ''}${site.hero.title_after || ''}`,
-        eyebrow: site.hero.eyebrow ?? 'mooncci / 个人技术手记',
+        eyebrow: site.hero.eyebrow ?? t("m_5cd0f9f9f6"),
       };
       setBrand(site.brand);
       setFooter(site.footer);
@@ -171,7 +187,7 @@ export default function AdminSiteSettingsPage() {
         now: snapshot('now', current),
       });
     } catch (e: any) {
-      setError(e.message || '站点设置加载失败');
+      setError(e.message || t("m_72bfb0e808"));
     } finally {
       setLoading(false);
     }
@@ -209,13 +225,13 @@ export default function AdminSiteSettingsPage() {
       setBaseline((prev) => ({ ...prev, [section]: snapshot(section, saved) }));
       setMessages((prev) => ({
         ...prev,
-        [section]: '已保存，刷新公开页面即可看到。',
+        [section]: t("m_ef91a88d4a"),
       }));
     } catch (e: any) {
       setFailed((prev) => ({ ...prev, [section]: true }));
       setMessages((prev) => ({
         ...prev,
-        [section]: e.message || '保存失败，请重试',
+        [section]: e.message || t("m_f42a1238b4"),
       }));
     } finally {
       setSaving('');
@@ -237,7 +253,7 @@ export default function AdminSiteSettingsPage() {
     content: ReactNode,
   ) {
     return (
-      <form id={id} className="settings-section" onSubmit={(e) => save(e, id)}>
+      <form id={id} hidden={activeSection !== id} className="settings-section" onSubmit={(e) => save(e, id)}>
         <div className="settings-section-heading">
           <h2>{title}</h2>
           <p>{description}</p>
@@ -246,10 +262,10 @@ export default function AdminSiteSettingsPage() {
           {content}
           <div className="settings-save">
             <button className="button-primary" type="submit" disabled={saving === id || !dirtySections[id]}>
-              {saving === id ? '保存中…' : `保存${title}`}
+              {saving === id ? t("m_ff509c9ba0") : t("m_75b2c33198", {v0: title})}
             </button>
-            <button className="quiet-button" type="button" disabled={!dirtySections[id]} onClick={() => discard(id)}>放弃更改</button>
-            {dirtySections[id] && !saving && <span className="settings-dirty">有未保存的修改</span>}
+            <button className="quiet-button" type="button" disabled={!dirtySections[id]} onClick={() => discard(id)}>{t("m_ef804eda90")}</button>
+            {dirtySections[id] && !saving && <span className="settings-dirty">{t("m_c2277872cd")}</span>}
             <span role={failed[id] ? 'alert' : 'status'} className={failed[id] ? 'settings-error' : undefined}>{messages[id]}</span>
           </div>
         </fieldset>
@@ -258,16 +274,15 @@ export default function AdminSiteSettingsPage() {
   }
   if (loading || error)
     return (
-      <div className="site-settings-page">
-        <h1 className="admin-title">站点设置</h1>
+      <div className="site-settings-page site-settings-editor">
+        <h1 className="admin-title">{t("m_f0cac3fe1a")}</h1>
         {loading ? (
-          <p role="status">正在读取设置…</p>
+          <p role="status">{t("m_9ee6956371")}</p>
         ) : (
           <div role="alert">
-            <p>{error}</p>
+            <p>{t(error || '')}</p>
             <button className="quiet-button" onClick={load}>
-              重新加载
-            </button>
+               {t("m_7bdd5ce1e2")} </button>
           </div>
         )}
       </div>
@@ -278,115 +293,109 @@ export default function AdminSiteSettingsPage() {
       setMessages((prev) => ({ ...prev, upload: message })),
   };
   return (
-    <div className="site-settings-page">
+    <div className="site-settings-page site-settings-editor">
       <header className="settings-heading">
         <div>
-          <p className="eyebrow">mooncci / 网站管理</p>
-          <h1 className="admin-title">站点设置</h1>
+          <p className="eyebrow">{t("m_0e7e7ca5e5")}</p>
+          <h1 className="admin-title">{t("m_f0cac3fe1a")}</h1>
           <p className="muted">
-            管理访客实际看到的标识、首页介绍与页脚。各区域单独保存。
-          </p>
+             {t("m_da8c1392f2")} </p>
         </div>
         <Link className="text-link" to="/" target="_blank">
-          查看网站 ↗
-        </Link>
+           {t("m_f951dedda9")} </Link>
       </header>
-      <nav className="settings-nav" aria-label="设置分区">
-        <a href="#weather-companion">天气小球</a>
-        <a href="#brand">站点标识</a>
-        <a href="#hero">首页介绍</a>
-        <a href="#now">当前近况</a>
-        <a href="#footer">页脚与备案</a>
+      <nav className="settings-nav" aria-label={t("m_dc0173c408")}>
+        {[
+          ['brand', t("m_a6939b5922")], ['hero', t("m_3615b0afff")],
+          ['now', t("m_9a6c6ad76b")], ['footer', t("m_17cb1bbb81")],
+          ['weather-companion', t("m_acf6ef3f39")],
+        ].map(([id, label]) => <button key={id} type="button" aria-pressed={activeSection === id} aria-controls={id} onClick={() => setActiveSection(id)}>{label}{dirtySections[id] && <span className="settings-nav-dirty" aria-label={t("m_c2277872cd")} />}</button>)}
       </nav>
-      {loading && <p role="status">正在读取设置…</p>}
+      {loading && <p role="status">{t("m_9ee6956371")}</p>}
       {error && (
         <p role="alert">
-          {error}{' '}
+          {t(error || '')}{' '}
           <button type="button" onClick={load}>
-            重新加载
-          </button>
+             {t("m_7bdd5ce1e2")} </button>
         </p>
       )}
       {messages.upload && <p role="alert">{messages.upload}</p>}
       {section(
         'brand',
-        '站点标识',
-        '品牌文字固定为 mooncci。保留导航 Logo 和浏览器图标的独立设置。',
+        t("m_a6939b5922"),
+        t("m_a7d9936af4"),
         <>
           <Field
-            label="浏览器默认标题"
+            label={t("m_fcd9fbdf52")}
             value={brand.site_title}
             onChange={(v) => setBrand({ ...brand, site_title: v })}
             required
           />
           <ImageSetting
-            label="网站 Logo"
+            label={t("m_1b39c2f4f2")}
             value={brand.logo_url}
             onChange={(v) => setBrand({ ...brand, logo_url: v })}
             {...imageProps}
           />
           <ImageSetting
-            label="网页图标"
+            label={t("m_5c72bd7844")}
             value={brand.favicon_url}
             onChoose={() => setFaviconPickerOpen(true)}
             onChange={(v) => setBrand({ ...brand, favicon_url: v })}
             {...imageProps}
           />
           <p className="settings-hint">
-            网页图标（favicon）用于浏览器标签和搜索结果。建议使用清晰的正方形图片，可从媒体库选择或上传。
-            支持 PNG、JPG、WebP、GIF、ICO。选择或上传后保存本区域；清除 Logo
-            后导航显示文字，清除网页图标后恢复浏览器默认显示。
-          </p>
+             {t("m_10d932c4bf")} </p>
         </>,
       )}
       {section(
         'hero',
-        '首页介绍',
-        '对应首页左侧的简短介绍。标题使用一段完整文字，不再拆分高亮词。',
+        t("m_3615b0afff"),
+        t("m_984b925638"),
         <>
           <Field
-            label="顶部说明"
+            label={t("m_476472359a")}
             value={hero.eyebrow}
             onChange={(v) => setHero({ ...hero, eyebrow: v })}
           />
           <Field
-            label="首页标题"
+            label={t("m_487422ef0c")}
             value={hero.title}
             onChange={(v) => setHero({ ...hero, title: v })}
             required
           />
           <Field
-            label="介绍正文"
+            label={t("m_14f51b264f")}
             value={hero.subtitle}
             onChange={(v) => setHero({ ...hero, subtitle: v })}
             multiline
           />
           <div className="settings-two-columns">
             <Field
-              label="第一入口文字"
+              label={t("m_7893e5d8bf")}
               value={hero.primary_text}
               onChange={(v) => setHero({ ...hero, primary_text: v })}
             />
             <Field
-              label="第一入口地址"
+              label={t("m_3a6f2af152")}
               value={hero.primary_link}
               onChange={(v) => setHero({ ...hero, primary_link: v })}
-              hint="站内地址如 /articles，或完整 HTTPS 链接。"
+              hint={t("m_6218242668")}
             />
             <Field
-              label="第二入口文字"
+              label={t("m_704c0e6020")}
               value={hero.secondary_text}
               onChange={(v) => setHero({ ...hero, secondary_text: v })}
             />
             <Field
-              label="第二入口地址"
+              label={t("m_7c85045cce")}
               value={hero.secondary_link}
               onChange={(v) => setHero({ ...hero, secondary_link: v })}
             />
           </div>
-          <p className="settings-hint">入口文字留空可隐藏对应链接。</p>
+          <p className="settings-hint">{t("m_948b688540")}</p>
           <details className="settings-preview">
-            <summary>预览介绍文字</summary>
+            <summary>{t("m_6b22eb1a19")}</summary>
             <p className="eyebrow">{hero.eyebrow}</p>
             <h2>{hero.title}</h2>
             <p>{hero.subtitle}</p>
@@ -399,33 +408,31 @@ export default function AdminSiteSettingsPage() {
       )}
       {section(
         'now',
-        '当前近况',
-        '对应首页右侧“正在做什么”。短动态的独立发布仍在“近况与动态”中管理。',
+        t("m_9a6c6ad76b"),
+        t("m_c26c2dce70"),
         <>
           <label className="settings-field">
-            <span>正在做什么</span>
+            <span>{t("m_61dcbf65c2")}</span>
             <textarea
-              aria-label="正在做什么"
+              aria-label={t("m_61dcbf65c2")}
               rows={4}
               maxLength={2000}
               value={now.content}
               onChange={(e) => setNow({ ...now, content: e.target.value })}
             />
-            <small>支持 Markdown，最多 2000 字。填写后优先展示；留空时首页自动展示最新一条已发布近况。</small>
+            <small>{t("m_8d1266ba2a")}</small>
           </label>
           {now.updated_at && (
             <p className="settings-hint">
-              上次更新：
-              {new Date(now.updated_at).toLocaleString('zh-CN', {
+               {t("m_9280b2937e")} {new Date(now.updated_at).toLocaleString(locale, {
                 timeZone: 'Asia/Shanghai',
                 hour12: false,
               })}
-              （北京时间）
-            </p>
+               {t("m_5eb76ad884")} </p>
           )}
           {now.content && (
             <details className="settings-preview">
-              <summary>预览当前近况</summary>
+              <summary>{t("m_6bb4a6fc9f")}</summary>
               <MarkdownContent content={now.content} />
             </details>
           )}
@@ -433,52 +440,59 @@ export default function AdminSiteSettingsPage() {
       )}
       {section(
         'footer',
-        '页脚与备案',
-        '分别设置版权、备案文字和跳转地址。公安备案图标可继续上传替换。',
+        t("m_17cb1bbb81"),
+        t("m_877d6420b9"),
         <>
           <Field
-            label="版权文字"
+            label={t("m_431c6a0a28")}
             value={footer.copyright}
             onChange={(v) => setFooter({ ...footer, copyright: v })}
           />
           <div className="settings-two-columns">
             <Field
-              label="ICP备案号"
+              label={t("m_6680f80de2")}
               value={footer.icp_text}
               onChange={(v) => setFooter({ ...footer, icp_text: v })}
             />
             <Field
-              label="ICP备案链接"
+              label={t("m_7780de5b86")}
               value={footer.icp_url}
               onChange={(v) => setFooter({ ...footer, icp_url: v })}
             />
             <Field
-              label="公安备案号"
+              label={t("m_438315a79b")}
               value={footer.police_text}
               onChange={(v) => setFooter({ ...footer, police_text: v })}
             />
             <Field
-              label="公安备案链接"
+              label={t("m_c07fe2fbd8")}
               value={footer.police_url}
               onChange={(v) => setFooter({ ...footer, police_url: v })}
             />
           </div>
           <ImageSetting
-            label="公安备案图标"
+            label={t("m_a182fef7bd")}
             value={footer.police_icon_url}
             onChange={(v) => setFooter({ ...footer, police_icon_url: v })}
             {...imageProps}
           />
           <p className="settings-hint">
-            备案文字留空可隐藏该项。图标地址留空时使用现有警徽。
-          </p>
+             {t("m_175acda91b")} </p>
         </>,
       )}
       {faviconPickerOpen && <ArticleMediaPicker
         onClose={() => setFaviconPickerOpen(false)}
         onSelect={(url) => setBrand((current: any) => ({ ...current, favicon_url: url }))}
       />}
-      <AdminWeatherCompanionSettings />
+      <section id="site-english" hidden={!['brand','hero','footer'].includes(activeSection)} className="site-english-section content-translation">
+        <h2 className="settings-translation-title">{t('站点内容 · 英文版')}</h2>
+        <TranslationFields type="site" id="1" source={{brand,hero,footer}} visibleGroups={activeSection === 'brand' ? ['brand','profile'] : [activeSection]}/>
+      </section>
+      <section hidden={activeSection !== 'now'} className="content-translation">
+        <h2 className="settings-translation-title">{t('当前近况 · 英文版')}</h2>
+        <TranslationFields type="now" id="1" source={now}/>
+      </section>
+      <div hidden={activeSection !== 'weather-companion'}><AdminWeatherCompanionSettings /></div>
     </div>
   );
 }

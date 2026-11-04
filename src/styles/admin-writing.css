@@ -12,7 +12,7 @@
 .writing-back { display:inline-flex; align-items:center; gap:4px; min-height:44px; flex:none; padding:0; border:0; background:transparent; color:var(--ui-text-muted); font-size:13px; line-height:20px; text-decoration:none; white-space:nowrap; cursor:pointer; }
 .writing-save-state { display:flex; align-items:center; min-width:0; min-height:44px; gap:6px; font-size:13px; line-height:20px; color:var(--ui-text-muted); }
 .writing-save-state .writing-save-dot { width:8px; height:8px; border-radius:50%; flex:none; background:var(--ui-text-muted); }
-.writing-status-full { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px; }
+.writing-status-full { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .writing-status-short { display:none; }
 .writing-save-state[data-state=saved] .writing-save-dot { background:var(--ui-ok); }
 .writing-save-state[data-state=error] .writing-save-dot { background:var(--ui-warn-text); }
@@ -98,7 +98,7 @@
 .writing-workspace > .article-published { padding:40px 24px; }
 @media(prefers-reduced-motion:no-preference) { .writing-spinner { animation:writing-spin 1s linear infinite; } .writing-ai-switch [data-slot=switch] > span { transition:transform 140ms ease; } @keyframes writing-spin { to { transform:rotate(360deg); } } }
 @media(max-width:900px) { :is(.writing-workspace,.writing-settings-sheet) :is(input:not(#article-title),textarea:not(#article-title)) { font-size:16px!important; } }
-@media(min-width:768px) and (max-width:1000px) { .writing-topbar { display:flex; justify-content:space-between; gap:12px; } .writing-status-full { max-width:70px; } .writing-topbar .admin-button { padding-inline:8px; } }
+@media(min-width:768px) and (max-width:1000px) { .writing-topbar { display:flex; justify-content:space-between; gap:12px; } .writing-topbar .admin-button { padding-inline:8px; } }
 @media(max-width:767px) {
  .writing-workspace { --writing-toolbar-top:calc(56px + env(safe-area-inset-top)); }
  .writing-topbar { display:flex; height:calc(56px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) 12px 0; gap:8px; }
@@ -205,3 +205,63 @@
 @media(max-width:900px) {
  :is(.writing-workspace,.writing-settings-sheet) .writing-settings-fields .writing-setting-section :is(input,textarea) { font-size:16px; }
 }
+
+/* Language controls distinguish interface preference from the article version. */
+.writing-interface-language { display:flex; align-items:center; gap:8px; flex:none; font-size:12px; color:var(--ui-text-muted); white-space:nowrap; }
+.writing-content-language { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding-block:16px; margin-bottom:16px; border-bottom:1px solid var(--border); }
+.writing-content-language-label { font-size:13px; font-weight:600; }
+.writing-version-state { display:flex; align-items:baseline; flex-wrap:wrap; flex:0 1 auto; margin-left:auto; min-width:0; font-size:13px; color:var(--ui-text-muted); overflow-wrap:anywhere; }
+.writing-language-submenu [role=menuitemradio],.writing-language-menu-entry { min-height:44px; }
+:is(.writing-workspace,.writing-settings-sheet) .writing-quality { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; }
+:is(.writing-workspace,.writing-settings-sheet) .writing-quality .writing-segment { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); width:100%; min-width:0; }
+:is(.writing-workspace,.writing-settings-sheet) .writing-quality .writing-segment button { min-width:0; padding-inline:4px; font-size:14px; white-space:nowrap; }
+.writing-settings,.writing-settings-sheet { overflow-x:hidden; }
+@media(min-width:768px) {
+ .admin-frame:has(.writing-workspace) .admin-main { overflow:hidden; }
+ .writing-workspace { height:100dvh; min-height:0; overflow:hidden; --writing-toolbar-top:136px; }
+ .account-shell:has(.writing-workspace) .account-content>.writing-workspace { min-height:0; }
+ .writing-workspace:has(>.article-published) { display:block; overflow-y:auto; }
+ .writing-main { height:100%; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; }
+ .writing-settings { position:static; height:100%; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+ .writing-topbar,.account-shell .writing-topbar { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:44px 68px; height:136px; padding:12px 20px; gap:0 12px; }
+ .writing-body { padding-top:0; }
+ .writing-topbar-meta { grid-column:1; grid-row:1; }
+ .writing-topbar-actions { grid-column:2; grid-row:1; }
+ .writing-mode-desktop { grid-column:1 / -1; grid-row:2; justify-self:center; align-self:end; }
+}
+@media(min-width:1280px) { .writing-language-menu-entry { display:none; } }
+@media(max-width:1279px) { .writing-interface-language { display:none; } }
+@media(max-width:767px) {
+ .writing-content-language { gap:8px 12px; margin-bottom:12px; }
+ .writing-version-state { flex-basis:100%; }
+}
+
+/* Controls have a visible boundary; informational status remains plain text. */
+.ui-v2 .writing-topbar .writing-secondary-action { border:1px solid var(--border); background:var(--background); }
+.ui-v2 .writing-topbar .writing-secondary-action:hover { background:var(--ui-fill); }
+.writing-workspace :is(.writing-mode-switch,.writing-content-language .writing-segment) button { gap:6px; }
+.writing-workspace :is(.writing-mode-switch,.writing-content-language .writing-segment) button[aria-pressed=true] { font-weight:600; color:var(--ui-text-body); }
+.writing-workspace :is(.writing-mode-switch,.writing-content-language .writing-segment) button[aria-pressed=true]::before { box-shadow:inset 0 0 0 1px var(--ui-text-muted); }
+.writing-version-label { color:var(--ui-text-muted); }
+.writing-version-label::after { content:' '; white-space:pre; }
+/* Editing fields, actions and explanatory notices have separate surfaces. */
+:is(.writing-workspace,.writing-settings-sheet) .writing-setting-section :is(label,h2),
+:is(.writing-workspace,.writing-settings-sheet) .writing-quality>span { color:var(--ui-text-body); font-weight:600; }
+:is(.writing-workspace,.writing-settings-sheet).ui-v2 .writing-setting-section :is(input,textarea),
+:is(.writing-workspace,.writing-settings-sheet) :is(.writing-tags,.writing-slug) { border:1px solid var(--border); background:var(--background); }
+:is(.writing-workspace,.writing-settings-sheet).ui-v2 .writing-setting-section :is(.writing-tags,.writing-slug) input { border:0; background:transparent; font-weight:400; }
+:is(.writing-workspace,.writing-settings-sheet) .writing-setting-section .ui-btn { border:1px solid var(--border); background:var(--background); }
+:is(.writing-workspace,.writing-settings-sheet) .writing-setting-section .ui-btn:disabled { background:var(--ui-fill); cursor:not-allowed; }
+:is(.writing-workspace,.writing-settings-sheet) .writing-cover-drop { border:1px dashed var(--ui-text-muted); background:var(--background); }
+:is(.writing-workspace,.writing-settings-sheet) .writing-address-toggle { padding-inline:12px; }
+.writing-summary-actions { flex-direction:column; align-items:stretch; gap:12px; }
+.writing-summary-actions .writing-ai-switch { justify-content:flex-start; gap:8px; font-weight:500; }
+.writing-ai-help a { text-decoration:underline; text-underline-offset:3px; font-weight:600; }
+.writing-setting-section .status-notice p { font-size:14px; color:var(--ui-text-body); }
+.writing-workspace .writing-source-toggle button { min-height:44px; padding:0 12px; border:1px solid var(--border); border-radius:8px; background:var(--background); color:var(--ui-text-body); }
+.ui-v2 .writing-topbar .writing-secondary-action.ui-btn--icon { min-width:44px; width:44px; }
+.writing-workspace :is(.writing-mode-switch,.writing-content-language .writing-segment) button:focus-visible { outline-offset:0; }
+.writing-workspace :is(.writing-mode-switch,.writing-content-language .writing-segment) button:focus-visible::before { box-shadow:none; }
+.writing-workspace .mooncci-tiptap-editor[data-writing-toolbar=true] .tiptap-toolbar .tiptap-button::before { border:1px solid var(--border); background:var(--background); }
+.writing-workspace .mooncci-tiptap-editor[data-writing-toolbar=true] .tiptap-toolbar .tiptap-button:not(:disabled):is(:hover,[data-active-state=on])::before { background:var(--ui-fill-strong); border-color:var(--ui-text-muted); }
+@media(max-width:767px) { .writing-version-state { margin-left:0; } }

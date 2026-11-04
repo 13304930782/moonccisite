@@ -1,3 +1,4 @@
+import {useI18n} from '@/app/i18n';
 "use client"
 
 import { forwardRef, useCallback } from "react"
@@ -77,6 +78,7 @@ export const TextAlignButton = forwardRef<
     },
     ref
   ) => {
+ const {t}=useI18n();
     const { editor } = useTiptapEditor(providedEditor)
     const {
       isVisible,
@@ -127,7 +129,7 @@ export const TextAlignButton = forwardRef<
         {children ?? (
           <>
             <RenderIcon className="tiptap-button-icon" />
-            {text && <span className="tiptap-button-text">{text}</span>}
+            {text && <span className="tiptap-button-text">{t(text)}</span>}
             {showShortcut && (
               <TextAlignShortcutBadge
                 align={align}

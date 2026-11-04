@@ -7,7 +7,7 @@ const {chromium}=require('playwright');
  let browser;
  try{
   browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
-  const page=await browser.newPage({reducedMotion:'reduce'}),errors=[],requests=[];
+  const page=await browser.newPage({locale:'zh-CN',reducedMotion:'reduce'}),errors=[],requests=[];
   page.on('pageerror',error=>errors.push(error.message));
   const title='A'.repeat(160),content='## '+title+'\n\n正文\n\n```js\nconst x = "'+title.repeat(4)+'";\n```\n\n![图片](data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1200" height="200"%3E%3C/svg%3E)';
   let failPosts=false;

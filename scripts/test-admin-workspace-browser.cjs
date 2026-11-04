@@ -8,7 +8,7 @@ const { chromium } = require('playwright');
   let browser;
   try {
     browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
-    const page = await browser.newPage({ reducedMotion: 'reduce' });
+    const page = await browser.newPage({locale:'zh-CN', reducedMotion: 'reduce' });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.route('**/api/**', async route => {

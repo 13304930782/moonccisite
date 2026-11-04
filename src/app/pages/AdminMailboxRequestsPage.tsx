@@ -1,5 +1,7 @@
+import { useI18n } from '../i18n';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+
+import {Link} from '../components/LocaleLink';
 import { ArrowLeft, ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
 import { AdminError, AdminLoading } from '../components/admin/AdminState';
 import { api } from '../lib/api';
@@ -17,6 +19,7 @@ const tabs: { value: Status; label: string }[] = [
 const label = (status: Status) => tabs.find(tab => tab.value === status)?.label || status;
 
 export default function AdminMailboxRequestsPage() {
+  const { locale,  t } = useI18n();
   const [status, setStatus] = useState<Status>('all');
   const [searchText, setSearchText] = useState('');
   const [query, setQuery] = useState('');
@@ -41,7 +44,7 @@ export default function AdminMailboxRequestsPage() {
       const data: Result = await api(`/mailboxes/admin/requests?${params}`);
       if (sequence === loadSequence.current) setResult(data);
     } catch (error: any) {
-      if (sequence === loadSequence.current) setLoadError(error.message || '申请列表加载失败。');
+      if (sequence === loadSequence.current) setLoadError(error.message || t("m_2fb5051c8d"));
     } finally {
       if (sequence === loadSequence.current) setLoading(false);
     }
@@ -59,7 +62,7 @@ export default function AdminMailboxRequestsPage() {
     if (!confirm) return;
     const dailyLimit = unlimited ? 0 : Number(limitInput);
     if ((confirm.action === 'approve' || confirm.action === 'limit') && (!Number.isInteger(dailyLimit) || dailyLimit < 0 || dailyLimit > 1000 || (!unlimited && dailyLimit < 1))) {
-      setNotice('请输入 1–1000 的每日额度，或选择“不设上限”。'); return;
+      setNotice(t("m_fd9d45ea27")); return;
     }
     setBusy(true); setNotice('');
     try {
@@ -72,44 +75,44 @@ export default function AdminMailboxRequestsPage() {
         setNotice(response.message);
       }
       setConfirm(null); await load();
-    } catch (error: any) { setNotice(error.message || '操作失败，请刷新后重试。'); await load().catch(() => {}); }
+    } catch (error: any) { setNotice(error.message || t("m_cac66dd7c5")); await load().catch(() => {}); }
     finally { setBusy(false); }
   };
   const confirmItems = confirm?.ids.map(id => result?.requests.find(item => item.user_id === id)).filter(Boolean) as Request[] | undefined;
   return <main className="mailbox-review-page">
-    <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>邮箱申请与权限</h1>
-      <p>审核新申请，管理已开通邮箱的发信额度与权限。</p></div>
-      <Link className="mailbox-review-link" to="/admin/mailbox"><ArrowLeft size={16} aria-hidden="true" />返回我的邮箱</Link></header>
-    {notice && <p role="status" aria-live="polite" className="mailbox-notice">{notice}</p>}
-    <nav className="mailbox-review-tabs" aria-label="申请状态">{tabs.map(tab => <button key={tab.value} type="button" aria-current={status === tab.value ? 'page' : undefined}
-      onClick={() => chooseStatus(tab.value)}>{tab.label}<span>{tab.value === 'all' ? Object.values(result?.counts || {}).reduce((sum, count) => sum + count, 0) : result?.counts?.[tab.value] || 0}</span></button>)}</nav>
-    <section className="mailbox-panel mailbox-review-panel" aria-label="邮箱申请列表">
-      <div className="mailbox-review-toolbar"><form onSubmit={search} role="search"><label className="sr-only" htmlFor="mailbox-review-search">搜索申请</label>
-        <Search size={17} aria-hidden="true" /><input id="mailbox-review-search" value={searchText} onChange={event => setSearchText(event.target.value)} placeholder="搜索用户名、邮箱或地址" />
-        <button className="mailbox-secondary">搜索</button></form><button className="mailbox-secondary" type="button" disabled={loading || busy} onClick={() => void load()}><RefreshCw size={16} aria-hidden="true" />刷新</button></div>
-      {selected.length > 0 && <div className="mailbox-selection-bar"><span>已选择 {selected.length} 项</span>
-        <button className="mailbox-primary" disabled={busy} onClick={() => openApproval(selected)}>批准并开通</button>
-        <button className="mailbox-secondary" disabled={busy} onClick={() => setConfirm({ ids: selected, action: 'reject' })}>拒绝</button>
-        <button className="mailbox-text-button" onClick={() => setSelected([])}>清除选择</button></div>}
-      {confirm && <div ref={confirmRef} className="mailbox-confirm" role="group" aria-label="确认审核操作"><strong>{confirm.action === 'approve' ? `确认批准 ${confirm.ids.length} 项申请？` : confirm.action === 'reject' ? `确认拒绝 ${confirm.ids.length} 项申请？` : confirm.action === 'limit' ? '设置每日发信额度' : '确认停用网页发信权限？'}</strong>
-        <p>{confirm.action === 'approve' ? '批准后会进入邮局开通队列。' : confirm.action === 'limit' ? '新额度保存后立即用于网站发信。' : confirm.action === 'revoke' ? '只撤销网站发信权限，宝塔邮箱账号需单独管理。' : '被拒绝的用户可以修改后重新申请。'}</p>
+    <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>{t("m_41f3c254fe")}</h1>
+      <p>{t("m_8152ddc63f")}</p></div>
+      <Link className="mailbox-review-link" to="/admin/mailbox"><ArrowLeft size={16} aria-hidden="true" />{t("m_75936108bd")}</Link></header>
+    {notice && <p role="status" aria-live="polite" className="mailbox-notice">{t(notice)}</p>}
+    <nav className="mailbox-review-tabs" aria-label={t("m_9dd3ccef49")}>{tabs.map(tab => <button key={tab.value} type="button" aria-current={status === tab.value ? 'page' : undefined}
+      onClick={() => chooseStatus(tab.value)}>{t(tab.label)}<span>{tab.value === 'all' ? Object.values(result?.counts || {}).reduce((sum, count) => sum + count, 0) : result?.counts?.[tab.value] || 0}</span></button>)}</nav>
+    <section className="mailbox-panel mailbox-review-panel" aria-label={t("m_d4c14ecb34")}>
+      <div className="mailbox-review-toolbar"><form onSubmit={search} role="search"><label className="sr-only" htmlFor="mailbox-review-search">{t("m_bccf631e99")}</label>
+        <Search size={17} aria-hidden="true" /><input id="mailbox-review-search" value={searchText} onChange={event => setSearchText(event.target.value)} placeholder={t("m_977700549d")} />
+        <button className="mailbox-secondary">{t("m_44ce7ae909")}</button></form><button className="mailbox-secondary" type="button" disabled={loading || busy} onClick={() => void load()}><RefreshCw size={16} aria-hidden="true" />{t("m_aee8874341")}</button></div>
+      {selected.length > 0 && <div className="mailbox-selection-bar"><span>{t("m_3f4ebc4aad")} {selected.length}  {t("m_49ccde43a1")}</span>
+        <button className="mailbox-primary" disabled={busy} onClick={() => openApproval(selected)}>{t("m_a484f1969e")}</button>
+        <button className="mailbox-secondary" disabled={busy} onClick={() => setConfirm({ ids: selected, action: 'reject' })}>{t("m_136de7a8c4")}</button>
+        <button className="mailbox-text-button" onClick={() => setSelected([])}>{t("m_5288519d85")}</button></div>}
+      {confirm && <div ref={confirmRef} className="mailbox-confirm" role="group" aria-label={t("m_4b397f31f2")}><strong>{confirm.action === 'approve' ? t("m_c4993e9643", {v0: confirm.ids.length}) : confirm.action === 'reject' ? t("m_13f470c6d9", {v0: confirm.ids.length}) : confirm.action === 'limit' ? t("m_18fd3a75f0") : t("m_6c6d9857b9")}</strong>
+        <p>{confirm.action === 'approve' ? t("m_a59f42f827") : confirm.action === 'limit' ? t("m_546b283526") : confirm.action === 'revoke' ? t("m_4cef685c80") : t("m_82a432f561")}</p>
         <p className="mailbox-confirm-addresses">{confirmItems?.map(item => `${item.requested_local_part}@mooncci.site`).join('、')}</p>
-        {(confirm.action === 'approve' || confirm.action === 'limit') && <div className="mailbox-limit-editor"><label htmlFor="mailbox-daily-limit">每日发信上限</label><input id="mailbox-daily-limit" type="number" min="1" max="1000" step="1" inputMode="numeric" value={limitInput} disabled={unlimited || busy} onChange={event => setLimitInput(event.target.value)} /><span>封</span><label className="mailbox-unlimited"><input type="checkbox" checked={unlimited} disabled={busy} onChange={event => setUnlimited(event.target.checked)} />不设上限</label></div>}
-        <div><button className="mailbox-primary" disabled={busy} onClick={() => void act()}>{busy ? '处理中…' : '确认操作'}</button><button className="mailbox-secondary" disabled={busy} onClick={() => setConfirm(null)}>取消</button></div></div>}
-      {loading ? <AdminLoading label="正在读取申请…" /> : loadError ? <AdminError message={loadError} onRetry={() => void load()} /> : !result?.requests.length ? <div className="mailbox-review-empty"><strong>{query ? '没有找到匹配的邮箱' : status === 'pending' ? '目前没有待审核申请' : '暂无邮箱申请'}</strong>
-        <p>{query ? '可以调整搜索词，或切换状态查看。' : status === 'pending' ? '新的申请会出现在这里。' : '申请提交后会显示在此列表。'}</p>
-        {status === 'pending' && (result?.counts.active || 0) > 0 && <button type="button" className="mailbox-secondary" onClick={() => chooseStatus('active')}>查看已开通邮箱</button>}</div> : <>
-        <div className="mailbox-review-table-head"><label className="mailbox-review-check">{pending.length > 0 && <input type="checkbox" aria-label="选择当前页待审核申请" checked={allPendingSelected}
-          onChange={() => setSelected(allPendingSelected ? [] : pending.map(item => item.user_id))} />}</label><span>申请地址 / 用户</span><span>用途</span><span>状态 / 时间</span><span>操作</span></div>
+        {(confirm.action === 'approve' || confirm.action === 'limit') && <div className="mailbox-limit-editor"><label htmlFor="mailbox-daily-limit">{t("m_ae26b58f32")}</label><input id="mailbox-daily-limit" type="number" min="1" max="1000" step="1" inputMode="numeric" value={limitInput} disabled={unlimited || busy} onChange={event => setLimitInput(event.target.value)} /><span>{t("m_fabe7310ec")}</span><label className="mailbox-unlimited"><input type="checkbox" checked={unlimited} disabled={busy} onChange={event => setUnlimited(event.target.checked)} />{t("m_b94cae1341")}</label></div>}
+        <div><button className="mailbox-primary" disabled={busy} onClick={() => void act()}>{busy ? t("m_d3d21191f3") : t("m_f8347f9a9d")}</button><button className="mailbox-secondary" disabled={busy} onClick={() => setConfirm(null)}>{t("m_2cd0f3be87")}</button></div></div>}
+      {loading ? <AdminLoading label={t("m_f1f2f12bd8")} /> : loadError ? <AdminError message={t(loadError || '')} onRetry={() => void load()} /> : !result?.requests.length ? <div className="mailbox-review-empty"><strong>{query ? t("m_a76fddcc77") : status === 'pending' ? t("m_21d91e9da1") : t("m_b23407c9f1")}</strong>
+        <p>{query ? t("m_7fdf438407") : status === 'pending' ? t("m_5d33ba93bf") : t("m_a3ed97856b")}</p>
+        {status === 'pending' && (result?.counts.active || 0) > 0 && <button type="button" className="mailbox-secondary" onClick={() => chooseStatus('active')}>{t("m_9082cce3f2")}</button>}</div> : <>
+        <div className="mailbox-review-table-head"><label className="mailbox-review-check">{pending.length > 0 && <input type="checkbox" aria-label={t("m_e25c93aaa1")} checked={allPendingSelected}
+          onChange={() => setSelected(allPendingSelected ? [] : pending.map(item => item.user_id))} />}</label><span>{t("m_ca630a7c52")}</span><span>{t("m_05b36669c4")}</span><span>{t("m_4e78d5108b")}</span><span>{t("m_ed31fbb483")}</span></div>
         <div className="mailbox-review-rows">{result.requests.map(item => <article className="mailbox-review-row" key={item.user_id}>
-          <label className="mailbox-review-check">{item.status === 'pending' && <input type="checkbox" aria-label={`选择 ${item.requested_local_part}@mooncci.site`} checked={selected.includes(item.user_id)} onChange={() => toggle(item.user_id)} />}</label>
+          <label className="mailbox-review-check">{item.status === 'pending' && <input type="checkbox" aria-label={t("m_a33ac02000", {v0: item.requested_local_part})} checked={selected.includes(item.user_id)} onChange={() => toggle(item.user_id)} />}</label>
           <div className="mailbox-review-identity"><strong>{item.requested_local_part}@mooncci.site</strong><span>{item.username} · {item.account_email}</span></div>
-          <p title={item.reason}>{item.reason}</p><div className="mailbox-review-meta"><span className="mailbox-review-status">{label(item.status)}</span>{item.status === 'active' && <span>{item.daily_limit === 0 ? '不设上限' : `每日 ${item.daily_limit} 封`}</span>}<time dateTime={item.created_at}>{new Date(item.created_at).toLocaleDateString('zh-CN')}</time></div>
-          <div className="mailbox-review-actions">{item.status === 'pending' && <><button type="button" onClick={() => openApproval([item.user_id])}>批准</button><button type="button" onClick={() => setConfirm({ ids: [item.user_id], action: 'reject' })}>拒绝</button></>}
-            {item.status === 'active' && <><button type="button" onClick={() => openLimit(item)}>设置额度</button><button type="button" onClick={() => setConfirm({ ids: [item.user_id], action: 'revoke' })}>停用发信</button></>}</div>
+          <p title={item.reason}>{item.reason}</p><div className="mailbox-review-meta"><span className="mailbox-review-status">{label(item.status)}</span>{item.status === 'active' && <span>{item.daily_limit === 0 ? t("m_b94cae1341") : t("m_5e1f03d40e", {v0: item.daily_limit})}</span>}<time dateTime={item.created_at}>{new Date(item.created_at).toLocaleDateString(locale,{timeZone:'Asia/Shanghai'})}</time></div>
+          <div className="mailbox-review-actions">{item.status === 'pending' && <><button type="button" onClick={() => openApproval([item.user_id])}>{t("m_8cbe697b15")}</button><button type="button" onClick={() => setConfirm({ ids: [item.user_id], action: 'reject' })}>{t("m_136de7a8c4")}</button></>}
+            {item.status === 'active' && <><button type="button" onClick={() => openLimit(item)}>{t("m_18262eecb2")}</button><button type="button" onClick={() => setConfirm({ ids: [item.user_id], action: 'revoke' })}>{t("m_334cf6d667")}</button></>}</div>
         </article>)}</div></>}
-      {!loading && !loadError && !!result && result.total > result.limit && <footer className="mailbox-review-pagination"><span>共 {result.total} 项 · 第 {result.page} 页</span><div><button className="mailbox-secondary" disabled={page <= 1} onClick={() => setPage(value => value - 1)}><ChevronLeft size={16} aria-hidden="true" />上一页</button>
-        <button className="mailbox-secondary" disabled={page * result.limit >= result.total} onClick={() => setPage(value => value + 1)}>下一页<ChevronRight size={16} aria-hidden="true" /></button></div></footer>}
+      {!loading && !loadError && !!result && result.total > result.limit && <footer className="mailbox-review-pagination"><span>{t("m_76e547a8fa")} {result.total}  {t("m_6c7d685285")} {result.page}  {t("m_d24d3c9946")}</span><div><button className="mailbox-secondary" disabled={page <= 1} onClick={() => setPage(value => value - 1)}><ChevronLeft size={16} aria-hidden="true" />{t("m_c9b9ae7a61")}</button>
+        <button className="mailbox-secondary" disabled={page * result.limit >= result.total} onClick={() => setPage(value => value + 1)}>{t("m_8a8542f696")}<ChevronRight size={16} aria-hidden="true" /></button></div></footer>}
     </section>
   </main>;
 }

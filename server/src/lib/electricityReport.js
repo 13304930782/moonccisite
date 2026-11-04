@@ -156,18 +156,19 @@ function reportFields(report) {
     ['预计可用天数', `${number(m.estimatedDaysRemaining, 1)} 天`],
   ];
 }
-function mailFields(report) {
+function mailFields(report,locale='zh-CN') {
+  const t=(zh,en)=>locale==='en'?en:zh;
   const s = report.snapshot || {}, m = report.metrics || {};
   const quantity = (value, unit, digits = 2) => finiteNumber(value) === null
-    ? '未提供' : `${number(value, digits)} ${unit}`;
+    ? t('未提供','Not available') : `${number(value, digits)} ${unit}`;
   return [
-    ['总余量', quantity(s.totalRemaining, 'kWh')],
-    ['已购 / 补贴余量', `${quantity(s.purchasedRemaining, 'kWh')} / ${quantity(s.subsidyRemaining, 'kWh')}`],
-    ['今日用电（截至采集时）', quantity(s.todayUse, 'kWh')],
-    ['预计可用', finiteNumber(m.estimatedDaysRemaining) === null
-      ? '暂不可估算'
-      : `${number(m.estimatedDaysRemaining, 1)} 天（按零点数据估算）`],
-    ['采集时间', timestamp(s.recordedAt)],
+    [t('总余量','Total remaining'), quantity(s.totalRemaining, 'kWh')],
+    [t('已购 / 补贴余量','Purchased / subsidized'), `${quantity(s.purchasedRemaining, 'kWh')} / ${quantity(s.subsidyRemaining, 'kWh')}`],
+    [t('今日用电（截至采集时）','Today’s usage (at collection)'), quantity(s.todayUse, 'kWh')],
+    [t('预计可用','Estimated time remaining'), finiteNumber(m.estimatedDaysRemaining) === null
+      ? t('暂不可估算','Not enough data')
+      : `${number(m.estimatedDaysRemaining, 1)} ${t('天（按零点数据估算）','days (estimated from midnight readings)')}`],
+    [t('采集时间','Collected at'), timestamp(s.recordedAt)==='未知'?t('未知','Unknown'):timestamp(s.recordedAt)],
   ];
 }
 function rssDate(value) {

@@ -1,9 +1,12 @@
+import { useI18n } from '../i18n';
 import { useMoonTheme } from '../context/ThemeContext';
 import { brandText } from '../lib/brand';
-import { Link } from 'react-router-dom';
+
+import {Link} from './LocaleLink';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { safeHref, safeImageSrc } from '../lib/safeUrl';
 export function SiteFooter() {
+  const { t } = useI18n();
   const { theme } = useMoonTheme();
   const { data: settings } = useSiteSettings();
   const footer = settings?.footer || {};
@@ -14,19 +17,19 @@ export function SiteFooter() {
           <Link className="site-brand" to="/">
             mooncci
           </Link>
-          <nav className="footer-links" aria-label="页脚导航">
-            <Link to="/about">关于我</Link>
-            <Link to="/links">友情链接</Link>
-            <Link to="/archives">文章归档</Link>
-            <Link to="/rss">RSS 订阅</Link>
-            <Link to="/mail-setup">邮箱设置</Link>
-            <Link to="/node-monitor">节点监控</Link>
-            <a href="https://status.mooncci.site" target="_blank" rel="noopener noreferrer">服务状态</a>
+          <nav className="footer-links" aria-label={t("m_a512b3fc5b")}>
+            <Link to="/about">{t("m_89ae6c0fdf")}</Link>
+            <Link to="/links">{t("m_c2a2f8293d")}</Link>
+            <Link to="/archives">{t("m_aa226b33b3")}</Link>
+            <Link to="/rss">{t("m_26ef7656f4")}</Link>
+            <Link to="/mail-setup">{t("m_ce3687817c")}</Link>
+            <Link to="/node-monitor">{t("m_07e96c1e12")}</Link>
+            <a href="https://status.mooncci.site" target="_blank" rel="noopener noreferrer">{t("m_e8a4f7c09d")}</a>
           </nav>
         </div>
         <div className="footer-status">
           <iframe
-            title="mooncci 实时服务状态"
+            title={t("m_8bdc2dbf19")}
             src={`https://status.mooncci.site/badge?theme=${theme}`}
             width="250"
             height="30"

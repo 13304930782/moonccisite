@@ -17,6 +17,7 @@ const {
 } = require('../lib/earlyAccessRelease');
 
 const router = require('../lib/asyncRouter')();
+router.use('/translations', require('./contentTranslations').createContentTranslations({readSettingsSource:async type=>type==='site'?{brand:await getSetting('brand',defaultBrand),profile:await getSetting('profile',defaultProfile),hero:await getSetting('hero',defaultHero),footer:await getSetting('footer',defaultFooter)}:require('../lib/blogPages').readBlogPages(getSetting,defaultProfile)}));
 router.use('/festivals', require('./festivals'));
 const CUSTOM_MAIL_DAILY_LIMIT = Number(process.env.CUSTOM_MAIL_DAILY_LIMIT || 20);
 const configuredEarlyAccessUploadMaxMb = Number(process.env.EARLY_ACCESS_UPLOAD_MAX_MB || 512);
@@ -258,14 +259,14 @@ function normalizeBrandDisplay(brand,profile,hero,footer) {
   }
 }
 
-router.get('/site', async (_req, res) => {
+router.get('/site', async (req, res) => {
   const brand = await getSetting('brand', defaultBrand);
   const profile = await getSetting('profile', defaultProfile);
   const hero = await getSetting('hero', defaultHero);
   const footer = await getSetting('footer', defaultFooter);
 
   normalizeBrandDisplay(brand,profile,hero,footer);
-  res.json({ brand, profile, hero, footer });
+  res.json(await require('../lib/contentTranslations').localize(db,'site',{brand,profile,hero,footer},req.query.locale,{id:'1'}));
 });
 
 router.put('/site', authRequired, adminOnly, async (req, res) => {
@@ -435,17 +436,18 @@ router.post('/mail/test', authRequired, adminOnly, async (req, res) => {
     return res.status(400).json({ message: 'Please configure a notification recipient first.' });
   }
 
+  const mailLocale=await require('../lib/serverMessages').recipientLocale(db,config.notify_to);
   const result = await sendMail({
     channel, config,
     to: config.notify_to,
-    subject: '[mooncci] '+mailChannels.definitions[channel].label+'邮件发送测试',
+    subject: mailLocale==='en'?'[mooncci] '+channel+' email delivery test':'[mooncci] '+mailChannels.definitions[channel].label+'邮件发送测试',
     text: 'This is a test email from mooncci. If you receive it, mail notifications are configured correctly.',
-    html: renderBrandedEmail({
+    html: renderBrandedEmail({locale:mailLocale,
       eyebrow: 'mooncci / MAIL TEST',
-      title: mailChannels.definitions[channel].label+'发信测试',
-      intro: '如果你看到这封邮件，说明 SMTP 与接收提醒邮箱已经正确配置。',
-      paragraphs: ['订阅确认、周报、账户通知、评论审核、电量提醒与 PromptDock 申请使用统一的 mooncci 邮件样式。'],
-      callout: { title: '兼容性说明', body: '邮件使用 table 布局和内联样式，以兼容 Apple Mail、Gmail 与 Outlook。' },
+      title: mailLocale==='en'?channel+' email delivery test':mailChannels.definitions[channel].label+'发信测试',
+      intro: mailLocale==='en'?'Receiving this email confirms that SMTP and the notification recipient are configured.':'如果你看到这封邮件，说明 SMTP 与接收提醒邮箱已经正确配置。',
+      paragraphs: [mailLocale==='en'?'Subscriptions, digests, account notices, comments, electricity alerts and PromptDock applications share the mooncci email design.':'订阅确认、周报、账户通知、评论审核、电量提醒与 PromptDock 申请使用统一的 mooncci 邮件样式。'],
+      callout: { title: mailLocale==='en'?'Compatibility':'兼容性说明', body: mailLocale==='en'?'Emails use tables and inline styles for Apple Mail, Gmail and Outlook compatibility.':'邮件使用 table 布局和内联样式，以兼容 Apple Mail、Gmail 与 Outlook。' },
     }),
   });
 
@@ -483,7 +485,7 @@ router.post('/mail/send-custom', authRequired, adminOnly, async (req, res) => {
     }
 
     const [recipients] = await db.query(
-      'SELECT id FROM users WHERE email=? AND status="active" LIMIT 1',
+      'SELECT id,ui_locale FROM users WHERE email=? AND status="active" LIMIT 1',
       [to]
     );
 
@@ -505,7 +507,7 @@ router.post('/mail/send-custom', authRequired, adminOnly, async (req, res) => {
         to,
         subject,
         text: content,
-        html: renderBrandedEmail({
+        html: renderBrandedEmail({locale:recipient.ui_locale||'zh-CN',
           eyebrow: 'mooncci / MESSAGE',
           title: subject,
           paragraphs: [content],

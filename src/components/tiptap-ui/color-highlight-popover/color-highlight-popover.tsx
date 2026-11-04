@@ -1,3 +1,4 @@
+import { useI18n } from '../../../app/i18n';
 import { forwardRef, useMemo, useRef, useState } from "react"
 import { type Editor } from "@tiptap/react"
 
@@ -106,6 +107,7 @@ export function ColorHighlightPopoverContent({
   ]),
   useColorValue = false,
 }: ColorHighlightPopoverContentProps) {
+  const { t } = useI18n();
   const { handleRemoveHighlight } = useColorHighlight({ editor })
   const isMobile = useIsBreakpoint()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -148,7 +150,7 @@ export function ColorHighlightPopoverContent({
                     useColorValue ? color.colorValue : color.value
                   }
                   tooltip={color.label}
-                  aria-label={`${color.label} highlight color`}
+                  aria-label={t("m_49f7d0bdd4",{color:t(color.label)})}
                   tabIndex={index === selectedIndex ? 0 : -1}
                   data-highlighted={selectedIndex === index}
                   useColorValue={useColorValue}
@@ -160,8 +162,8 @@ export function ColorHighlightPopoverContent({
           <ButtonGroup>
             <Button
               onClick={handleRemoveHighlight}
-              aria-label="Remove highlight"
-              tooltip="Remove highlight"
+              aria-label={t("Remove highlight")}
+              tooltip={t("Remove highlight")}
               tabIndex={selectedIndex === colors.length ? 0 : -1}
               type="button"
               role="menuitem"
@@ -191,6 +193,7 @@ export function ColorHighlightPopover({
   onApplied,
   ...props
 }: ColorHighlightPopoverProps) {
+  const { t } = useI18n();
   const { editor } = useTiptapEditor(providedEditor)
   const [isOpen, setIsOpen] = useState(false)
   const { isVisible, canColorHighlight, isActive, label, Icon } =
@@ -217,7 +220,7 @@ export function ColorHighlightPopover({
           <Icon className="tiptap-button-icon" />
         </ColorHighlightPopoverButton>
       </PopoverTrigger>
-      <PopoverContent aria-label="Highlight colors">
+      <PopoverContent aria-label={t("Highlight colors")}>
         <ColorHighlightPopoverContent
           editor={editor}
           colors={colors}

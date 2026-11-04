@@ -6,7 +6,7 @@ const {chromium}=require('playwright');
  let browser,page;
  try{
   browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
-  page=await browser.newPage({viewport:{width:1440,height:950},reducedMotion:'reduce'});const errors=[];
+  page=await browser.newPage({locale:'zh-CN',viewport:{width:1440,height:950},reducedMotion:'reduce'});const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   const post={id:20,slug:'cities-skylines-2-basic-mods',title:'Cities Skylines 2 Mods',status:'published',content:'<!--mooncci-richtext:v1--><h1>1. Anarchy</h1><p>First mod</p><h2>2. Move It</h2>',tags:[],summary_mode:'manual',summary:'Mod guide',published_at:'2026-10-23T00:00:00Z'};
   let draft={id:'slug-fixture',version:1,post_id:20,post_status:'published',payload:{...post,slug:'old-mods'},updated_at:new Date().toISOString()},fail=false,slugCalls=0;

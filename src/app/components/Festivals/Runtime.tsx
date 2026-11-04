@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 import {Component, useEffect, useSyncExternalStore, type ComponentType, type ReactNode} from 'react';
 import {api} from '../../lib/api';
 import type {SlotName} from './Entry';
@@ -62,6 +63,7 @@ function start() {
 }
 const buttonStyle = {font:'inherit',color:'inherit',background:'transparent',border:0,minHeight:44,padding:'0 4px'};
 export default function Slot({name}: {name:SlotName}) {
+  const { t } = useI18n();
   const current = useSyncExternalStore(subscribe,() => state,() => empty);
   useEffect(() => name === 'global' ? start() : undefined,[name]);
   const {active,Theme,off,preview,effects} = current;
@@ -69,11 +71,11 @@ export default function Slot({name}: {name:SlotName}) {
     if (name !== 'global' || !effects || off) return;
     try {return installTheme(effects,!!active?.options.favicon);} catch {publish(empty);}
   },[name,effects,off,active?.options.favicon]);
-  if (name === 'global' && preview) return <><aside aria-label="节日预览" style={{position:'fixed',bottom:16,left:16,zIndex:1000,padding:'0 12px',borderRadius:12,background:'var(--background)',color:'var(--foreground)',boxShadow:'0 2px 12px #0003',fontSize:13}}>仅当前标签页预览 · {active?.label || '无装饰'} <button type="button" className="quiet-button" onClick={clearPreview}>退出预览</button></aside>{Theme && active && !off && <SafeTheme key={active.id}><Theme name="global" options={active.options} environment={environment}/></SafeTheme>}</>;
+  if (name === 'global' && preview) return <><aside aria-label={t("m_c16c907c20")} style={{position:'fixed',bottom:16,left:16,zIndex:1000,padding:'0 12px',borderRadius:12,background:'var(--background)',color:'var(--foreground)',boxShadow:'0 2px 12px #0003',fontSize:13}}>{t("m_342e5259b2")} {active?.label || t("m_761f2e01e4")} <button type="button" className="quiet-button" onClick={clearPreview}>{t("m_fc3d93776f")}</button></aside>{Theme && active && !off && <SafeTheme key={active.id}><Theme name="global" options={active.options} environment={environment}/></SafeTheme>}</>;
   if (!active) return null;
   if (name === 'footer') return <div data-halloween={active.id === 'halloween' ? 'footer' : undefined} className="site-container festival-controls" style={{fontSize:12,color:'var(--muted-foreground)',marginTop:12}}>
     <style>{'.festival-controls button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}'}</style>
-    {active.windowLabel ? `装饰仅在 ${active.windowLabel.replace(/\d{4}-(\d+)-(\d+)/g,(_,m,d) => `${Number(m)} 月 ${Number(d)} 日`).replace(' — ','至 ')}显示` : `${active.label}装饰`} · <button type="button" style={buttonStyle} onClick={() => {preferences.set(active.id,!off);try {localStorage.setItem(preference(active.id),off ? 'on' : 'off');} catch {} publish({...current,off:!off});window.dispatchEvent(new Event('mooncci:festivals-updated'));}}>{off ? '开启节日装饰' : '关闭节日装饰'}</button>
+    {active.windowLabel ? t("m_838e89d575", {v0: active.windowLabel.replace(/\d{4}-(\d+)-(\d+)/g,(_,m,d) => `${Number(m)} 月 ${Number(d)} 日`).replace(' — ',t("m_65edbf9f1c"))}) : t("m_705bb7d038", {v0: active.label})} · <button type="button" style={buttonStyle} onClick={() => {preferences.set(active.id,!off);try {localStorage.setItem(preference(active.id),off ? 'on' : 'off');} catch {} publish({...current,off:!off});window.dispatchEvent(new Event('mooncci:festivals-updated'));}}>{off ? t("m_e24f7d2b62") : t("m_a38fbb9e4b")}</button>
   </div>;
   const option = ({logo:'header',hat:'hat',home:'home',page:'pageAccent'} as Partial<Record<SlotName,string>>)[name];
   if (name === 'page' || off || !Theme || (option && !active.options[option])) return null;

@@ -1,12 +1,15 @@
+import { useI18n } from '../i18n';
 import '../../styles/content-discovery.css';
-import { Link } from 'react-router-dom';
+
+import {Link} from '../components/LocaleLink';
 import { SitePage, PageHeading, ResourceState, useResource } from '../components/ContentUI';
 export default function CategoriesPage() {
+  const { t } = useI18n();
   const resource = useResource('/posts/meta/categories');
   return (
     <SitePage className="discovery-page">
-      <PageHeading eyebrow="INDEX" title="内容分类">
-        <p>按主题探索文章。</p>
+      <PageHeading eyebrow="INDEX" title={t("m_01c4d76e3d")}>
+        <p>{t("m_1442263c42")}</p>
       </PageHeading>
       <ResourceState resource={resource}>
         <div className="project-grid">
@@ -17,11 +20,11 @@ export default function CategoriesPage() {
               to={` /category/${encodeURIComponent(item.category)}`.trim()}
             >
               <h3>{item.category} ↗</h3>
-              <p>{item.count} 篇文章</p>
+              <p>{item.count}  {t("m_9f115826f3")}</p>
             </Link>
           ))}
         </div>
-        {resource.data?.length === 0 && <p className="quiet-state">暂无内容。</p>}
+        {resource.data?.length === 0 && <p className="quiet-state">{t("m_e617151df8")}</p>}
       </ResourceState>
     </SitePage>
   );

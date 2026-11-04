@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import {createContext, useContext, createElement, type ReactNode} from 'react';
 import {richTextFragment} from '../lib/richText';
 import {dimensionsFor, type ImageDimensions} from '../lib/imageDimensions';
@@ -11,6 +12,7 @@ export function richTextHeadings(content: string, minHeadingLevel: 1 | 2 = 1) {
   return Array.from(richTextFragment(content).querySelectorAll('h1,h2,h3,h4,h5,h6')).flatMap((el,index) => Number(el.tagName[1]) <= 3 && el.textContent?.trim() ? [{id:`heading-${index}`,title:el.textContent.trim(),level:Math.max(minHeadingLevel, Number(el.tagName[1]))}] : []);
 }
 export function RichTextContent({content,headingPrefix,imageDimensions,minHeadingLevel=1}: {content:string;headingPrefix?:string;imageDimensions?:ImageDimensions;minHeadingLevel?:1|2}) {
+  const { t } = useI18n();
   const playback = useContext(EmbeddedPlayback);
   let heading = 0;
   function render(node: Node, key: number): ReactNode {
@@ -20,8 +22,8 @@ export function RichTextContent({content,headingPrefix,imageDimensions,minHeadin
     const props: Record<string,unknown> = {key};
     const videoId = el.getAttribute('data-youtube-id');
     if (tag === 'div' && videoId) return <figure className="rich-youtube" key={key}>
-      {playback ? <iframe src={youtubeEmbedUrl(videoId, Number(el.getAttribute('data-youtube-start')) || 0)} title="YouTube 视频" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/> : <div className="youtube-device-placeholder">YouTube 视频 · 请在阅读预览中播放</div>}
-      <figcaption><a href={`https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`} target="_blank" rel="noopener noreferrer">在 YouTube 观看 ↗</a></figcaption>
+      {playback ? <iframe src={youtubeEmbedUrl(videoId, Number(el.getAttribute('data-youtube-start')) || 0)} title={t("m_6b2ce6ac7f")} loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/> : <div className="youtube-device-placeholder">{t("m_d84e88e913")}</div>}
+      <figcaption><a href={`https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`} target="_blank" rel="noopener noreferrer">{t("m_72e7899eac")}</a></figcaption>
     </figure>;
     if (/^h[1-6]$/.test(tag)) { if(headingPrefix) props.id = `${headingPrefix}-${heading}`; heading++; }
     for (const attr of ['title','start','colspan','rowspan','data-type','data-checked']) if(el.hasAttribute(attr)) props[({colspan:'colSpan',rowspan:'rowSpan'} as Record<string,string>)[attr] || attr] = el.getAttribute(attr);
@@ -47,7 +49,7 @@ export function RichTextContent({content,headingPrefix,imageDimensions,minHeadin
     const children = renderNodes(Array.from(el.childNodes));
     if (tag === 'a' && youtubeVideoId(el.getAttribute('href') || '')) return <YouTubeLink key={key} href={el.getAttribute('href')!}>{children}</YouTubeLink>;
     if(tag === 'pre') { const code=el.querySelector('code'); return <CodeBlock key={key}><code className={code?.className}>{code?.textContent || el.textContent}</code></CodeBlock>; }
-    if(tag === 'table') return <div className="markdown-table-scroll" key={key} role="region" aria-label="文章表格" tabIndex={0}><table>{children}</table></div>;
+    if(tag === 'table') return <div className="markdown-table-scroll" key={key} role="region" aria-label={t("m_7c1e0d0ffe")} tabIndex={0}><table>{children}</table></div>;
     return createElement(/^h[1-6]$/.test(tag) ? `h${Math.max(minHeadingLevel, Number(tag[1]))}` : tag,props,children);
   }
   function renderNodes(nodes: Node[]): ReactNode[] {

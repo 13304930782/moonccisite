@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import {isRichText} from '../lib/richText';
 import {RichTextContent,richTextHeadings} from './RichTextContent';
 import {CodeBlock} from './CodeBlock';
@@ -6,6 +7,7 @@ import {youtubeVideoId} from '../lib/youtube';
 import { createElement } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from '../lib/remarkGfmRead';
+import remarkHtmlImages from '../lib/remarkHtmlImages';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { safeHref, safeImageSrc } from '../lib/safeUrl';
@@ -46,6 +48,7 @@ export function MarkdownContent({
   imageDimensions?: ImageDimensions;
   minHeadingLevel?: 1 | 2;
 }) {
+  const { t } = useI18n();
   if(isRichText(content)) return <RichTextContent content={content} headingPrefix={headingPrefix} minHeadingLevel={minHeadingLevel} imageDimensions={imageDimensions}/>;
   const heading =
     (level: number) =>
@@ -62,7 +65,7 @@ export function MarkdownContent({
   return (
     <div className="markdown-body">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkHtmlImages]}
         components={{
           pre: ({children}) => <CodeBlock>{children}</CodeBlock>,
           h1: heading(1),
@@ -97,7 +100,7 @@ export function MarkdownContent({
               className="markdown-table-scroll"
               tabIndex={0}
               role="region"
-              aria-label="文章表格"
+              aria-label={t("m_7c1e0d0ffe")}
             >
               <table>{children}</table>
             </div>

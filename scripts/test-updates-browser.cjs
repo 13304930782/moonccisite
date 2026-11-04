@@ -6,7 +6,7 @@ async function main() {
   let browser;
   try {
     browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
-    const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, hasTouch: true });
+    const page = await browser.newPage({locale:'zh-CN', viewport: { width: 1280, height: 800 }, hasTouch: true });
     page.setDefaultTimeout(15000);
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     const requests = []; page.on('request', req => requests.push(req.url()));

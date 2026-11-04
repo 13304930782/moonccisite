@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict');
 const {chromium}=require('playwright');
 async function main(){const {preview}=await import('vite');const server=await preview({preview:{host:'127.0.0.1',port:4197,strictPort:true}});let browser;
-try{browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});const page=await browser.newPage({viewport:{width:390,height:844}});let draft,offline=false,saves=0;const errors=[];page.on('pageerror',e=>errors.push(e.message));
+try{browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});const page=await browser.newPage({locale:'zh-CN',viewport:{width:390,height:844}});let draft,offline=false,saves=0;const errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.route('**/api/**',async route=>{const path=new URL(route.request().url()).pathname,method=route.request().method();let body={};
 if(path==='/api/auth/session')body={user:{id:1,username:'Writer',role:'owner'}};
 else if(path==='/api/upload/media')body={items:[{filename:'fixture.png',display_name:'测试图片',url:'/fixture.png',alt_text:''}],total:1};

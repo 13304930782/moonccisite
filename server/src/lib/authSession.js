@@ -26,6 +26,7 @@ function publicUser(user) {
     role: user.role,
     status: user.status,
     can_comment: user.can_comment,
+    ui_locale: user.ui_locale || 'zh-CN',
   };
 }
 

@@ -19,10 +19,11 @@ function publicPages(value){
  const rows=(key)=>sections[key]?extra[key].filter(x=>x.enabled).map(({enabled,...x})=>x):[];
  return {about:value.about.enabled?{...value.about,...extra,content:sections.story?value.about.content:'',technologies:sections.technologies?extra.technologies:[],activities:rows('activities'),timeline:rows('timeline'),social:sections.social?value.about.social.filter(x=>x.enabled).map(({enabled,...x})=>x):[]}:null,links:value.links.filter(x=>x.enabled).map(({enabled,...x})=>x)};
 }
-function attachBlogPages(router,{getSetting,saveSetting,authRequired,adminOnly,defaultProfile}){
- async function read(){const p=await getSetting('profile',defaultProfile);const value=await getSetting('blog_pages',{about:{enabled:true,name:p.name||'',intro:p.bio||'',avatar:p.avatar_url||'',content:'',social:[['GitHub',p.github_url],['Twitter',p.twitter_url]].filter(([,u])=>/^https?:\/\//.test(u||'')).map(([name,url])=>({name,url,enabled:true}))},links:[]});return {...value,about:{...value.about,...aboutExtras(value.about)}};}
- router.get('/blog-pages',async(_req,res)=>{res.setHeader('Cache-Control','no-store');res.json(publicPages(await read()));});
+async function readBlogPages(getSetting,defaultProfile){const p=await getSetting('profile',defaultProfile);const value=await getSetting('blog_pages',{about:{enabled:true,name:p.name||'',intro:p.bio||'',avatar:p.avatar_url||'',content:'',social:[['GitHub',p.github_url],['Twitter',p.twitter_url]].filter(([,u])=>/^https?:\/\//.test(u||'')).map(([name,url])=>({name,url,enabled:true}))},links:[]});return {...value,about:{...value.about,...aboutExtras(value.about)}};}
+function attachBlogPages(router,{getSetting,saveSetting,authRequired,adminOnly,defaultProfile,translationDb}){
+ const read=()=>readBlogPages(getSetting,defaultProfile);
+ router.get('/blog-pages',async(req,res)=>{res.setHeader('Cache-Control','no-store');const value=await require('./contentTranslations').localize(translationDb||require('../db'),'blog_pages',await read(),req.query?.locale,{id:'1'});res.json({...publicPages(value),content_locale:value.content_locale,available_locales:value.available_locales});});
  router.get('/blog-pages/manage',authRequired,adminOnly,async(_req,res)=>{res.setHeader('Cache-Control','no-store');res.json(await read());});
  router.put('/blog-pages',authRequired,adminOnly,async(req,res)=>{let value;try{const previous=await read();value=normalizePages({...req.body,about:{...previous.about,...req.body?.about}});}catch(e){return res.status(400).json({message:e.message});}await saveSetting('blog_pages',value);res.json({message:'已保存',...value});});
 }
-module.exports={normalizePages,publicPages,attachBlogPages};
+module.exports={normalizePages,publicPages,attachBlogPages,readBlogPages};

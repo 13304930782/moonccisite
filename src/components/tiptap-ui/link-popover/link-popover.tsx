@@ -1,3 +1,4 @@
+import { useI18n } from '../../../app/i18n';
 "use client"
 
 import { forwardRef, useCallback, useEffect, useState } from "react"
@@ -81,6 +82,7 @@ export interface LinkPopoverProps
  */
 export const LinkButton = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, children, ...props }, ref) => {
+  const { t } = useI18n();
     return (
       <Button
         type="button"
@@ -88,8 +90,8 @@ export const LinkButton = forwardRef<HTMLButtonElement, ButtonProps>(
         variant="ghost"
         role="button"
         tabIndex={-1}
-        aria-label="Link"
-        tooltip="Link"
+        aria-label={t("Link")}
+        tooltip={t("Link")}
         ref={ref}
         {...props}
       >
@@ -112,6 +114,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
   openLink,
   isActive,
 }) => {
+  const { t } = useI18n();
   const isMobile = useIsBreakpoint()
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -135,8 +138,8 @@ const LinkMain: React.FC<LinkMainProps> = ({
         <CardItemGroup orientation="horizontal">
           <Input
             type="url"
-            aria-label="链接地址"
-            placeholder="粘贴链接地址"
+            aria-label={t("m_b72d109230")}
+            placeholder={t("m_2dc71cc538")}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -151,7 +154,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
             <Button
               type="button"
               onClick={setLink}
-              title="应用链接"
+              title={t("m_213f5505bd")}
               disabled={!url && !isActive}
               variant="ghost"
             >
@@ -166,7 +169,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
               <Button
                 type="button"
                 onClick={openLink}
-                title="在新窗口打开"
+                title={t("m_b9d58d9dfc")}
                 disabled={!url && !isActive}
                 variant="ghost"
               >
@@ -178,7 +181,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
               <Button
                 type="button"
                 onClick={removeLink}
-                title="移除链接"
+                title={t("m_59d7e9820d")}
                 disabled={!url && !isActive}
                 variant="ghost"
               >

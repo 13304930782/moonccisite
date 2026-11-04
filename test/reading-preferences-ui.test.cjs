@@ -1,8 +1,9 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript'),{JSDOM}=require('jsdom');
 function loadTs(file,imports={}){
  const mod={exports:{}};
  const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
- new Function('require','module','exports',code)(id=>id.endsWith('.css')?{}:imports[id]||require(id),mod,mod.exports);return mod.exports;
+ new Function('require','module','exports',code)(id=>i18nFixture(id)?i18nFixture(id):id.endsWith('.css')?{}:imports[id]||require(id),mod,mod.exports);return mod.exports;
 }
 test('reading controls apply immediately, persist under the existing key, synchronize theme and restore defaults',async()=>{
  const dom=new JSDOM('<button id="reading-trigger">阅读设置</button><div id="host"></div>',{url:'http://localhost/article/17',pretendToBeVisual:true});

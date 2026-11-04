@@ -6,7 +6,7 @@ async function main() {
   let browser;
   try {
     browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
-    const page = await browser.newPage();
+    const page = await browser.newPage({locale:'zh-CN'});
     const errors = [], requests = [];
     page.on('pageerror', e => errors.push(e.message));
     let releaseSlow;

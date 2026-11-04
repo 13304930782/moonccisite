@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { startTransition, createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
 type MoonTheme = 'light' | 'dark';
@@ -47,14 +48,15 @@ export function useMoonTheme() {
   return value;
 }
 export function ThemeToggle({label}:{label?:string}={}) {
+  const { t } = useI18n();
   const { theme, toggleTheme } = useMoonTheme();
   return (
     <button
       className="icon-button"
       type="button"
       onClick={()=>{toggleTheme();window.dispatchEvent(new Event('mooncci:theme-toggle'));}}
-      aria-label={label|| (theme === 'light' ? '切换深色主题' : '切换浅色主题')}
-      title={theme === 'light' ? '切换深色主题' : '切换浅色主题'}
+      aria-label={label|| (theme === 'light' ? t("m_e75058317e") : t("m_1818ec7cb9"))}
+      title={theme === 'light' ? t("m_e75058317e") : t("m_1818ec7cb9")}
     >
       {theme === 'light' ? <Moon /> : <Sun />}
     </button>

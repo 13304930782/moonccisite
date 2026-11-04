@@ -57,7 +57,7 @@ router.post('/registration/email', limiter, emailLimiter, async (req, res) => {
   const [result] = await db.query('UPDATE oauth_registrations SET email=?,code_hash=?,code_expires_at=?,sent_at=?,attempts=0 WHERE token_hash=? AND expires_at>? AND sent_at<?', [email, codeHash, now + 600000, now, hash, now, now - 60000]);
   if (!result.affectedRows) return res.status(429).json({ message: '请间隔 60 秒再发送；授权过期时需重新登录。' });
   try {
-    const sent = await mailer.sendMail({ to: email, subject: '验证邮箱，完成注册', text: `你的邮箱验证码是 ${code}，10 分钟内有效。请在 mooncci 网站输入，完成第三方账号注册。如果不是你本人操作，请忽略此邮件。` });
+    const sent = await mailer.sendMail({ to: email, ...require('../lib/serverMessages').challenge('verifyRegistration',code,require('../lib/articleTranslations').locale(req.body.locale)) });
     if (!sent.sent) throw new Error('mail_unavailable');
     res.json({ message: '验证码已发送，10 分钟内有效。' });
   } catch {

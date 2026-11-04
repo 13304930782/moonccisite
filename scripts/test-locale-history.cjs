@@ -1,0 +1,47 @@
+const assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs/promises');
+const {chromium,webkit}=require('playwright');
+const source=`import React,{useState} from 'react';import {createRoot} from 'react-dom/client';
+import {createBrowserRouter,RouterProvider,useLocation,Link} from 'react-router-dom';
+import {LocaleProvider,useLocale} from './src/app/context/LocaleContext';
+function Probe(){const language=useLocale(),location=useLocation();const [value,setValue]=useState('');return <><output id="ui">{language.uiLocale}</output><output id="content">{language.contentLocale}</output><output id="path">{location.pathname}</output><input aria-label="draft" value={value} onChange={e=>setValue(e.target.value)}/><button onClick={()=>language.setLocale('en')}>English</button><button onClick={()=>language.setLocale('zh-CN')}>Chinese</button><button onClick={()=>language.setLocale('system')}>System</button><Link to="/article/a">A</Link><Link to="/article/b?search=preserve#heading">B</Link><Link to="/article/missing">Missing</Link><Link to="/admin/users">Admin</Link><a href={window.externalOrigin}>Outside</a></>}
+createRoot(document.getElementById('root')).render(<RouterProvider router={createBrowserRouter([{path:'*',element:<LocaleProvider><Probe/></LocaleProvider>}])}/>);`;
+(async()=>{
+ const build=await require('esbuild').build({stdin:{contents:source,loader:'tsx',resolveDir:process.cwd()},bundle:true,write:false,format:'iife',define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'isolated-services',setup(b){
+  b.onResolve({filter:/\/i18n$/},()=>({path:'messages',namespace:'fixture'}));
+  b.onResolve({filter:/\/DocumentData$/},()=>({path:'hydration',namespace:'fixture'}));
+  b.onResolve({filter:/\/lib\/api$/},()=>({path:'api',namespace:'fixture'}));
+  b.onLoad({filter:/.*/,namespace:'fixture'},a=>({contents:a.path==='messages'?'export const ensureMessages=async()=>{};':a.path==='hydration'?'export const useDocumentHydration=()=>undefined;':`export async function api(path){await new Promise(r=>setTimeout(r,path.includes('/a?')?40:5));if(path.includes('missing'))throw Error('unavailable');return {id:1};}`}));
+ }}]});
+ let origin;const external=http.createServer((req,res)=>res.end('<a href="'+origin+'/article/a">Enter site</a>'));await new Promise(r=>external.listen(0,'127.0.0.1',r));const externalOrigin='http://127.0.0.1:'+external.address().port;
+ const server=http.createServer((req,res)=>{if(req.url==='/app.js'){res.setHeader('Content-Type','text/javascript');res.end(build.outputFiles[0].text);}else if(req.url==='/external'){res.end('<a href="/article/a">Enter site</a>');}else res.end('<!doctype html><div id="root"></div><script>window.externalOrigin='+JSON.stringify(externalOrigin)+';window.addEventListener("pageshow",e=>sessionStorage.setItem("history-page-show",JSON.stringify({persisted:e.persisted,at:Date.now()})))</script><script src="/app.js"></script>');});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));origin='http://127.0.0.1:'+server.address().port;const records=[];
+ try{for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
+  const browser=await engine.launch({headless:true,ignoreDefaultArgs:['--disable-back-forward-cache'],...(name==='chromium'&&process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
+  try{const context=await browser.newContext({locale:'zh-CN',viewport:{width:375,height:812}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const check=async(path,ui='en')=>{await page.waitForURL(origin+path,{waitUntil:"commit"});await page.waitForFunction(locale=>document.querySelector('#ui')?.textContent===locale,ui);};
+  await page.goto(origin+'/article/a');await check('/article/a','zh-CN');
+  await page.getByText('B',{exact:true}).click();await page.getByRole('button',{name:'English',exact:true}).click();await check('/en/article/b?search=preserve');
+  const length=await page.evaluate(()=>history.length);
+  await page.goBack({waitUntil:"commit"});await check('/en/article/a');await page.goForward({waitUntil:"commit"});await check('/en/article/b?search=preserve');
+  records.push({engine:name,case:'A→B→English→Back→Forward',back:'/en/article/a',forward:'/en/article/b?search=preserve',pass:true});
+  for(const name of ['Chinese','English','Chinese','English'])await page.getByRole('button',{name,exact:true}).click();await check('/en/article/b?search=preserve');assert.equal(await page.evaluate(()=>history.length),length);
+  await page.goBack({waitUntil:"commit"});await check('/en/article/a');await page.goForward({waitUntil:"commit"});await check('/en/article/b?search=preserve');
+  await page.getByRole('button',{name:'Chinese',exact:true}).click();await check('/article/b?search=preserve','zh-CN');await page.goBack({waitUntil:"commit"});await check('/article/a','zh-CN');await page.goForward({waitUntil:"commit"});await check('/article/b?search=preserve','zh-CN');
+  records.push({engine:name,case:'reverse and repeated toggles preserve forward branch',pass:true});
+  await page.getByText('Admin',{exact:true}).click();await page.getByLabel('draft').fill('unsaved Chinese draft');await page.getByRole('button',{name:'English',exact:true}).click();await check('/admin/users');assert.equal(await page.getByLabel('draft').inputValue(),'unsaved Chinese draft');
+  await page.goBack({waitUntil:"commit"});await check('/en/article/b?search=preserve');await page.goForward({waitUntil:"commit"});await check('/admin/users');
+  await page.getByText('Missing',{exact:true}).click();await check('/article/missing');assert.equal(await page.locator('#content').textContent(),'zh-CN');
+  const shared=await context.newPage();await shared.goto(origin+'/article/a');await check('/article/missing');await shared.waitForFunction(()=>document.querySelector('#content')?.textContent==='zh-CN');assert.equal(new URL(shared.url()).pathname,'/article/a');await shared.close();
+  records.push({engine:name,case:'private form retained; missing translation and explicit shared link',pass:true});
+  await page.goto(externalOrigin);await page.getByText('Enter site').click();await page.getByRole('button',{name:'English',exact:true}).click();await check('/en/article/a');await page.goBack({waitUntil:"commit"});await page.waitForURL(externalOrigin+'/',{waitUntil:'commit'});const other=await context.newPage();await other.goto(origin+'/article/a');await other.getByRole('button',{name:'Chinese',exact:true}).click();await other.waitForFunction(()=>document.querySelector('#ui')?.textContent==='zh-CN');await other.close();await page.goForward({waitUntil:"commit"});await check('/article/a','zh-CN');
+  records.push({engine:name,case:'cross-origin Back/Forward restores latest choice changed in another tab',pass:true,bfcacheRestored:await page.evaluate(()=>JSON.parse(sessionStorage.getItem('history-page-show')||'{}').persisted===true)});
+  await page.evaluate(()=>{localStorage.setItem('mooncci:language',JSON.stringify({preference:'en',version:Date.now()+10000}));window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));});await check('/en/article/a');
+  records.push({engine:name,case:'simulated BFCache pageshow re-reads newer preference',pass:true});
+  assert.deepEqual(errors,[]);await context.close();
+  const auto=await browser.newContext({locale:'en-US'}),automatic=await auto.newPage();await automatic.goto(origin+'/article/a');await automatic.waitForFunction(()=>document.querySelector('#ui')?.textContent==='en');assert.equal(new URL(automatic.url()).pathname,'/article/a','initial explicit share retains Chinese content');await automatic.getByText('B',{exact:true}).click();await automatic.waitForURL(origin+'/en/article/b?search=preserve');await automatic.goBack({waitUntil:'commit'});await automatic.waitForURL(origin+'/en/article/a');await automatic.goForward({waitUntil:'commit'});await automatic.waitForURL(origin+'/en/article/b?search=preserve');records.push({engine:name,case:'system English with no stored choice: explicit initial Chinese share, then Back/Forward use English',pass:true});await auto.close();
+  const blocked=await browser.newContext({locale:'zh-TW'});await blocked.addInitScript(()=>{Object.defineProperty(window,'localStorage',{get(){throw new DOMException('Blocked','SecurityError')}});Object.defineProperty(window,'sessionStorage',{get(){throw new DOMException('Blocked','SecurityError')}})});const memory=await blocked.newPage();await memory.goto(origin+'/article/a');await memory.getByText('B',{exact:true}).click();await memory.getByRole('button',{name:'English',exact:true}).click();await memory.waitForURL(origin+'/en/article/b?search=preserve');await memory.evaluate(()=>{for(const title of ['Chinese','English','Chinese','English'])Array.from(document.querySelectorAll('button')).find(el=>el.textContent===title).click()});await memory.waitForFunction(()=>document.querySelector('#ui')?.textContent==='en');await memory.goBack({waitUntil:'commit'});await memory.waitForURL(origin+'/en/article/a');records.push({engine:name,case:'blocked storage and rapid toggles preserve latest in-memory choice on Back',pass:true});await blocked.close();
+
+  }finally{await browser.close();}
+ }}finally{server.close();external.close();await fs.mkdir('.cache',{recursive:true});await fs.writeFile('.cache/locale-history-results.json',JSON.stringify(records,null,2));}
+ console.log(JSON.stringify(records,null,2));
+})().catch(e=>{console.error(e);process.exitCode=1;});

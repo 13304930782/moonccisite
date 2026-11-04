@@ -1,6 +1,8 @@
+import { useI18n } from '../i18n';
 import { notify } from '../lib/feedback';
 import { FormEvent, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+
+import {Link} from '../components/LocaleLink';
 import { PenLine, Send, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -32,6 +34,7 @@ function getRoleName(role?: string) {
 }
 
 export default function EditorApplyPage() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState('');
@@ -45,17 +48,17 @@ export default function EditorApplyPage() {
     event.preventDefault();
 
     if (!user) {
-      setMessage('请先登录后再提交申请');
+      setMessage(t("m_b54de79265"));
       return;
     }
 
     if (canWrite(user.role)) {
-      setMessage('你当前已经拥有写作权限，无需提交编辑申请。');
+      setMessage(t("m_f9a5222d13"));
       return;
     }
 
     if (!reason.trim()) {
-      setMessage('请简单说明你申请成为编辑的原因');
+      setMessage(t("m_a3623909ea"));
       return;
     }
 
@@ -68,10 +71,10 @@ export default function EditorApplyPage() {
         body: JSON.stringify({ reason }),
       });
 
-      notify.success(res.message || '申请已提交，请等待管理员审核');
+      notify.success(res.message || t("m_5a4423372d"));
       setReason('');
     } catch (err: any) {
-      setMessage(err.message || '申请提交失败'); notify.error(err.message || '申请提交失败');
+      setMessage(err.message || t("m_2084657131")); notify.error(err.message || t("m_2084657131"));
     } finally {
       setLoading(false);
     }
@@ -80,32 +83,32 @@ export default function EditorApplyPage() {
   return (
     <section className="max-w-2xl">
       <div className="admin-overview-head">
-        <p className="eyebrow">参与写作</p>
-        <h1>申请成为编辑</h1>
-        <p>{getRoleTip(user?.role)}</p>
+        <p className="eyebrow">{t("m_9cf0c16d11")}</p>
+        <h1>{t("m_6ef4c0ce0a")}</h1>
+        <p>{t(getRoleTip(user?.role))}</p>
       </div>
       <p className="muted text-sm">
-        当前账户：{user?.username} · {getRoleName(user?.role)}
+         {t("m_e697637f6c")}{user?.username} · {t(getRoleName(user?.role))}
       </p>
       {message && (
         <p className="form-message" role="status">
-          {message}
+          {t(message || '')}
         </p>
       )}
-      {!canWrite(user?.role) && <Link className="quiet-button mt-6" to="/account/submissions">去我的投稿，开始写作 →</Link>}
+      {!canWrite(user?.role) && <Link className="quiet-button mt-6" to="/account/submissions">{t("m_77de6910c7")}</Link>}
       {!canWrite(user?.role) && (
         <form onSubmit={submit} className="site-form mt-8">
-          <label htmlFor="editor-reason">申请说明</label>
+          <label htmlFor="editor-reason">{t("m_c033e6eeed")}</label>
           <textarea
             id="editor-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={6}
             className="w-full mt-3"
-            placeholder="介绍你希望分享的内容，以及申请成为编辑的原因。"
+            placeholder={t("m_6c840684a2")}
           />
           <button className="quiet-button mt-6" disabled={loading || !user}>
-            {loading ? '提交中…' : '提交申请'}
+            {loading ? t("m_18931020ad") : t("m_9cc5e4d81e")}
           </button>
         </form>
       )}

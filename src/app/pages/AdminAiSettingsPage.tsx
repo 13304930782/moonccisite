@@ -1,12 +1,16 @@
+import { useI18n } from '../i18n';
 import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {useUnsavedLeave} from '../lib/useUnsavedLeave';
 import {api} from '../lib/api';
+import {AdminLoading, AdminError, AdminNotice} from '../components/admin/AdminState';
 import {ThemeSelect} from '../components/ThemeSelect';
 import '../../styles/site-settings.css';
 import '../../styles/article-summary-settings.css';
+import '../../styles/admin-ai-settings.css';
 
 type AiConfig={enabled:boolean;model:string;has_key:boolean};
 export default function AdminAiSettingsPage(){
+  const { t } = useI18n();
  const [config,setConfig]=useState<AiConfig|null>(null),[key,setKey]=useState('');
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
  const [loading,setLoading]=useState(true);const saved=useRef<AiConfig|null>(null);
@@ -16,28 +20,30 @@ export default function AdminAiSettingsPage(){
   event.preventDefault();setBusy(true);setError('');setMessage('');
   try{
    const result=await api('/article-seo/settings',{method:'PUT',body:JSON.stringify({...config,api_key:key})});saved.current=result;setConfig(result);
-   setKey('');setMessage('设置已保存。可在文章编辑页生成简介，验证密钥和余额。');
+   setKey('');setMessage(t("m_5c975486ce"));
   }catch(e:any){setError(e.message);}finally{setBusy(false);}
  }
  const changed=!!config&&(key!==''||config.enabled!==saved.current?.enabled||config.model!==saved.current?.model);
  useUnsavedLeave(changed);
  return <div className="site-settings-page ai-summary-settings">
-  <header className="settings-heading"><h1 className="admin-title">AI 文章简介</h1></header>
-  <p>用 DeepSeek 根据正文自动总结，生成结果同时用于文章简介和搜索描述。发布前可以预览或改为手写。</p>
-  {loading?<p role="status">正在读取 AI 设置…</p>:!config?<><p role="alert">{error}</p><button className="quiet-button" onClick={()=>void load()}>重新加载设置</button></>:<form onSubmit={save} className="settings-section">
-   <div className="settings-section-heading"><h2>DeepSeek</h2><p>生成时发送文章标题、分类、标签和正文，并产生 API 费用。不会发送作者账号、邮箱或站点登录信息。</p></div>
+  <header className="settings-heading"><h1 className="admin-title">{t("m_54531f63f4")}</h1></header>
+  <p className="ai-page-description">{t("m_c5747e7b38")}</p>
+  {loading?<AdminLoading label={t("m_19dfb53530")} />:!config?<AdminError message={error} onRetry={()=>void load()} />:<form onSubmit={save} className="ai-settings-form">
    <fieldset disabled={busy}>
-    <label className="article-summary-toggle"><input type="checkbox" checked={config.enabled} aria-describedby="ai-summary-behavior" onChange={e=>setConfig({...config,enabled:e.target.checked})}/><span>启用自动总结</span></label>
-    <label className="settings-field"><span>模型</span><ThemeSelect aria-label="DeepSeek 模型" value={config.model} onValueChange={model=>setConfig({...config,model})}>
+    <div className="ai-enable-section">
+     <label className="article-summary-toggle"><input type="checkbox" checked={config.enabled} aria-describedby="ai-summary-data-hint" onChange={e=>setConfig({...config,enabled:e.target.checked})}/><span>{t("m_a3f0aa474e")}</span></label>
+     <p id="ai-summary-data-hint">{t("m_c5b5e8c1d5")}</p>
+    </div>
+    <div className="settings-field"><span id="ai-model-label">{t("m_c98e118e0a")}</span><ThemeSelect aria-labelledby="ai-model-label" value={config.model} onValueChange={model=>setConfig({...config,model})}>
      <option value="deepseek-flash">DeepSeek Flash</option><option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
-    </ThemeSelect></label>
+    </ThemeSelect></div>
     <label className="settings-field"><span>DeepSeek API Key</span>
-     <input aria-label="DeepSeek API Key" type="password" autoComplete="new-password" aria-describedby="ai-summary-key-hint" value={key} onChange={e=>setKey(e.target.value)} placeholder={config.has_key?'已配置；留空保留现有密钥':'sk-…'} required={config.enabled&&!config.has_key}/>
-     <small id="ai-summary-key-hint">密钥仅保存在服务器，后台不会显示原值。</small>
+     <input aria-label="DeepSeek API Key" type="password" autoComplete="new-password" aria-describedby="ai-summary-key-hint" value={key} onChange={e=>setKey(e.target.value)} placeholder="sk-…" required={config.enabled&&!config.has_key}/>
+     <small id="ai-summary-key-hint">{config.has_key&&<span>{t("m_0e2e6663e8")}</span>}<span>{t("m_ff5b3968d3")}</span></small>
     </label>
-    <p className="settings-hint" id="ai-summary-behavior">每个账号每分钟最多生成三次。保存草稿不会调用 AI；正文修改后会在下一次预览或提交时更新简介。</p>
-    {error&&<p className="article-summary-error" role="alert">{error}</p>}
-    <div className="settings-save"><button className="button-primary" type="submit" disabled={!changed}>{busy?'保存中…':'保存 AI 设置'}</button><button className="quiet-button" type="button" disabled={!changed} onClick={()=>{setConfig(saved.current);setKey('');setError('');setMessage('');}}>放弃更改</button><span role="status">{changed?'有未保存的更改':message||'已保存'}</span></div>
+    <p className="settings-hint" id="ai-summary-behavior">{t("m_5cd924e9da")}</p>
+    {error&&<AdminNotice>{t(error)}</AdminNotice>}
+    <div className="ai-save-actions"><button className="button-primary" type="submit" disabled={!changed}>{busy?t("m_ff509c9ba0"):t("m_59dbbf0b4b")}</button><button className="quiet-button" type="button" disabled={!changed} onClick={()=>{setConfig(saved.current);setKey('');setError('');setMessage('');}}>{t("m_ef804eda90")}</button><span role="status">{changed?t("m_6265f9d3f3"):message||t("m_1bd91a7d0c")}</span></div>
    </fieldset>
   </form>}
  </div>;

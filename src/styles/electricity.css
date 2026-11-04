@@ -1201,14 +1201,9 @@
   gap: 6px;
   color: var(--electric-text);
 }
-.electricity-room-empty {
-  padding: 32px 0;
-}
-.electricity-room-empty p {
-  color: var(--electric-muted);
-  margin: 12px 0 20px;
-  font-size: 14px;
-}
+.electricity-room-empty { margin-top:24px; padding:0; }
+.electricity-room-empty-actions { display:flex; justify-content:center; flex-wrap:wrap; gap:12px; margin-top:12px; }
+.electricity-room-empty-actions .electricity-button { white-space:nowrap; }
 .electricity-room-choice {
   display: flex;
   align-items: center;

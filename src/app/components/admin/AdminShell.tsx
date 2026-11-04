@@ -1,3 +1,6 @@
+import {Tags} from 'lucide-react';
+import { LanguageSwitch } from '../LanguageSwitch';
+import { useI18n } from '../../i18n';
 import { reducedMotion } from '../../lib/motionPreference';
 import { focusableWithin, loopFocus } from '../../lib/focusLoop';
 import {useOperations} from '../../lib/useOperations';
@@ -9,7 +12,8 @@ import { safeImageSrc } from '../../lib/safeUrl';
 import { ThemeToggle } from '../../context/ThemeContext';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
+import {Link} from '../LocaleLink';
 import {
   ArrowUp,
   Activity,
@@ -20,7 +24,6 @@ import {
   ChartNoAxesCombined,
   ContactRound,
   FilePenLine,
-  Code2,
   KeyRound,
   Library,
   AtSign,
@@ -93,6 +96,7 @@ function canWrite(role?: string) {
 }
 
 export function AdminShell({ children }: AdminShellProps) {
+  const { t } = useI18n();
   const mainRef = useRef<HTMLElement>(null);
   const sidebarRef = useRef<HTMLElement>(null), mobileBarRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null), mobileMenuRef = useRef<HTMLElement>(null);
@@ -138,6 +142,7 @@ export function AdminShell({ children }: AdminShellProps) {
       if (menu) (focusableWithin(menu)[0] || menu).focus({preventScroll:true});
     });
     const keys = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || (event.target as Element).closest('.language-menu')) return;
       if (event.key === 'Escape') { event.preventDefault(); setMobileOpen(false); }
       else if (mobileMenuRef.current) loopFocus(event, mobileMenuRef.current);
     };
@@ -178,125 +183,120 @@ export function AdminShell({ children }: AdminShellProps) {
   }, []);
 
   const menus: MenuItem[] = [
-{title:"节点监控",to:"/admin/node-monitor",icon:Server,show:owner},
-{title:'运营概览',to:'/admin/operations',icon:ChartNoAxesCombined,show:manager&&operations},
-{title:'投稿审核',to:'/admin/reviews',icon:Inbox,show:manager&&publishing},
-{title:'发布计划',to:'/admin/schedules',icon:CalendarClock,show:manager&&publishing},
-{title:'专栏管理',to:'/admin/series',icon:Library,show:manager&&publishing},
-    { title: '访问统计', to: '/admin/analytics', icon: ChartColumn, show: manager },
+{title:t("m_07e96c1e12"),to:"/admin/node-monitor",icon:Server,show:owner},
+{title:t("m_59d4b08f74"),to:'/admin/operations',icon:ChartNoAxesCombined,show:manager&&operations},
+{title:t("m_fd95a33a4e"),to:'/admin/reviews',icon:Inbox,show:manager&&publishing},
+{title:t("m_7f43c0e706"),to:'/admin/schedules',icon:CalendarClock,show:manager&&publishing},
+{title:t("m_9b9471ee60"),to:'/admin/series',icon:Library,show:manager&&publishing},
+    { title: t("m_3943942fd1"), to: '/admin/analytics', icon: ChartColumn, show: manager },
     {
-      title: '近况与动态',
+      title: t("m_010469b6ab"),
       to: '/admin/updates',
       icon: Radio,
       show: manager,
     },
-    { title: '作品管理', to: '/admin/projects', icon: PanelsTopLeft, show: manager },
-    { title: '订阅与周报', to: '/admin/newsletter', icon: Newspaper, show: owner },
+    { title: t("m_831ed48e52"), to: '/admin/projects', icon: PanelsTopLeft, show: manager },
+    { title: t("m_87594d4a43"), to: '/admin/newsletter', icon: Newspaper, show: owner },
     {
-      title: '概览',
+      title: t("m_fea405f9b0"),
       to: '/admin',
       icon: LayoutDashboard,
       show: true,
     },
     {
-      title: '文章管理',
+      title: t("m_4e7cb68111"),
       to: '/admin/posts',
       icon: FileText,
       show: writer,
     },
+    {title:t('m_3fcdff8677'),to:'/admin/taxonomy',icon:Tags,show:manager},
     {
-      title: '写文章',
+      title: t("m_13b195d6cc"),
       to: '/admin/write',
       icon: PenLine,
       show: writer,
     },
     {
-      title: '媒体库',
+      title: t("m_d771576fc0"),
       to: '/admin/media',
       icon: Image,
       show: manager,
     },
     {
-      title: '编辑申请审核',
+      title: t("m_70dfdc8440"),
       to: '/admin/editor-applications',
       icon: UserRoundCheck,
       show: manager,
     },
     {
-      title: 'Early Access 审核',
-      to: '/admin/early-access',
-      icon: Code2,
-      show: owner,
-    },
-    {
-      title: '水电监控设置',
+      title: t("m_af99c07be8"),
       to: '/admin/electricity',
       icon: Zap,
       show: owner,
     },
     {
-      title: '评论管理',
+      title: t("m_e7c87ea7ef"),
       to: '/admin/comments',
       icon: MessageCircle,
       show: manager,
     },
     {
-      title: '用户管理',
+      title: t("m_fbf413d429"),
       to: '/admin/users',
       icon: Users,
       show: manager,
     },
     {
-      title: '违禁词设置',
+      title: t("m_e2c664697f"),
       to: '/admin/banned-words',
       icon: Ban,
       show: manager,
     },
     {
-      title: '关于与友链', to: '/admin/blog-pages', icon: ContactRound, show: manager,
+      title: t("m_aa52ce6f17"), to: '/admin/blog-pages', icon: ContactRound, show: manager,
     },
-    { to: '/admin/runtime', title: '运行信息', icon: Activity, show: isManager(role) },
+    { to: '/admin/runtime', title: t("m_0020a68469"), icon: Activity, show: isManager(role) },
     {
-      title: '站点设置',
+      title: t("m_f0cac3fe1a"),
       to: '/admin/site-settings',
       icon: Settings,
       show: manager,
     },
     {
-      title: '第三方登录',
-      desc: '管理 GitHub、Google、QQ、微信和 Gitee 登录',
+      title: t("m_e37441c86c"),
+      desc: t("m_968815165c"),
       to: '/admin/login-settings',
       icon: KeyRound,
       show: user?.role === 'owner',
     },
-    {title:'节日管理',to:'/admin/festivals',icon:CalendarDays,show:manager},
-    {title:'AI 文章简介',to:'/admin/ai-settings',icon:Sparkles,show:user?.role==='owner'},
+    {title:t("m_85857d157f"),to:'/admin/festivals',icon:CalendarDays,show:manager},
+    {title:t("m_54531f63f4"),to:'/admin/ai-settings',icon:Sparkles,show:user?.role==='owner'},
     {
-      title: '邮件设置',
+      title: t("m_177aab06c8"),
       to: '/admin/mail-settings',
       icon: AtSign,
       show: manager,
     },
     {
-      title: '站点通知',
+      title: t("m_2ea2bbfe61"),
       to: '/admin/send-mail',
       icon: Bell,
       show: manager,
     },
     {
-      title: '我的邮箱',
+      title: t("m_2d7256702a"),
       to: '/admin/mailbox',
       icon: Mailbox,
       show: user?.role === 'owner',
     },
     {
-      title: '邮箱申请与权限',
+      title: t("m_41f3c254fe"),
       to: '/admin/mailbox-requests',
       icon: ShieldCheck,
       show: user?.role === 'owner',
     },
     {
-      title: '编辑申请',
+      title: t("m_170c6b52b8"),
       to: '/admin/editor-apply',
       icon: FilePenLine,
       show: !writer,
@@ -315,34 +315,35 @@ export function AdminShell({ children }: AdminShellProps) {
         <Link className="site-brand" to="/">
           mooncci
         </Link>
-        <div className="admin-menu-head-actions"><ThemeToggle />{mobile && <button className="icon-button" type="button" aria-label="关闭后台菜单" onClick={closeMobile}><X /></button>}</div>
+        <div className="admin-menu-head-actions"><ThemeToggle />{mobile && <button className="icon-button" type="button" aria-label={t("m_5d12cf5118")} onClick={closeMobile}><X /></button>}</div>
       </div>
       <p className="admin-user">
-        {user?.username} · {getRoleName(role)}
+        {user?.username} · {t(getRoleName(role))}
       </p>
-      <nav className="admin-menu" aria-label="后台导航">
+      <div className="navigation-language-row"><span>{t("m_3d13868593")}</span><LanguageSwitch /></div>
+      <nav className="admin-menu" aria-label={t("m_92922c76c0")}>
         {[
-          {label:'工作台',paths:['/admin/operations','/admin','/admin/analytics']},
-          {label:'内容与发布',paths:['/admin/posts','/admin/write','/admin/reviews','/admin/schedules','/admin/series','/admin/media','/admin/updates','/admin/projects']},
-          {label:'用户与互动',paths:['/admin/comments','/admin/users','/admin/editor-applications','/admin/editor-apply','/admin/early-access','/admin/banned-words']},
-          {label:'邮件与订阅',paths:['/admin/mailbox','/admin/mailbox-requests','/admin/newsletter','/admin/mail-settings','/admin/send-mail']},
-          {label:'站点与系统',paths:['/admin/festivals','/admin/ai-settings','/admin/node-monitor','/admin/blog-pages','/admin/site-settings','/admin/login-settings','/admin/electricity','/admin/runtime']},
-        ].map(group=>{const items=group.paths.map(path=>menus.find(item=>item.to===path)).filter((item):item is MenuItem=>!!item);if(!items.length)return null;return <details className="admin-menu-group" key={group.label+location.pathname} open={group.label==='工作台'||items.some(item=>item.to==='/admin'?location.pathname==='/admin':location.pathname.startsWith(item.to))}><summary>{group.label}</summary>{items.map(item=><NavLink key={item.to} to={item.to} end={item.to==='/admin'} onClick={closeMobile}><item.icon aria-hidden="true"/><span>{item.title}</span></NavLink>)}</details>;})}
+          {label:t("m_f9e02d3c13"),paths:['/admin/operations','/admin','/admin/analytics']},
+          {label:t("m_8aa8833150"),paths:['/admin/posts','/admin/taxonomy','/admin/write','/admin/reviews','/admin/schedules','/admin/series','/admin/media','/admin/updates','/admin/projects']},
+          {label:t("m_b6905624e3"),paths:['/admin/comments','/admin/users','/admin/editor-applications','/admin/editor-apply','/admin/banned-words']},
+          {label:t("m_25112963d4"),paths:['/admin/mailbox','/admin/mailbox-requests','/admin/newsletter','/admin/mail-settings','/admin/send-mail']},
+          {label:t("m_95dbef1fb4"),paths:['/admin/festivals','/admin/ai-settings','/admin/node-monitor','/admin/blog-pages','/admin/site-settings','/admin/login-settings','/admin/electricity','/admin/runtime']},
+        ].map(group=>{const items=group.paths.map(path=>menus.find(item=>item.to===path)).filter((item):item is MenuItem=>!!item);if(!items.length)return null;return <details className="admin-menu-group" key={group.label+location.pathname} open={group.paths[0]==='/admin/operations'||items.some(item=>item.to==='/admin'?location.pathname==='/admin':location.pathname.startsWith(item.to))}><summary>{group.label}</summary>{items.map(item=><NavLink key={item.to} to={item.to} end={item.to==='/admin'} onClick={closeMobile}><item.icon aria-hidden="true"/><span>{item.title}</span></NavLink>)}</details>;})}
         <div className="admin-menu-footer">
-        <Link to="/account/settings" onClick={closeMobile}><UserRound aria-hidden="true"/><span>个人设置</span></Link>
+        <Link to="/account/settings" onClick={closeMobile}><UserRound aria-hidden="true"/><span>{t("m_c2952a5ffc")}</span></Link>
         <Link to="/" onClick={closeMobile}>
           <Home />
-          <span>返回首页</span>
+          <span>{t("m_d66f4359da")}</span>
         </Link>
         <button onClick={handleLogout} disabled={loggingOut}>
           <LogOut />
-          <span>{loggingOut ? '正在退出…' : '退出登录'}</span>
+          <span>{loggingOut ? t("m_0ae60dd37b") : t("m_3ab8cc1593")}</span>
         </button>
         </div>
       </nav>
       {logoutError && (
         <p className="admin-user" role="alert">
-          {logoutError}
+          {t(logoutError || '')}
         </p>
       )}
     </>
@@ -361,7 +362,7 @@ export function AdminShell({ children }: AdminShellProps) {
           <button
             ref={menuButtonRef}
             className="icon-button"
-            aria-label={mobileOpen ? '关闭后台菜单' : '打开后台菜单'}
+            aria-label={mobileOpen ? t("m_5d12cf5118") : t("m_4aab8028f3")}
             aria-expanded={mobileOpen}
             aria-controls="admin-mobile-menu"
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -374,11 +375,11 @@ export function AdminShell({ children }: AdminShellProps) {
         <div className="admin-mobile-layer">
           <button
             className="admin-menu-backdrop"
-            aria-label="关闭菜单"
+            aria-label={t("m_be0d5706c6")}
             tabIndex={-1}
             onClick={closeMobile}
           />
-          <aside id="admin-mobile-menu" ref={mobileMenuRef} role="dialog" aria-modal="true" aria-label="后台导航" tabIndex={-1}>
+          <aside id="admin-mobile-menu" ref={mobileMenuRef} role="dialog" aria-modal="true" aria-label={t("m_92922c76c0")} tabIndex={-1}>
             {MenuContent({mobile:true})}
           </aside>
         </div>
@@ -398,10 +399,10 @@ export function AdminShell({ children }: AdminShellProps) {
           className="admin-back-top"
           type="button"
           onClick={backToTop}
-          aria-label="回到页面顶部"
+          aria-label={t("m_75a898fd64")}
         >
           <ArrowUp size={18} aria-hidden="true" />
-          <span>回到顶部</span>
+          <span>{t("m_53d77f5654")}</span>
         </button>
       )}
     </div>

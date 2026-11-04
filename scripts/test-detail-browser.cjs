@@ -6,7 +6,7 @@ const { chromium } = require('playwright');
   let browser;
   try {
     browser = await chromium.launch({ headless:true, ...(process.env.PLAYWRIGHT_CHANNEL ? {channel:process.env.PLAYWRIGHT_CHANNEL} : {}) });
-    const page = await browser.newPage({ reducedMotion:'reduce' });
+    const page = await browser.newPage({locale:'zh-CN', reducedMotion:'reduce' });
     const measurements=[];
     const errors=[]; page.on('pageerror', e=>errors.push(e.message));
     const content='## 阅读体验\n\n统一正文、标题和侧边信息的位置，让阅读更轻松。\n\n## 功能说明\n\n正文内容保留原有的 Markdown 格式。\n\n## 使用方式\n\n在手机与电脑上打开页面。';

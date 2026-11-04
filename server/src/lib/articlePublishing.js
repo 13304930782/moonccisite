@@ -20,6 +20,7 @@ function payload(input={}) {
 }
 const fields=p=>[p.title.trim(),p.slug.trim(),p.summary,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.summary_mode];
 async function publish(c,d,user) {
+    if(d.locale==='en')return require('./articleTranslations').publish(c,d,user);
     const p=payload(d.payload);if(!p.title.trim()||!p.content.trim())throw error('发布前请填写标题和正文。');
     require('./articleSummaryProof').assertReady(p);
     let postId=d.post_id, nextVersion=1;
@@ -32,6 +33,7 @@ await require('../services/engagement').workflowEvent(c,d,'published','',user.id
 return postId;
 }
 async function validateDraftSlug(c,d,input=d.payload) {
+  if(d.locale==='en')return;
   const [[post]]=d.post_id?await c.query('SELECT slug FROM posts WHERE id=?',[d.post_id]):[[]];
   return validateArticleSlug(input.slug,post?.slug);
 }

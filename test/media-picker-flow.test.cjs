@@ -1,10 +1,11 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
 const React=require('react'),{act,create}=require('react-test-renderer');
 test('picker preserves selection on upload failure, retries once and selects the uploaded image',async()=>{
  const module={exports:{}},picked=[];let fail=true,calls=0,root;
  const code=ts.transpileModule(fs.readFileSync('src/app/components/ArticleMediaPicker.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const dialog=Object.fromEntries(['Root','Portal','Overlay','Content','Title','Description','Close'].map(k=>[k,k==='Close'?'button':'div']));
- const requireMock=n=>n==='lucide-react'?{Check:'svg'}:n==='react'?React:n==='react/jsx-runtime'?require(n):n.includes('react-dialog')?dialog:n.endsWith('/api')?{api:async()=>({items:[{filename:'old.png',url:'/old.png',display_name:'Existing'}],total:1})}:{safeImageSrc:x=>x||''};
+ const requireMock=n=>i18nFixture(n)?i18nFixture(n):n==='lucide-react'?{Check:'svg'}:n==='react'?React:n==='react/jsx-runtime'?require(n):n.includes('react-dialog')?dialog:n.endsWith('/api')?{api:async()=>({items:[{filename:'old.png',url:'/old.png',display_name:'Existing'}],total:1})}:{safeImageSrc:x=>x||''};
  new Function('exports','require','AbortController',code)(module.exports,requireMock,AbortController);
  await act(async()=>{root=create(React.createElement(module.exports.ArticleMediaPicker,{onSelect:(...v)=>picked.push(v),onClose(){},uploadImage:async()=>{calls++;if(fail)throw Error('Offline');return '/new.png';}}));});
  const button=text=>root.root.findAllByType('button').find(b=>b.children.includes(text)||b.props['aria-label']===text);
@@ -22,7 +23,7 @@ test('picker returns focus on cancellation but preserves editor insertion focus 
   let focused=0,root;class Element{focus(){focused++;}}
   const opener=new Element(),module={exports:{}};
   const dialog=Object.fromEntries(['Root','Portal','Overlay','Content','Title','Description','Close'].map(k=>[k,k==='Close'?'button':'div']));
-  const mock=n=>n==='lucide-react'?{Check:'svg'}:n==='react'?React:n==='react/jsx-runtime'?require(n):n.includes('react-dialog')?dialog:n.endsWith('/api')?{api:async()=>({items:[{filename:'old.png',url:'/old.png'}],total:1})}:{safeImageSrc:x=>x||''};
+  const mock=n=>i18nFixture(n)?i18nFixture(n):n==='lucide-react'?{Check:'svg'}:n==='react'?React:n==='react/jsx-runtime'?require(n):n.includes('react-dialog')?dialog:n.endsWith('/api')?{api:async()=>({items:[{filename:'old.png',url:'/old.png'}],total:1})}:{safeImageSrc:x=>x||''};
   new Function('exports','require','document','HTMLElement',code)(module.exports,mock,{activeElement:opener},Element);
   try{
    await act(async()=>{root=create(React.createElement(module.exports.ArticleMediaPicker,{restoreFocus,onSelect(){},onClose(){}}));});

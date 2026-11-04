@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { reducedMotion } from '../lib/motionPreference';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
@@ -5,6 +6,7 @@ import {useAuth} from '../context/AuthContext';
 import {useEngagement} from '../lib/useEngagement';
 import {api} from '../lib/api';
 export function ReadingProgress({postId}:{postId:number}){
+  const { t } = useI18n();
  const {user}=useAuth(),enabled=useEngagement(),[saved,setSaved]=useState<any>(null),[error,setError]=useState(''),[connection,setConnection]=useState(0);
  const [hovered,setHovered]=useState(false),[focused,setFocused]=useState(false),[leaving,setLeaving]=useState(false);
  const dismissed=useRef(false),remaining=useRef(8000),exitTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -51,7 +53,7 @@ export function ReadingProgress({postId}:{postId:number}){
      if(Number(previous?.revision||0)!==revision){stopped=true;return;}
      revision++;localStorage.setItem(key,JSON.stringify({anchor,progress,revision,updated_at:Date.now()}));
     }
-   }catch(e:any){if(e.status===409){stopped=true;setError('阅读记录已在其他页面更新，重新打开文章可同步。');}else{stopped=true;if(alive)setError('阅读进度暂未确认，已暂停同步。可重新连接后继续记录。');}}
+   }catch(e:any){if(e.status===409){stopped=true;setError(t("m_6e0b59dce4"));}else{stopped=true;if(alive)setError(t("m_aa09393386"));}}
    finally{writing=false;}
   };
   const scroll=()=>{if(ready)dirty=true;};const hidden=()=>{if(document.visibilityState==='hidden')void save();};
@@ -69,9 +71,9 @@ export function ReadingProgress({postId}:{postId:number}){
  if(!enabled)return null;
  return createPortal(<>
   {visible&&<div className="resume-toast" data-leaving={leaving||undefined} data-reading-ignore role="status" aria-live="polite" onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)} onFocusCapture={()=>setFocused(true)} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))setFocused(false);}}>
-   <span>上次读到 {Math.round(progress*100)}%{!user&&<span className="sr-only"> · 仅保存在此浏览器</span>}</span>
-   <span aria-hidden="true">·</span><button type="button" onClick={resume}>继续阅读</button><button type="button" className="resume-toast-close" aria-label="关闭" onClick={dismiss}><span aria-hidden="true">×</span></button>
+   <span>{t("m_e8a1780965")} {Math.round(progress*100)}%{!user&&<span className="sr-only">  {t("m_0225774a5c")}</span>}</span>
+   <span aria-hidden="true">·</span><button type="button" onClick={resume}>{t("m_4ec2a77b1a")}</button><button type="button" className="resume-toast-close" aria-label={t("m_3fd47edce4")} onClick={dismiss}><span aria-hidden="true">×</span></button>
   </div>}
-  {error&&<div className="resume-toast resume-toast--error" data-reading-ignore role="status" aria-live="polite"><span>{error}</span><button type="button" onClick={()=>{setError('');setConnection(n=>n+1);}}>重新连接</button></div>}
+  {error&&<div className="resume-toast resume-toast--error" data-reading-ignore role="status" aria-live="polite"><span>{t(error || '')}</span><button type="button" onClick={()=>{setError('');setConnection(n=>n+1);}}>{t("m_68891ab35c")}</button></div>}
  </>,document.body);
 }

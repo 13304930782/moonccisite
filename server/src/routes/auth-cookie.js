@@ -230,7 +230,7 @@ router.post('/forgot-password', authRateLimit({ name: 'forgot-password', windowM
     }
 
     const [rows] = await db.query(
-      'SELECT id, username, email FROM users WHERE email=? LIMIT 1',
+      'SELECT id, username, email, ui_locale FROM users WHERE email=? LIMIT 1',
       [email]
     );
 
@@ -258,15 +258,7 @@ router.post('/forgot-password', authRateLimit({ name: 'forgot-password', windowM
     const resetUrl = require('../lib/loginDestination').resetLink(siteUrl,rawToken,req.body.return_to);
     const mailResult = await sendMail({
       to: user.email,
-      subject: '[mooncci] 重置账户密码',
-      text: `You requested to reset your mooncci password. This link is valid for 30 minutes:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
-      html: renderBrandedEmail({
-        eyebrow: 'mooncci / ACCOUNT SECURITY',
-        title: '重置你的账户密码',
-        intro: `${user.username || user.email}，我们收到了你的密码重置请求。`,
-        paragraphs: ['这个链接将在 30 分钟后失效。如果不是你本人发起，可以忽略这封邮件。'],
-        cta: { label: '重置密码', url: resetUrl },
-      }),
+      ...require('../lib/serverMessages').passwordReset(user.ui_locale||'zh-CN',resetUrl),
     });
 
     if (!mailResult.sent) {

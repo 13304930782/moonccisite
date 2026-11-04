@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { FormInput } from '../components/FormInput';
 import {authLink, loginDestination, rememberedDestination} from '../lib/loginDestination';
 import { ArrowRight, CircleX, Mail } from 'lucide-react';
@@ -5,19 +6,21 @@ import { PasswordField } from '../components/PasswordField';
 import { ApiError } from '../lib/api';
 import { notify } from '../lib/feedback';
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {Link} from '../components/LocaleLink';
 import { AuthShell } from '../components/AuthShell';
 import { SocialLoginButtons } from '../components/SocialLoginButtons';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const destination = loginDestination(params.get('redirect')) || (params.get('oauth')?rememberedDestination():'');
   const { login, googleLogin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState(params.get('oauth') === 'email_exists' ? '该邮箱已有账号，请先使用原方式登录，再到账号设置绑定。' : params.get('oauth') === 'failed' ? '第三方登录未完成，授权可能已取消、过期或账号不可用，请重试。' : '');
+  const [message, setMessage] = useState(params.get('oauth') === 'email_exists' ? t("m_310262be01") : params.get('oauth') === 'failed' ? t("m_07ce307ebd") : '');
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
 
@@ -47,11 +50,11 @@ export default function LoginPage() {
       const connectionError = err instanceof ApiError &&
         (['network', 'timeout', 'format'].includes(err.kind) || err.status >= 500);
       const text = connectionError
-        ? '暂未确认登录结果，请刷新页面后重试。'
-        : err.message || '登录失败，请检查邮箱和密码。';
+        ? t("m_08fdd89f05")
+        : err.message || t("m_ab12f29bb4");
       setFormError(text);
       if (!connectionError) document.getElementById('password')?.focus();
-      if (connectionError) notify.error(err.kind === 'timeout' ? '登录请求超时，请稍后重试。' : '暂时无法连接，请检查网络后重试。');
+      if (connectionError) notify.error(err.kind === 'timeout' ? t("m_8b0e65feab") : t("m_dda1aec6b3"));
     } finally {
       setLoading(false);
     }
@@ -65,7 +68,7 @@ export default function LoginPage() {
       const user = await googleLogin(credential,destination);
       finishLogin(user);
     } catch (err: any) {
-      setMessage(err.message || 'Google 登录失败，请重试');
+      setMessage(err.message || t("m_dbd555df7e"));
     } finally {
       setLoading(false);
     }
@@ -77,29 +80,26 @@ export default function LoginPage() {
       modeLabel="MEMBER LOGIN"
       storyTitle={
         <>
-          欢迎回来，
-          <br />
-          继续阅读。
-        </>
+           {t("m_1bc95b8b92")} <br />
+           {t("m_6c2f378ba4")} </>
       }
-      storyDescription="阅读技术笔记，参与讨论，继续探索感兴趣的主题。"
-      formTitle="登录账号"
-      formDescription="使用注册邮箱和密码进入 mooncci。"
-      alternatePrompt="还没有账号？"
-      alternateLabel="立即注册"
+      storyDescription={t("m_0c059f8c07")}
+      formTitle={t("m_d9a999a7c8")}
+      formDescription={t("m_6387df8aca")}
+      alternatePrompt={t("m_23e526538b")}
+      alternateLabel={t("m_5bddf41dd8")}
       alternateTo={authLink('/register', destination)}
     >
       {message && (
         <div id="login-error" className="auth-message" role="alert">
-          {message}
+          {t(message || '')}
         </div>
       )}
 
       <form onSubmit={submit} className="auth-form">
         <div>
           <label htmlFor="email" className="auth-field-label">
-            邮箱
-          </label>
+             {t("m_73075237fd")} </label>
           <div className="auth-field-control">
             <Mail aria-hidden="true" />
             <FormInput
@@ -121,23 +121,22 @@ export default function LoginPage() {
           <PasswordField
             id="password"
             name="password"
-            label="密码"
+            label={t("m_a621ab606d")}
             labelAside={
               <Link to={authLink('/forgot-password', destination)} className="auth-inline-link">
-                忘记密码？
-              </Link>
+                 {t("m_1d02d7f1c5")} </Link>
             }
             required
             aria-describedby={formError ? "login-form-error" : undefined}
             autoComplete="current-password"
             value={password}
             onChange={(event) => { setPassword(event.target.value); setFormError(''); }}
-            placeholder="请输入密码"
+            placeholder={t("m_728a7b601c")}
           />
           {formError && (
             <p id="login-form-error" className="auth-form-error" role="alert">
               <CircleX size={16} aria-hidden="true" />
-              <span>{formError}</span>
+              <span>{t(formError || '')}</span>
             </p>
           )}
         </div>
@@ -147,7 +146,7 @@ export default function LoginPage() {
           disabled={loading}
           className="neo-button neo-button-dark auth-submit disabled:opacity-60"
         >
-          {loading ? '登录中...' : '登录并继续'}
+          {loading ? t("m_c0b692e4f5") : t("m_a4e09c4c20")}
           <ArrowRight aria-hidden="true" className="h-4 w-4" />
         </button>
       </form>

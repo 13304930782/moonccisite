@@ -1,8 +1,9 @@
+import { useI18n } from '../i18n';
 import { EmptyState } from '../components/DetailUI';
 import { SiteBack } from '../components/SiteBack';
 import { ProjectCard } from '../components/ProjectCard';
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   PageHeading,
   Pagination,
@@ -18,13 +19,14 @@ import { projectIcon } from "../lib/projectBrand";
 import { dimensionsFor } from "../lib/imageDimensions";
 import "../../styles/project-detail.css";
 export default function ProjectsPage() {
+  const { t } = useI18n();
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get("page")) || 1);
   const resource = useResource(`/projects?page=${page}`);
   return (
     <SitePage>
-      <PageHeading eyebrow="SELECTED WORK" title="作品与实验">
-        <p>从一个想法开始，持续构建与维护。</p>
+      <PageHeading eyebrow="SELECTED WORK" title={t("m_60054f92fe")}>
+        <p>{t("m_7a1c361f82")}</p>
       </PageHeading>
       <ResourceState resource={resource}>
         {resource.data && (
@@ -36,10 +38,7 @@ export default function ProjectsPage() {
             </div>
             {!resource.data.items.length && (
               <p className="quiet-state">
-                作品介绍整理中。
-                <Link to="/early-access" className="text-link">
-                  了解 PromptDock
-                </Link>
+                 {t("m_d6544b8258")}
               </p>
             )}
             <Pagination
@@ -53,6 +52,7 @@ export default function ProjectsPage() {
   );
 }
 export function ProjectDetailPage() {
+  const { t , formatDate, locale: messageLocale} = useI18n();
   const { slug } = useParams();
   const [params, setParams] = useSearchParams();
   const resource = useResource(
@@ -64,8 +64,8 @@ export function ProjectDetailPage() {
   const headings = useMemo(() => headingsFor(p?.content || ''), [p?.content]);
   const toc = useMemo(() => [
     ...headings.map(heading => ({ ...heading, id: `project-${heading.id}` })),
-    { id: 'project-releases', title: '版本记录', level: 2 },
-  ], [headings]);
+    { id: 'project-releases', title: t("m_77426c9420"), level: 2 },
+  ], [headings, t, messageLocale]);
   const [activeId, setActiveId] = useState('');
   useEffect(() => {
     if (!p) return;
@@ -96,7 +96,7 @@ export function ProjectDetailPage() {
   const cover = p ? safeImageSrc(p.cover_image) : '';
   const icon = p ? projectIcon(p) : undefined;
   const renderToc = (compact = false) => (
-    <nav className="project-reading-toc" aria-label={compact ? '折叠作品目录' : '作品目录'}>
+    <nav className="project-reading-toc" aria-label={compact ? t("m_463b1ea287") : t("m_8b499334da")}>
       {toc.map(item => <a key={item.id} href={`#${item.id}`} title={item.title}
         data-level={item.level} aria-current={activeId === item.id ? 'location' : undefined}
         onClick={event => {
@@ -113,34 +113,33 @@ export function ProjectDetailPage() {
             <header className="project-detail-heading">
               <div className="project-detail-back-row" data-reading-ignore>
                 <SiteBack className="project-detail-pill" />
-                <span className="project-detail-pill project-detail-stage">{labels[p.stage] || '作品'}</span>
+                <span className="project-detail-pill project-detail-stage">{t(labels[p.stage] || t("m_37a3a79686"))}</span>
               </div>
               <div className="project-detail-identity">
-                {icon && <img className="project-detail-icon" src={icon} alt={`${p.name} 应用图标`} width="72" height="72" />}
+                {icon && <img className="project-detail-icon" src={icon} alt={t("m_fd6cae9364", {v0: p.name})} width="72" height="72" />}
                 <h1 className="detail-title">{p.name}</h1>
               </div>
               {p.summary && <p className="project-detail-subtitle">{p.summary}</p>}
-              <div className="project-actions" aria-label="作品链接" data-reading-ignore>
-                {p.demo_url && <a className="project-detail-action project-primary" href={safeHref(p.demo_url)} target="_blank" rel="noreferrer">{p.slug === 'promptdock' ? '申请体验' : '打开作品'} ↗</a>}
-                {p.slug === 'promptdock' && !p.demo_url && <Link className="project-detail-action project-primary" to="/early-access">申请体验 ↗</Link>}
+              <div className="project-actions" aria-label={t("m_82be8e3f6a")} data-reading-ignore>
+                {p.demo_url && <a className="project-detail-action project-primary" href={safeHref(p.demo_url)} target="_blank" rel="noreferrer">{p.slug === 'promptdock' ? t("m_0a3d74a34d") : t("m_c40cb0b7ff")} ↗</a>}
                 {p.repo && <a className="project-detail-action" href={safeHref(`https://github.com/${p.repo}`)} target="_blank" rel="noreferrer">GitHub ↗</a>}
               </div>
-              {p.tech_stack && <p className="project-detail-tech" aria-label="技术栈">{p.tech_stack}</p>}
+              {p.tech_stack && <p className="project-detail-tech" aria-label={t("m_265b45019e")}>{p.tech_stack}</p>}
             </header>
             {cover && <figure className="project-detail-showcase">
-              <img className="content-image" src={cover} alt={`${p.name} 界面截图`} {...dimensionsFor(cover, p.image_dimensions)} loading="eager" fetchPriority="high" />
+              <img className="content-image" src={cover} alt={t("m_ae1ed9ceba", {v0: p.name})} {...dimensionsFor(cover, p.image_dimensions)} loading="eager" fetchPriority="high" />
             </figure>}
             <div className="project-reading-grid">
               <details className="project-mobile-toc" data-reading-ignore>
-                <summary>本页目录 <span aria-hidden="true">⌄</span></summary>
+                <summary>{t("m_a610e0c62b")} <span aria-hidden="true">⌄</span></summary>
                 {renderToc(true)}
               </details>
               <div className="detail-body project-reading-body">
                 <MarkdownContent content={p.content} headingPrefix="project-heading" />
                 <section className="project-releases" id="project-releases" data-reading-ignore>
-                  <h2>版本记录</h2>
+                  <h2>{t("m_77426c9420")}</h2>
                   {!p.releases.items.length && (
-                    <EmptyState>暂无版本记录。</EmptyState>
+                    <EmptyState>{t("m_04d84a4e12")}</EmptyState>
                   )}
                   {(p.focusedRelease &&
                   !p.releases.items.some((r: any) => r.id === p.focusedRelease.id)
@@ -156,7 +155,7 @@ export function ProjectDetailPage() {
                       <summary><span className="project-release-copy"><time className="muted">
                         {formatDate(r.published_at)} · GitHub Releases
                       </time>
-                      <span>{r.title} {Number(r.prerelease) === 1 && <small className="release-prerelease">预发布</small>}</span></span><span className="project-release-arrow" aria-hidden="true">⌄</span></summary>
+                      <span>{r.title} {Number(r.prerelease) === 1 && <small className="release-prerelease">{t("m_1acda6ce54")}</small>}</span></span><span className="project-release-arrow" aria-hidden="true">⌄</span></summary>
                       <div className="project-release-body"><MarkdownContent content={r.content} />
                       <a
                         className="text-link"
@@ -164,8 +163,7 @@ export function ProjectDetailPage() {
                         target="_blank"
                         rel="noreferrer"
                       >
-                        查看原始发布 ↗
-                      </a></div>
+                         {t("m_61ea40b478")} </a></div>
                     </details>
                   ))}
                   <Pagination
@@ -179,7 +177,7 @@ export function ProjectDetailPage() {
                 </section>
               </div>
                   <aside className="project-reading-rail" data-reading-ignore>
-                <div className="project-rail-sticky"><p>本页目录</p>{renderToc()}</div>
+                <div className="project-rail-sticky"><p>{t("m_a610e0c62b")}</p>{renderToc()}</div>
               </aside>
             </div>
           </article>

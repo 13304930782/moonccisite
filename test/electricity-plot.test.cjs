@@ -1,3 +1,4 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
@@ -5,8 +6,9 @@ const {buildSync}=require('esbuild');
 const {JSDOM}=require('jsdom');
 const target=path.resolve('.cache/electricity-plot-test.cjs');
 fs.mkdirSync(path.dirname(target),{recursive:true});
-buildSync({entryPoints:['src/app/components/ElectricityChart.tsx'],outfile:target,bundle:true,platform:'node',format:'cjs',jsx:'automatic',external:['react','react-dom']});
-const {Plot}=require(target),React=require('react');
+buildSync({entryPoints:['src/app/components/ElectricityChart.tsx'],outfile:target,bundle:true,platform:'node',format:'cjs',jsx:'automatic',external:['react','react-dom','../i18n']});
+const compiled={exports:{}};new Function('require','module','exports',fs.readFileSync(target,'utf8'))(name=>i18nFixture(name)||require(name),compiled,compiled.exports);
+const {Plot}=compiled.exports,React=require('react');
 const {renderToStaticMarkup}=require('react-dom/server');
 const point=(total,usage=total,date='2026-10-01')=>({date,total,usage,usageStatus:'暂无数据'});
 const props={width:560,height:300,chartMode:'balance',tooltipTrigger:'click',reduceMotion:true};

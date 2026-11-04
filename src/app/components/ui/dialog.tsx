@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 "use client";
 
 import * as React from "react";
@@ -52,6 +53,7 @@ function DialogContent({
   children,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content>) {
+  const { t } = useI18n();
   const previousFocus = React.useRef<HTMLElement | null>(null);
   const content = React.useRef<HTMLDivElement>(null);
   return (
@@ -79,7 +81,7 @@ function DialogContent({
         {children}
         <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-1 right-1 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
           <XIcon />
-          <span className="sr-only">关闭弹窗</span>
+          <span className="sr-only">{t("m_617e99107e")}</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
     </DialogPortal>

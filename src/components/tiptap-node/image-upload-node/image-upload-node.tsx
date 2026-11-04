@@ -1,3 +1,4 @@
+import { useI18n } from '../../../app/i18n';
 "use client"
 
 import { useRef, useState } from "react"
@@ -83,12 +84,13 @@ export interface UploadOptions {
  * Custom hook for managing multiple file uploads with progress tracking and cancellation
  */
 function useFileUpload(options: UploadOptions) {
+  const { t } = useI18n();
   const [fileItems, setFileItems] = useState<FileItem[]>([])
 
   const uploadFile = async (file: File): Promise<string | null> => {
     if (file.size > options.maxSize) {
       const error = new Error(
-        `File size exceeds maximum allowed (${options.maxSize / 1024 / 1024}MB)`
+        t("File size exceeds the {size} MB limit.", {size: options.maxSize / 1024 / 1024})
       )
       options.onError?.(error)
       return null
@@ -109,7 +111,7 @@ function useFileUpload(options: UploadOptions) {
 
     try {
       if (!options.upload) {
-        throw new Error("Upload function is not defined")
+        throw new Error(t("Upload function is not defined"))
       }
 
       const url = await options.upload(
@@ -124,7 +126,7 @@ function useFileUpload(options: UploadOptions) {
         abortController.signal
       )
 
-      if (!url) throw new Error("上传未返回图片地址，请重试")
+      if (!url) throw new Error(t("m_ef8380679d"))
 
       if (!abortController.signal.aborted) {
         setFileItems((prev) =>
@@ -149,7 +151,7 @@ function useFileUpload(options: UploadOptions) {
           )
         )
         options.onError?.(
-          error instanceof Error ? error : new Error("Upload failed")
+          error instanceof Error ? error : new Error(t("Upload failed"))
         )
       }
       return null
@@ -158,14 +160,14 @@ function useFileUpload(options: UploadOptions) {
 
   const uploadFiles = async (files: File[]): Promise<string[]> => {
     if (!files || files.length === 0) {
-      options.onError?.(new Error("No files to upload"))
+      options.onError?.(new Error(t("No files to upload")))
       return []
     }
 
     if (options.limit && files.length > options.limit) {
       options.onError?.(
         new Error(
-          `Maximum ${options.limit} file${options.limit === 1 ? "" : "s"} allowed`
+          t("Select no more than {count} files.", {count: options.limit})
         )
       )
       return []
@@ -411,7 +413,7 @@ const ImageUploadPreview: React.FC<ImageUploadPreviewProps> = ({
 const DropZoneContent: React.FC<{ maxSize: number; limit: number }> = ({
   maxSize,
   limit,
-}) => (
+}) => { const {t}=useI18n(); return (
   <>
     <div className="tiptap-image-upload-dropzone">
       <FileIcon />
@@ -423,16 +425,17 @@ const DropZoneContent: React.FC<{ maxSize: number; limit: number }> = ({
 
     <div className="tiptap-image-upload-content">
       <span className="tiptap-image-upload-text">
-        <em>选择图片</em> 或拖入此处
+        <em>{t("m_9ad12a1ab4")}</em> {t("m_218c291cf3")}
       </span>
       <span className="tiptap-image-upload-subtext">
-        每次 {limit} 张，每张不超过 {maxSize / 1024 / 1024}MB。
+        {t("m_4e2454170d",{count:limit,size:maxSize / 1024 / 1024})}
       </span>
     </div>
   </>
-)
+ )}
 
 export const ImageUploadNode: React.FC<NodeViewProps> = (props) => {
+  const { t } = useI18n();
   const { accept, limit, maxSize } = props.node.attrs
   const inputRef = useRef<HTMLInputElement>(null)
   const extension = props.extension
@@ -486,7 +489,7 @@ export const ImageUploadNode: React.FC<NodeViewProps> = (props) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) {
-      extension.options.onError?.(new Error("No file selected"))
+      extension.options.onError?.(new Error(t("No file selected")))
       return
     }
     handleUpload(Array.from(files))
@@ -530,7 +533,7 @@ export const ImageUploadNode: React.FC<NodeViewProps> = (props) => {
               </Button>
             </div>
           )}
-          {fileItems.filter(item=>item.status==='error').map(item=><Button key={'retry-'+item.id} type="button" onClick={e=>{e.stopPropagation();clearAllFiles();void handleUpload([item.file]);}}>重试上传</Button>)}
+          {fileItems.filter(item=>item.status==='error').map(item=><Button key={'retry-'+item.id} type="button" onClick={e=>{e.stopPropagation();clearAllFiles();void handleUpload([item.file]);}}>{t("m_7329925327")}</Button>)}
           {fileItems.map((fileItem) => (
             <ImageUploadPreview
               key={fileItem.id}

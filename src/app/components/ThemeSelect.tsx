@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { Children, cloneElement, isValidElement, useId, useRef, useState, type ReactNode } from 'react';
 import { Check } from 'lucide-react';
 import '../../styles/choice-group.css';
@@ -9,6 +10,7 @@ type Props = {
 function optionText(node:ReactNode):string {return Children.toArray(node).map(child=>isValidElement<{children?:ReactNode}>(child)?optionText(child.props.children):String(child)).join('');}
 // Short lists stay visible; longer lists retain native selection and validation.
 export function ThemeSelect({value,onValueChange,children,required,allowEmpty=false,name,disabled,className='',...props}:Props){
+  const { t } = useI18n();
  const id=useId(),root=useRef<HTMLSpanElement>(null),[invalid,setInvalid]=useState(false);
  const options=Children.toArray(children).filter(isValidElement<{value:string;children:ReactNode;disabled?:boolean}>).filter(o=>allowEmpty||o.props.value!=='');
  const focusValue=options.some(o=>o.props.value===value&&!o.props.disabled)?value:options.find(o=>!o.props.disabled)?.props.value;
@@ -24,9 +26,9 @@ export function ThemeSelect({value,onValueChange,children,required,allowEmpty=fa
     const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+step+buttons.length)%buttons.length;buttons[next].focus();buttons[next].click();
    }}><span className="choice-caption"><Check size={14} aria-hidden="true" className="choice-mark"/><span>{option.props.children}</span></span></button>)}
   </span>
-  {!options.length&&<span className="choice-empty" role="status">没有匹配的选项。</span>}
+  {!options.length&&<span className="choice-empty" role="status">{t("m_6cf98f7ef1")}</span>}
   <select className="theme-select-native" aria-hidden="true" tabIndex={-1} name={name} required={required} disabled={disabled} value={value} onChange={event=>choose(event.target.value)}>{children}</select>
   </>}
-  {invalid&&<span id={`${id}-error`} role="alert" className="choice-error">请选择一项。</span>}
+  {invalid&&<span id={`${id}-error`} role="alert" className="choice-error">{t("m_df0f261f29")}</span>}
  </span>;
 }

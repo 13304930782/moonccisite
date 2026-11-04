@@ -23,7 +23,7 @@ async function change(id,actor,action,input){
   await assertEditable(db,row);
   before=typeof row.payload==='string'?JSON.parse(row.payload):row.payload;
   await validateDraftSlug(db,row,before);
-  prepared=await require('./articleSummary').prepare(db,before,user.id);
+  prepared=await require('../lib/articleTranslations').prepareSummary(db,before,user.id,row.locale);
  }
  return transaction(async c=>{
   const [[user]]=await c.query('SELECT id,role,status FROM users WHERE id=? FOR UPDATE',[actor.id]);

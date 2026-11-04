@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { FormInput } from '../components/FormInput';
 import { FormEvent, useEffect, useState } from 'react';
 import {authLink, loginDestination} from '../lib/loginDestination';
@@ -9,6 +10,7 @@ import { AuthShell } from '../components/AuthShell';
 const RESEND_SECONDS = 60;
 
 export default function ForgotPasswordPage() {
+  const { t } = useI18n();
   const [params] = useSearchParams();
   const destination = loginDestination(params.get('redirect'));
   const [email, setEmail] = useState('');
@@ -34,11 +36,11 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email: address, return_to: destination }),
       });
 
-      setServerMessage(res.message || '如果该邮箱存在，我们会发送密码重置邮件');
+      setServerMessage(res.message || t("m_5b07d704ed"));
       setSentTo(address);
       setCooldown(RESEND_SECONDS);
     } catch (err: any) {
-      setError(err.message || '发送失败，请稍后重试');
+      setError(err.message || t("m_c57c7ed1ca"));
     } finally {
       setLoading(false);
     }
@@ -48,38 +50,38 @@ export default function ForgotPasswordPage() {
     event.preventDefault();
     const address = email.trim();
     if (!address) {
-      setError('请填写注册时使用的邮箱。');
+      setError(t("m_efc438ac6f"));
       return;
     }
     await request(address);
   };
 
   return (
-    <AuthShell formTitle="忘记密码" formDescription="输入注册邮箱，我们会发送一封密码重置邮件。"
-      alternatePrompt="" alternateLabel="返回登录" alternateTo={authLink('/login', destination)}>
+    <AuthShell formTitle={t("m_d832a97894")} formDescription={t("m_29034e208c")}
+      alternatePrompt="" alternateLabel={t("m_747b0f9082")} alternateTo={authLink('/login', destination)}>
         {error && (
           <div className="auth-message is-error" role="alert">
-            {error}
+            {t(error || '')}
           </div>
         )}
 
         {sentTo ? (
           <section className="auth-sent" aria-labelledby="recovery-sent-title" role="status">
-            <h2 id="recovery-sent-title">请查收邮件</h2>
+            <h2 id="recovery-sent-title">{t("m_c3bfbdbf5f")}</h2>
             <p>{serverMessage}</p>
-            <p>邮件将发送至 <strong>{sentTo}</strong>，链接 30 分钟内有效。没有收到时，请检查垃圾邮件文件夹。</p>
+            <p>{t("m_2307df26f1")} <strong>{sentTo}</strong>{t("m_9f62a83d19")}</p>
             <div className="inline-actions">
               <button type="button" className="auth-secondary" disabled={loading || cooldown > 0} onClick={() => void request(sentTo)}>
-                {loading ? '发送中…' : cooldown > 0 ? `${cooldown} 秒后可重新发送` : '重新发送'}
+                {loading ? t("m_364970d816") : cooldown > 0 ? t("m_9b693f7b43", {v0: cooldown}) : t("m_9287ac799e")}
               </button>
-              <button type="button" className="auth-secondary" onClick={() => { setSentTo(''); setError(''); }}>更换邮箱</button>
+              <button type="button" className="auth-secondary" onClick={() => { setSentTo(''); setError(''); }}>{t("m_5eb350efbf")}</button>
             </div>
           </section>
         ) : (
           <form onSubmit={submit} className="auth-form">
             <div className="auth-field">
               <div className="auth-field-label">
-                <label htmlFor="recovery-email">邮箱</label>
+                <label htmlFor="recovery-email">{t("m_73075237fd")}</label>
               </div>
               <div className="auth-field-control">
                 <Mail aria-hidden="true" />
@@ -98,7 +100,7 @@ export default function ForgotPasswordPage() {
               disabled={loading}
               className="auth-submit disabled:opacity-60"
             >
-              {loading ? '发送中...' : '发送重置邮件'}
+              {loading ? t("m_9d2ee1e4d8") : t("m_5bc3a26905")}
             </button>
           </form>
         )}

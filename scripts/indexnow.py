@@ -42,6 +42,10 @@ def public_url(value):
             or parsed.fragment or value != ORIGIN + parsed.path):
         raise ValueError('Only canonical HTTPS moooncci.cn URLs without parameters are allowed')
     path = parsed.path
+    if path == '/en':
+        path = '/'
+    elif path.startswith('/en/'):
+        path = path[3:]
     if path in STATIC or re.fullmatch(r'/(article|updates)/[1-9][0-9]*', path):
         return value
     if re.fullmatch(r'/article/[^/]+', path):

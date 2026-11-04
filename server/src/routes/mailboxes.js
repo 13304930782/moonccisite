@@ -286,8 +286,7 @@ router.post('/credentials/code', credentialCodeLimiter, async (req, res) => {
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }
   try {
-    const result = await sendMail({ to: req.user.email, subject: '[mooncci] 验证邮箱密码操作',
-      text: `验证码：${code}，10 分钟内有效。用于查看或修改 ${DOMAIN} 邮箱密码；如果不是你本人操作，请忽略。` });
+    const result = await sendMail({ to: req.user.email, ...require('../lib/serverMessages').challenge('verifyMailbox',code,req.user.ui_locale) });
     if (!result.sent) throw new Error('Mail not sent');
   } catch {
     await db.query('UPDATE account_challenges SET expires_at=0 WHERE id=?', [id]);

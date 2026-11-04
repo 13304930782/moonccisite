@@ -1,6 +1,8 @@
+import { useI18n } from '../i18n';
 import { visibleDiagnostic } from '../lib/browserDiagnostics';
 import { ReactNode, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import {Link} from './LocaleLink';
 import { SitePage } from './ContentUI';
 import './AuthShell.css';
 type AuthShellProps = {
@@ -31,6 +33,7 @@ export function AuthShell({
   alternateTo,
   children,
 }: AuthShellProps) {
+  const { t } = useI18n();
   const location=useLocation();
   const hasStory = Boolean(storyTitle);
   useEffect(() => { visibleDiagnostic(location.pathname,'interactive'); }, [location.key]);
@@ -42,7 +45,7 @@ export function AuthShell({
     <SitePage>
       <section className="auth-layout">
         <div className="auth-intro">
-          <p className="eyebrow">mooncci / 账户</p>
+          <p className="eyebrow">{t("m_e717718efd")}</p>
           <h1>{hasStory ? storyTitle : formTitle}</h1>
           <p className="auth-intro-text">{hasStory ? storyDescription : formDescription}</p>
         </div>

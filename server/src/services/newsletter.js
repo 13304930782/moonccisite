@@ -45,11 +45,12 @@ function deliverySummary(rows) {
   return { sent, failed, uncertain, status: failed || uncertain ? 'attention' : pending ? 'running' : sent ? 'completed' : 'skipped',
     reason: details.join('；') || '无邮件发出' };
 }
-async function rss() {
-  const config = await getMailConfig(),
-    origin = siteOrigin();
-  const { items } = await activity({ pageSize: 50 });
-  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>mooncci · 最近更新</title><link>${xml(origin)}</link><description>文章、近况与作品进展</description><language>zh-cn</language><atom:link href="${xml(origin)}/api/feed.xml" rel="self" type="application/rss+xml"/>${items.map((i) => `<item><title>${xml(i.title)}</title><link>${xml(origin + i.path)}</link><guid isPermaLink="false">${xml(`urn:mooncci:${i.type}:${i.id}`)}</guid><description>${xml(plain(i.excerpt))}</description><pubDate>${new Date(i.published_at).toUTCString()}</pubDate></item>`).join('')}</channel></rss>`;
+async function rss(requestedLocale = 'zh-CN') {
+  const language = require('../lib/articleTranslations').locale(requestedLocale), english = language === 'en';
+  const origin = siteOrigin();
+  const { items } = await activity({ pageSize: 50, locale: language });
+  const feedUrl = origin + '/api/feed.xml' + (english ? '?locale=en' : '');
+  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>mooncci · ${english ? 'Latest updates' : '最近更新'}</title><link>${xml(origin + (english ? '/en' : ''))}</link><description>${english ? 'Articles, notes and project updates' : '文章、近况与作品进展'}</description><language>${english ? 'en' : 'zh-cn'}</language><atom:link href="${xml(feedUrl)}" rel="self" type="application/rss+xml"/>${items.map((i) => `<item><title>${xml(i.title)}</title><link>${xml(origin + i.path)}</link><guid isPermaLink="false">${xml(`urn:mooncci:${i.type}:${i.id}`)}</guid><description>${xml((english && i.content_locale !== 'en' ? '[Chinese only] ' : '') + plain(i.excerpt))}</description><pubDate>${new Date(i.published_at).toUTCString()}</pubDate></item>`).join('')}</channel></rss>`;
 }
 async function deliverWeek(now = new Date()) {
   const period = previousWeek(now);
@@ -114,7 +115,7 @@ async function deliverWeek(now = new Date()) {
           ]);
           continue;
         }
-        const [[recipient]] = await db.query('SELECT status FROM subscribers WHERE id=?', [
+        const [[recipient]] = await db.query('SELECT status,ui_locale FROM subscribers WHERE id=?', [
           job.subscriber_id,
         ]);
         if (recipient?.status !== 'active') {
@@ -126,8 +127,8 @@ async function deliverWeek(now = new Date()) {
         }
         const result = await sendMail({ channel: 'news',
           to: job.email,
-          subject: `mooncci 周报 · ${period.key}`,
-          ...newsletterMessage(current, origin, url),
+          subject: require('../lib/serverMessages').message('newsletter',recipient.ui_locale||'zh-CN')+' · '+period.key,
+          ...newsletterMessage(current, origin, url,recipient.ui_locale||'zh-CN'),
           config,
         });
         if (!result.sent) throw Object.assign(new Error('邮件配置未启用'), { code: 'EAUTH' });

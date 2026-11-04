@@ -141,3 +141,27 @@
  .media-file-select span svg { transform:scale(.9); transition:opacity 140ms ease,transform 140ms ease; }
  .media-file-select:has(input:checked) svg { transform:scale(1); }
 }
+
+/* Primary actions use the existing monochrome theme; secondary controls stay outlined. */
+.admin-media-page, .media-quality-menu {
+ --media-action: var(--foreground);
+ --media-on-action: var(--background);
+}
+.admin-media-page.ui-v2 .media-upload-primary {
+ background:var(--media-action); color:var(--media-on-action); font-weight:600;
+}
+.admin-media-page.ui-v2 .media-upload-primary:hover:not(:disabled) { filter:brightness(.92); }
+.admin-media-page.ui-v2 .media-upload-primary:disabled { opacity:.5; }
+.ui-v2 :is(.media-quality-trigger, .media-sort-trigger) {
+ border:1px solid var(--border); background:var(--card); color:var(--foreground);
+}
+.admin-media-page.ui-v2 .media-status-tabs .ui-btn[aria-pressed=true],
+.admin-portal.media-quality-menu [role=menuitemradio][data-state=checked] {
+ background:color-mix(in srgb,var(--media-action) 12%,var(--background));
+ color:var(--media-action); font-weight:600;
+}
+.admin-portal.media-quality-menu [role=menuitemradio][data-highlighted] {
+ outline:2px solid var(--media-action); outline-offset:-2px;
+}
+.admin-media-page.ui-v2 .media-upload-primary:focus-visible,
+.ui-v2 :is(.media-quality-trigger, .media-sort-trigger):focus-visible { outline:2px solid var(--media-action); outline-offset:3px; }

@@ -1,5 +1,7 @@
+import { useI18n } from '../i18n';
 import { safeHref, safeRoutePath, isExternalHttpUrl } from '../lib/safeUrl';
-import { Link } from 'react-router-dom';
+
+import {Link} from '../components/LocaleLink';
 import { Header } from '../components/Header';
 import { FestivalSlot } from '../components/Festivals/Entry';
 import { SiteFooter } from '../components/SiteFooter';
@@ -9,6 +11,7 @@ const HomeActivityList = lazy(() => import('../components/home/HomeActivityList'
 const HomePostList = lazy(() => import('../components/home/HomeActivityList').then(m => ({ default: m.HomePostList })));
 import {
   ContentSkeleton,
+  StatusNotice,
   formatDate,
   ResourceState,
   SubscribeForm,
@@ -36,16 +39,18 @@ function HeroLink({ to, label, primary = false }: { to: string; label: string; p
   );
 }
 function LatestNote({ latest }: { latest: ReturnType<typeof useResource> }) {
+  const { t , formatDate} = useI18n();
   const note = latest.data?.items?.[0];
   return <ResourceState resource={latest}>
     {note ? <>
       <p className="home-note-text">{note.excerpt}</p>
-      <time className="muted home-note-date" dateTime={note.published_at}>发布于 {formatDate(note.published_at)}</time>
-      <div className="hero-note-actions"><Link className="home-note-link" to={safeRoutePath(note.path)}>查看这条近况 →</Link></div>
-    </> : <p className="muted">还没有发布近况。</p>}
+      <time className="muted home-note-date" dateTime={note.published_at}>{t("m_e87b95c9d9")} {formatDate(note.published_at)}</time>
+      <div className="hero-note-actions"><Link className="home-note-link" to={safeRoutePath(note.path)}>{t("m_7573ae2998")}</Link></div>
+    </> : <StatusNotice>{t("m_9cb8e1eb1b")}</StatusNotice>}
   </ResourceState>;
 }
 export default function HomePage() {
+  const { t , formatDate} = useI18n();
   const settings = useSiteSettings(),
     now = useResource('/now'),
     activity = useResource('/activity?pageSize=6'),
@@ -65,7 +70,7 @@ export default function HomePage() {
             <FestivalSlot name="home" />
             <ResourceState resource={settings}>
               <p className="eyebrow">
-                {hero.eyebrow ?? 'mooncci / 个人技术手记'}
+                {hero.eyebrow ?? t("m_5cd0f9f9f6")}
               </p>
               <h1>
                 {hero.title ||
@@ -90,15 +95,15 @@ export default function HomePage() {
             </ResourceState>
           </div>
           <aside className="now-panel">
-            <p className="eyebrow">最近近况</p>
+            <p className="eyebrow">{t("m_9f3961cb01")}</p>
             <ResourceState resource={now}>
               {now.data?.content?.trim() ? (
                 <>
-                  <Suspense fallback={<div className="content-skeleton" style={{ minHeight: 96 }} aria-label="正在加载近况正文" />}><MarkdownContent content={now.data.content} /></Suspense>
+                  <Suspense fallback={<div className="content-skeleton" style={{ minHeight: 96 }} aria-label={t("m_cec505cc58")} />}><MarkdownContent content={now.data.content} /></Suspense>
                   <time className="muted home-note-date" dateTime={now.data.updated_at || undefined}>
-                    更新于 {formatDate(now.data.updated_at)}
+                     {t("m_7153f0918a")} {formatDate(now.data.updated_at)}
                   </time>
-                  <div className="hero-note-actions"><Link className="home-note-link" to="/updates?type=update">查看近况 →</Link></div>
+                  <div className="hero-note-actions"><Link className="home-note-link" to="/updates?type=update">{t("m_60abbed0ac")}</Link></div>
                 </>
               ) : (
                 <LatestNote latest={latest} />
@@ -108,40 +113,37 @@ export default function HomePage() {
         </section>
         <section className="home-section home-updates" aria-labelledby="home-updates-title">
           <div className="section-heading">
-            <h2 id="home-updates-title">最近动态</h2>
+            <h2 id="home-updates-title">{t("m_6bac827144")}</h2>
             <Link to="/updates" className="home-updates-link">
-              全部更新 →
-            </Link>
+               {t("m_a06565298e")} </Link>
           </div>
           <ResourceState resource={activity}>
             <Suspense fallback={<ContentSkeleton />}>
               <HomeActivityList items={visibleActivity} posts={posts.data || []} postsLoading={posts.loading && posts.data === null} />
             </Suspense>
-            <div className="home-updates-more"><Link to="/updates" className="home-soft-button">查看全部更新</Link></div>
+            <div className="home-updates-more"><Link to="/updates" className="home-soft-button">{t("m_028f1b91ab")}</Link></div>
           </ResourceState>
         </section>
         <section className="home-section home-posts" id="latest">
           <div className="section-heading">
-            <h2>最近写了什么</h2>
+            <h2>{t("m_2367beabf5")}</h2>
             <Link to="/articles" className="home-updates-link">
-              文章库 →
-            </Link>
+               {t("m_a8eaf5064f")} </Link>
           </div>
           <ResourceState resource={posts}>
             <Suspense fallback={<ContentSkeleton />}>
               <HomePostList posts={posts.data || []} />
             </Suspense>
             {posts.data?.length === 0 && (
-              <p className="quiet-state">第一篇文章正在准备中。</p>
+              <p className="quiet-state">{t("m_8d66d9a80e")}</p>
             )}
           </ResourceState>
         </section>
         <section className="home-section">
           <div className="section-heading">
-            <h2>作品与实验</h2>
+            <h2>{t("m_60054f92fe")}</h2>
             <Link to="/projects" className="home-updates-link">
-              全部作品 →
-            </Link>
+               {t("m_5f3a631ada")} </Link>
           </div>
           <ResourceState resource={projects}>
             {projects.data?.items.length ? (
@@ -151,14 +153,10 @@ export default function HomePage() {
                 ))}
               </div>
             ) : (
-              <div className="project-grid">
+              <div className="project-grid project-grid--single">
                 <Link className="project-card" to="/electricity">
-                  <h3>宿舍电量监控 ↗</h3>
-                  <p>查看电量快照与使用趋势。</p>
-                </Link>
-                <Link className="project-card" to="/early-access">
-                  <h3>PromptDock ↗</h3>
-                  <p>了解并申请 Early Access。</p>
+                  <h3>{t("m_66afe807fc")}</h3>
+                  <p>{t("m_5d1e648e42")}</p>
                 </Link>
               </div>
             )}

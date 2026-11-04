@@ -1,8 +1,10 @@
+import { useI18n } from '../i18n';
 import { useEffect, useRef } from 'react';
 import { Check, X } from 'lucide-react';
 import { dismissFeedback } from '../lib/feedback';
 
 export function FeedbackToast({ id, kind, message }: { id: string; kind: 'success' | 'error'; message: string }) {
+  const { t } = useI18n();
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = root.current!;
@@ -21,7 +23,7 @@ export function FeedbackToast({ id, kind, message }: { id: string; kind: 'succes
   }, [id, kind]);
   return <div ref={root} className={`feedback-toast feedback-toast--${kind}`} data-feedback-toast>
     <span className="feedback-symbol" aria-hidden="true">{kind === 'success' ? <Check size={18}/> : <X size={18}/>}</span>
-    <span role={kind === 'error' ? 'alert' : 'status'} aria-atomic="true">{message}</span>
-    <button type="button" aria-label="关闭提示" onClick={() => dismissFeedback(id)}><X size={16}/></button>
+    <span role={kind === 'error' ? 'alert' : 'status'} aria-atomic="true">{t(message || '')}</span>
+    <button type="button" aria-label={t("m_d301bc1258")} onClick={() => dismissFeedback(id)}><X size={16}/></button>
   </div>;
 }

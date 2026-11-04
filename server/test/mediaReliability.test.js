@@ -4,11 +4,11 @@ const {mediaFileTransaction}=require('../src/lib/mediaFileTransaction');
 const {countReferences,remapPayload}=require('../src/lib/mediaReferences');
 test('reference guard includes unpublished consumers and history; underscores stay literal',async()=>{
  const visited=[],url='/api/uploads/used_image.png';
- const rows={posts:[{content:url+'-other.webp',cover_image:''}],site_settings:[{setting_value:JSON.stringify({title:url,avatar_url:url+'-other.webp'})}],
+ const rows={content_translations:[],post_translations:[],posts:[{content:url+'-other.webp',cover_image:''}],site_settings:[{setting_value:JSON.stringify({title:url,avatar_url:url+'-other.webp'})}],
   updates:[{content:'![image]('+url+')',image_url:url}],projects:[{content:'',cover_image:'',icon_image:url}],site_now:[{content:'https://other.invalid'+url}],article_series:[],
   article_drafts:[{payload:{content:url}}],article_revisions:[{payload:JSON.stringify({cover_image:url})}],article_workflows:[{snapshot:{content:url}}]};
  const total=await countReferences({query:async(sql,args)=>{const table=sql.match(/FROM (\w+)/)[1];visited.push(table);assert(args.every(x=>x===url));return [rows[table]];}},url);
- assert.equal(total,5);assert.deepEqual(visited,['posts','site_settings','updates','projects','site_now','article_series','article_drafts','article_revisions','article_workflows']);
+ assert.equal(total,5);assert.deepEqual(visited,['posts','post_translations','content_translations','site_settings','updates','projects','site_now','article_series','article_drafts','article_revisions','article_workflows']);
 });
 test('media relocation preserves a valid AI receipt and never legitimizes an invalid one',()=>{
  process.env.JWT_SECRET='isolated-media-proof-secret-at-least-32-characters';

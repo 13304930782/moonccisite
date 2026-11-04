@@ -6,7 +6,7 @@ const { chromium } = require('playwright');
   const browser = await chromium.launch({ ...(process.platform === 'win32' ? { channel: 'msedge' } : {}), headless: true });
   try {
     for (const width of [390, 1280]) {
-      const page = await browser.newPage({ viewport: { width, height: 900 } });
+      const page = await browser.newPage({locale:'zh-CN', viewport: { width, height: 900 } });
       let sends = 0, accounts = 0, histories = 0, inboxes = 0, sentLists = 0;
       let rejectSend = false, holdInbox = false, releaseInbox;
       const inboxGate = new Promise(resolve => { releaseInbox = resolve; });

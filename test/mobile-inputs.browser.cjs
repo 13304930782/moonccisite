@@ -65,7 +65,7 @@ function inspect() {
   const results=[];
   try {
     browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||undefined});
-    const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+    const context=await browser.newContext({locale:'zh-CN',viewport:{width:390,height:844},isMobile:true,hasTouch:true});
     await context.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():route.abort());
     const page=await context.newPage();
     const pageErrors=[];page.on('pageerror',error=>pageErrors.push(error.message));

@@ -45,7 +45,8 @@ export async function api(path: string, options: ApiOptions = {}) {
       const message = uncertain ? uncertainMessage : summaryMessage || cityMessage || (res.status >= 500 ? '服务暂时不可用，请稍后重试。' : data?.message || (res.status === 401 ? '登录已过期，请重新登录后继续。' : res.status === 403 ? '当前账号没有此操作权限。' : '操作未完成，请检查后重试。'));
       throw new ApiError(message, res.status, 'http', uncertain, cityMessage ? data.code : undefined);
     }
-    if (writing && /^\/(?:admin\/posts|article-drafts|publishing)(?:\/|$)/.test(path)) clearPublicSnapshots();
+    if (writing && /^\/(?:admin\/posts|article-drafts|publishing|settings\/(?:site|blog-pages|translations))(?:\/|$)/.test(path)) clearPublicSnapshots();
+    if(writing&&path.startsWith('/settings/translations/site/')&&typeof window!=='undefined')window.dispatchEvent(new Event('site-settings-updated'));
     return data;
   } catch (error) {
     if (error instanceof ApiError) throw error;

@@ -121,6 +121,7 @@ test('subscription encryption authenticates user/scope and fails closed after ke
 });
 
 test('scheduled mail renders the persisted report fields with the existing button template', async (t) => {
+  t.mock.method(require('../src/db'),'query',async sql=>{assert.match(sql,/SELECT ui_locale FROM users/);return [[{ui_locale:'zh-CN'}]];});
   const mailer = require('../src/lib/mailer');
   t.mock.method(mailer, 'getMailConfig', async () => ({
     site_url: 'https://example.test',

@@ -1,5 +1,6 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
-function load(file,overrides={}){const m={exports:{}};const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;new Function('require','module','exports',code)(name=>name in overrides?overrides[name]:name.endsWith('.css')?{}:name.startsWith('.')?load(path.resolve(path.dirname(file),name)+'.ts',overrides):require(name),m,m.exports);return m.exports;}
+function load(file,overrides={}){const m={exports:{}};const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;new Function('require','module','exports',code)(name=>i18nFixture(name)?i18nFixture(name):name in overrides?overrides[name]:name.endsWith('.css')?{}:name.startsWith('.')?load(path.resolve(path.dirname(file),name)+'.ts',overrides):require(name),m,m.exports);return m.exports;}
 const {searchExcerpt}=load('src/app/lib/searchExcerpt.ts');
 test('search excerpt finds body match, strips markup and retains summary fallback',()=>{
  const content='开头 '.repeat(80)+'**DeepSeek** 用于生成相关链接。'+'后文 '.repeat(80);

@@ -28,3 +28,20 @@
 @media(max-width:1100px) { .project-image-settings { grid-template-columns:minmax(0,1fr); } }
 @media(max-width:480px) { .project-image-field { padding:16px; } .project-image-content { gap:14px; flex-wrap:wrap; } .project-image-preview:not(.project-image-preview--icon) { flex-basis:100%; width:100%; max-width:240px; } .project-image-field .media-picker { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(prefers-reduced-motion:no-preference) { .project-image-field .project-image-actions > :is(button,label) { transition:background-color .15s ease,opacity .15s ease; } }
+
+/* Use the card width, rather than the viewport, to protect both previews. */
+.content-admin--projects .project-image-field { container-type:inline-size; align-self:start; padding:16px; }
+.content-admin--projects .project-image-content { align-items:flex-start; gap:16px; margin-top:16px; min-height:120px; }
+.content-admin--projects .project-image-preview { flex:none; width:192px; height:120px; aspect-ratio:16/10; padding:0; font-size:13px; text-align:center; }
+.content-admin--projects .project-image-preview--icon { width:96px; height:96px; aspect-ratio:1; }
+.content-admin--projects .project-image-preview--icon img { padding:0; }
+.content-admin--projects .project-image-preview span { padding-inline:8px; }
+.content-admin--projects .project-image-actions { flex:1; flex-direction:column; align-items:flex-start; gap:8px; }
+.content-admin--projects .project-image-actions > :is(button,label) { flex:none; font-size:14px; border:1px solid var(--border); }
+.content-admin--projects .project-image-url { margin-top:8px; font-size:14px; }
+.content-admin--projects .project-image-settings { gap:16px; margin-bottom:20px; }
+.content-admin--projects .project-save { background:var(--primary); color:var(--primary-foreground); border-color:var(--primary); font-weight:600; }
+@container (max-width:420px) {
+ .content-admin--projects .project-image-content { flex-direction:column; }
+ .content-admin--projects .project-image-actions { width:100%; flex:auto; }
+}

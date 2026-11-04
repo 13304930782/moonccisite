@@ -1,0 +1,19 @@
+.banned-words-page .admin-title{margin-top:16px}
+.banned-words-page .banned-word-form{padding:24px;margin:24px 0;border:1px solid var(--border);border-radius:16px;background:var(--card)}
+.banned-words-page .banned-word-fields{display:flex;align-items:flex-end;flex-wrap:wrap;gap:16px;border:0;padding:0;margin:0;min-width:0}
+.banned-words-page .banned-word-field{display:grid;gap:8px;flex:0 1 240px;min-width:0;font-size:15px;font-weight:600}
+.banned-words-page .banned-word-field input{width:100%;min-width:0;min-height:44px;font:inherit;font-weight:400;color:var(--foreground)}
+.banned-words-page .choice-options{margin:0;flex-wrap:nowrap;gap:8px}
+.banned-words-page .choice-options button{min-height:44px;white-space:nowrap}
+.banned-words-page .banned-word-add{flex:none;min-height:44px;padding:10px 20px;background:var(--foreground);color:var(--background);border:1px solid var(--foreground);border-radius:10px;font-weight:600;white-space:nowrap}
+.banned-words-page .banned-word-add:disabled{opacity:.45;cursor:not-allowed}
+.banned-words-page .banned-word-hint{margin:16px 0 0;color:var(--muted-foreground);font-size:14px;line-height:1.6}
+.banned-words-page .admin-state--empty{padding:40px 24px;text-align:center;border:1px solid var(--border);border-radius:16px;background:var(--card)}
+.banned-words-page .admin-state-title{font-size:18px;font-weight:600}
+.banned-words-page .admin-list-row{padding:20px;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.banned-words-page :is(input,button):focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
+@media(max-width:560px){.banned-words-page .banned-word-form{padding:20px 16px}.banned-words-page .banned-word-fields{flex-direction:column;align-items:stretch}.banned-words-page .banned-word-field{flex:auto;width:100%}.banned-words-page .banned-word-field input{font-size:16px}.banned-words-page .banned-word-add{align-self:flex-start}}
+
+.banned-words-page .banned-word-action{flex:0 0 auto}
+.banned-words-page .admin-state--empty{align-items:center}
+@media(max-width:560px){.banned-words-page .banned-word-action{flex:auto}}

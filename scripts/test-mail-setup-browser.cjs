@@ -8,7 +8,7 @@ const fs = require('node:fs');
     browser = await (process.env.PLAYWRIGHT_BROWSER === 'webkit' ? webkit : chromium).launch(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH, args: ['--no-sandbox', '--disable-dev-shm-usage', '--no-zygote'] } : {});
     fs.mkdirSync('.cache/mail-setup', { recursive: true });
     for (const width of [320, 390, 768, 1440]) for (const theme of ['light', 'dark']) {
-      const page = await browser.newPage({ viewport: { width, height: 950 }, reducedMotion: 'reduce' });
+      const page = await browser.newPage({locale:'zh-CN', viewport: { width, height: 950 }, reducedMotion: 'reduce' });
       const sent = [], errors = []; let fail = true;
       page.on('pageerror', e => errors.push(e.message));
       await page.addInitScript(t => {

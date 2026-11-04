@@ -2,10 +2,12 @@ const fail = (message, status = 400) => Object.assign(new Error(message), {statu
 function isValidArticleSlug(value) {
   return typeof value === 'string' && value.length <= 100 && !['archives', 'meta'].includes(value) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && /[a-z]/.test(value);
 }
+const pendingIdentitySlug=value=>/^__draft-[0-9a-f-]{36}$/.test(String(value||''));
+const displayArticleSlug=value=>pendingIdentitySlug(value)?'':value;
 function validateArticleSlug(value, previous = '') {
   const slug = typeof value === 'string' ? value.trim() : '';
   if (!slug) throw fail('发布前请填写英文链接，或使用 DeepSeek 生成。');
-  if (isValidArticleSlug(slug) || slug && slug === previous && slug.length <= 255 && !/[\\/?#\u0000-\u001f\u007f]/.test(slug)) return slug;
+  if (isValidArticleSlug(slug) || !pendingIdentitySlug(slug) && slug && slug === previous && slug.length <= 255 && !/[\\/?#\u0000-\u001f\u007f]/.test(slug)) return slug;
   throw fail('请填写不超过 100 个字符的英文链接，使用小写字母、数字和连字符，并至少包含一个英文字母。');
 }
 function articlePath(post) {
@@ -32,7 +34,7 @@ async function resolveArticle(db, reference, {published = false} = {}) {
   return post || null;
 }
 async function claimArticleSlug(connection, postId, slug, previous = '') {
-  for (const value of new Set([previous, slug].filter(Boolean))) {
+  for (const value of new Set([previous, slug].filter(value=>value&&!pendingIdentitySlug(value)))) {
     await connection.query('INSERT INTO article_slug_aliases(slug,post_id) VALUES (?,?) ON DUPLICATE KEY UPDATE slug=slug', [value, postId]);
     const [[alias]] = await connection.query('SELECT post_id FROM article_slug_aliases WHERE slug=? FOR UPDATE', [value]);
     if (!alias || Number(alias.post_id) !== Number(postId)) throw fail('这个文章链接已经使用过，请换一个英文链接。', 422);
@@ -42,4 +44,4 @@ function articleSlugWriteError(error) {
   return error.code === 'ER_DUP_ENTRY' && /for key ['`](?:posts\.)?slug['`]$/i.test(error.sqlMessage || error.message || '')
     ? fail('这个文章链接已经使用过，请换一个英文链接。', 422) : error;
 }
-module.exports = {articleSlugWriteError, isValidArticleSlug, validateArticleSlug, articlePath, articleReference, decodeArticleReference, resolveArticle, claimArticleSlug};
+module.exports = {displayArticleSlug, articleSlugWriteError, isValidArticleSlug, validateArticleSlug, articlePath, articleReference, decodeArticleReference, resolveArticle, claimArticleSlug};

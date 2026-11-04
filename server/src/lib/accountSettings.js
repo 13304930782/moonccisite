@@ -8,7 +8,7 @@ const emailValid = value => typeof value === 'string' && value.length <= 120 && 
 const sessionHash = req => hash(getAuthTokenFromRequest(req) || '');
 function fail(message, status = 400) { return Object.assign(new Error(message), { status }); }
 async function profile(connection, id, lock = false) {
-  const [rows] = await connection.query(`SELECT u.id,u.username,u.email,u.role,u.status,u.can_comment,u.created_at,p.avatar_url,p.deleted_at,COALESCE(p.version,0) AS version FROM users u LEFT JOIN account_profiles p ON p.user_id=u.id WHERE u.id=?${lock ? ' FOR UPDATE' : ''}`, [id]);
+  const [rows] = await connection.query(`SELECT u.id,u.ui_locale,u.username,u.email,u.role,u.status,u.can_comment,u.created_at,p.avatar_url,p.deleted_at,COALESCE(p.version,0) AS version FROM users u LEFT JOIN account_profiles p ON p.user_id=u.id WHERE u.id=?${lock ? ' FOR UPDATE' : ''}`, [id]);
   if (!rows[0]) throw fail('用户不存在。', 404);
   return rows[0];
 }
@@ -32,7 +32,7 @@ async function sendReset(user) {
     await c.commit();
   } catch (error) { await c.rollback(); throw error; } finally { c.release(); }
   try {
-    const sent = await sendMail({ to: user.email, subject: '[mooncci] 重置账户密码', text: `请通过此链接设置账户密码，30 分钟内有效：\n${require('./loginDestination').resetLink(siteOrigin(),token,'/account/settings')}\n如果不是你本人操作，可以忽略此邮件。` });
+    const sent = await sendMail({ to: user.email, ...require('./serverMessages').passwordReset(user.ui_locale||'zh-CN',require('./loginDestination').resetLink(siteOrigin(),token,'/account/settings')) });
     if (!sent.sent) throw new Error();
   } catch { await db.query('DELETE FROM password_resets WHERE token_hash=?', [hash(token)]); throw fail('邮件发送失败，请稍后重试。', 503); }
 }

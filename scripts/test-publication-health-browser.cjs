@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chromium}=require('playwright');
 (async()=>{const {preview}=await import('vite');const server=await preview({preview:{host:'127.0.0.1',port:4996,strictPort:true},logLevel:'error'});let browser;try{
- browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'}),errors=[],writes=[];page.on('pageerror',e=>errors.push(e.message));
+ browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});const page=await browser.newPage({locale:'zh-CN',viewport:{width:390,height:844},reducedMotion:'reduce'}),errors=[],writes=[];page.on('pageerror',e=>errors.push(e.message));
  let state='available',fail=false;const url='https://moooncci.cn/article/example';
  await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
  await page.route('**/api/**',async route=>{const req=route.request(),p=new URL(req.url()).pathname;let body={items:[],total:0};

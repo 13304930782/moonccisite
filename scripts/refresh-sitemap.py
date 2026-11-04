@@ -2,6 +2,7 @@
 """Publish the existing public sitemap as an atomic, nginx-served XML file."""
 import argparse
 import os
+import re
 from pathlib import Path
 import tempfile
 import urllib.request
@@ -22,8 +23,19 @@ def validate(data):
         loc = row.find(NS + 'loc')
         value = loc.text if loc is not None else ''
         parsed = urllib.parse.urlsplit(value or '')
-        if row.tag != NS + 'url' or parsed.scheme != 'https' or parsed.netloc != 'moooncci.cn' or parsed.fragment:
+        if row.tag != NS + 'url' or parsed.scheme != 'https' or parsed.netloc != 'moooncci.cn' or parsed.fragment or parsed.query or value != 'https://moooncci.cn' + parsed.path:
             raise ValueError('Invalid public sitemap URL')
+        public = parsed.path[3:] if parsed.path.startswith('/en/') else ('/' if parsed.path == '/en' else parsed.path)
+        static = {'/', '/articles', '/archives', '/about', '/links', '/projects', '/updates', '/tags', '/categories', '/rss', '/series', '/early-access', '/mail-setup'}
+        if public not in static:
+            match = re.fullmatch(r'/(article|updates|projects|category|tag|series)/([^/]+)', public)
+            if not match:
+                raise ValueError('Private or unknown sitemap route')
+            part = match.group(2)
+            decoded = urllib.parse.unquote(part, errors='strict')
+            if (not decoded or len(decoded) > 255 or decoded in ('.', '..') or re.search(r'[/\\#?%\x00-\x1f\x7f]', decoded)
+                    or urllib.parse.quote(decoded, safe="~!*'()-._") != part):
+                raise ValueError('Invalid sitemap content reference')
         urls.append(value)
     if not urls or len(urls) > 50000 or len(urls) != len(set(urls)):
         raise ValueError('Empty, duplicate or oversized sitemap')

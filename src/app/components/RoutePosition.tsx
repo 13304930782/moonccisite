@@ -14,8 +14,9 @@ export function RoutePosition({ children }: { children?: ReactNode }) {
   useLayoutEffect(() => {
     if (location.key !== 'default') delete document.documentElement.dataset.documentHydrating;
     const previous = history.scrollRestoration; history.scrollRestoration = 'manual';
-    const target = navigation === 'POP' ? positions.get(location.key) || 0 : 0;
-    let restoring = navigation === 'POP' && target > 0;
+    const languageReplace = navigation === 'REPLACE' && location.state?.mooncciLanguageReplace;
+    const target = languageReplace ? Number(location.state?.mooncciLanguageScroll) || 0 : navigation === 'POP' ? positions.get(location.key) || 0 : 0;
+    let restoring = (navigation === 'POP' || languageReplace) && target > 0;
     let timer: ReturnType<typeof setTimeout>;
     let anchorObserver: MutationObserver | undefined;
     const restore = () => { if (restoring) window.scrollTo({ top: target, behavior: 'instant' }); };

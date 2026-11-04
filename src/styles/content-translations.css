@@ -1,0 +1,30 @@
+.taxonomy-translations .translation-fields { border:0; margin:0; padding:0; }
+.taxonomy-translations .translation-description { margin:0 0 16px; color:var(--muted-foreground); font-size:14px; line-height:1.6; }
+.taxonomy-translations .translation-fields fieldset { border:0; padding:0; margin:0; min-width:0; }
+.taxonomy-translations .translation-field { display:grid; gap:8px; margin:0; max-width:560px; font-size:14px; font-weight:600; }
+.taxonomy-translations .translation-field small:empty { display:none; }
+.taxonomy-translations .translation-field input { width:100%; min-width:0; min-height:44px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--background); color:var(--foreground); font:inherit; font-weight:400; }
+.taxonomy-translations .inline-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; }
+.taxonomy-translations .inline-actions button { min-height:44px; padding:10px 16px; border:1px solid var(--border); border-radius:10px; }
+.taxonomy-translations .inline-actions .translation-publish { background:var(--primary); color:var(--primary-foreground); }
+.taxonomy-translations :is(input,button):focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+@media(max-width:560px) { .taxonomy-translations .translation-field input { font-size:16px; } }
+.content-translation{margin:24px 0;border:1px solid var(--border);border-radius:var(--panel-radius,16px);background:var(--card);overflow:hidden}
+.content-translation>summary{padding:16px 20px;min-height:56px;font-size:16px;font-weight:600;cursor:pointer;color:var(--foreground)}
+.content-translation[open]>summary{border-bottom:1px solid var(--border)}
+.content-translation .translation-fields{display:block;padding:20px;border:0;margin:0}
+.content-translation .translation-description{margin:0 0 20px;line-height:1.7;font-size:14px;color:var(--muted-foreground)}
+.content-translation fieldset{border:0;padding:0;margin:0;min-width:0}
+.content-translation .translation-group-heading{font-size:18px;font-weight:600;margin:28px 0 16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.content-translation .translation-field{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:0 0 20px;max-width:800px;color:var(--foreground);font-size:14px;line-height:1.6}
+.content-translation .translation-field>span{font-weight:600}
+.content-translation .translation-field small{font-size:14px;color:var(--muted-foreground);overflow-wrap:anywhere;white-space:pre-wrap}
+.content-translation .translation-field :is(input,textarea){box-sizing:border-box;width:100%;min-width:0;min-height:44px;border:1px solid var(--border);border-radius:var(--control-radius,10px);padding:10px 12px;background:var(--background);color:var(--foreground);font:inherit}
+.content-translation textarea{resize:vertical}
+.content-translation .inline-actions{display:flex;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border);padding-top:20px;margin-top:24px}
+.content-translation .inline-actions button{min-height:44px;padding:10px 16px;border:1px solid var(--border);border-radius:var(--control-radius,10px);background:var(--background);color:var(--foreground);white-space:nowrap}
+.content-translation .inline-actions .translation-publish{background:var(--primary);color:var(--primary-foreground)}
+.content-translation :is(button,input,textarea,summary):focus-visible{outline:2px solid var(--ring);outline-offset:3px}
+.content-translation [role=status],.content-translation [role=alert]{padding:12px 16px;border:1px solid var(--border);border-radius:10px;background:var(--muted);margin:16px 0;font-size:14px}
+.content-translation [role=alert]{border-color:var(--destructive);color:var(--destructive)}
+@media(max-width:560px){.content-translation .translation-fields{padding:16px}.content-translation .translation-field :is(input,textarea){font-size:16px}}

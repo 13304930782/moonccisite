@@ -7,6 +7,7 @@ async function fixture(){
  let draft={id:'fixture',version:1,payload:{title:'Original',content:'Body',tags:[]},updated_at:new Date().toISOString()};
  const api=async(path,options={})=>{
   if(path==='/article-seo/generate')return {};
+  if(path.endsWith('/identity')){if(mode==='identity-failed')throw new ApiError(409);draft={...draft,post_id:42};return draft;}
   if(path.endsWith('/submit'))return {state:'submitted'};
   if(options.method==='PUT'){
    const value=JSON.parse(options.body);writes.push(value);
@@ -20,7 +21,7 @@ async function fixture(){
   if(mode==='refresh-failed')throw Error('refresh failed');
   return draft;
  };
- const module={exports:{}};const requireMock=name=>name==='react'?React:name==='./api'?{api,ApiError}:name==='./articleDraftState'?require('./helpers/article-draft-state.cjs'):name==='./articleAge'?require('./helpers/article-age.cjs'):name==='./feedback'?{notify:{success:x=>notifications.push(x),error:x=>notifications.push(x)}}:name==='./draftStorage'?{readBackup:async()=>null,writeBackup:async()=>{}}:{useUnsavedLeave:()=>{}};
+ const module={exports:{}};const requireMock=name=>name==='react'?React:name==='react-router-dom'?{useNavigate:()=>()=>{}}:name==='../i18n'?require('./helpers/i18n.cjs'):name==='./api'?{api,ApiError}:name==='./articleDraftState'?require('./helpers/article-draft-state.cjs'):name==='./articleAge'?require('./helpers/article-age.cjs'):name==='./feedback'?{notify:{success:x=>notifications.push(x),error:x=>notifications.push(x)}}:name==='./draftStorage'?{readBackup:async()=>null,writeBackup:async()=>{}}:{useUnsavedLeave:()=>{}};
  new Function('exports','require','location','history','sessionStorage',code)(module.exports,requireMock,{search:'?draft=fixture',href:'https://example.test/admin/write?draft=fixture',pathname:'/admin/write'},{replaceState(){}},{removeItem(){}});
  function Probe(){hook=module.exports.useArticleDraft(1);return null;}
  await act(async()=>{root=create(React.createElement(Probe));});
@@ -45,4 +46,8 @@ test('database key reordering and tag cleanup acknowledge the stored draft witho
 });
 test('accepted submission remains accepted and locked when follow-up refresh fails',async()=>{
  const f=await fixture();f.setMode('refresh-failed');let accepted;await act(async()=>{accepted=await f.hook.action('submit');});assert.equal(accepted,true);assert.equal(f.hook.draft.workflow.state,'submitted');assert.equal(f.hook.status,'已提交审核');assert(f.notifications.some(x=>x.includes('状态刷新失败')));f.close();
+});
+
+test('identity preparation saves silently and preserves input when identity fails',async()=>{
+ for(const mode of ['normal','identity-failed']){const f=await fixture();f.setMode(mode);let result;await act(async()=>{f.hook.update({...f.hook.form,title:'Unpublished original',slug:''});result=await f.hook.identity();});assert.equal(result,mode==='normal'?42:null);assert.equal(f.hook.form.slug,'');assert.equal(f.hook.form.title,'Unpublished original');assert.equal(f.notifications.length,0);f.close();}
 });

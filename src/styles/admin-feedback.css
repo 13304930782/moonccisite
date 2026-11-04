@@ -42,3 +42,11 @@
 .admin-note-dialog textarea { width:100%; min-height:96px; margin-top:12px; padding:12px; border:1px solid var(--border); border-radius:var(--control-radius,10px); background:var(--card); color:var(--foreground); font:inherit; font-size:16px; resize:vertical; }
 .admin-note-dialog .inline-actions { margin-top:16px; justify-content:flex-end; }
 .admin-stats + .admin-state { margin-bottom: 32px; }
+
+/* Reviewed result areas opt into the centered empty-state layout. */
+:is(.admin-comments-empty-result,.admin-empty-result) { border:1px solid var(--border); border-radius:var(--panel-radius,16px); background:var(--card); }
+:is(.admin-comments-empty-result,.admin-empty-result) .admin-state--empty { min-height:220px; padding:32px 24px; align-items:center; justify-content:center; text-align:center; gap:10px; }
+:is(.admin-comments-empty-result,.admin-empty-result) .admin-state-title { font-size:18px; font-weight:600; }
+:is(.admin-comments-empty-result,.admin-empty-result) .admin-state-hint { font-size:14px; line-height:1.6; }
+:is(.admin-comments-empty-result,.admin-empty-result) .quiet-button { margin-top:8px; min-height:44px; padding:10px 16px; border:1px solid var(--border); border-radius:var(--control-radius,10px); background:var(--background); color:var(--foreground); }
+:is(.admin-comments-empty-result,.admin-empty-result) .quiet-button:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }

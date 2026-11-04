@@ -1,3 +1,4 @@
+const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -12,6 +13,7 @@ function load(file) {
   const mod = { exports: {} };
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
   const imports = name => {
+    if(i18nFixture(name))return i18nFixture(name);
     if (name === '../../../styles/article-label.css') return {}; // Palette and selector coverage lives in article-label.test.cjs.
     if (name === 'react-router-dom') return { Link: ({ to, children, ...props }) => React.createElement('a', { ...props, href: to }, children) };
     if (name === '../ContentUI') return { labels: { post: '文章', update: '近况', release: '项目版本' }, formatDate: value => value || '', useResource: (url, enabled) => { requests.push({ url, enabled }); return { data: null }; } };
@@ -35,7 +37,7 @@ test('homepage articles preserve published data, links and update dates without 
   assert.equal(doc.querySelector('.home-activity-meta').textContent, '技术');
   assert.equal(doc.querySelector('.home-activity-excerpt').textContent, '两行摘要 & 正文');
   assert.equal(doc.querySelector('time').dateTime, '2026-10-16');
-  assert.equal(doc.querySelector('time').textContent, '更新于 2026-10-16');
+  assert.equal(doc.querySelector('time').textContent, '更新于 '+new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date('2026-10-16')));
   assert.equal(image.getAttribute('src'), '/api/image-variants/180/portrait.webp');
   assert.match(image.getAttribute('srcSet'), /360\/portrait.webp 360w/);
   assert.equal(image.getAttribute('sizes'), '(max-width: 760px) 168px, 270px');

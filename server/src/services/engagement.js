@@ -44,14 +44,15 @@ async function runMail(send=require('../lib/mailer').sendMail){
   const [claim]=await db.query("UPDATE notification_mail_jobs SET state='sending',locked_at=?,lock_token=?,attempts=attempts+1 WHERE notification_id=? AND ((state='pending' AND available_at<=?) OR (state='sending' AND locked_at<?))",[Date.now(),token,j.notification_id,Date.now(),Date.now()-600000]);
   if(!claim.affectedRows)continue;
   try{
-   const [[n]]=await db.query('SELECT n.*,u.email,u.status FROM account_notifications n JOIN users u ON u.id=n.user_id WHERE n.id=?',[j.notification_id]);
+   const [[n]]=await db.query('SELECT n.*,u.email,u.status,u.ui_locale FROM account_notifications n JOIN users u ON u.id=n.user_id WHERE n.id=?',[j.notification_id]);
    const p=n&&await preferences(db,n.user_id),v=n&&await visible(db,n);
    if(!n||n.status!=='active'||!p[n.kind+'_email']||p.verified_email!==n.email||!v.available){
     await db.query("UPDATE notification_mail_jobs SET state='skipped' WHERE notification_id=? AND lock_token=?",[j.notification_id,token]);continue;
    }
    const origin=require('../lib/siteIdentity').siteOrigin();
    const unsubscribe=origin+'/api/engagement/unsubscribe?token='+p.unsubscribe_token+'&kind='+n.kind;
-   const result=await send({channel:'notifications',to:n.email,subject:'[mooncci] '+titles[n.kind],text:titles[n.kind]+'\n\n查看：'+origin+v.url+'\n通知设置：'+origin+'/account/notifications\n退订这类邮件：'+unsubscribe});
+   const t=key=>require('../lib/serverMessages').message(key,n.ui_locale||'zh-CN');
+   const result=await send({channel:'notifications',to:n.email,locale:n.ui_locale||'zh-CN',subject:'[mooncci] '+t(n.kind),text:t(n.kind)+'\n\n'+t('view')+': '+origin+v.url+'\n'+t('notifications')+': '+origin+'/account/notifications\n'+t('unsubscribe')+': '+unsubscribe});
    if(!result?.sent)throw Error('mail_disabled');
    await db.query("UPDATE notification_mail_jobs SET state='sent',last_error='' WHERE notification_id=? AND lock_token=?",[j.notification_id,token]);
   }catch{
