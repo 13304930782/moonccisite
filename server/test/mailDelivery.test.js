@@ -18,6 +18,8 @@ test('all outgoing email routes use the mooncci theme, button fallbacks and send
   });
   t.mock.method(platform, 'query', async () => [{ affectedRows: 1, insertId: 1 }]);
   const mailer = require('../src/lib/mailer'), electricity = require('../src/lib/electricityMailer');
+  assert.equal(mailer.safeSiteUrl('javascript:alert(1)'), 'https://moooncci.cn');
+  assert.equal(mailer.safeSiteUrl('https://example.test/path'), 'https://example.test');
   const { newsletterMessage } = require('../src/lib/contentMail');
   const app = express(); app.use(express.json());
   app.use('/auth', require('../src/routes/auth-cookie'));

@@ -215,8 +215,8 @@ router.post('/owner/connect', ownerOnly, ownerConnectLimiter, async (req, res) =
 
 router.post('/owner/disconnect', ownerOnly, async (req, res) => {
   const [result] = await db.query(`UPDATE mailbox_access SET status='revoked', smtp_secret=NULL,
-    reviewer_id=?, reviewed_at=NOW() WHERE user_id=? AND mailbox_address=? AND status='active'`,
-  [req.user.id, req.user.id, `mooncci@${DOMAIN}`]);
+    reviewer_id=?, reviewed_at=NOW() WHERE user_id=? AND mailbox_address IN (?,?) AND status='active'`,
+  [req.user.id, req.user.id, `mooncci@${DOMAIN}`, 'mooncci@mooncci.site']);
   if (!result.affectedRows) return res.status(409).json({ message: '邮箱连接状态已改变，请刷新。' });
   mailboxImap.invalidate(req.user.id);
   mailboxSmtp.invalidate(req.user.id);

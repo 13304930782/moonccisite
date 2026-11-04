@@ -24,7 +24,14 @@ test('send retains synchronous APPEND, accepted/uncertain semantics and sanitize
     if (sql.startsWith('UPDATE mailbox_send_logs')) {
       if (acceptDbFails && sql.includes("status='accepted'")) throw Error('DB unavailable');
       rows.find(r => r.id === args[0]).status = sql.includes("status='accepted'") ? 'accepted' : 'uncertain'; return [{}]; }
-    if (sql.startsWith('UPDATE mailbox_access SET status=')) return [{ affectedRows: 1 }];
+    if (sql.startsWith('UPDATE mailbox_access SET status=')) {
+      if (sql.includes('mailbox_address')) {
+        assert.match(sql, /mailbox_address IN \(\?,\?\)/);
+        assert.equal(args[0], 1); assert.equal(args[1], 1);
+        assert.ok(args.slice(2).includes(account.mailbox_address), 'disconnect must revoke legacy owner addresses after domain migration');
+      }
+      return [{ affectedRows: 1 }];
+    }
     throw Error('Unexpected query');
   };
   t.mock.method(db, 'query', query);
