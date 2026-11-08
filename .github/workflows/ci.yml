@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, codex/full-site-bilingual]
 permissions:
   contents: read
 concurrency:
