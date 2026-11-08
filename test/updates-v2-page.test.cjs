@@ -32,3 +32,19 @@ test('queued animation frames restore scroll after consecutive filters and load-
 test('a second selection before the frame replaces the old restore; wheel cancels pending work only',async()=>{const h=await mount('/updates',()=>data([item(1)],1,1));try{h.win.scrollY=200;await h.click('近况');h.win.scrollY=340;await h.click('项目版本');assert.equal(h.frames.size,1);h.win.scrollY=0;await h.flushFrames();assert.deepEqual(h.scrolls,[340]);h.event('wheel');h.win.scrollY=600;await h.click('文章');assert.equal(h.frames.size,1);h.event('wheel');h.win.scrollY=650;await h.flushFrames();assert.deepEqual(h.scrolls,[340]);assert.equal(h.win.scrollY,650);h.win.scrollY=720;await h.click('近况');h.win.scrollY=0;await h.flushFrames();assert.deepEqual(h.scrolls,[340,720])}finally{h.close()}});
 test('normal filter marker uses transform-only FLIP without changing button geometry',async()=>{const h=await mount('/updates',()=>data([item(1)]));try{assert.equal(h.animations.length,0);const geometry=h.filterButtons.map(b=>({...b}));await h.click('近况');assert.equal(h.animations.length,1);assert.equal(h.animations[0].options.duration,320);assert.deepEqual(h.animations[0].keyframes,[{transform:'translateX(5px) scaleX(1)'},{transform:'translateX(165px) scaleX(1)'}]);assert.deepEqual(h.filterButtons.map(b=>({...b})),geometry);h.marker.visual={left:190,width:76};await h.click('项目版本');assert.equal(h.animations[0].cancelled,true);assert.equal(h.animations[1].keyframes[0].transform,'translateX(90px) scaleX(1)');assert.deepEqual(h.filterButtons.map(b=>({...b})),geometry)}finally{h.close()}});
 test('reduced motion snaps marker; live preference and resize cancel motion without changing controls',async()=>{const h=await mount('/updates',()=>data([item(1)]),{reduced:true});try{await h.click('近况');assert.equal(h.animations.length,0);assert.equal(h.marker.style.transform,'translateX(165px)');h.setReduced(false);await h.click('文章');assert.equal(h.animations.length,1);h.setReduced(true);assert.equal(h.animations[0].cancelled,true);assert.equal(h.animations.length,1);h.filterContainer.clientWidth=400;h.resizers.at(-1).callback();assert.equal(h.animations.length,1);assert.deepEqual(h.filterButtons.map(b=>b.offsetWidth),[80,80,80,80])}finally{h.close()}});
+
+
+test('switch keeps completed results, labels their category, disables pagination and ignores superseded reads',async()=>{
+ const pending=[];const h=await mount('/updates',url=>url.endsWith('type=')?data([item(1)],1,3):new Promise((resolve,reject)=>pending.push({url,resolve,reject})));
+ try{
+  await h.click('文章');assert.deepEqual(h.rows().map(n=>n.props['data-activity']),['update-1']);assert.match(text(h.root.toJSON()),/正在更新文章，当前仍显示全部更新/);
+  assert.equal(h.root.root.findAllByType('button').find(b=>text(b)==='正在加载…').props.disabled,true);
+  await h.click('近况');await act(async()=>pending.find(p=>p.url.endsWith('type=update')).resolve(data([item(3)],1,1)));
+  await act(async()=>pending.find(p=>p.url.endsWith('type=post')).resolve(data([item(9,'post')],1,1)));
+  assert.deepEqual(h.rows().map(n=>n.props['data-activity']),['update-3']);assert.deepEqual(h.focus,[]);
+ }finally{h.close()}
+});
+test('failed category retains labelled old results; retry can replace with a real empty result',async()=>{
+ let reject,resolve,attempt=0;const h=await mount('/updates',url=>url.endsWith('type=')?data([item(1)]):++attempt===1?new Promise((_,r)=>reject=r):new Promise(r=>resolve=r));
+ try{await h.click('文章');await act(async()=>reject(Error('offline')));assert.equal(h.rows().length,1);assert.match(text(h.root.toJSON()),/文章更新加载失败，当前仍显示全部更新/);await h.click('重试');await act(async()=>resolve(data([])));assert.equal(h.rows().length,0);assert.match(text(h.root.toJSON()),/这个分类下还没有更新/)}finally{h.close()}
+});
