@@ -10,7 +10,6 @@
 @keyframes mooncci-panel-out { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(8px); } }
 html[data-navigation-type="PUSH"] :is(.page-content,.home-main,.auth-form-panel) { animation:mooncci-fade var(--motion-page) var(--ease-feedback); }
 html[data-navigation-type="POP"] :is(.page-content,.home-main,.auth-form-panel,.resource-content) { animation:none; }
-html[data-navigation-type="PUSH"] html[data-navigation-type="PUSH"] .resource-content { animation:mooncci-fade var(--motion-content) var(--ease-feedback); }
 :is(.neo-button,.quiet-button,.article-button,.account-primary-button,.icon-button) {
   transition:background-color var(--motion-control) ease-out,border-color var(--motion-control) ease-out,color var(--motion-control) ease-out,opacity var(--motion-control) ease-out;
 }

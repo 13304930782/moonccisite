@@ -1,3 +1,4 @@
+import { reducedMotion } from '../lib/motionPreference';
 import { useI18n } from '../i18n';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -45,7 +46,7 @@ export default function UpdatesPage() {
       marker.style.width = `${width}px`;
       marker.style.transform = `translateX(${x}px)`;
       container.dataset.markerReady = 'true';
-      if (animate && preference.matches && before.width) marker.animate([
+      if (animate && preference.matches && !reducedMotion() && before.width) marker.animate([
         { transform: `translateX(${before.left - bounds.left}px) scaleX(${before.width / width})` },
         { transform: `translateX(${x}px) scaleX(1)` },
       ], { duration: 320, easing: 'cubic-bezier(.22,1,.36,1)' });
@@ -56,7 +57,8 @@ export default function UpdatesPage() {
     observer.observe(container);
     const stop = () => position(false);
     preference.addEventListener('change', stop);
-    return () => { observer.disconnect(); preference.removeEventListener('change', stop); };
+    window.addEventListener('mooncci:motion-change', stop);
+    return () => { observer.disconnect(); preference.removeEventListener('change', stop); window.removeEventListener('mooncci:motion-change', stop); };
   }, [type]);
   const restoreY = useRef<{ y: number } | null>(null);
   const [minHeight, setMinHeight] = useState(0);
@@ -153,12 +155,21 @@ function UpdatesFeed({ type, page, onMore, onFirst }: { type: string; page: numb
     return () => { requestVersion.current++; controller.abort(); };
   }, [page, scope, retry, resource.data, outOfRange]);
   useEffect(() => { setBackfillError(''); focusNew.current = null; }, [scope]);
-  const available = { ...pages, ...(resource.data ? { [page]: resource.data } : {}) };
+  const available = useMemo(() => {
+    const restored: Record<number, PageData<UpdateActivity>> = {};
+    // Recreate a previously loaded history entry before its first paint. Waiting
+    // for effect-driven backfills makes scroll restoration chase changing height.
+    if (resource.data && !outOfRange) for (let number = 1; number < page; number++) {
+      const cached = readSnapshot(localeResource(activityPath(number, type), contentLocale));
+      if (cached) restored[number] = cached;
+    }
+    return { ...restored, ...pages, ...(resource.data ? { [page]: resource.data } : {}) };
+  }, [cache, scope, resource.data, page, outOfRange]);
   const currentItems = useMemo(() => {
     const seen = new Set<string>();
     return Object.entries(available).filter(([number]) => Number(number) <= page).sort(([a], [b]) => Number(a) - Number(b))
       .flatMap(([, data]) => data.items).filter(item => { if (seen.has(item.activity_id)) return false; seen.add(item.activity_id); return true; });
-  }, [cache, scope, resource.data, page]);
+  }, [available, page]);
   const complete = !outOfRange && Object.keys(available).filter(number => Number(number) <= page).length === page;
   const currentTotal = resource.data?.total ?? pages[page - 1]?.total ?? currentItems.length;
   const switching = !!previousResult && previousResult.scope !== scope && (!complete || !!resource.error);
@@ -208,7 +219,7 @@ function UpdatesFeed({ type, page, onMore, onFirst }: { type: string; page: numb
       onClick={event => {
         if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
         event.preventDefault();
-        document.getElementById(`g-${group.key}`)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+        document.getElementById(`g-${group.key}`)?.scrollIntoView({ behavior: reducedMotion() ? 'instant' : 'smooth', block: 'start' });
         setActive(`g-${group.key}`);
       }}>{group.label}</a>)}</nav></aside>}
   </div>;
