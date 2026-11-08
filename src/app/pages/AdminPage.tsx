@@ -1,3 +1,4 @@
+import { PageHeading } from '../components/ContentUI';
 import { useI18n } from '../i18n';
 import { useEffect, useState } from 'react';
 
@@ -211,13 +212,11 @@ export default function AdminPage() {
 
   return (
     <div>
-      <header className="admin-overview-head">
-        <p className="eyebrow">{t("m_3797982942")}</p>
-        <h1>{t("m_41119ecad8")}</h1>
+      <PageHeading variant="admin" back={false} eyebrow={t("m_3797982942")} title={t("m_41119ecad8")}>
         <p>
           {user?.username}，{t(getRoleTip(role))}
         </p>
-      </header>
+      </PageHeading>
       {statCards.length > 0 && (
         <section className="admin-stats" aria-label={t("m_5bb7cc1ec1")} aria-busy={statsState === 'loading'}>
           {statCards.map((item) => (

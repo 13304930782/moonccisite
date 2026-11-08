@@ -2,7 +2,7 @@ import { useI18n } from '../i18n';
 import {usePublishing} from '../lib/usePublishing';
 
 import {Link} from '../components/LocaleLink';
-import { SitePage } from '../components/ContentUI';
+import { PageHeading, SitePage } from '../components/ContentUI';
 import { PostResults } from '../components/PostResults';
 import { SiteBack } from '../components/SiteBack';
 import '../../styles/articles-v2.css';
@@ -11,11 +11,9 @@ export default function ArticlesPage() {
  const publishing=usePublishing();
   return (
     <SitePage className="articles-v2">
-      <header className="articles-heading">
-        <SiteBack className="articles-back" />
-        <h1>{t("m_7d5a89f6b1")}</h1>
+      <PageHeading className="articles-heading" title={t("m_7d5a89f6b1")} back={<SiteBack className="articles-back" />}>
         <p>{t("m_13d8bdca8b")}</p>
-      </header>
+      </PageHeading>
       <nav className="articles-browse" aria-label={t("m_08924faa2f")}>
         <p>{t("m_12f8cdc8bc")}</p>
         <div>

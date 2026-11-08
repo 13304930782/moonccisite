@@ -126,7 +126,7 @@ test('shared shell, content components and theme retain approved bilingual navig
   'src/styles/project-card.css':'08306a6737ea3bbf30b5792d54fe0c43a12421b7',
   'src/app/components/Header.tsx':'0d1804b5084fd64d80d3d624d026909ad2a2ed6e', // Homepage-only festival slot and menu-contained language control.
   'src/app/components/SiteFooter.tsx':'38865f1588f7c257ad30e46f0168bac802c6e9af',
-  'src/app/components/ContentUI.tsx':'489b704f70226155aa9a33113507e1771b78e084',
+  'src/app/components/ContentUI.tsx':'316e503dfbfaa6dcd0a79af2e568fcf3648dbd3c',
   // Approved slug URL wiring; card markup and styles are unchanged.
   'src/app/components/BlogCard.tsx':'7eecded041ce5501961d45ebbacd21e0924ba927',
   'src/app/components/ProjectCard.tsx':'1cef15845c7312d82533b7344f23c96f76e1008f',

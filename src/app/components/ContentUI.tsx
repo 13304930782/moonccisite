@@ -3,7 +3,7 @@ import { Info, CircleAlert, LoaderCircle } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useDocumentResource } from '../context/DocumentData';
 import {useLocale} from '../context/LocaleContext';
-import {localeResource} from '../lib/locale';
+import {splitLocalePath, localeResource} from '../lib/locale';
 import { readSnapshot, writeSnapshot, snapshotGeneration, deleteSnapshot, subscribeSnapshotInvalidation } from '../lib/publicSnapshots';
 import { notify } from '../lib/feedback';
 import { FormEvent, ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -120,14 +120,15 @@ export function ResourceState({
       return () => cancelAnimationFrame(frame);
     }
   }, [resource.loading, resource.data, location.pathname]);
-  const group=location.pathname.startsWith('/admin/')?'/admin':location.pathname.startsWith('/account/')?'/account/settings':location.pathname.startsWith('/projects/')?'/projects':location.pathname.startsWith('/updates/')?'/updates':location.pathname.startsWith('/series/')?'/series':'/articles';
+  const pathname = splitLocalePath(location.pathname).pathname;
+  const group=pathname.startsWith('/admin/')?'/admin':pathname.startsWith('/account/')?'/account/settings':pathname.startsWith('/projects/')?'/projects':pathname.startsWith('/updates/')?'/updates':pathname.startsWith('/series/')?'/series':'/articles';
   if (resource.loading && resource.data === null && loadingContent) return <>{loadingContent}</>;
   if (resource.loading && resource.data === null) return <div className="resource-loading"><div role="status" aria-label={t("m_aaca7d941e")}><span className="resource-loading-line" aria-hidden="true"/><span className="sr-only">{t("m_2b1fde913d")}</span></div>{resource.cancel && <button type="button" className="resource-cancel" onClick={resource.cancel}>{t("m_4740238092")}</button>}</div>;
   if (resource.error && resource.data === null)
     return (
       <div className="resource-notice" role="alert">
         <p>{t(resource.error || '')}</p>
-        {resource.errorStatus===401?<Link className="quiet-button" to={'/login?redirect='+encodeURIComponent(location.pathname+location.search)}>{t("m_17ecf2c2e3")}</Link>:[403,404].includes(resource.errorStatus||0)?<Link className="quiet-button" to={group}>{t("m_572cf45ba4")}{group==='/admin'?t("m_f97de1b381"):group.startsWith('/account')?t("m_5a2cac68fd"):t("m_da82626e48")}</Link>:<button className="quiet-button" onClick={resource.reload}>{t("m_b8784c8dd5")}</button>}
+        {resource.errorStatus===401?<Link className="quiet-button" to={'/login?redirect='+encodeURIComponent(location.pathname+location.search)}>{t("m_17ecf2c2e3")}</Link>:[403,404].includes(resource.errorStatus||0)?<SiteBack className="quiet-button" to={group}>{t("m_572cf45ba4")}{group==='/admin'?t("m_f97de1b381"):group.startsWith('/account')?t("m_5a2cac68fd"):t("m_da82626e48")}</SiteBack>:<button className="quiet-button" onClick={resource.reload}>{t("m_b8784c8dd5")}</button>}
       </div>
     );
   return <div className="resource-content" aria-busy={resource.loading}>
@@ -152,22 +153,24 @@ export function SitePage({ children, narrow = false, detail = false,className=''
   );
 }
 export function PageHeading({
-  eyebrow,
-  title,
-  children,
+  eyebrow, title, children, back = <SiteBack />, actions, variant = 'page', className, titleClassName,
 }: {
-  eyebrow: string;
-  title: string;
+  eyebrow?: string;
+  title: ReactNode;
   children?: ReactNode;
+  back?: ReactNode | false;
+  actions?: ReactNode;
+  variant?: 'page' | 'admin';
+  className?: string;
+  titleClassName?: string;
 }) {
-  return (
-    <div className="page-heading">
-      <SiteBack />
-      <p className="eyebrow">{eyebrow}</p>
-      <h1>{title}</h1>
-      {children && <div className="muted">{children}</div>}
-    </div>
-  );
+  return <header className={className ?? (variant === 'admin' ? 'admin-overview-head' : 'page-heading')}>
+    {back}
+    {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+    <h1 className={titleClassName}>{title}</h1>
+    {children && (variant === 'page' && !className ? <div className="muted">{children}</div> : children)}
+    {actions && <div className="inline-actions">{actions}</div>}
+  </header>;
 }
 export function formatDate(value: string | null, locale = 'zh-CN') {
   if (!value) return '';

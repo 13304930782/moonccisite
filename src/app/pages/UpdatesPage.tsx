@@ -3,7 +3,7 @@ import { useI18n } from '../i18n';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {Link} from '../components/LocaleLink';
-import { SitePage, useResource, type PageData } from '../components/ContentUI';
+import { PageHeading, SitePage, useResource, type PageData } from '../components/ContentUI';
 import { SiteBack } from '../components/SiteBack';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useLocale } from '../context/LocaleContext';
@@ -92,7 +92,7 @@ export default function UpdatesPage() {
   return <SitePage className="updates-v2">
     <div className="updates-header-column">
     <SiteBack className="updates-back" />
-    <header className="updates-heading"><h1>{t("m_b067526e73")}</h1><p>{t("m_6624096318")}</p></header>
+    <PageHeading className="updates-heading" title={t("m_b067526e73")} back={false}><p>{t("m_6624096318")}</p></PageHeading>
     <div className="updates-filter-scroll"><div ref={filtersRoot} className="updates-filters" role="radiogroup" aria-label={t("m_673fa10a52")}>
       <span ref={filterMarker} className="updates-filter-marker" aria-hidden="true" />
       {filters.map(([key, label], index) => <button key={key} type="button" role="radio" aria-checked={type === key} tabIndex={type === key ? 0 : -1}

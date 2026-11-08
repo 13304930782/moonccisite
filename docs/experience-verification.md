@@ -28,3 +28,10 @@ The site reduced-motion setting did reproduce one running WAAPI filter-marker an
 Restoring cached backfill pages synchronously removes the large intermediate list-height jump: measured 1281 → 1325 → 1325 (remaining 44px return-control insertion is covered by the next navigation-interface change). Removed the impossible nested-html selector rather than enabling another content fade.
 
 Typecheck passed; updates/scope/motion tests: 17 passed. Browser repeated the same path and button measurements, and reported 0 running animations under site reduced motion; system reduced motion passed too.
+
+## 4. Return and heading interfaces
+
+- SiteBack accepts explicit destinations (normal Link behavior), history return with safe fallback, children and visual variants. Direct article loads return to the article list; admin/account are supported. Modifier clicks remain native.
+- DetailUI and resource-error list links use fixed SiteBack destinations. Account's return-to-site control and admin user settings use the common interface. PageHeading now supports optional eyebrow/back/actions and page/admin styling; articles, updates and admin overview use it.
+- Typecheck passed. SiteBack/history/updates/homepage scope tests: 31 passed.
+- Browser passed direct article fallback navigation, single h1, and previous regression flows. POP samples after the return control always occupies its space: scrollY 1369 → 1369 → 1369, opacity 1 and animation none. The prior remaining 44px insertion is eliminated on this tested path.
