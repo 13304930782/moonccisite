@@ -9,7 +9,7 @@ async function main() {
     const page = await browser.newPage({locale:'zh-CN', viewport: { width: 390, height: 844 } });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.addInitScript(() => localStorage.setItem('mooncci-theme', 'dark'));
+    await page.addInitScript(() => { if (window.top === window && location.origin === 'http://127.0.0.1:4196') localStorage.setItem('mooncci-theme', 'dark'); });
     await page.route('**/api/**', route => {
       const path = new URL(route.request().url()).pathname;
       if (path === '/api/auth/session') return route.fulfill({ json: { user: null } });

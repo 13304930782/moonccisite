@@ -2,7 +2,7 @@ const assert=require('node:assert/strict');const {chromium}=require('playwright'
 (async()=>{const {preview}=await import('vite');const server=await preview({preview:{host:'127.0.0.1',port:4216,strictPort:true}});let browser;
 try{browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
 for(const width of [375,768,1440])for(const theme of ['light','dark']){
- const p=await browser.newPage({locale:'zh-CN',viewport:{width,height:950}});await p.addInitScript(t=>localStorage.setItem('mooncci-theme',t),theme);const errors=[];p.on('pageerror',e=>errors.push(e.message));
+ const p=await browser.newPage({locale:'zh-CN',viewport:{width,height:950}});await p.addInitScript(t=>{if(window.top===window&&location.origin==='http://127.0.0.1:4216')localStorage.setItem('mooncci-theme',t);},theme);const errors=[];p.on('pageerror',e=>errors.push(e.message));
  let logged=false,saved=false,writes=0,failWrite=false,removed=false,empty=false;
  const user={id:1,username:'Reader',role:'user'};
  const post={id:1,title:'这是一个很长的收藏文章标题'.repeat(8),content:'## 收藏与继续阅读\n\n正文内容。',tags:[],published_at:'2026-09-01T00:00:00Z',author_name:'mooncci',category:'开发记录'};
