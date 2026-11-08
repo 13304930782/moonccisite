@@ -67,16 +67,16 @@ const defaultProfile = {
 };
 
 const defaultHero = {
-  title: '',
+  title: '探索编程之美',
   eyebrow: 'mooncci / 个人技术手记',
-  badge: 'Welcome',
-  title_before: 'Explore ',
-  title_highlight: 'programming',
-  title_after: ' and ideas',
-  subtitle: 'Articles about frontend, backend, algorithms and systems.',
-  primary_text: 'Read articles',
+  badge: '欢迎来到我的技术博客',
+  title_before: '探索',
+  title_highlight: '编程',
+  title_after: '之美',
+  subtitle: '分享前端、后端、算法、系统设计等计算机领域的知识与经验',
+  primary_text: '阅读文章',
   primary_link: '/articles',
-  secondary_text: 'Browse categories',
+  secondary_text: '浏览分类',
   secondary_link: '/categories',
 };
 
