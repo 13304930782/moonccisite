@@ -42,3 +42,17 @@ Typecheck passed; updates/scope/motion tests: 17 passed. Browser repeated the sa
 - AdminButton maps its variants to ui-btn internally; removed duplicate page classes. Editor return links now use SiteBack with fixed admin/account list destinations and retain draft-leave protection.
 - Full typecheck/unit suite: 418 passed. Admin workspace: five widths, both themes, owner/admin/editor/user and feature gates passed. Article management: six viewport/theme combinations, import/delete-cancel/focus/empty states passed. Writing: all 19 scenarios passed (save, restore, publish, failures, mobile dialogs, role locks and return cancellation).
 - Updated stale browser assertions for translated toolbar labels, the existing 100-character slug limit, locale preference synchronization and link semantics; external status badge is fixture-isolated. The malformed-length request test still verifies failure preservation and retry.
+
+## 6. Default summary presentation
+
+- Every nonempty, distinct article summary now uses the existing DeepSeek-icon card above the body, independent of legacy/manual/AI metadata, including admin preview. This is the shared default for future articles, not a per-article data migration. Summary text and generation settings are unchanged.
+- Scoped the card styles to ArticlePresentation so public detail and iframe preview share the same styling. Empty/redundant summaries remain omitted.
+- Browser: 1440px/390px × light/dark passed short/long summaries, keyboard expand/collapse, stable header/scroll position, contrast ≥ 4.5, icon, manual/legacy entries, English route, empty summary and admin preview. No page errors. Screenshots inspected at mobile dark and desktop light.
+- Added the experience and summary browser regressions to Site checks.
+
+## Final checks
+
+- Typecheck, all 418 unit tests, i18n catalog check (0 violations), production build, bundle budget, document SSR and bilingual SSR passed.
+- Repeated experience browser regression passed: delayed/failed/cached requests, rapid filters, focus, load-more/back restoration, article preload and silent failure recovery, system/site reduced motion. POP scroll samples remained 1369 → 1369; measured button geometry unchanged.
+- Existing detail browser suite passed all six widths (320–1920px), covered/coverless detail, native return links, metadata, keyboard project TOC and no horizontal overflow.
+- Browser execution here used Chromium 153; WebKit was not available locally. Existing bilingual cross-engine CI tests remain enabled. No production deployment or backend/data migration was performed.
