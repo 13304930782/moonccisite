@@ -390,10 +390,6 @@
     position: relative;
   }
 
-  .home-v2 .footer-status {
-    margin-block: 0 64px;
-  }
-
 }
 
 @media (max-width: 1023px) {

@@ -15,7 +15,7 @@ const article=await renderDocument('/article/7',load);
 assert.match(article.html,/正文测试/);assert.match(JSDOM.fragment(article.html).textContent,/const a=1/);assert.match(article.html,/detail-title/);
 assert.ok(!article.html.includes('startup-shell'));
 const articleDom=JSDOM.fragment(article.html);
-assert.ok(articleDom.querySelector('.footer-top').compareDocumentPosition(articleDom.querySelector('.footer-status')) & 4);
+assert.ok(articleDom.querySelector('.footer-status').compareDocumentPosition(articleDom.querySelector('.footer-top')) & 4);
 assert.equal(articleDom.querySelectorAll('h1').length,1);
 assert.equal(articleDom.querySelector('h2#heading-0').textContent,'标题');
 assert.ok(articleDom.querySelector('nav[aria-label="文章目录"] a[href="#heading-0"]'));

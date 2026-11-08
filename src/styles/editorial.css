@@ -422,6 +422,10 @@ input[type='checkbox'] {
 .footer-status {
   margin-bottom: 20px;
 }
+@media (min-width: 761px) {
+  .subscribe-section + .site-footer { padding-top: 0; }
+  .footer-status { margin-bottom: 64px; }
+}
 .footer-status iframe {
   border: 0;
   max-width: 100%;
