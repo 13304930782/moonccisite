@@ -1,3 +1,4 @@
+import { ArticleLoading } from '../components/ArticleLoading';
 import {ReadingProgress} from '../components/ReadingProgress';
 import '../../styles/engagement.css';
 import {ArticleSeries} from '../components/ArticleSeries';
@@ -35,7 +36,7 @@ export default function ArticlePage() {
   const views=usePageView(postId?`/article/${postId}`:null,postId);
   return (
     <SitePage detail className="article-route" footerContent={post&&<SubscribeForm />}>
-      <ResourceState resource={resource}>
+      <ResourceState resource={resource} loadingContent={<ArticleLoading />}>
         {post && (
           <>
             <div className="article-layout">

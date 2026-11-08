@@ -8,13 +8,24 @@ const {chromium} = require('playwright');
  try {
   browser = await chromium.launch({headless:true, ...(process.env.BROWSER_EXECUTABLE ? {executablePath:process.env.BROWSER_EXECUTABLE,args:['--no-sandbox']} : {})});
   const page = await browser.newPage({locale:'zh-CN',viewport:{width:1280,height:800}});
+  page.setDefaultTimeout(10000); page.setDefaultNavigationTimeout(15000);
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   const held = new Map(); let delay=false, fail=false;
+  let holdArticle=false, failArticle=false, releaseArticle; const articleCalls=[];
+  const article={id:77,slug:'fixture-article',status:'published',title:'Article fixture',summary:'Summary fixture',content:'Body fixture',tags:[],cover_image:'',published_at:'2026-11-01'};
   const row=(id,type='update')=>({id,activity_id:`${type}-${id}`,type,path:`/updates/${id}`,title:`row-${id}`,excerpt:`record-${id}`,published_at:'2026-11-01',cover_image:''});
   await page.route('**/api/**', async route=>{
    const url=new URL(route.request().url()); let body={};
    if(url.pathname==='/api/settings/site') body={brand:{site_title:'Test'},footer:{}};
    else if(url.pathname==='/api/auth/session') body={user:null};
+   else if(url.pathname==='/api/posts') body={items:[article],total:1,page:1,pageSize:12};
+   else if(/^\/api\/posts\/(fixture-article|77)$/.test(url.pathname)) {
+    articleCalls.push(url.pathname);
+    if(holdArticle) await new Promise(resolve=>releaseArticle=resolve);
+    if(failArticle){await route.fulfill({status:500,json:{message:'fixture failure'}});return;}
+    body=article;
+   } else if(url.pathname.includes('/discovery')) body={related:[],previous:null,next:null};
+   else if(url.pathname.includes('/series/article/')) body=null;
    else if(url.pathname==='/api/activity') {
     const type=url.searchParams.get('type')||'',n=Number(url.searchParams.get('page')||1);
     if(delay&&type==='post') await new Promise(resolve=>held.set(type,resolve));
@@ -55,7 +66,31 @@ const {chromium} = require('playwright');
   await page.locator('.note-v2-body').waitFor(); await page.goBack();
   await page.waitForFunction(()=>document.querySelectorAll('.updates-row').length===16);
   await page.waitForFunction(y=>Math.abs(scrollY-y)<5,y);
+  holdArticle=true; console.log('article cold'); await page.goto('http://127.0.0.1:4198/article/fixture-article',{waitUntil:'domcontentloaded'});
+  await page.locator('.article-loading').waitFor();
+  assert.equal(await page.locator('.article-loading img').count(),0);
+  await page.waitForFunction(()=>!!document.querySelector('.article-loading-body'));
+  for(let i=0;i<100&&!releaseArticle;i++) await page.waitForTimeout(50);
+  holdArticle=false;releaseArticle();
+  await page.getByRole('heading',{name:'Article fixture',exact:true}).waitFor();
+  assert.equal(await page.locator('.hero-card').count(),0);
+  console.log('article list'); await page.goto('http://127.0.0.1:4198/articles',{waitUntil:'domcontentloaded'});
+  const card=page.locator('a:has(.blog-card)').first(); await card.waitFor();
+  const before=articleCalls.length; releaseArticle=undefined; holdArticle=true; await card.focus();
+  await page.waitForTimeout(150); assert.equal(articleCalls.length,before+1);
+  await card.press('Enter'); await page.locator('.article-loading').waitFor();
+  assert.equal(articleCalls.length,before+1,'navigation shares pending anonymous prefetch');
+  for(let i=0;i<100&&!releaseArticle;i++) await page.waitForTimeout(50);
+  holdArticle=false;releaseArticle();await page.getByRole('heading',{name:'Article fixture',exact:true}).waitFor();
+  assert.equal(articleCalls.length,before+1);
+  await page.goBack();await page.locator('.blog-card').waitFor();
+  await page.locator('a:has(.blog-card)').first().click();await page.getByRole('heading',{name:'Article fixture',exact:true}).waitFor();
+  assert.equal(articleCalls.length,before+1,'warm article snapshot does not refetch');
+  console.log('article list'); await page.goto('http://127.0.0.1:4198/articles',{waitUntil:'domcontentloaded'});failArticle=true;
+  await page.locator('a:has(.blog-card)').first().focus();await page.waitForTimeout(200);
+  assert.equal(await page.locator('[role=alert]').count(),0,'prefetch failures stay silent');
+  failArticle=false;await page.locator('a:has(.blog-card)').first().press('Enter');await page.getByRole('heading',{name:'Article fixture',exact:true}).waitFor();
   assert.deepEqual(errors,[]);
   console.log('PASS experience: retained results, race, failure/retry, empty, keyboard, pagination and back/scroll');
- } finally {await browser?.close();await server.close();}
+ } catch(error) { console.error(error); throw error; } finally {await browser?.close();await server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

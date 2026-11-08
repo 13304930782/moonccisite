@@ -1,3 +1,4 @@
+import { articleResourcePath, pendingArticle } from '../lib/articlePreload';
 import { Info, CircleAlert, LoaderCircle } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useDocumentResource } from '../context/DocumentData';
@@ -26,7 +27,7 @@ export function StatusNotice({children, state = 'info', action, className = ''}:
 export type PageData<T = any> = { items: T[]; total: number; page: number; pageSize: number };
 // Only published, user-independent endpoints may share an in-memory snapshot.
 
-const cacheable = publicReadPath;
+const cacheable = (path: string) => publicReadPath(path) || articleResourcePath(path);
 export function useResource<T = any>(path: string, enabled = true) {
   const { t,locale } = useI18n();
   path = localeResource(path,useLocale().contentLocale);
@@ -57,11 +58,21 @@ export function useResource<T = any>(path: string, enabled = true) {
     setLoading(true);
     setError('');setErrorStatus(null);
     setState(current => current.path === path ? current : { path, data: snapshot });
-    publicRead(path, controller.signal)
+    const read = async () => {
+      if (articleResourcePath(path)) {
+        const cached = readSnapshot(path);
+        if (cached) return cached;
+        const prefetched = await pendingArticle(path);
+        if (controller.signal.aborted) throw new Error('cancelled');
+        if (prefetched) return prefetched;
+      }
+      return publicRead(path, controller.signal);
+    };
+    read()
       .then((v) => {
         if (active && (!cacheable(path) || generation === snapshotGeneration())) {
           setState({ path, data: v });
-          if (cacheable(path)) {
+          if (cacheable(path) && (!articleResourcePath(path) || v?.status === 'published')) {
             writeSnapshot(path, v, generation);
           }
         }
@@ -95,9 +106,11 @@ export function ContentSkeleton() {
 export function ResourceState({
   resource,
   children,
+  loadingContent,
 }: {
   resource: Omit<ReturnType<typeof useResource>,'errorStatus'|'cancel'> & {errorStatus?:number|null;cancel?:()=>void};
   children: ReactNode;
+  loadingContent?: ReactNode;
 }) {
   const { t,locale } = useI18n();
   const location=useLocation();
@@ -108,6 +121,7 @@ export function ResourceState({
     }
   }, [resource.loading, resource.data, location.pathname]);
   const group=location.pathname.startsWith('/admin/')?'/admin':location.pathname.startsWith('/account/')?'/account/settings':location.pathname.startsWith('/projects/')?'/projects':location.pathname.startsWith('/updates/')?'/updates':location.pathname.startsWith('/series/')?'/series':'/articles';
+  if (resource.loading && resource.data === null && loadingContent) return <>{loadingContent}</>;
   if (resource.loading && resource.data === null) return <div className="resource-loading"><div role="status" aria-label={t("m_aaca7d941e")}><span className="resource-loading-line" aria-hidden="true"/><span className="sr-only">{t("m_2b1fde913d")}</span></div>{resource.cancel && <button type="button" className="resource-cancel" onClick={resource.cancel}>{t("m_4740238092")}</button>}</div>;
   if (resource.error && resource.data === null)
     return (

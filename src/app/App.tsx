@@ -1,3 +1,4 @@
+import { ArticleLoading } from './components/ArticleLoading';
 import { useI18n } from './i18n';
 import { feedbackStore } from './lib/feedback';
 import { confirmationStore } from './lib/confirmAction';
@@ -45,6 +46,7 @@ function PublicWeatherCompanion() {
 function RouteLoader() {
   const { t } = useI18n();
   const {pathname} = useLocation();
+  if (/^\/article\//.test(splitLocalePath(pathname).pathname)) return <SitePage detail className="article-route"><ArticleLoading /></SitePage>;
   return <SitePage>{/^\/(login|register)$/.test(pathname) ? <section className="auth-route-skeleton" aria-label={t("m_bab32f18a4")}><ContentSkeleton/></section> : <ContentSkeleton />}</SitePage>;
 }
 

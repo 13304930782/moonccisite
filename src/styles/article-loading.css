@@ -1,0 +1,11 @@
+.article-loading { width:100%; min-height:65vh; padding:32px 0 64px; }
+.article-loading-heading { max-width:880px; margin:auto; }
+.article-loading span:not(.sr-only) { display:block; background:var(--muted); border-radius:8px; }
+.article-loading-back { width:88px; height:36px; margin-bottom:28px; border-radius:999px!important; }
+.article-loading-title { width:85%; height:44px; margin-bottom:12px; }
+.article-loading-title.article-loading-short { width:55%; }
+.article-loading-meta { width:42%; height:24px; margin-top:24px; }
+.article-loading-body { max-width:720px; margin:48px auto 0; }
+.article-loading-body span { height:16px; margin:16px 0; }
+.article-loading-body span:nth-child(3n) { width:78%; margin-bottom:30px; }
+@media(max-width:640px) { .article-loading { padding:24px 0 48px; } .article-loading-title { height:32px; } .article-loading-meta { width:65%; } }

@@ -126,7 +126,7 @@ test('shared shell, content components and theme retain approved bilingual navig
   'src/styles/project-card.css':'08306a6737ea3bbf30b5792d54fe0c43a12421b7',
   'src/app/components/Header.tsx':'0d1804b5084fd64d80d3d624d026909ad2a2ed6e', // Homepage-only festival slot and menu-contained language control.
   'src/app/components/SiteFooter.tsx':'38865f1588f7c257ad30e46f0168bac802c6e9af',
-  'src/app/components/ContentUI.tsx':'332bca2704b39848b7632bafd4a96b674ca8d406',
+  'src/app/components/ContentUI.tsx':'489b704f70226155aa9a33113507e1771b78e084',
   // Approved slug URL wiring; card markup and styles are unchanged.
   'src/app/components/BlogCard.tsx':'7eecded041ce5501961d45ebbacd21e0924ba927',
   'src/app/components/ProjectCard.tsx':'1cef15845c7312d82533b7344f23c96f76e1008f',
@@ -134,7 +134,7 @@ test('shared shell, content components and theme retain approved bilingual navig
  };
  for(const [path,pin] of Object.entries(pins)){
   let source=fs.readFileSync(path,'utf8').replace(/\r\n/g,'\n');
-  // Compact loading feedback is pinned above; the source-return entry stays independently allowed.
+  // Approved article loading slot and published-only prefetch integration are pinned above; the source-return entry stays independently allowed.
   if(path==='src/app/components/ContentUI.tsx')source=source.replace("import { SiteBack } from './SiteBack';\n",'').replace('      <SiteBack />\n','');
   const bytes=Buffer.from(source);
   assert.equal(crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex'),pin,path);

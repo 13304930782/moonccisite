@@ -11,3 +11,10 @@ Baseline: `9c9dbb9478af8ad138f5d941c9de155dedcf7188` (`codex/full-site-bilingual
 - `npm run build`: passed.
 - `node scripts/test-experience-fixes-browser.cjs`: passed against local Vite and isolated API fixtures: delayed/late responses, retained category, failure/retry, empty category, keyboard focus, pagination, detail/back and scroll restoration.
 - Browser: Chromium 153 from temporary @sparticuz/chromium installation (not a project dependency); Playwright's Chromium 145 CDN returned an HTML error instead of a ZIP. Run with `BROWSER_EXECUTABLE` when using a separately installed browser.
+
+## 2. Article loading and prefetch
+
+- Added the same article-shaped fallback for route-code and article-data loading; unknown covers have no speculative image placeholder.
+- Existing pointer/focus/touch preload now fetches anonymous article data. Only published responses are cached; id/slug aliases and locale are preserved. In-flight limits, generation invalidation, silent failure and regular-click retry are tested. English route chunk matching now strips its locale prefix.
+- Typecheck passed; article-preload + updates tests: 17 passed; article-preload + homepage scope checks: 8 passed. Full suite initially 414/415: only the intentionally changed ContentUI baseline fingerprint differed; its pin was updated for the reviewed loading/cache changes.
+- Browser fixture passed cold/no-cover loading, pending prefetch coalescing (one request), warm-cache navigation (no extra request), and silent prefetch failure followed by successful navigation.

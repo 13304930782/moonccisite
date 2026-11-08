@@ -1,3 +1,4 @@
+import { splitLocalePath } from './locale';
 const pageLoaders = {
   '/login': () => import('../pages/LoginPage'),
   '/register': () => import('../pages/RegisterPage'),
@@ -20,7 +21,7 @@ export function loadPage(page: Page) {
   return task;
 }
 export function preloadPage(path: string) {
-  const pathname = path.split(/[?#]/, 1)[0];
+  const pathname = splitLocalePath(path.split(/[?#]/, 1)[0]).pathname;
   const key = (Object.keys(pageLoaders) as Page[]).find(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
   if (key) void loadPage(key).catch(() => {});
 }
