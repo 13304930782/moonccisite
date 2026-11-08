@@ -342,7 +342,6 @@
 
 @media (hover: hover) {
   .home-v2 .home-activity-row:hover,
-  .home-v2 .home-updates-link:hover,
   .home-v2 .home-soft-button:hover,
   .home-v2 .home-hero-button:not(.home-hero-button--primary):hover {
     background: var(--home-hover);
@@ -352,7 +351,8 @@
     background: color-mix(in srgb, var(--primary) 90%, var(--background));
   }
 
-  .home-v2 .home-note-link:hover {
+  .home-v2 .home-note-link:hover,
+  .home-v2 .home-updates-link:hover {
     text-decoration: underline;
     text-underline-offset: 4px;
   }
