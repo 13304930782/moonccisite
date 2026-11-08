@@ -5,7 +5,7 @@ import { brandText } from '../lib/brand';
 import {Link} from './LocaleLink';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { safeHref, safeImageSrc } from '../lib/safeUrl';
-export function SiteFooter({ statusFirst = false }: { statusFirst?: boolean } = {}) {
+export function SiteFooter({ home }: { home?: boolean }) {
   const { t } = useI18n();
   const { theme } = useMoonTheme();
   const { data: settings } = useSiteSettings();
@@ -19,13 +19,12 @@ export function SiteFooter({ statusFirst = false }: { statusFirst?: boolean } = 
       loading="lazy"
       scrolling="no"
       referrerPolicy="no-referrer"
-      style={{ border: 0, maxWidth: '100%', colorScheme: 'normal', display: 'block' }}
     />
   </div>;
   return (
     <footer className="site-footer">
       <div className="site-container">
-        {statusFirst && status}
+        {home && status}
         <div className="footer-top">
           <Link className="site-brand" to="/">
             mooncci
@@ -40,7 +39,7 @@ export function SiteFooter({ statusFirst = false }: { statusFirst?: boolean } = 
             <a href="https://status.mooncci.site" target="_blank" rel="noopener noreferrer">{t("m_e8a4f7c09d")}</a>
           </nav>
         </div>
-        {!statusFirst && status}
+        {!home && status}
         <div className="footer-legal">
           <span>{brandText(footer.copyright)}</span>
           <div className="footer-compliance">

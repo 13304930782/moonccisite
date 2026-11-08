@@ -122,10 +122,10 @@ test('shared shell, content components and theme retain approved bilingual navig
  const pins={
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
   'src/styles/globals.css':'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391',
-  'src/styles/editorial.css':'a2f008dbc24e8ff199850d0291b526a15039f2cf',
+  'src/styles/editorial.css':'1f37355666463c91db1c43e7f823c926f86884f4', // Preserve the status iframe styling moved from inline CSS.
   'src/styles/project-card.css':'08306a6737ea3bbf30b5792d54fe0c43a12421b7',
   'src/app/components/Header.tsx':'0d1804b5084fd64d80d3d624d026909ad2a2ed6e', // Homepage-only festival slot and menu-contained language control.
-  'src/app/components/SiteFooter.tsx':'d5c1dc10ec375bf176b3be737a7a0a84facd8af6', // Homepage status moves before the footer navigation; other pages retain their order.
+  'src/app/components/SiteFooter.tsx':'33b72e35a2c1a9eaf4900a27c418baf467ce29ea', // Homepage status moves before the footer navigation; other pages retain their order.
   'src/app/components/ContentUI.tsx':'316e503dfbfaa6dcd0a79af2e568fcf3648dbd3c',
   // Approved slug URL wiring; card markup and styles are unchanged.
   'src/app/components/BlogCard.tsx':'7eecded041ce5501961d45ebbacd21e0924ba927',

@@ -422,6 +422,12 @@ input[type='checkbox'] {
 .footer-status {
   margin-bottom: 20px;
 }
+.footer-status iframe {
+  border: 0;
+  max-width: 100%;
+  color-scheme: normal;
+  display: block;
+}
 .footer-legal {
   display: flex;
   justify-content: space-between;
