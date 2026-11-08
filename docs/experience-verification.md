@@ -35,3 +35,10 @@ Typecheck passed; updates/scope/motion tests: 17 passed. Browser repeated the sa
 - DetailUI and resource-error list links use fixed SiteBack destinations. Account's return-to-site control and admin user settings use the common interface. PageHeading now supports optional eyebrow/back/actions and page/admin styling; articles, updates and admin overview use it.
 - Typecheck passed. SiteBack/history/updates/homepage scope tests: 31 passed.
 - Browser passed direct article fallback navigation, single h1, and previous regression flows. POP samples after the return control always occupies its space: scrollY 1369 → 1369 → 1369, opacity 1 and animation none. The prior remaining 44px insertion is eliminated on this tested path.
+
+## 5. Admin consolidation
+
+- Replaced menus plus group.paths with a single ordered grouped configuration, preserving role/feature visibility. Kept real overview statistics and three frequent actions; no new todo endpoints.
+- AdminButton maps its variants to ui-btn internally; removed duplicate page classes. Editor return links now use SiteBack with fixed admin/account list destinations and retain draft-leave protection.
+- Full typecheck/unit suite: 418 passed. Admin workspace: five widths, both themes, owner/admin/editor/user and feature gates passed. Article management: six viewport/theme combinations, import/delete-cancel/focus/empty states passed. Writing: all 19 scenarios passed (save, restore, publish, failures, mobile dialogs, role locks and return cancellation).
+- Updated stale browser assertions for translated toolbar labels, the existing 100-character slug limit, locale preference synchronization and link semantics; external status badge is fixture-isolated. The malformed-length request test still verifies failure preservation and retry.

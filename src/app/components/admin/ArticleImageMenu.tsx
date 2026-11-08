@@ -46,7 +46,7 @@ export function ArticleImageMenu({disabled,onMediaLibrary,uploadImage,onInsert,o
     <label htmlFor={`${id}-url`}>{t("m_f3dbc6bb49")}</label><input ref={urlInput} id={`${id}-url`} value={url} onChange={event=>{setUrl(event.target.value);setError('');}} placeholder={t("m_e88930a346")} aria-invalid={!!error} aria-describedby={error?`${id}-error`:undefined} disabled={disabled||uploading} className={compact ? "ui-input" : undefined}/>
     <label htmlFor={`${id}-alt`}>{t("m_8ed4b1690f")}</label><input id={`${id}-alt`} maxLength={500} value={alt} onChange={event=>setAlt(event.target.value)} disabled={disabled||uploading} className={compact ? "ui-input" : undefined}/>
     {error&&<p id={`${id}-error`} role="alert">{t(error || '')}</p>}
-    <div className="article-image-dialog-actions"><DialogClose asChild><AdminButton type="button" variant="ghost" className={compact ? "ui-btn ui-btn--ghost" : undefined}>{t("m_2cd0f3be87")}</AdminButton></DialogClose><AdminButton type="submit" disabled={disabled||uploading} className={compact ? "ui-btn ui-btn--solid" : undefined}>{t("m_8cc9b8b06e")}</AdminButton></div>
+    <div className="article-image-dialog-actions"><DialogClose asChild><AdminButton type="button" variant="ghost" className={compact ?"": undefined}>{t("m_2cd0f3be87")}</AdminButton></DialogClose><AdminButton type="submit" disabled={disabled||uploading} className={compact ?"": undefined}>{t("m_8cc9b8b06e")}</AdminButton></div>
    </form>
   </DialogContent></Dialog>
  </div>;

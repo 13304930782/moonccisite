@@ -11,10 +11,11 @@ export type SiteBackProps = {
   to?: string;
   fallback?: string;
   children?: ReactNode;
+  label?: string;
   variant?: 'text' | 'pill' | 'hero';
   className?: string;
 };
-export function SiteBack({to, fallback, children, variant='text', className}: SiteBackProps) {
+export function SiteBack({to, fallback, children, label, variant='text', className}: SiteBackProps) {
   const { t } = useI18n();
   const previous = usePreviousSiteVisit(), location = useLocation(), navigate = useNavigate();
   const pathname = splitLocalePath(location.pathname).pathname;
@@ -23,7 +24,7 @@ export function SiteBack({to, fallback, children, variant='text', className}: Si
   const path = safeRoutePath(to || previousPath || fallback || defaultFallback, '/');
   if (!to && pathname === '/') return null;
   const historyBack = !to && !!previousPath;
-  return <Link to={path} className={className ?? (variant==='text'?'text-link':variant==='pill'?'quiet-button':'hero-pill')} data-site-back onClick={event => {
+  return <Link to={path} aria-label={label} className={className ?? (variant==='text'?'text-link':variant==='pill'?'quiet-button':'hero-pill')} data-site-back onClick={event => {
     if (historyBack && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
       event.preventDefault();
       navigate(-1);
