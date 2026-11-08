@@ -15,6 +15,7 @@ const article=await renderDocument('/article/7',load);
 assert.match(article.html,/正文测试/);assert.match(JSDOM.fragment(article.html).textContent,/const a=1/);assert.match(article.html,/detail-title/);
 assert.ok(!article.html.includes('startup-shell'));
 const articleDom=JSDOM.fragment(article.html);
+assert.ok(articleDom.querySelector('.footer-top').compareDocumentPosition(articleDom.querySelector('.footer-status')) & 4);
 assert.equal(articleDom.querySelectorAll('h1').length,1);
 assert.equal(articleDom.querySelector('h2#heading-0').textContent,'标题');
 assert.ok(articleDom.querySelector('nav[aria-label="文章目录"] a[href="#heading-0"]'));
@@ -85,6 +86,7 @@ console.log('Cover SSR acceptance: all cards ignore preserved crop metadata; det
 const work={id:1,slug:'promptdock',name:'PromptDock',stage:'building',summary:'公开作品简介',content:'## 核心功能\n\n真实作品正文。',cover_image:'',icon_image:null,repo:'13304930782/PromptDock',tech_stack:'SwiftUI',demo_url:'https://cuegroveapp.com/early-access',releases:{items:[],total:0,page:1,pageSize:20}};
 const workLoad=p=>p==='/posts?pageSize=4'?Promise.resolve([]):p.startsWith('/projects/promptdock')?Promise.resolve(work):p.startsWith('/projects')?Promise.resolve({items:[work],total:1,page:1,pageSize:20}):load(p);
 const workHome=JSDOM.fragment((await renderDocument('/',workLoad)).html);
+assert.ok(workHome.querySelector('.footer-status').compareDocumentPosition(workHome.querySelector('.footer-top')) & 4);
 assert.ok(workHome.querySelector('.project-card--compact .project-card-icon'));
 assert.equal(workHome.querySelector('.project-card--compact h3').textContent,'PromptDock');
 const workDetail=JSDOM.fragment((await renderDocument('/projects/promptdock',workLoad)).html);

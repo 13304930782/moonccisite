@@ -5,14 +5,27 @@ import { brandText } from '../lib/brand';
 import {Link} from './LocaleLink';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { safeHref, safeImageSrc } from '../lib/safeUrl';
-export function SiteFooter() {
+export function SiteFooter({ statusFirst = false }: { statusFirst?: boolean } = {}) {
   const { t } = useI18n();
   const { theme } = useMoonTheme();
   const { data: settings } = useSiteSettings();
   const footer = settings?.footer || {};
+  const status = <div className="footer-status">
+    <iframe
+      title={t("m_8bdc2dbf19")}
+      src={`https://status.mooncci.site/badge?theme=${theme}`}
+      width="250"
+      height="30"
+      loading="lazy"
+      scrolling="no"
+      referrerPolicy="no-referrer"
+      style={{ border: 0, maxWidth: '100%', colorScheme: 'normal', display: 'block' }}
+    />
+  </div>;
   return (
     <footer className="site-footer">
       <div className="site-container">
+        {statusFirst && status}
         <div className="footer-top">
           <Link className="site-brand" to="/">
             mooncci
@@ -27,18 +40,7 @@ export function SiteFooter() {
             <a href="https://status.mooncci.site" target="_blank" rel="noopener noreferrer">{t("m_e8a4f7c09d")}</a>
           </nav>
         </div>
-        <div className="footer-status">
-          <iframe
-            title={t("m_8bdc2dbf19")}
-            src={`https://status.mooncci.site/badge?theme=${theme}`}
-            width="250"
-            height="30"
-            loading="lazy"
-            scrolling="no"
-            referrerPolicy="no-referrer"
-            style={{ border: 0, maxWidth: '100%', colorScheme: 'normal', display: 'block' }}
-          />
-        </div>
+        {!statusFirst && status}
         <div className="footer-legal">
           <span>{brandText(footer.copyright)}</span>
           <div className="footer-compliance">

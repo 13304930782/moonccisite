@@ -165,7 +165,7 @@ export default function HomePage() {
       </main>
       <SubscribeForm />
       <FestivalSlot name="footer" />
-      <SiteFooter />
+      <SiteFooter statusFirst />
     </div>
   );
 }
