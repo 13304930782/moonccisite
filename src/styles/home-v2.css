@@ -373,6 +373,10 @@
 }
 
 @media (min-width: 761px) {
+  .home-v2 .site-footer {
+    padding-top: 0;
+  }
+
   .home-v2 .footer-top > .site-brand {
     position: relative;
     top: -9px;
@@ -387,7 +391,7 @@
   }
 
   .home-v2 .footer-status {
-    margin-block: 0 16px;
+    margin-block: 0 64px;
   }
 
 }
