@@ -5,7 +5,7 @@ import { brandText } from '../lib/brand';
 import {Link} from './LocaleLink';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { safeHref, safeImageSrc } from '../lib/safeUrl';
-export function SiteFooter() {
+export function SiteFooter({ home = false }: { home?: boolean }) {
   const { t } = useI18n();
   const { theme } = useMoonTheme();
   const { data: settings } = useSiteSettings();
@@ -13,7 +13,7 @@ export function SiteFooter() {
   const status = <div className="footer-status">
     <iframe
       title={t("m_8bdc2dbf19")}
-      src={`https://status.mooncci.site/badge?theme=${theme}`}
+      src={`https://status.moooncci.cn/badge?theme=${theme}`}
       width="250"
       height="30"
       loading="lazy"
@@ -24,7 +24,7 @@ export function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="site-container">
-        {status}
+        {home && status}
         <div className="footer-top">
           <Link className="site-brand" to="/">
             mooncci
@@ -36,7 +36,7 @@ export function SiteFooter() {
             <Link to="/rss">{t("m_26ef7656f4")}</Link>
             <Link to="/mail-setup">{t("m_ce3687817c")}</Link>
             <Link to="/node-monitor">{t("m_07e96c1e12")}</Link>
-            <a href="https://status.mooncci.site" target="_blank" rel="noopener noreferrer">{t("m_e8a4f7c09d")}</a>
+            <a href="https://status.moooncci.cn/" target="_blank" rel="noopener noreferrer">{t("m_e8a4f7c09d")}</a>
           </nav>
         </div>
         <div className="footer-legal">

@@ -122,10 +122,10 @@ test('shared shell, content components and theme retain approved bilingual navig
  const pins={
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
   'src/styles/globals.css':'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391',
-  'src/styles/editorial.css':'e5757f9455ce0de02b524882994e5773179d0a0a', // Shared footer status placement and iframe styling.
+  'src/styles/editorial.css':'fdfea47f2374f794ba53240844c1ae552316b9d4', // Shared footer status placement and iframe styling.
   'src/styles/project-card.css':'08306a6737ea3bbf30b5792d54fe0c43a12421b7',
   'src/app/components/Header.tsx':'0d1804b5084fd64d80d3d624d026909ad2a2ed6e', // Homepage-only festival slot and menu-contained language control.
-  'src/app/components/SiteFooter.tsx':'6716e42516500311ab9eb235007112822e298cc2', // Status precedes footer navigation on every page.
+  'src/app/components/SiteFooter.tsx':'c4e8a57e3afc1d3fcefc8d6d8c4cb5ad5f837d55', // Status appears on the homepage only.
   'src/app/components/ContentUI.tsx':'316e503dfbfaa6dcd0a79af2e568fcf3648dbd3c',
   // Approved slug URL wiring; card markup and styles are unchanged.
   'src/app/components/BlogCard.tsx':'7eecded041ce5501961d45ebbacd21e0924ba927',
