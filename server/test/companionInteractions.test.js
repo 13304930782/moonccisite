@@ -1,24 +1,28 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { randomUUID } = require('crypto');
-test('two consecutive double clicks count one hit, isolated clicks/doubles do not, and strokes reset the sequence', async () => {
+test('one double click within 400ms counts one hit; a slower pair does not', async () => {
   const { createCompanionGesture, reactionEmotion } = await import(
     '../../src/app/lib/companionInteraction.ts'
   );
   const gesture = createCompanionGesture();
   assert.deepEqual(
     [0, 100, 220, 320].map((t) => gesture.tap(t)),
-    ['single', 'double', 'single', 'hit'],
+    ['single', 'hit', 'single', 'hit'],
   );
   assert.deepEqual(
     [500, 600, 700, 800].map((t) => gesture.tap(t)),
-    ['single', 'double', 'single', 'hit'],
+    ['single', 'hit', 'single', 'hit'],
   );
   gesture.reset();
   assert.deepEqual(
     [0, 100, 1900, 2000].map((t) => gesture.tap(t)),
-    ['single', 'double', 'single', 'double'],
+    ['single', 'hit', 'single', 'hit'],
   );
+  gesture.reset();
+  assert.deepEqual([0, 400].map(t => gesture.tap(t)), ['single', 'hit']);
+  gesture.reset();
+  assert.deepEqual([0, 401].map(t => gesture.tap(t)), ['single', 'single']);
   gesture.reset();
   assert.deepEqual(
     [0, 600, 1200, 1800].map((t) => gesture.tap(t)),
@@ -29,7 +33,7 @@ test('two consecutive double clicks count one hit, isolated clicks/doubles do no
   gesture.tap(100);
   gesture.reset();
   assert.equal(gesture.tap(200), 'single');
-  assert.equal(gesture.tap(300), 'double');
+  assert.equal(gesture.tap(300), 'hit');
   assert.equal(reactionEmotion('hit', '14'), '21');
   assert.equal(reactionEmotion('pet', '14'), '10');
   assert.equal(reactionEmotion(null, '14'), '14');
@@ -146,10 +150,10 @@ test('anonymous shared counts accept validated individual gestures, reject suppl
   assert.equal((await post({ id: randomUUID(), kind: 'hit' })).status, 503);
 });
 
-test('relaxed double pairs and pointer releases tolerate touch jitter without duplicate rubs or extra fingers', async () => {
+test('double taps and pointer releases tolerate touch jitter without duplicate rubs or extra fingers', async () => {
  const {createCompanionGesture, createCompanionPointer} = await import('../../src/app/lib/companionInteraction.ts');
  const g=createCompanionGesture();
- assert.deepEqual([0,420,1200,1620].map(t=>g.tap(t)),['single','double','single','hit']);
+ assert.deepEqual([0,400,1200,1601].map(t=>g.tap(t)),['single','hit','single','single']);
  const p=createCompanionPointer();
  assert.equal(p.begin(1,100,100,0),true);
  assert.equal(p.begin(2,100,100,1),false);

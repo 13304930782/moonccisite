@@ -1,34 +1,23 @@
 export type CompanionReaction = 'pet' | 'hit' | null;
 export const PET_DURATION_MS = 2200;
 export const ANGRY_DURATION_MS = 3500;
-export const DOUBLE_TAP_MS = 450;
-export const DOUBLE_PAIR_MS = 1600;
+export const DOUBLE_TAP_MS = 400;
 
-// Four taps, grouped as two double-clicks; each group has its own time window.
 // A deferred single click opens the card without making multi-clicks flicker it.
 export function createCompanionGesture() {
   let firstTap: number | null = null;
-  let firstPair: number | null = null;
   return {
     reset() {
       firstTap = null;
-      firstPair = null;
     },
-    tap(now: number): 'single' | 'double' | 'hit' {
-      if (firstPair !== null && now - firstPair > DOUBLE_PAIR_MS)
-        firstPair = null;
+    tap(now: number): 'single' | 'hit' {
       if (
         firstTap !== null &&
         now - firstTap >= 0 &&
         now - firstTap <= DOUBLE_TAP_MS
       ) {
         firstTap = null;
-        if (firstPair !== null && now - firstPair <= DOUBLE_PAIR_MS) {
-          firstPair = null;
-          return 'hit';
-        }
-        firstPair = now;
-        return 'double';
+        return 'hit';
       }
       firstTap = now;
       return 'single';

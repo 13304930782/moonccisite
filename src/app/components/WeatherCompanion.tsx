@@ -9,6 +9,7 @@ import GrokBall, {
   type GrokBallEngine,
 } from '../../vendor/grok-ball/grok-ball.ts';
 import { api } from '../lib/api';
+import { interactionSpeech, reactionDuration, pageSpeech, idleSpeechKind, newsSpeech } from '../lib/companionSpeech';
 import { useMoonTheme } from '../context/ThemeContext';
 import { WeatherCityPicker } from './WeatherCityPicker';
 import {
@@ -22,8 +23,6 @@ import {
   createCompanionPointer,
   reactionEmotion,
   DOUBLE_TAP_MS,
-  PET_DURATION_MS,
-  ANGRY_DURATION_MS,
   type CompanionReaction,
 } from '../lib/companionInteraction';
 import '../../styles/weather-companion.css';
@@ -78,7 +77,7 @@ function isPhoneViewport() {
 }
 
 export default function WeatherCompanion() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { theme } = useMoonTheme();
   const routeLocation = useLocation();
   const {pathname}=splitLocalePath(routeLocation.pathname);
@@ -97,6 +96,13 @@ export default function WeatherCompanion() {
   const [ambient, setAmbient] = useState<(typeof ambientMoments)[number] | null>(null);
   const [focusSpeech, setFocusSpeech] = useState('');
   const [ambientSpeech, setAmbientSpeech] = useState('');
+  const [reactionSpeech, setReactionSpeech] = useState('');
+  const [pageAwareSpeech, setPageAwareSpeech] = useState('');
+  const idleTurn = useRef(0);
+  const newsCache = useRef<{ at: number; value: { title?: string; type: string } | null }>({ at: 0, value: null });
+  const reactionVersion = useRef(0);
+  const speechVersion = useRef(0);
+  const mounted = useRef(true);
   const [displayedEmotion, setDisplayedEmotion] = useState('02');
   const lastMoment = useRef(-1);
   const momentBag = useRef<number[]>([]);
@@ -255,13 +261,36 @@ export default function WeatherCompanion() {
 
   useEffect(() => {
     setAmbientSpeech('');
+    setPageAwareSpeech('');
     if (reduced || collapsed || disabled || open || edgeMode || reaction || inputMood || data?.mode === 'manual') return;
     let timer: ReturnType<typeof setTimeout>;
     let restore: ReturnType<typeof setTimeout>;
     const schedule = () => { timer = setTimeout(play, 28000 + Math.random() * 27000); };
+    let stopped = false;
     const play = () => {
       const active = document.activeElement;
       if (document.hidden || active?.matches('input,textarea,select,[contenteditable="true"]')) { schedule(); return; }
+      if (Date.now() - newsCache.current.at >= 600000) {
+        newsCache.current = { at: Date.now(), value: null };
+        void api(`/activity?page=1&pageSize=1${locale === 'en' ? '&locale=en' : ''}`, { timeoutMs: 8000, credentials: 'omit' }).then(response => {
+          const item = response?.items?.[0];
+          if (!stopped && item && ['post', 'update', 'release'].includes(item.type)) {
+            newsCache.current.value = { type: item.type, title: item.type === 'update' ? '' : item.title };
+          }
+        }).catch(() => {});
+      }
+      const page = pageSpeech(pathname);
+      const choice = idleSpeechKind(++idleTurn.current, Boolean(page), Boolean(newsCache.current.value));
+      if (choice !== 'ambient') {
+        setAmbientSpeech('');
+        const news = newsCache.current.value;
+        const fallback: Record<string, string> = { post: t('文章'), update: t('近况'), release: t('项目版本') };
+        setPageAwareSpeech(choice === 'page' ? page : news ? newsSpeech(news.title || fallback[news.type], news.type) : '');
+        restore = setTimeout(() => setPageAwareSpeech(''), 5500);
+        schedule();
+        return;
+      }
+      setPageAwareSpeech('');
       // Shuffle a complete round so every preset appears before any repeats.
       if (!momentBag.current.length) {
         const indices = ambientMoments.map((_, index) => index);
@@ -286,10 +315,10 @@ export default function WeatherCompanion() {
       restore = setTimeout(() => setAmbientSpeech(''), 5500);
       schedule();
     };
-    const hide = () => { if(document.hidden) { clearTimeout(timer); clearTimeout(restore); setAmbientSpeech(''); } else { clearTimeout(timer); schedule(); } };
+    const hide = () => { if(document.hidden) { clearTimeout(timer); clearTimeout(restore); setAmbientSpeech(''); setPageAwareSpeech(''); } else { clearTimeout(timer); schedule(); } };
     schedule(); document.addEventListener('visibilitychange', hide);
-    return () => { clearTimeout(timer); clearTimeout(restore); document.removeEventListener('visibilitychange', hide); };
-  }, [reduced, collapsed, disabled, open, edgeMode, reaction, inputMood, data?.mode, pathname]);
+    return () => { stopped = true; clearTimeout(timer); clearTimeout(restore); document.removeEventListener('visibilitychange', hide); };
+  }, [reduced, collapsed, disabled, open, edgeMode, reaction, inputMood, data?.mode, pathname, locale]);
   const moodName =
     data?.mood?.name ||
     (!location ? t("m_7e35e077c1") : loaded ? t("m_ad858f1de3") : t("m_3bd7ed4057"));
@@ -432,10 +461,15 @@ export default function WeatherCompanion() {
     if (inputMood === 'password') ball.current?.clearGaze();
   }, [emotion, theme, reduced, collapsed, disabled]);
   useEffect(
-    () => () => {
+    () => {
+      mounted.current = true;
+      return () => {
+      mounted.current = false;
+      reactionVersion.current++;
       if (petTimer.current) clearTimeout(petTimer.current);
       if (clickTimer.current) clearTimeout(clickTimer.current);
       if (helpTimer.current) clearTimeout(helpTimer.current);
+      };
     },
     [],
   );
@@ -470,7 +504,7 @@ export default function WeatherCompanion() {
       !Number.isSafeInteger(value.hits) ||
       value.hits < 0
     )
-      return;
+      return false;
     setStats((previous) =>
       !previous || value.date > previous.date
         ? value
@@ -482,6 +516,7 @@ export default function WeatherCompanion() {
               hits: Math.max(previous.hits, value.hits),
             },
     );
+    return true;
   }
   useEffect(() => {
     if (!open || collapsed || disabled) return;
@@ -529,8 +564,9 @@ export default function WeatherCompanion() {
         body: JSON.stringify({ id, kind }),
         signal: controller.signal,
       });
-      applyStats(response.data);
+      if (!applyStats(response.data)) throw new Error('Invalid interaction counts');
       setStatsError('');
+      return response.data as InteractionStats;
     } catch {
       setStatsError(t("m_a5d78114fe"));
     } finally {
@@ -538,21 +574,59 @@ export default function WeatherCompanion() {
     }
   }
   function react(kind: 'pet' | 'hit') {
-    void recordInteraction(kind);
-    // A pet still counts while angry, but the short angry face finishes first.
-    if (kind === 'pet' && angryUntil.current > Date.now()) return;
-    if (petTimer.current) clearTimeout(petTimer.current);
-    setReaction(kind);
-    angryUntil.current = kind === 'hit' ? Date.now() + ANGRY_DURATION_MS : 0;
-    if (kind === 'pet' && !reduced) ball.current?.bounce();
-    petTimer.current = setTimeout(
-      () => {
-        setReaction(null);
-        angryUntil.current = 0;
-        petTimer.current = null;
-      },
-      kind === 'hit' ? ANGRY_DURATION_MS : PET_DURATION_MS,
-    );
+    const speechId = ++speechVersion.current;
+    setReactionSpeech('');
+    const started = Date.now();
+    const keepAngry = kind === 'pet' && angryUntil.current > started;
+    const version = keepAngry ? reactionVersion.current : ++reactionVersion.current;
+    const finish = () => {
+      if (version !== reactionVersion.current) return;
+      reactionVersion.current++;
+      setReaction(null);
+      setReactionSpeech('');
+      angryUntil.current = 0;
+      petTimer.current = null;
+    };
+    if (!keepAngry) {
+      if (petTimer.current) clearTimeout(petTimer.current);
+      setReaction(kind);
+      const initialDuration = reactionDuration(kind, 1);
+      angryUntil.current = kind === 'hit' ? started + initialDuration : 0;
+      if (kind === 'pet' && !reduced) ball.current?.bounce();
+      petTimer.current = setTimeout(finish, initialDuration);
+    }
+    void recordInteraction(kind).then(value => {
+      if (version !== reactionVersion.current) {
+        const count = kind === 'pet' ? value?.pets : value?.hits;
+        if (mounted.current && value && count && speechId === speechVersion.current && !angryUntil.current) {
+          const lateVersion = ++reactionVersion.current;
+          const duration = reactionDuration(kind, count);
+          setReaction(kind);
+          setReactionSpeech(interactionSpeech(kind, count));
+          angryUntil.current = kind === 'hit' ? Date.now() + duration : 0;
+          if (kind === 'pet' && !reduced) ball.current?.bounce();
+          petTimer.current = setTimeout(() => {
+            if (lateVersion !== reactionVersion.current) return;
+            reactionVersion.current++;
+            setReaction(null);
+            setReactionSpeech('');
+            angryUntil.current = 0;
+            petTimer.current = null;
+          }, duration);
+        }
+        return;
+      }
+      if (!value) return;
+      const count = kind === 'pet' ? value.pets : value.hits;
+      if (count < 1) return;
+      if (kind === 'hit' && count >= 4) {
+        const duration = reactionDuration(kind, count);
+        angryUntil.current = started + duration;
+        if (petTimer.current) clearTimeout(petTimer.current);
+        petTimer.current = setTimeout(finish, Math.max(0, angryUntil.current - Date.now()));
+      }
+      if (speechId === speechVersion.current) setReactionSpeech(interactionSpeech(kind, count));
+    });
   }
   function pet() {
     if (clickTimer.current) clearTimeout(clickTimer.current);
@@ -678,6 +752,7 @@ export default function WeatherCompanion() {
               </div>
               <div className="weather-companion-actions">
                 <button onClick={pet}>{t("m_b545d54af6")}</button>
+                <button type="button" onClick={() => react('hit')}>{t('打一下')}</button>
                 <button onClick={() => collapse(true)}>
                   <Minus size={14} />
                    {t("m_1a98fb7338")} </button>
@@ -761,14 +836,9 @@ export default function WeatherCompanion() {
               <p>{t("m_6fde2c9fd2")}</p>
             </div>
           )}
-          {!open && !reaction && (focusSpeech || ambientSpeech) && (
-            <span className="weather-companion-speech" aria-hidden="true">{t(focusSpeech || ambientSpeech)}</span>
-          )}
-          {reaction && (
-            <span className="weather-companion-pet" role="status">
-              {reaction === 'hit'
-                ? t("m_0b355d71e2")
-                : t("m_5e20a46d52")}
+          {(focusSpeech || reactionSpeech || (!open && (pageAwareSpeech || ambientSpeech))) && (
+            <span className={reactionSpeech && !focusSpeech ? 'weather-companion-pet' : 'weather-companion-speech'} role="status">
+              {t(focusSpeech || reactionSpeech || pageAwareSpeech || ambientSpeech)}
             </span>
           )}
           <button
