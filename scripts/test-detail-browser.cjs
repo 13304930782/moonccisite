@@ -70,7 +70,7 @@ const { chromium } = require('playwright');
     });
     await page.goto('http://127.0.0.1:4202/article/1');
     await page.locator('.detail-title').waitFor();
-    assert.equal(await page.locator('[data-site-back]').count(),0,'direct article does not invent a history source');
+    assert.equal(await page.locator('[data-site-back]').getAttribute('href'),'/articles','direct article has an explicit list fallback');
     for(const width of [1920,1440,1100,768,375,320]){
       await page.setViewportSize({width,height:900}); let expected;
       for(const [name,path] of [['article','/article/1'],['article-cover','/article/2'],['project','/projects/promptdock']]){
@@ -79,6 +79,7 @@ const { chromium } = require('playwright');
           await page.goto('http://127.0.0.1:4202/articles');
           await page.locator('a[href="'+path+'"]').first().click();
           await page.waitForURL('**'+path);
+          await page.locator('.detail-title').waitFor();
           assert.equal(await page.locator('[data-site-back]').getAttribute('href'),'/articles');
         }else await page.goto('http://127.0.0.1:4202'+path);
         await page.locator('.detail-title').waitFor();

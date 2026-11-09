@@ -116,9 +116,9 @@ export default function AdminPostsPage() {
 
   function rowActions(edit: string, title: string, key: string, remove: () => void, draft = false, view?: string) {
     return <div className="admin-posts-actions">
-      <AdminButton asChild variant="ghost" className="ui-btn ui-btn--ghost"><Link to={edit}>{t("m_0518365699")}</Link></AdminButton>
+      <AdminButton asChild variant="ghost" ><Link to={edit}>{t("m_0518365699")}</Link></AdminButton>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild><AdminButton variant="ghost" size="icon" aria-label={t("m_1a42d3b521", {v0: title})} className="ui-btn ui-btn--ghost ui-btn--icon"><MoreHorizontal aria-hidden="true" size={18} /></AdminButton></DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild><AdminButton variant="ghost" size="icon" aria-label={t("m_1a42d3b521", {v0: title})} ><MoreHorizontal aria-hidden="true" size={18} /></AdminButton></DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="admin-portal ui-v2 admin-posts-menu">
           <DropdownMenuItem asChild><Link to={edit}>{draft ? t("m_41c44e1c68") : t("m_0518365699")}</Link></DropdownMenuItem>
           {view && <DropdownMenuItem asChild><Link to={view}>{t("m_db8db05304")}</Link></DropdownMenuItem>}
@@ -135,18 +135,18 @@ export default function AdminPostsPage() {
         <div className="admin-posts-header-actions">
           {manager&&<AdminButton asChild variant="ghost"><Link to="/admin/taxonomy">{t("m_3fcdff8677")}</Link></AdminButton>}
           {manager && <Dialog>
-            <DialogTrigger asChild><AdminButton variant="soft" className="ui-btn ui-btn--soft">{t("m_6ef7cc9ac5")}</AdminButton></DialogTrigger>
+            <DialogTrigger asChild><AdminButton variant="soft" >{t("m_6ef7cc9ac5")}</AdminButton></DialogTrigger>
             <DialogContent className="admin-portal ui-v2 admin-posts-import-dialog" aria-describedby={undefined}>
               <DialogTitle>{t("m_6ef7cc9ac5")}</DialogTitle>
               <div ref={element => { if (element && importHost && !element.contains(importHost)) element.appendChild(importHost); }} />
             </DialogContent>
           </Dialog>}
-          <AdminButton asChild variant="solid" className="ui-btn ui-btn--solid"><Link to="/admin/write">{t("m_13b195d6cc")}</Link></AdminButton>
+          <AdminButton asChild variant="solid" ><Link to="/admin/write">{t("m_13b195d6cc")}</Link></AdminButton>
         </div>
       </header>
       {manager && importHost && createPortal(<ArticleImport />, importHost)}
       <div className="admin-posts-filters" role="group" aria-label={t("m_ca971a625d")}>
-        {filters.map(item => <AdminButton key={item.value} variant="ghost" aria-pressed={filter === item.value} onClick={() => updateQuery({ status: item.value === 'all' ? '' : item.value, page: '' })} className="ui-btn ui-btn--ghost">{t(item.label)}{counts && <span className="admin-posts-filter-count">{counts[item.value]}</span>}</AdminButton>)}
+        {filters.map(item => <AdminButton key={item.value} variant="ghost" aria-pressed={filter === item.value} onClick={() => updateQuery({ status: item.value === 'all' ? '' : item.value, page: '' })} >{t(item.label)}{counts && <span className="admin-posts-filter-count">{counts[item.value]}</span>}</AdminButton>)}
       </div>
       {message && <div className="admin-posts-message" role="alert">{t(message || '')}</div>}
       {loadError && <div className="admin-posts-message" role="alert">{t(loadError || '')} <AdminButton disabled={loading} variant="ghost" onClick={() => setRefresh(value => value + 1)}>{t("m_b8784c8dd5")}</AdminButton></div>}
@@ -171,13 +171,13 @@ export default function AdminPostsPage() {
             </div>
           </article>;
         })}
-        {!message && !loadError && shown === 0 && <div className="admin-posts-empty"><p>{t("m_5c5cb3d539")}</p><AdminButton asChild variant="solid" className="ui-btn ui-btn--solid"><Link to="/admin/write">{t("m_13b195d6cc")}</Link></AdminButton></div>}
+        {!message && !loadError && shown === 0 && <div className="admin-posts-empty"><p>{t("m_5c5cb3d539")}</p><AdminButton asChild variant="solid" ><Link to="/admin/write">{t("m_13b195d6cc")}</Link></AdminButton></div>}
       </div>}
-      {filter !== 'published' && draftPage * 20 < draftTotal && <div className="admin-posts-more"><AdminButton variant="ghost" disabled={loading} onClick={() => setDraftPage(value => value + 1)} className="ui-btn ui-btn--ghost">{t("m_1566278f13")}</AdminButton></div>}
+      {filter !== 'published' && draftPage * 20 < draftTotal && <div className="admin-posts-more"><AdminButton variant="ghost" disabled={loading} onClick={() => setDraftPage(value => value + 1)} >{t("m_1566278f13")}</AdminButton></div>}
       {pages > 1 ? <nav className="admin-posts-pagination" aria-label={t("m_5cd2beebea")}>
-        <AdminButton variant="ghost" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="ui-btn ui-btn--ghost">{t("m_c9b9ae7a61")}</AdminButton>
+        <AdminButton variant="ghost" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} >{t("m_c9b9ae7a61")}</AdminButton>
         <span>{t("m_76e547a8fa")} {total} {t("m_dfff79c31c")} {page} / {pages} {t("m_d24d3c9946")}</span>
-        <AdminButton variant="ghost" disabled={loading || page >= pages} onClick={() => setPage(page + 1)} className="ui-btn ui-btn--ghost">{t("m_8a8542f696")}</AdminButton>
+        <AdminButton variant="ghost" disabled={loading || page >= pages} onClick={() => setPage(page + 1)} >{t("m_8a8542f696")}</AdminButton>
       </nav> : !loading && <p className="admin-posts-shown">{t("m_326fee0b90")} {shown} {t("m_4e7b9204a9")}</p>}
     </div>
   </div>;

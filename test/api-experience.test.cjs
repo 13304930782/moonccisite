@@ -12,6 +12,8 @@ test('request timeout, cancellation, response classification, credentials and no
   await assert.rejects(api('/article-seo/slug',{method:'POST'}),e=>e.message==='DeepSeek 余额不足，请站长充值。'&&!e.uncertain);
   global.fetch=async (_url,options)=>{calls++;assert.equal(options.credentials,'same-origin');assert.equal(options.headers.has('Authorization'),false);return new Response(JSON.stringify({ok:true}),{headers:{'Content-Type':'application/json'}});};
   assert.deepEqual(await api('/test',{headers:{Authorization:'must-not-leak'}}),{ok:true});
+  global.fetch=async (_url,options)=>{assert.equal(options.credentials,'omit');return Response.json({ok:true});};
+  assert.deepEqual(await api('/posts/public',{credentials:'omit'}),{ok:true});
   global.fetch=(_url,{signal})=>new Promise((resolve,reject)=>{calls++;signal.addEventListener('abort',()=>reject(new Error('aborted')),{once:true});});
   await assert.rejects(api('/slow',{timeoutMs:5}),e=>e.kind==='timeout'&&!e.uncertain);
   const before=calls;

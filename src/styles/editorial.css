@@ -422,6 +422,15 @@ input[type='checkbox'] {
 .footer-status {
   margin-bottom: 20px;
 }
+@media (min-width: 761px) {
+  .footer-status { margin-bottom: 64px; }
+}
+.footer-status iframe {
+  border: 0;
+  max-width: 100%;
+  color-scheme: normal;
+  display: block;
+}
 .footer-legal {
   display: flex;
   justify-content: space-between;

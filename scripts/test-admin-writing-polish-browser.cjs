@@ -143,7 +143,7 @@ async function scenario(name, width, dark, configure, task, { viewportMock = fal
     assert.equal(browserMetadata.executable.replaceAll('\\','/').toLowerCase(),'c:/program files/google/chrome/application/chrome.exe');
     for(const width of [1440,390])for(const dark of [false,true])await scenario(`empty-${width}-${dark?'dark':'light'}`,width,dark,null,async({page,state,row,shot})=>{
       assert.equal(await page.locator('#article-title').inputValue(),'');assert.equal((await editor(page).innerText()).trim(),'');
-      assert.equal(await page.locator('.writing-back').evaluate(element=>element.tagName),'BUTTON');
+      assert.equal(await page.locator('.writing-back').evaluate(element=>element.tagName),'A');
       assert.equal(await imageTrigger(page).getAttribute('aria-label'),'插入图片');
       row.blankPlaceholders=await page.evaluate(()=>{const scope=document.querySelector('.writing-workspace'),probe=document.createElement('span');probe.style.color='var(--ui-text-muted)';scope.appendChild(probe);const expected=getComputedStyle(probe).color;probe.remove();const title=getComputedStyle(document.querySelector('#article-title'),'::placeholder'),body=getComputedStyle(document.querySelector('.simple-editor-content'),'::before');return{expected,titleColor:title.color,titleOpacity:title.opacity,bodyColor:body.color,bodyContent:body.content};});
       assert.equal(row.blankPlaceholders.titleColor,row.blankPlaceholders.expected);assert.equal(Number(row.blankPlaceholders.titleOpacity),1);assert.equal(row.blankPlaceholders.bodyColor,row.blankPlaceholders.expected);assert.match(row.blankPlaceholders.bodyContent,/开始写作/);

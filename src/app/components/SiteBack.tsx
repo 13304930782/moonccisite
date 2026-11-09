@@ -1,18 +1,33 @@
+import type {ReactNode} from 'react';
 import { useI18n } from '../i18n';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {Link} from './LocaleLink';
 import { safeRoutePath } from '../lib/safeUrl';
+import { splitLocalePath } from '../lib/locale';
 import { usePreviousSiteVisit } from './RoutePosition';
 
-export function SiteBack({ className = 'text-link' }: { className?: string }) {
+export type SiteBackProps = {
+  /** Explicit destination means list/parent navigation, never history.back(). */
+  to?: string;
+  fallback?: string;
+  children?: ReactNode;
+  label?: string;
+  variant?: 'text' | 'pill' | 'hero';
+  className?: string;
+};
+export function SiteBack({to, fallback, children, label, variant='text', className}: SiteBackProps) {
   const { t } = useI18n();
   const previous = usePreviousSiteVisit(), location = useLocation(), navigate = useNavigate();
-  const path = previous && safeRoutePath(previous.path, '');
-  if (!path || location.pathname === '/' || /^\/(?:admin(?:-login)?|account)(?:\/|$)/.test(location.pathname)) return null;
-  return <Link to={path} className={className} data-site-back onClick={event => {
-    if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+  const pathname = splitLocalePath(location.pathname).pathname;
+  const previousPath = previous && safeRoutePath(previous.path, '');
+  const defaultFallback = pathname.startsWith('/admin/') ? '/admin' : pathname.startsWith('/account/') ? '/' : pathname.startsWith('/article/') ? '/articles' : '/';
+  const path = safeRoutePath(to || previousPath || fallback || defaultFallback, '/');
+  if (!to && pathname === '/') return null;
+  const historyBack = !to && !!previousPath;
+  return <Link to={path} aria-label={label} className={className ?? (variant==='text'?'text-link':variant==='pill'?'quiet-button':'hero-pill')} data-site-back onClick={event => {
+    if (historyBack && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
       event.preventDefault();
       navigate(-1);
     }
-  }}>{t("m_3a14a3c2be")}</Link>;
+  }}>{children ?? t('m_3a14a3c2be')}</Link>;
 }

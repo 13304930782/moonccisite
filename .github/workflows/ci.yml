@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, codex/full-site-bilingual]
 permissions:
   contents: read
 concurrency:
@@ -79,6 +79,8 @@ jobs:
             .cache/public-history-*-375.png
       - run: node test/mobile-inputs.browser.cjs
       - run: node scripts/test-browser.cjs
+      - run: node scripts/test-experience-fixes-browser.cjs
+      - run: node scripts/test-ai-summary-browser.cjs
       - run: node scripts/test-updates-browser.cjs
       - run: node scripts/test-google-button-browser.cjs
       - run: node scripts/test-admin-capacity-browser.cjs

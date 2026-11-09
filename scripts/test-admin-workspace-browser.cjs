@@ -11,12 +11,13 @@ const { chromium } = require('playwright');
     const page = await browser.newPage({locale:'zh-CN', reducedMotion: 'reduce' });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    let role='owner', features=true;
     await page.route('**/api/**', async route => {
       const path = new URL(route.request().url()).pathname;
       let body = {};
-      if (path === '/api/auth/session') body = { user: { id: 1, username: 'Preview', email: 'preview@example.invalid', role: 'owner', status: 'active' } };
+      if (path === '/api/auth/session') body = { user: { id: 1, username: 'Preview', email: 'preview@example.invalid', role, status: 'active' } };
       if (path === '/api/settings/site') body = { brand: {}, hero: {}, footer: {}, weather: { enabled: false } };
-      if (path.endsWith('/config')) body = { enabled: true };
+      if (path.endsWith('/config') || path === '/account/security-config') body = { enabled: features };
       if (path === '/api/admin/stats') body = { posts: 10, users: 3, comments: 5, bannedWords: 0 };
       await route.fulfill({ json: body });
     });
@@ -40,6 +41,26 @@ const { chromium } = require('playwright');
       assert.ok(distinct >= 20, `${width} semantic icons`);
       if (width === 375) { await page.keyboard.press('Escape'); await page.locator('.admin-mobile-layer').waitFor({ state: 'hidden' }); }
     }
+    await page.setViewportSize({width:1280,height:900});
+    for (const nextRole of ['owner','admin','editor']) {
+      role=nextRole;
+      await page.goto('http://127.0.0.1:4995/admin');await page.locator('.admin-quick-links').waitFor();
+      const links=await page.locator('.admin-sidebar .admin-menu-group a').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('href')));
+      assert.equal(new Set(links).size,links.length,'menu destinations are unique');
+      assert.ok(links.includes('/admin/posts')&&links.includes('/admin/write'));
+      assert.equal(links.includes('/admin/node-monitor'),role==='owner');
+      assert.equal(links.includes('/admin/users'),role!=='editor');
+      assert.equal(links.includes('/admin/reviews'),role!=='editor');
+      assert.ok(await page.locator('.admin-quick-links a').count()<=3);
+      assert.equal(await page.locator('h1').count(),1);
+    }
+    role='owner';features=false;
+    await page.goto('http://127.0.0.1:4995/admin');await page.locator('.admin-quick-links').waitFor();
+    assert.equal(await page.locator('.admin-sidebar a[href="/admin/reviews"]').count(),0);
+    assert.equal(await page.locator('.admin-sidebar a[href="/admin/operations"]').count(),0);
+    role='user';await page.goto('http://127.0.0.1:4995/admin');
+    await page.getByRole('heading',{name:'当前账号无法访问此页面'}).waitFor();
+    assert.equal(await page.locator('.admin-sidebar').count(),0);
     assert.deepEqual(errors, []);
     console.log('PASS: admin overview five widths, light/dark, navigation targets, semantic icons, mobile menu and Escape.');
   } finally { if (browser) await browser.close(); await server.close(); }

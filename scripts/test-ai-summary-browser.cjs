@@ -1,22 +1,25 @@
-const {createFixture,launch}=require('./fixtures/admin-redesign.cjs');
+const {createFixture,ID}=require('./fixtures/admin-redesign.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const out='.cache/ai-summary-acceptance';
 const base=process.env.PREVIEW_URL||'http://127.0.0.1:5324';
 const sentence='本文补写都市天际线2基础Mod推荐，介绍三款：Anarchy可无视原版提示强制放置物体；Move It能移动已放置的道路、建筑、树木和摆件；Better Bulldozer可删除默认推土机无法删除的建筑内结构、桥墩、地皮和隐形道路。';
 (async()=>{
- const browser=await launch(),results=[];fs.mkdirSync(out,{recursive:true});
+ const {createServer}=await import('vite');const server=process.env.PREVIEW_URL?null:await createServer({server:{host:'127.0.0.1',port:5324,strictPort:true},logLevel:'error'});await server?.listen();
+ const browser=await require('playwright').chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})}),results=[];fs.mkdirSync(out,{recursive:true});
  try{for(const width of [1440,390])for(const theme of ['light','dark']){
-  const page=await browser.newPage({viewport:{width,height:1000},reducedMotion:'reduce'}),errors=[];
+  const page=await browser.newPage({locale:'zh-CN',viewport:{width,height:1000},reducedMotion:'reduce'}),errors=[];
+  console.log('summary',width,theme);page.setDefaultTimeout(10000);page.setDefaultNavigationTimeout(15000);
+  await page.route('https://**',r=>r.fulfill({body:''}));
   page.on('pageerror',e=>errors.push(e.message));
-  await page.addInitScript(t=>localStorage.setItem('mooncci-theme',t),theme);
-  await createFixture().install(page);
-  await page.route('**/api/series/article/*',r=>r.fulfill({json:null}));
+  await page.addInitScript(t=>{try{localStorage.setItem('mooncci-theme',t)}catch{}},theme);
+  const fixture=createFixture();await fixture.install(page);
+  await page.route('**/api/series/article/*',r=>r.fulfill({contentType:'application/json',body:'null'}));
   await page.route('**/api/comments/post/*',r=>r.fulfill({json:[]}));
   let summary='介绍都市天际线 2 的三款基础 Mod 与使用方法。',mode='ai';
-  await page.route('**/api/posts/summary-demo',r=>r.fulfill({json:{id:42,title:'都市天际线 2 · 基础 Mod 推荐',summary,summary_mode:mode,content:'<!--mooncci-richtext:v1--><h2>1. Anarchy</h2><p>安装与使用说明，以及推荐的适用场景。</p>',author_name:'mooncci',created_at:'2026-10-18T12:00:00Z',category:'游戏',tags:[]}}));
-  await page.goto(`${base}/article/summary-demo`);
+  await page.route('**/api/posts/summary-demo*',r=>r.fulfill({json:{id:42,slug:'summary-demo',status:'published',title:'都市天际线 2 · 基础 Mod 推荐',summary,summary_mode:mode,content:'<!--mooncci-richtext:v1--><h2>1. Anarchy</h2><p>安装与使用说明，以及推荐的适用场景。</p>',author_name:'mooncci',created_at:'2026-10-18T12:00:00Z',category:'游戏',tags:[]}}));
+  await page.goto(`${base}/article/summary-demo`,{waitUntil:'domcontentloaded'});
   const card=page.locator('section[aria-label="AI 简介"]'),body=card.locator('.article-ai-summary-body'),button=card.getByRole('button');
-  await card.waitFor();await page.evaluate(()=>document.fonts.ready);
+  await card.waitFor().catch(async e=>{console.error(await page.locator('body').innerText());await page.screenshot({path:out+'/failure.png',fullPage:true});throw e});await page.evaluate(()=>document.fonts.ready);
   assert.equal(await button.count(),0,'Short summary has no toggle');
   await page.screenshot({path:`${out}/${width}-${theme}-short.png`,fullPage:true});
   summary=sentence.repeat(3);await page.reload();await button.waitFor();
@@ -49,9 +52,13 @@ const sentence='本文补写都市天际线2基础Mod推荐，介绍三款：Ana
   await page.keyboard.press('Space');assert.equal(await button.getAttribute('aria-expanded'),'false');
   await page.setViewportSize({width:width===1440?390:1440,height:1000});await page.waitForTimeout(80);assert.equal(await button.count(),1);
   await page.setViewportSize({width,height:1000});
-  mode='manual';await page.reload();await page.locator('.article-summary').waitFor();assert.equal(await card.count(),0);
+  for(const nextMode of ['manual',undefined]){mode=nextMode;await page.reload();await card.waitFor();assert.equal(await body.innerText(),summary);assert.equal(await page.locator('.article-summary').count(),0);}
+  await page.goto(`${base}/en/article/summary-demo`);await page.locator('.article-ai-summary').waitFor();assert.equal(await page.locator('.article-ai-summary-body').innerText(),summary);assert.match(await page.locator('.article-ai-summary-provider').innerText(),/DeepSeek/);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.goto(`${base}/article/summary-demo`,{waitUntil:'domcontentloaded'});
   mode='ai';summary='';await page.reload();await page.getByRole('heading',{level:1}).waitFor();assert.equal(await card.count(),0);
-  assert.deepEqual(errors,[]);results.push({width,theme,...metrics,keyboard:true,stableScroll:true,manualAndEmptyHidden:true});await page.close();
- }}finally{await browser.close()}
+  fixture.resetDraft({title:'预览简介',summary:sentence,summary_mode:'manual',content:'<!--mooncci-richtext:v1--><p>预览正文</p>'});
+  await page.goto(`${base}/admin/write?draft=${ID}`,{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'发布',exact:true}).click();const previewCard=page.frameLocator('iframe').locator('.article-ai-summary');await previewCard.waitFor();assert.equal(await previewCard.locator('.article-ai-summary-body').innerText(),sentence);assert.equal(await previewCard.locator('.article-ai-summary-icon').evaluate(e=>getComputedStyle(e).width),'16px');
+  assert.deepEqual(errors,[]);results.push({width,theme,...metrics,keyboard:true,stableScroll:true,manualAndLegacyShared:true,english:true,preview:true,emptyHidden:true});await page.close();
+ }}finally{await browser.close();await server?.close()}
  fs.writeFileSync(`${out}/report.json`,JSON.stringify(results,null,2));console.log(JSON.stringify(results,null,2));
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -1,3 +1,4 @@
+import { PageHeading } from '../components/ContentUI';
 import { useI18n } from '../i18n';
 import { useEffect, useState } from 'react';
 
@@ -123,101 +124,36 @@ export default function AdminPage() {
   ].filter((item) => item.show);
 
   const actions = [
-    {
+{
       title: t("m_4e7cb68111"),
       desc: t("m_51144ab3a7"),
       to: '/admin/posts',
       icon: FileText,
       show: writer,
     },
-    {
+{
       title: t("m_13b195d6cc"),
       desc: t("m_bbc8fe37f0"),
       to: '/admin/write',
       icon: PenLine,
       show: writer,
     },
-    {
+{
       title: t("m_e7c87ea7ef"),
       desc: t("m_44484afd3f"),
       to: '/admin/comments',
       icon: MessageCircle,
       show: manager,
-    },
-    {
-      title: t("m_fbf413d429"),
-      desc: t("m_94c3a4aaec"),
-      to: '/admin/users',
-      icon: Users,
-      show: manager,
-    },
-    {
-      title: t("m_70dfdc8440"),
-      desc: t("m_34129f6ab0"),
-      to: '/admin/editor-applications',
-      icon: UserRoundCheck,
-      show: manager,
-    },
-    {
-      title: t("m_e2c664697f"),
-      desc: t("m_bdd1d5ead5"),
-      to: '/admin/banned-words',
-      icon: Ban,
-      show: manager,
-    },
-    {
-      title: t("m_f0cac3fe1a"),
-      desc: t("m_b00d2bd50e"),
-      to: '/admin/site-settings',
-      icon: Settings,
-      show: manager,
-    },
-    {
-      title: t("m_e37441c86c"),
-      desc: t("m_968815165c"),
-      to: '/admin/login-settings',
-      icon: KeyRound,
-      show: user?.role === 'owner',
-    },
-    {
-      title: t("m_177aab06c8"),
-      desc: t("m_e13946ec85"),
-      to: '/admin/mail-settings',
-      icon: AtSign,
-      show: manager,
-    },
-    {
-      title: t("m_2ea2bbfe61"),
-      desc: t("m_96a256decd"),
-      to: '/admin/send-mail',
-      icon: Bell,
-      show: manager,
-    },
-    {
-      title: t("m_2d7256702a"),
-      desc: t("m_fad731d0b3"),
-      to: '/admin/mailbox',
-      icon: Mailbox,
-      show: true,
-    },
-    {
-      title: t("m_6ef4c0ce0a"),
-      desc: t("m_4b00513c49"),
-      to: '/admin/editor-apply',
-      icon: FilePenLine,
-      show: !writer,
-    },
+    }
   ].filter((item) => item.show);
 
   return (
     <div>
-      <header className="admin-overview-head">
-        <p className="eyebrow">{t("m_3797982942")}</p>
-        <h1>{t("m_41119ecad8")}</h1>
+      <PageHeading variant="admin" back={false} eyebrow={t("m_3797982942")} title={t("m_41119ecad8")}>
         <p>
           {user?.username}，{t(getRoleTip(role))}
         </p>
-      </header>
+      </PageHeading>
       {statCards.length > 0 && (
         <section className="admin-stats" aria-label={t("m_5bb7cc1ec1")} aria-busy={statsState === 'loading'}>
           {statCards.map((item) => (

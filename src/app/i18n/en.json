@@ -3589,5 +3589,7 @@
   "启用服务器投递后才能开启周报": "Enable server delivery to turn on the newsletter",
   "先检查邮件与任务服务，完成配置后重新检查。": "Check the mail and worker settings, then check again when setup is complete.",
   "服务器配置说明": "Server configuration instructions",
-  "{date} · 持续 1 天": "{date} · 1 day"
+  "{date} · 持续 1 天": "{date} · 1 day",
+  "{requested}更新加载失败，当前仍显示{shown}更新": "Unable to load {requested}. Still showing {shown} updates.",
+  "正在更新{requested}，当前仍显示{shown}更新": "Loading {requested}. Still showing {shown} updates."
 }

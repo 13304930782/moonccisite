@@ -1,3 +1,5 @@
+import {SiteBack} from '../components/SiteBack';
+import {PageHeading} from '../components/ContentUI';
 import { useI18n } from '../i18n';
 import {NodeMonitorPermission} from '../components/NodeMonitorPermission';
 import { notify } from '../lib/feedback';
@@ -20,7 +22,7 @@ export default function AdminUserSettingsPage() {
     try{const r=await api(path,{method,...(body?{body:JSON.stringify(body)}:{})});notify.success(r.message);if(r.user)setUser(r.user);else await load();return true;}
     catch(e:any){setMessage(e.message); notify.error(e.message);return false;}finally{setBusy(false);}
   };
-  return <div className="admin-page"><Link className="text-link" to="/admin/users">{t("m_7232718ecc")}</Link><h1 className="admin-title">{t("m_7ce710f646")}</h1>
+  return <div className="admin-page"><PageHeading variant="admin" titleClassName="admin-title" title={t("m_7ce710f646")} back={<SiteBack to="/admin/users">{t("m_7232718ecc")}</SiteBack>}/>
     {error?<p role="alert">{t(error || '')}<button onClick={load}>{t("m_b8784c8dd5")}</button></p>:!user?<p role="status">{t("m_21bd738e0d")}</p>:<>
       <p>#{user.id} · {user.username}{user.deleted_at&&<small className="deleted-account-label">{t("m_077a6d3771")}</small>}</p>
       <AccountProfileForm key={user.id} user={user} base={base} onSaved={setUser}/>

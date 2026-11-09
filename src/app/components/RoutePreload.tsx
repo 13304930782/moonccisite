@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { prefetchArticle } from '../lib/articlePreload';
 import { preloadPage } from '../lib/preloadPage';
 export function RoutePreload() {
   const navigate = useNavigate();
@@ -7,7 +8,7 @@ export function RoutePreload() {
     const preload = (event: Event) => {
       if (!(event.target instanceof Element)) return;
       const link = event.target.closest<HTMLAnchorElement>('a[href]');
-      if (link && link.origin === location.origin && !link.hasAttribute('download')) preloadPage(link.pathname);
+      if (link && link.origin === location.origin && !link.hasAttribute('download') && !link.closest('.detail-preview,.article-full-preview') && !/^\/(admin|account)(?:\/|$)/.test(location.pathname)) { preloadPage(link.pathname); prefetchArticle(link.pathname); }
     };
     const followHash = (event: MouseEvent) => {
       const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href]') : null;

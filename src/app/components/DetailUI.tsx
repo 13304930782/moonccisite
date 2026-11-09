@@ -1,3 +1,4 @@
+import { SiteBack } from './SiteBack';
 import { useI18n } from '../i18n';
 import { ReactNode, useEffect, useState } from 'react';
 
@@ -55,7 +56,7 @@ export function DetailPage({ className = '', backTo, backLabel, label, title, me
   const { t } = useI18n();
   return <article className={`detail-page ${className}`} data-reading-content={preview ? undefined : true}>
     <header className="detail-header">
-      <div className="detail-intro"><nav className="detail-breadcrumb" aria-label={t("m_6c3f7b6a12")} data-reading-ignore><Link className="text-link" to={backTo}>← {backLabel}</Link></nav>
+      <div className="detail-intro"><nav className="detail-breadcrumb" aria-label={t("m_6c3f7b6a12")} data-reading-ignore><SiteBack to={backTo}>← {backLabel}</SiteBack></nav>
       <div className="detail-label"><span className="detail-category">{label}</span></div></div>
       <h1 className="detail-title">{title}</h1>
       {meta}

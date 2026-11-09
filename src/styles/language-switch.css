@@ -15,5 +15,6 @@
 .article-languages { flex-wrap: wrap; justify-content: center; gap: 8px 16px; font-size: 13px; }
 .article-languages a { display: inline-flex; align-items: center; min-height: 44px; }
 .article-languages [aria-current="page"] { font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+.article-languages a:hover { border-bottom-color: transparent; text-decoration: underline; text-underline-offset: 4px; }
 
 @media(min-width:1101px) { .site-header .desktop-nav a { white-space:nowrap; } }

@@ -58,10 +58,7 @@ export function ArticlePresentation({ post, preview = false, views = null,progre
     <div className="article-after"><div className="article-reading-wrap">
       <div className="detail-body" lang={post.content_locale || 'zh-CN'}>
         {old&&<p className="article-age-notice" role="note">{t("m_7b1f67bfb8")}</p>}
-        {summary&&(post.summary_mode==='ai'&&!preview ? <ArticleAiSummary key={post.id} summary={summary}/> : <p className={`article-summary${post.summary_mode==='ai'?' article-summary--ai':''}`}>
-          {post.summary_mode==='ai'&&<span className="article-summary-source"><span className="article-summary-deepseek" aria-hidden="true"/>{t("m_0c4c130b0c")}</span>}
-          {summary}
-        </p>)}
+        {summary&&<ArticleAiSummary key={post.id} summary={summary}/>}
         <div lang={post.content_locale||'zh-CN'}><MarkdownContent content={content} headingPrefix="heading" minHeadingLevel={2} imageDimensions={post.image_dimensions}/></div>
         {tags.length>0&&<SingleLine className="detail-tags" label={t("m_28ac19be45")}>{tags.map((tag,index)=><Link key={tag} to={`/tag/${encodeURIComponent(tag)}`}>{post.tags_display?.[index] || tag}</Link>)}</SingleLine>}
       </div>

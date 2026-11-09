@@ -63,10 +63,7 @@
   .updates-v2 .updates-row:hover { background: var(--updates-soft); }
   .updates-v2 .updates-pagination button:not(:disabled):hover, .updates-v2 .updates-back:hover, .updates-v2 .updates-notice button:hover { background: color-mix(in srgb, var(--foreground) 9%, var(--background)); }
 }
-@media (prefers-reduced-motion: no-preference) {
-  .updates-v2 .updates-feed { animation: updates-v2-filter 160ms ease-out; }
-}
-@keyframes updates-v2-filter { from { opacity: .6; } to { opacity: 1; } }
+.updates-v2 .updates-transition { color: var(--muted-foreground); font-size: 14px; padding: 12px 20px; }
 @media (max-width: 1279px) { .updates-v2 .updates-time-rail { display: none; } }
 @media (max-width: 640px) {
   .updates-v2 > .page-content { width: 100%; max-width: 100%; padding: 20px 16px 80px; }

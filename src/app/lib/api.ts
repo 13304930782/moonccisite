@@ -25,7 +25,7 @@ export async function api(path: string, options: ApiOptions = {}) {
   const uncertainMessage = '尚未确认操作结果，请先刷新或查看记录，确认后再重试。';
   try {
     if (callerSignal?.aborted) throw new ApiError('请求已取消。', 0, 'cancelled');
-    const res = await fetch(`/api${path}`, { ...request, credentials: 'same-origin', headers, signal: controller.signal });
+    const res = await fetch(`/api${path}`, { ...request, credentials: request.credentials === 'omit' ? 'omit' : 'same-origin', headers, signal: controller.signal });
     diagnostic?.response(res);
     const contentType = res.headers.get('content-type') || '';
     if (!contentType.includes('application/json')) {

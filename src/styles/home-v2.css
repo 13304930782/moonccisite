@@ -342,7 +342,6 @@
 
 @media (hover: hover) {
   .home-v2 .home-activity-row:hover,
-  .home-v2 .home-updates-link:hover,
   .home-v2 .home-soft-button:hover,
   .home-v2 .home-hero-button:not(.home-hero-button--primary):hover {
     background: var(--home-hover);
@@ -352,7 +351,8 @@
     background: color-mix(in srgb, var(--primary) 90%, var(--background));
   }
 
-  .home-v2 .home-note-link:hover {
+  .home-v2 .home-note-link:hover,
+  .home-v2 .home-updates-link:hover {
     text-decoration: underline;
     text-underline-offset: 4px;
   }
@@ -373,6 +373,10 @@
 }
 
 @media (min-width: 761px) {
+  .home-v2 .site-footer {
+    padding-top: 0;
+  }
+
   .home-v2 .footer-top > .site-brand {
     position: relative;
     top: -9px;
@@ -384,10 +388,6 @@
 
   .home-v2 .site-footer > .site-container {
     position: relative;
-  }
-
-  .home-v2 .footer-status {
-    margin-block: 0 16px;
   }
 
 }

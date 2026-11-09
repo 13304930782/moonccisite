@@ -53,7 +53,7 @@ test('shared shell retains approved semantic navigation changes and theme keeps 
  // Approved bilingual copy, locale-aware links and language switch; CSS pins are unchanged.
  // Canonical LF Git blobs allow Windows checkouts and shallow CI without old commit history.
  const pins={
-  'src/app/components/admin/AdminShell.tsx':'f2cc04d01728b4f9b9e1c037ead84af781aeb0d7', // Approved locale menu, taxonomy entry and retired Early Access removal.
+  'src/app/components/admin/AdminShell.tsx':'a61b7b722bbba2e768aa5639caeeeaffa5616727', // Approved single-source grouped menu; identical role and feature gates.
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
  };
  for(const [file,pin] of Object.entries(pins)) {
