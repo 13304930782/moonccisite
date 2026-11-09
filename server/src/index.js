@@ -86,6 +86,7 @@ function isTrustedRequestOrigin(value) {
 }
 
 function requireRequestedWith(req, res, next) {
+  if (req.service) return next();
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
     return next();
   }
@@ -118,6 +119,12 @@ const globalLimiter = rateLimit({
   message: { message: '请求过于频繁，请稍后重试' },
 });
 app.use('/api', globalLimiter);
+app.use('/api', require('./middleware/serviceToken').serviceToken, (req, res, next) => {
+  if (!req.service) return next();
+  if ((req.method === 'GET' && ['/admin/comments', '/admin/runtime', '/publishing/queue'].includes(req.path)) ||
+      (req.method === 'PUT' && /^\/admin\/comments\/[1-9][0-9]*$/.test(req.path))) return next();
+  return res.status(403).json({ message: 'Service token cannot access this endpoint.' });
+});
 app.use('/api', requireRequestedWith);
 app.use('/api/mail-setup', require('./routes/mailSetup').createRouter());
 

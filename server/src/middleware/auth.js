@@ -71,6 +71,7 @@ async function authRequired(req, res, next) {
   res.setHeader('Cache-Control', 'private, no-store');
   res.vary('Cookie');
   res.vary('Authorization');
+  if (req.service) return next();
   try {
     const user = await getUserFromRequest(req);
 

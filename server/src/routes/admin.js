@@ -2,6 +2,7 @@ const { formatIpLocation } = require('../lib/geoip');
 const express = require('express');
 const db = require('../db');
 const { authRequired, adminOnly, editorOrAdmin, isAdminLike } = require('../middleware/auth');
+const { serviceToken, requireScope, restrictAdminService } = require('../middleware/serviceToken');
 const { sendCommentReviewNotification, sendUserPermissionsNotification, accountPermissionChanges } = require('../lib/mailer');
 const { attemptNotification, notificationMessage } = require('../lib/adminNotification');
 
@@ -26,9 +27,11 @@ function maskIp(ip) {
 
 
 
-router.use(authRequired);
+router.use(serviceToken, authRequired);
+router.use(restrictAdminService);
+router.use('/service-tokens', require('./serviceTokens'));
 router.use('/publication-health', require('./publicationHealth'));
-router.get('/runtime', adminOnly, async (req, res) => {
+router.get('/runtime', requireScope('runtime:read', adminOnly), async (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(await require('../lib/runtimeStatus').runtimeStatus(db));
 });
@@ -247,8 +250,9 @@ router.get('/posts', editorOrAdmin, async (req, res) => {
 /**
  * 评论管理，仅管理员
  */
-router.get('/comments', adminOnly, async (req, res) => {
-  const status = req.query.status;
+router.get('/comments', requireScope('comments:read', adminOnly), async (req, res) => {
+  const status = req.service ? 'pending' : req.query.status;
+  if (req.service && req.query.status && req.query.status !== 'pending') return res.status(403).json({ message: 'Service tokens may only read pending comments.' });
   const keyword = String(req.query.keyword || '').trim().slice(0, 255);
   const target = req.query.target || 'all';
   if (!['all', 'post', 'update'].includes(target)) return res.status(400).json({ message: '内容类型不合法' });
@@ -323,7 +327,7 @@ router.get('/comments', adminOnly, async (req, res) => {
  * hidden = 隐藏
  * deleted = 删除
  */
-router.put('/comments/:id', adminOnly, async (req, res) => {
+router.put('/comments/:id', requireScope('comments:moderate', adminOnly), async (req, res) => {
   const { status } = req.body;
 
   if (!['pending', 'visible', 'hidden', 'deleted', 'rejected'].includes(status)) {
@@ -353,6 +357,10 @@ router.put('/comments/:id', adminOnly, async (req, res) => {
     return res.status(404).json({ message: '评论不存在' });
   }
 
+  if (req.service && (comment.status !== 'pending' || !['visible', 'rejected'].includes(status))) {
+    return res.status(403).json({ message: 'Service tokens may only approve or reject pending comments.' });
+  }
+
   const allowedTransitions = {
     pending: ['visible', 'rejected', 'deleted'],
     visible: ['hidden', 'deleted'],
@@ -369,6 +377,7 @@ router.put('/comments/:id', adminOnly, async (req, res) => {
     return res.json({ message: '评论状态未变化，未重复发送通知', notification: { status: 'not_needed' } });
   const write = await require('../services/engagement').transaction(async c=>{
     const [result]=await c.query('UPDATE comments SET status=? WHERE id=? AND status=?',[status,req.params.id,comment.status]);
+    if (result.affectedRows && req.service) await c.query('INSERT INTO service_audit (token_id,action,target,detail) VALUES (?,?,?,?)', [req.service.id, 'comment.moderate', `comment:${req.params.id}`, JSON.stringify({ from: comment.status, to: status })]);
     if(result.affectedRows&&status==='visible')await require('../services/engagement').commentEvent(c,req.params.id);
     return result;
   });

@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS service_tokens (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  scopes JSON NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_used_at DATETIME NULL,
+  revoked_at DATETIME NULL,
+  UNIQUE KEY uq_service_token_hash (token_hash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS service_audit (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  token_id BIGINT UNSIGNED NOT NULL,
+  action VARCHAR(100) NOT NULL,
+  target VARCHAR(255) NOT NULL,
+  detail JSON NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_service_audit_token (token_id),
+  CONSTRAINT fk_service_audit_token FOREIGN KEY (token_id) REFERENCES service_tokens(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
