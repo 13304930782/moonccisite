@@ -2,14 +2,15 @@ import {splitLocalePath} from '../lib/locale';
 import { useI18n } from '../i18n';
 import { reducedMotion } from '../lib/motionPreference';
 import { FestivalSlot } from './Festivals/Entry';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type HTMLAttributes } from 'react';
 import { useLocation } from 'react-router-dom';
-import { CloudSun, Minus, X, CircleHelp } from 'lucide-react';
+import { Link } from './LocaleLink';
+import { CloudSun, Hand, X, Zap } from 'lucide-react';
 import GrokBall, {
   type GrokBallEngine,
 } from '../../vendor/grok-ball/grok-ball.ts';
 import { api } from '../lib/api';
-import { interactionSpeech, reactionDuration, pageSpeech, idleSpeechKind, newsSpeech } from '../lib/companionSpeech';
+import { interactionSpeech, reactionDuration, pageSpeech, idleSpeechKind, publicNewsTitle } from '../lib/companionSpeech';
 import { useMoonTheme } from '../context/ThemeContext';
 import { WeatherCityPicker } from './WeatherCityPicker';
 import {
@@ -48,6 +49,23 @@ const ambientMoments = [
   { id: '19', text: '这样就很好。' },
   { id: '20', text: '脑袋里冒出一个问号。' },
 ];
+type Speech =
+  | { kind: 'chat'; text: string }
+  | { kind: 'pulse'; title: string; href: string; type: 'post' | 'release' };
+
+function SpeechBubble({ speech, ...props }: { speech: Speech } & HTMLAttributes<HTMLDivElement>) {
+  const { t } = useI18n();
+  return (
+    <div {...props} className={`companion-bubble companion-bubble--${speech.kind}${props.className ? ` ${props.className}` : ''}`} role="status">
+      {speech.kind === 'chat' ? <p className="companion-bubble-chat">{t(speech.text)}</p> : <>
+        <span className="companion-bubble-kicker">{t(speech.type === 'post' ? '最近更新：文章' : '最近更新：项目版本')}</span>
+        <p className="companion-bubble-title">{speech.title}</p>
+        <Link className="companion-bubble-go" to={speech.href}>{t('去看看')}</Link>
+      </>}
+    </div>
+  );
+}
+
 type InteractionStats = { date: string; pets: number; hits: number };
 
 type DailyMood = {
@@ -97,9 +115,11 @@ export default function WeatherCompanion() {
   const [focusSpeech, setFocusSpeech] = useState('');
   const [ambientSpeech, setAmbientSpeech] = useState('');
   const [reactionSpeech, setReactionSpeech] = useState('');
-  const [pageAwareSpeech, setPageAwareSpeech] = useState('');
+  const [pageAwareSpeech, setPageAwareSpeech] = useState<Speech | null>(null);
+  const speechRestore = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const speechHeld = useRef(false);
   const idleTurn = useRef(0);
-  const newsCache = useRef<{ at: number; value: { title?: string; type: string } | null }>({ at: 0, value: null });
+  const newsCache = useRef<{ at: number; value: { title: string; path: string; type: 'post' | 'release' } | null }>({ at: 0, value: null });
   const reactionVersion = useRef(0);
   const speechVersion = useRef(0);
   const mounted = useRef(true);
@@ -261,36 +281,38 @@ export default function WeatherCompanion() {
 
   useEffect(() => {
     setAmbientSpeech('');
-    setPageAwareSpeech('');
+    setPageAwareSpeech(null);
+    speechHeld.current = false;
     if (reduced || collapsed || disabled || open || edgeMode || reaction || inputMood || data?.mode === 'manual') return;
     let timer: ReturnType<typeof setTimeout>;
-    let restore: ReturnType<typeof setTimeout>;
     const schedule = () => { timer = setTimeout(play, 28000 + Math.random() * 27000); };
     let stopped = false;
     const play = () => {
       const active = document.activeElement;
-      if (document.hidden || active?.matches('input,textarea,select,[contenteditable="true"]')) { schedule(); return; }
+      if (speechHeld.current || document.hidden || active?.matches('input,textarea,select,[contenteditable="true"]')) { schedule(); return; }
       if (Date.now() - newsCache.current.at >= 600000) {
         newsCache.current = { at: Date.now(), value: null };
         void api(`/activity?page=1&pageSize=1${locale === 'en' ? '&locale=en' : ''}`, { timeoutMs: 8000, credentials: 'omit' }).then(response => {
           const item = response?.items?.[0];
-          if (!stopped && item && ['post', 'update', 'release'].includes(item.type)) {
-            newsCache.current.value = { type: item.type, title: item.type === 'update' ? '' : item.title };
+          const title = publicNewsTitle(item?.type === 'update' ? '' : item?.title);
+          if (!stopped && title && item && ['post', 'release'].includes(item.type) && typeof item.path === 'string' && /^\/(?:en\/)?(?:article|updates|projects)\/[^\s\\?#]+(?:[?#][^\s\\]*)?$/.test(item.path)) {
+            newsCache.current.value = { title, path: item.path, type: item.type };
           }
         }).catch(() => {});
       }
+      clearTimeout(speechRestore.current ?? undefined);
       const page = pageSpeech(pathname);
       const choice = idleSpeechKind(++idleTurn.current, Boolean(page), Boolean(newsCache.current.value));
       if (choice !== 'ambient') {
         setAmbientSpeech('');
         const news = newsCache.current.value;
-        const fallback: Record<string, string> = { post: t('文章'), update: t('近况'), release: t('项目版本') };
-        setPageAwareSpeech(choice === 'page' ? page : news ? newsSpeech(news.title || fallback[news.type], news.type) : '');
-        restore = setTimeout(() => setPageAwareSpeech(''), 5500);
+        if (choice === 'page') setPageAwareSpeech({ kind: 'chat', text: page });
+        else if (news) setPageAwareSpeech({ kind: 'pulse', title: news.title, href: news.path, type: news.type });
+        speechRestore.current = setTimeout(() => setPageAwareSpeech(null), 5500);
         schedule();
         return;
       }
-      setPageAwareSpeech('');
+      setPageAwareSpeech(null);
       // Shuffle a complete round so every preset appears before any repeats.
       if (!momentBag.current.length) {
         const indices = ambientMoments.map((_, index) => index);
@@ -312,13 +334,15 @@ export default function WeatherCompanion() {
       if (['02','03','10','13','14','19'].includes(id)) ball.current?.spin(1);
       else if (['11','16','20'].includes(id)) ball.current?.bounce();
       if (id === '10') ball.current?.burst(12);
-      restore = setTimeout(() => setAmbientSpeech(''), 5500);
+      speechRestore.current = setTimeout(() => setAmbientSpeech(''), 5500);
       schedule();
     };
-    const hide = () => { if(document.hidden) { clearTimeout(timer); clearTimeout(restore); setAmbientSpeech(''); setPageAwareSpeech(''); } else { clearTimeout(timer); schedule(); } };
+    const hide = () => { if(document.hidden) { speechHeld.current = false; clearTimeout(timer); clearTimeout(speechRestore.current ?? undefined); setAmbientSpeech(''); setPageAwareSpeech(null); } else { clearTimeout(timer); schedule(); } };
     schedule(); document.addEventListener('visibilitychange', hide);
-    return () => { stopped = true; clearTimeout(timer); clearTimeout(restore); document.removeEventListener('visibilitychange', hide); };
+    return () => { stopped = true; clearTimeout(timer); clearTimeout(speechRestore.current ?? undefined); document.removeEventListener('visibilitychange', hide); };
   }, [reduced, collapsed, disabled, open, edgeMode, reaction, inputMood, data?.mode, pathname, locale]);
+  const emotionName = GrokBall.EMOTIONS.find(item => item.id === displayedEmotion)?.name;
+  const ballLabel = emotionName && /^[\u3400-\u9fff]{1,8}$/u.test(emotionName) ? emotionName : '陪伴';
   const moodName =
     data?.mood?.name ||
     (!location ? t("m_7e35e077c1") : loaded ? t("m_ad858f1de3") : t("m_3bd7ed4057"));
@@ -688,6 +712,12 @@ export default function WeatherCompanion() {
                   <X size={16} />
                 </button>
               </div>
+              <WeatherCityPicker
+                selected={location}
+                onChange={selectLocation}
+                onAttributionChange={setCityAttribution}
+              />
+              {(location || data?.mode === 'manual') && <div className="weather-companion-mood">
               <h2>{t(moodName)}</h2>
               {data?.mode === 'manual' && (
                 <p className="weather-companion-hint">{t("m_e3fde0e618")}</p>
@@ -734,27 +764,22 @@ export default function WeatherCompanion() {
                   <small>{data.date}  {t("m_1e106ea5f7")}</small>
                 </div>
               )}
-              <WeatherCityPicker
-                selected={location}
-                onChange={selectLocation}
-                onAttributionChange={setCityAttribution}
-              />
+              </div>}
               <div
                 className="weather-companion-stats"
                 aria-label={t("m_95417bd66c")}
                 aria-live="polite"
               >
-                <span>
-                   {t("m_ea591654d0")} <strong>{stats?.pets ?? '—'}</strong>  {t("m_172fb7e67b")} </span>
-                <span>
-                   {t("m_5d6fb234d4")} <strong>{stats?.hits ?? '—'}</strong>  {t("m_172fb7e67b")} </span>
+                <div className="companion-stat"><b>{stats?.pets ?? '—'}</b><span>{t("m_ea591654d0")}</span></div>
+                <div className="companion-stat"><b>{stats?.hits ?? '—'}</b><span>{t("m_5d6fb234d4")}</span></div>
                 {statsError && <small>{t(statsError || '')}</small>}
               </div>
               <div className="weather-companion-actions">
-                <button onClick={pet}>{t("m_b545d54af6")}</button>
-                <button type="button" onClick={() => react('hit')}>{t('打一下')}</button>
+                <button type="button" onClick={pet}><Hand size={16} aria-hidden="true" />{t("m_b545d54af6")}</button>
+                <button type="button" onClick={() => react('hit')}><Zap size={16} aria-hidden="true" />{t('打一下')}</button>
+              </div>
+              <footer className="weather-companion-foot">
                 <button onClick={() => collapse(true)}>
-                  <Minus size={14} />
                    {t("m_1a98fb7338")} </button>
                 <button
                   ref={helpButton}
@@ -772,9 +797,9 @@ export default function WeatherCompanion() {
                   onBlur={hideHelpSoon}
                   onClick={showHelp}
                 >
-                  <CircleHelp size={17} />
+                  {t('怎么玩')}
                 </button>
-              </div>
+              </footer>
               <div className="weather-companion-credits">
                 {cityAttribution && (
                   <a
@@ -836,11 +861,17 @@ export default function WeatherCompanion() {
               <p>{t("m_6fde2c9fd2")}</p>
             </div>
           )}
+          <div className="companion-unit">
           {(focusSpeech || reactionSpeech || (!open && (pageAwareSpeech || ambientSpeech))) && (
-            <span className={reactionSpeech && !focusSpeech ? 'weather-companion-pet' : 'weather-companion-speech'} role="status">
-              {t(focusSpeech || reactionSpeech || pageAwareSpeech || ambientSpeech)}
-            </span>
+            <SpeechBubble
+              speech={focusSpeech || reactionSpeech ? { kind: 'chat', text: focusSpeech || reactionSpeech } : pageAwareSpeech || { kind: 'chat', text: ambientSpeech }}
+              onMouseEnter={() => { if (pageAwareSpeech?.kind === 'pulse') { speechHeld.current = true; clearTimeout(speechRestore.current ?? undefined); } }}
+              onMouseLeave={(event) => { if (!event.currentTarget.contains(document.activeElement)) { speechHeld.current = false; if (pageAwareSpeech?.kind === 'pulse') speechRestore.current = setTimeout(() => setPageAwareSpeech(null), 5500); } }}
+              onFocus={() => { if (pageAwareSpeech?.kind === 'pulse') { speechHeld.current = true; clearTimeout(speechRestore.current ?? undefined); } }}
+              onBlur={(event) => { if (!event.currentTarget.matches(':hover')) { speechHeld.current = false; if (pageAwareSpeech?.kind === 'pulse') speechRestore.current = setTimeout(() => setPageAwareSpeech(null), 5500); } }}
+            />
           )}
+          <div className="companion-ball-col">
           <button
             className="weather-companion-ball"
             tabIndex={edgeMode && !edgeVisible && !open ? -1 : 0}
@@ -917,10 +948,12 @@ export default function WeatherCompanion() {
               aria-hidden="true"
             />
             <span className="weather-companion-label">
-              {t(GrokBall.EMOTIONS.find(item => item.id === displayedEmotion)?.name || moodName)}
+              {ballLabel}
             </span>
             {pathname === '/' && <FestivalSlot name="hat" />}
           </button>
+          </div>
+          </div>
         </>
       )}
     </aside>

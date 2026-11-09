@@ -44,7 +44,7 @@ const { chromium } = require('playwright');
       await page.mouse.move(box.x+box.width*.8,box.y+box.height*.5,{steps:5});
       await page.mouse.up();
     }
-    async function speech(text) { await page.locator('.weather-companion-pet').filter({hasText:text}).waitFor({state:'visible',timeout:3000}); }
+    async function speech(text) { await page.locator('.companion-bubble').filter({hasText:text}).waitFor({state:'visible',timeout:3000}); }
     await stroke();
     console.log('first stroke');
     await speech('摸到了。');
@@ -70,6 +70,11 @@ const { chromium } = require('playwright');
     assert.notEqual(await root.getAttribute('data-emotion'),'21','angry face eventually restores');
     await ball.click();
     await page.locator('.weather-companion-panel').waitFor();
+    const layout=await page.locator('.weather-companion-panel').evaluate(panel=>{
+      const box=selector=>{const r=panel.querySelector(selector).getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height};};
+      return {panel:{width:panel.getBoundingClientRect().width}, cityTitle:box('.weather-city-copy strong'), cityHint:box('.weather-city-copy small'), number:box('.companion-stat b'), label:box('.companion-stat span'), left:box('.weather-companion-foot button:first-child'), right:box('.weather-companion-foot button:last-child'), action:box('.weather-companion-actions button')};
+    });
+    assert.ok(layout.panel.width <= 292 && layout.cityTitle.y < layout.cityHint.y && layout.number.y < layout.label.y && layout.left.x < layout.right.x && layout.action.height === 40,'card rows stay aligned at 292px');
     await page.getByRole('button',{name:'打一下'}).focus();
     await page.keyboard.press('Enter');
     await speech('生气计时加长。');
@@ -82,7 +87,7 @@ const { chromium } = require('playwright');
     await failure;
     await page.waitForTimeout(100);
     assert.equal(stats.hits,5,'failed hit is not counted');
-    assert.equal(await page.locator('.weather-companion-pet').count(),0,'failed hit has no success speech');
+    assert.equal(await page.locator('.companion-bubble').count(),0,'failed hit has no success speech');
     await page.goto('http://127.0.0.1:4996/login');
     const password=page.locator('input[type=password]').first();
     await password.waitFor(); await password.focus();
@@ -107,10 +112,11 @@ const { chromium } = require('playwright');
       return route.fulfill({json:{items:[],total:0}});
     });
     await idlePage.goto('http://127.0.0.1:4996/');
-    await idlePage.locator('.weather-companion-speech').first().waitFor({state:'visible',timeout:5000});
-    const firstIdle=await idlePage.locator('.weather-companion-speech').first().innerText();
-    assert.ok(firstIdle && firstIdle!=='首页安静的时候，我就待在这儿。','ordinary idle remains available when news fails');
+    await idlePage.locator('.companion-bubble').filter({hasNotText:'首页安静的时候，我就待在这儿。'}).first().waitFor({state:'visible',timeout:5000});
+    assert.ok(await idlePage.locator('.companion-bubble').first().innerText(),'ordinary idle remains available when news fails');
     await idlePage.getByText('首页安静的时候，我就待在这儿。',{exact:true}).waitFor({state:'visible',timeout:5000});
+    assert.equal(await idlePage.locator('.companion-bubble-kicker').count(),0,'chat bubble has no meta row');
+    assert.equal(await idlePage.locator('.companion-bubble-chat').innerText(),'首页安静的时候，我就待在这儿。');
     await idlePage.goto('http://127.0.0.1:4996/updates');
     await idlePage.getByText('更新都在这边。',{exact:true}).waitFor({state:'visible',timeout:5000});
     await idlePage.goto('http://127.0.0.1:4996/article/example');
@@ -134,7 +140,7 @@ const { chromium } = require('playwright');
       await reducedPage.goto('http://127.0.0.1:4996/');
       await reducedPage.locator('.weather-companion-ball').waitFor({timeout:8000});
       await reducedPage.waitForTimeout(1000);
-      assert.equal(await reducedPage.locator('.weather-companion-speech').count(),0,`${mode} reduced motion suppresses idle speech`);
+      assert.equal(await reducedPage.locator('.companion-bubble').count(),0,`${mode} reduced motion suppresses idle speech`);
       await reducedContext.close();
     }
     const enContext=await browser.newContext({locale:'en-US',viewport:{width:1280,height:900},reducedMotion:'no-preference'});
@@ -148,13 +154,20 @@ const { chromium } = require('playwright');
       if(p==='/api/settings/site') return route.fulfill({json:{brand:{},hero:{},footer:{}}});
       if(['/api/posts','/api/categories','/api/tags'].includes(p)) return route.fulfill({json:[]});
       if(p==='/api/weather-mood') return route.fulfill({json:{data:{status:'needs_location',mode:'weather',refreshAt:'2099-01-01T00:00:00Z'}}});
-      if(p==='/api/activity') return route.fulfill({json:{items:[{type:'post',title:'Test title'}],total:1}});
+      if(p==='/api/activity') return route.fulfill({json:{items:[{type:'post',title:'Test title',path:'/article/test-title'}],total:1}});
       return route.fulfill({json:{items:[],total:0}});
     });
     await enPage.goto('http://127.0.0.1:4996/en');
-    await enPage.getByText('Recently updated: Test title',{exact:true}).waitFor({state:'visible',timeout:5000});
+    const newsLink=enPage.locator('.companion-bubble').getByRole('link',{name:'Take a look'});
+    await newsLink.waitFor({state:'visible',timeout:5000});
+    assert.equal(await newsLink.getAttribute('href'),'/article/test-title');
+    await newsLink.focus();
+    await enPage.waitForTimeout(5700);
+    assert.equal(await newsLink.isVisible(),true,'focused news remains available');
+    await newsLink.click();
+    await enPage.waitForURL('**/article/test-title');
     await enContext.close();
-    for(const fixture of [{locale:'zh-CN',path:'/',title:'公开文章'}, {locale:'zh-CN',path:'/',title:''}, {locale:'en-US',path:'/en',title:''}]) {
+    for(const fixture of [{locale:'zh-CN',path:'/',title:'天气小球',valid:true}, {locale:'zh-CN',path:'/',title:'Cities: Skylines II 都市天际线2 进阶 Mod 推荐',valid:true}, {locale:'zh-CN',path:'/',title:'预览示例：天气小球'}, {locale:'en-US',path:'/en',title:'Placeholder article'}, {locale:'zh-CN',path:'/',title:''}]) {
       const ctx=await browser.newContext({locale:fixture.locale,viewport:{width:1280,height:900},reducedMotion:'no-preference'});
       await ctx.addInitScript(() => {
         const original=window.setTimeout;
@@ -166,15 +179,32 @@ const { chromium } = require('playwright');
         if(pathname==='/api/settings/site') return route.fulfill({json:{brand:{},hero:{},footer:{}}});
         if(['/api/posts','/api/categories','/api/tags'].includes(pathname)) return route.fulfill({json:[]});
         if(pathname==='/api/weather-mood') return route.fulfill({json:{data:{status:'needs_location',mode:'weather',refreshAt:'2099-01-01T00:00:00Z'}}});
-        if(pathname==='/api/activity') return route.fulfill({json:{items:fixture.title?[{type:'post',title:fixture.title}]:[],total:fixture.title?1:0}});
+        if(pathname==='/api/activity') return route.fulfill({json:{items:fixture.title?[{type:'post',title:fixture.title,path:'/article/test-title'}]:[],total:fixture.title?1:0}});
         return route.fulfill({json:{items:[],total:0}});
       });
       await p.goto('http://127.0.0.1:4996'+fixture.path);
-      if(fixture.title) await p.getByText('最近更新了一条：公开文章',{exact:true}).waitFor({state:'visible',timeout:5000});
+      if(fixture.valid) {
+        const bubble=p.locator('.companion-bubble--pulse');
+        const link=bubble.getByRole('link',{name:'去看看'});
+        await link.waitFor({state:'visible',timeout:5000});
+        await link.focus();
+        assert.equal(await bubble.locator('.companion-bubble-title').innerText(),fixture.title);
+        assert.equal(await bubble.locator('.companion-bubble-kicker').innerText(),'最近更新：文章');
+        const geometry=await bubble.evaluate(el=>{
+          const title=el.querySelector('.companion-bubble-title'), unit=el.parentElement, ball=unit.querySelector('.companion-ball-col');
+          const t=title.getBoundingClientRect(), u=unit.getBoundingClientRect(), b=ball.getBoundingClientRect(), k=el.querySelector('.companion-bubble-kicker').getBoundingClientRect(), link=el.querySelector('a').getBoundingClientRect();
+          return {bubble:el.getBoundingClientRect().width,right:u.right,ballRight:b.right,ballWidth:b.width,titleY:t.top,kickerY:k.top,linkY:link.top,height:t.height,lineHeight:parseFloat(getComputedStyle(title).lineHeight),clamp:getComputedStyle(title).webkitLineClamp,animation:getComputedStyle(title).animationName};
+        });
+        assert.ok(Math.abs(geometry.bubble-200)<1 && Math.abs(geometry.right-geometry.ballRight)<1 && Math.abs(geometry.ballWidth-72)<1,'bubble and ball share right aligned unit');
+        assert.ok(geometry.kickerY<geometry.titleY && geometry.titleY<geometry.linkY,'label, title and link appear on separate rows');
+        assert.ok(geometry.clamp==='2' && geometry.height<=geometry.lineHeight*2+1 && geometry.animation==='none','title clamps to two lines without scrolling');
+        if(fixture.title==='天气小球') assert.ok(geometry.height<=geometry.lineHeight+1,'short title stays on one line');
+        else assert.ok(geometry.height>geometry.lineHeight,'mixed-language title spans two lines');
+      }
       else {
-        await p.locator('.weather-companion-speech').first().waitFor({state:'visible',timeout:5000});
+        await p.locator('.companion-bubble').first().waitFor({state:'visible',timeout:5000});
         await p.waitForTimeout(800);
-        assert.equal(await p.getByText(fixture.locale==='en-US'?/^Recently updated:/:/^最近更新了一条：/).count(),0,'empty activity emits no news');
+        assert.equal(await p.locator('.companion-bubble--pulse').count(),0,'empty or placeholder activity emits no news');
       }
       await ctx.close();
     }

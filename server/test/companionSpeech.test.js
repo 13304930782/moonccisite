@@ -42,11 +42,9 @@ test('idle rotation schedules at most one page line per three turns and one news
   assert.equal(idleSpeechKind(12, false, false), 'ambient');
 });
 
-test('news titles truncate by Unicode characters and missing titles use public type labels', async () => {
-  const { newsSpeech } = await import('../../src/app/lib/companionSpeech.ts');
-  assert.equal(newsSpeech('一二三四五六七八九十一二三四五六七八', 'post'), '最近更新了一条：一二三四五六七八九十一二三四五六七八');
-  assert.equal(newsSpeech('一二三四五六七八九十一二三四五六七八🐈好', 'post'), '最近更新了一条：一二三四五六七八九十一二三四五六七八…');
-  assert.equal(newsSpeech('', 'post'), '最近更新了一条：文章');
-  assert.equal(newsSpeech('', 'update'), '最近更新了一条：近况');
-  assert.equal(newsSpeech('', 'release'), '最近更新了一条：项目版本');
+test('news titles reject previews and placeholders without truncating', async () => {
+  const { publicNewsTitle } = await import('../../src/app/lib/companionSpeech.ts');
+  for (const value of ['', null, '文章预览', '示例：天气小球', 'PLACEHOLDER', 'some Placeholder text']) assert.equal(publicNewsTitle(value), '');
+  assert.equal(publicNewsTitle('  天气小球  '), '  天气小球  ');
+  assert.equal(publicNewsTitle('Cities: Skylines II 都市天际线2 进阶 Mod 推荐'), 'Cities: Skylines II 都市天际线2 进阶 Mod 推荐');
 });

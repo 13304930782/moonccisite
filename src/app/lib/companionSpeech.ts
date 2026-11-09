@@ -22,10 +22,9 @@ export function idleSpeechKind(turn: number, hasPage: boolean, hasNews: boolean)
   return turn % 3 === 0 && hasPage ? 'page' : turn % 4 === 0 && hasNews ? 'news' : 'ambient';
 }
 
-export function newsSpeech(title: string | undefined, type: string) {
-  const fallback: Record<string, string> = { post: '文章', update: '近况', release: '项目版本' };
-  const text = typeof title === 'string' && title.trim() ? title.trim() : fallback[type] || '';
-  if (!text) return '';
-  const chars = Array.from(text);
-  return `最近更新了一条：${chars.slice(0, 18).join('')}${chars.length > 18 ? '…' : ''}`;
+export function publicNewsTitle(title: unknown) {
+  if (typeof title !== 'string') return '';
+  const clean = title.trim();
+  if (!clean || /预览|示例|placeholder/i.test(clean)) return '';
+  return title;
 }

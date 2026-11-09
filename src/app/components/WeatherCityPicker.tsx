@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { LocateFixed, Search, X } from 'lucide-react';
+import { Globe2, LocateFixed, Search, X } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { locateWeatherDevice } from '../lib/weatherGeolocation';
 import {
@@ -251,12 +251,11 @@ export function WeatherCityPicker({
   return (
     <div className="weather-city-picker">
       <div className="weather-city-current">
-        <span>
-          {selected?.name || t("m_b3725cc60e")}
-          {selected?.region && (
-            <small className="weather-city-privacy">{selected.region}</small>
-          )}
-        </span>
+        <span className="weather-city-icon" aria-hidden="true"><Globe2 size={17} /></span>
+        <div className="weather-city-copy">
+          <strong>{selected?.name || t("m_b3725cc60e")}</strong>
+          <small>{selected?.region || (!selected ? t('选一个，心情跟天气走') : '')}</small>
+        </div>
         <button
           ref={changeButton}
           type="button"

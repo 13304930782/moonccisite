@@ -7,7 +7,7 @@ test('city lookup accepts coarse desktop positions, requires confirmation and pr
  const positions={coords:{latitude:30.274,longitude:120.155,accuracy:5000}};
  let fail=false,picked=[],calls=0,positionCalls=0,lastLocation;
  const locations=load('src/app/lib/weatherLocation.ts',require);
- const {WeatherCityPicker}=load('src/app/components/WeatherCityPicker.tsx',name=>i18nFixture(name)?i18nFixture(name):name==='lucide-react'?{LocateFixed:'svg',Search:'svg',X:'svg'}:name.endsWith('/weatherLocation')?locations:name.endsWith('/weatherGeolocation')?{locateWeatherDevice:async()=>{positionCalls++;return positions}}:name.endsWith('/api')?{ApiError:class extends Error{},api:async(_path,options)=>{calls++;lastLocation=JSON.parse(options.body).location;assert.equal(options.readOnly,true);if(fail)throw Error('offline');return {data:city}}}:require(name));
+ const {WeatherCityPicker}=load('src/app/components/WeatherCityPicker.tsx',name=>i18nFixture(name)?i18nFixture(name):name==='lucide-react'?{Globe2:'svg',LocateFixed:'svg',Search:'svg',X:'svg'}:name.endsWith('/weatherLocation')?locations:name.endsWith('/weatherGeolocation')?{locateWeatherDevice:async()=>{positionCalls++;return positions}}:name.endsWith('/api')?{ApiError:class extends Error{},api:async(_path,options)=>{calls++;lastLocation=JSON.parse(options.body).location;assert.equal(options.readOnly,true);if(fail)throw Error('offline');return {data:city}}}:require(name));
  const descriptor=Object.getOwnPropertyDescriptor(global,'navigator');
  Object.defineProperty(global,'navigator',{configurable:true,value:{geolocation:{}}});
  let root;
@@ -43,7 +43,7 @@ test('city editor keeps the weather card compact and ignores results arriving af
  const city={name:'San Jose',region:'美国 · California',countryCode:'US',provider:'dbip',latitude:37.3,longitude:-121.9};
  const locations=load('src/app/lib/weatherLocation.ts',require);
  let respond,work,root,saved=0;
- const {WeatherCityPicker}=load('src/app/components/WeatherCityPicker.tsx',name=>i18nFixture(name)?i18nFixture(name):name==='lucide-react'?{LocateFixed:'svg',Search:'svg',X:'svg'}:name.endsWith('/weatherLocation')?locations:name.endsWith('/weatherGeolocation')?{}:name.endsWith('/api')?{ApiError:class extends Error{},api:async()=>new Promise(resolve=>{respond=resolve})}:require(name));
+ const {WeatherCityPicker}=load('src/app/components/WeatherCityPicker.tsx',name=>i18nFixture(name)?i18nFixture(name):name==='lucide-react'?{Globe2:'svg',LocateFixed:'svg',Search:'svg',X:'svg'}:name.endsWith('/weatherLocation')?locations:name.endsWith('/weatherGeolocation')?{}:name.endsWith('/api')?{ApiError:class extends Error{},api:async()=>new Promise(resolve=>{respond=resolve})}:require(name));
  const button=text=>root.root.findAllByType('button').find(b=>b.children.includes(text));
  try {
   await act(async()=>{root=create(React.createElement(WeatherCityPicker,{selected:city,onChange(){saved++;return true},onAttributionChange(){}}),{createNodeMock:e=>e.type==='dialog'?{open:false,showModal(){this.open=true},close(){this.open=false}}:null});});
@@ -69,7 +69,7 @@ test('device failures use IP but valid coordinates are never replaced when city 
  const locations=load('src/app/lib/weatherLocation.ts',require);
  class ApiError extends Error {constructor(code){super(code);this.code=code;this.kind='http'}}
  let mode='missing',paths=[],picked=[],root;
- const {WeatherCityPicker}=load('src/app/components/WeatherCityPicker.tsx',name=>i18nFixture(name)?i18nFixture(name):name==='lucide-react'?{LocateFixed:'svg',Search:'svg',X:'svg'}:name.endsWith('/weatherLocation')?locations:name.endsWith('/weatherGeolocation')?{locateWeatherDevice:async()=>{if(mode==='unavailable')throw {code:2};if(mode==='denied')throw {code:1};if(mode==='timeout')throw {code:3};if(mode==='invalid')return {coords:{latitude:NaN,longitude:116,accuracy:0}};return {coords:{latitude:40,longitude:116,accuracy:5000}}}}:name.endsWith('/api')?{ApiError,api:async(path,options)=>{paths.push(path);assert.equal(options.readOnly,true);if(path.endsWith('/locate'))throw new ApiError(mode==='quota'?'AMAP_10003':'AMAP_NO_CITY');return {data:city}}}:require(name));
+ const {WeatherCityPicker}=load('src/app/components/WeatherCityPicker.tsx',name=>i18nFixture(name)?i18nFixture(name):name==='lucide-react'?{Globe2:'svg',LocateFixed:'svg',Search:'svg',X:'svg'}:name.endsWith('/weatherLocation')?locations:name.endsWith('/weatherGeolocation')?{locateWeatherDevice:async()=>{if(mode==='unavailable')throw {code:2};if(mode==='denied')throw {code:1};if(mode==='timeout')throw {code:3};if(mode==='invalid')return {coords:{latitude:NaN,longitude:116,accuracy:0}};return {coords:{latitude:40,longitude:116,accuracy:5000}}}}:name.endsWith('/api')?{ApiError,api:async(path,options)=>{paths.push(path);assert.equal(options.readOnly,true);if(path.endsWith('/locate'))throw new ApiError(mode==='quota'?'AMAP_10003':'AMAP_NO_CITY');return {data:city}}}:require(name));
  const descriptor=Object.getOwnPropertyDescriptor(global,'navigator');
  Object.defineProperty(global,'navigator',{configurable:true,value:{geolocation:{}}});
  try {
@@ -98,7 +98,7 @@ test('domestic IP permission notice opens only in a dialog and never saves a gue
  const prompt='境内网络不使用 IP 推测城市。请允许此网站使用位置权限，以获取更细致的定位和天气服务；也可手动搜索城市。';
  class ApiError extends Error {constructor(){super(prompt);this.code='CITY_NETWORK_LOCATION_PERMISSION';this.kind='http'}}
  let saved=0,root,dialogMocks={};
- const {WeatherCityPicker}=load('src/app/components/WeatherCityPicker.tsx',name=>i18nFixture(name)?i18nFixture(name):name==='lucide-react'?{LocateFixed:'svg',Search:'svg',X:'svg'}:name.endsWith('/weatherLocation')?locations:name.endsWith('/weatherGeolocation')?{locateWeatherDevice:async()=>{throw {code:1}}}:name.endsWith('/api')?{ApiError,api:async path=>{assert.equal(path,'/weather-mood/locate-network');throw new ApiError()}}:require(name));
+ const {WeatherCityPicker}=load('src/app/components/WeatherCityPicker.tsx',name=>i18nFixture(name)?i18nFixture(name):name==='lucide-react'?{Globe2:'svg',LocateFixed:'svg',Search:'svg',X:'svg'}:name.endsWith('/weatherLocation')?locations:name.endsWith('/weatherGeolocation')?{locateWeatherDevice:async()=>{throw {code:1}}}:name.endsWith('/api')?{ApiError,api:async path=>{assert.equal(path,'/weather-mood/locate-network');throw new ApiError()}}:require(name));
  const descriptor=Object.getOwnPropertyDescriptor(global,'navigator');
  Object.defineProperty(global,'navigator',{configurable:true,value:{geolocation:{}}});
  try{
