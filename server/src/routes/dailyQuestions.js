@@ -11,6 +11,7 @@ function createDailyRouters({ db = require('../db'), getUser = getUserFromReques
   const router = asyncRouter(), admin = asyncRouter();
   const readLimit = rateLimit({ windowMs: 60000, limit: 120, standardHeaders: true, legacyHeaders: false, message: { message: '请求过于频繁，请稍后重试。' } });
   const answerLimit = rateLimit({ windowMs: 60000, limit: 20, standardHeaders: true, legacyHeaders: false, message: { message: '回答过于频繁，请稍后重试。' } });
+  const adminLimit = rateLimit({ windowMs: 60000, limit: 120, standardHeaders: true, legacyHeaders: false, message: { message: '请求过于频繁，请稍后重试。' } });
   const noCache = (_req, res, next) => { res.set('Cache-Control', 'private, no-store'); res.vary('Cookie'); res.vary('Authorization'); next(); };
   router.use(noCache); admin.use(authRequired, adminOnly, noCache);
   const byDate = async (query, date, lock = false) => {
@@ -104,13 +105,13 @@ function createDailyRouters({ db = require('../db'), getUser = getUserFromReques
     const question = await byDate(db, rules.previousDate(rules.shanghaiTime(now()).date));
     res.json({ summary: question?.summary_status === 'approved' && ['published', 'closed'].includes(question.status) ? question.summary : null });
   });
-  admin.get('/', async (req, res) => {
+  admin.get('/', adminLimit, async (req, res) => {
     const today = rules.shanghaiTime(now()).date, date = req.query.date || today;
     if (!rules.validDate(date)) throw fail(400, '日期格式无效。');
     const [rows] = await db.query("SELECT q.*, DATE_FORMAT(q.question_date,'%Y-%m-%d') AS question_date, COUNT(a.id) AS answer_count FROM daily_questions q LEFT JOIN daily_answers a ON a.question_id=q.id WHERE q.question_date BETWEEN DATE_SUB(?, INTERVAL 6 DAY) AND ? GROUP BY q.id ORDER BY q.question_date DESC", [today, today]);
     res.json({ items: rows.map(adminShape), question: await detail(db, date) });
   });
-  admin.put('/:date', async (req, res) => {
+  admin.put('/:date', adminLimit, async (req, res) => {
     const date = req.params.date, text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
     if (!rules.validDate(date) || !text || Array.from(text).length > 40) throw fail(400, '请输入有效日期和 1 至 40 字的问题。');
     const choices = rules.cleanChoices(req.body.choices);
@@ -122,7 +123,7 @@ function createDailyRouters({ db = require('../db'), getUser = getUserFromReques
     });
     res.json({ question: await detail(db, date) });
   });
-  admin.delete('/:date', async (req, res) => {
+  admin.delete('/:date', adminLimit, async (req, res) => {
     const date = req.params.date;
     if (!rules.validDate(date)) throw fail(400, '日期格式无效。');
     await transaction(async conn => {
@@ -132,7 +133,7 @@ function createDailyRouters({ db = require('../db'), getUser = getUserFromReques
     });
     res.json({ deleted: true });
   });
-  admin.post('/:date/publish', async (req, res) => {
+  admin.post('/:date/publish', adminLimit, async (req, res) => {
     const date = req.params.date;
     if (!rules.validDate(date)) throw fail(400, '日期格式无效。');
     await transaction(async conn => {
@@ -142,7 +143,7 @@ function createDailyRouters({ db = require('../db'), getUser = getUserFromReques
     });
     res.json({ question: await detail(db, date) });
   });
-  admin.post('/:date/generate', async (req, res) => {
+  admin.post('/:date/generate', adminLimit, async (req, res) => {
     const date = req.params.date, time = rules.shanghaiTime(now());
     if (!rules.validDate(date)) throw fail(400, '日期格式无效。');
     if (date > time.date || (date === time.date && time.hour < 22)) throw fail(403, '当天 22:00 后才能生成总结。');
@@ -154,7 +155,7 @@ function createDailyRouters({ db = require('../db'), getUser = getUserFromReques
     });
     res.json({ question: await detail(db, date) });
   });
-  admin.post('/:date/review', async (req, res) => {
+  admin.post('/:date/review', adminLimit, async (req, res) => {
     const date = req.params.date, decision = req.body?.decision;
     if (!rules.validDate(date) || !['approve', 'reject'].includes(decision)) throw fail(400, '审核操作无效。');
     await transaction(async conn => {

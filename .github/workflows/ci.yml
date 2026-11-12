@@ -165,6 +165,11 @@ jobs:
           DAILY_QUESTION_INTEGRATION: "true"
           TEST_DB_PORT: "3306"
 
+      - run: node --test server/test/articleLikesMigration.integration.test.js
+        env:
+          ARTICLE_LIKES_MIGRATION_TEST: "true"
+          TEST_DB_PORT: "3306"
+
       - run: node --test server/test/analytics.integration.test.js
         env:
           ANALYTICS_INTEGRATION: "true"

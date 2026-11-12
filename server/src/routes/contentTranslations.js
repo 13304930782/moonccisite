@@ -3,6 +3,7 @@ const auth=require('../middleware/auth');
 const {fields,validate,read,missingText,failure}=require('../lib/contentTranslations');
 function createContentTranslations({db=defaultDb,authRequired=auth.authRequired,adminOnly=auth.adminOnly,readSettingsSource}={}){
 const router=require('../lib/asyncRouter')();
+const routeLimiter=require('express-rate-limit')({windowMs:60000,limit:120,standardHeaders:true,legacyHeaders:false});
 router.use(authRequired,adminOnly,(_req,res,next)=>{res.set('Cache-Control','private, no-store');next();});
 async function source(type,id,connection=db){
  if(!fields[type]||!id||id.length>255)throw failure('Invalid translation record');
@@ -19,11 +20,11 @@ async function source(type,id,connection=db){
  const sql={project:'SELECT name,summary,content FROM projects WHERE id=?',update:'SELECT content FROM updates WHERE id=?',series:'SELECT title,description FROM article_series WHERE id=?',category:"SELECT id FROM posts WHERE category=? LIMIT 1",tag:"SELECT id FROM posts WHERE JSON_CONTAINS(tags,JSON_QUOTE(?)) LIMIT 1"}[type];
  const [[row]]=await connection.query(sql,[id]);if(!row)throw failure('Content not found',404);return ['category','tag'].includes(type)?{name:id}:row;
 }
-router.get('/:type/:id',async(req,res)=>{
+router.get('/:type/:id',routeLimiter,async(req,res)=>{
  const original=await source(req.params.type,req.params.id);
  res.json({...await read(db,req.params.type,req.params.id)||{draft:{},published:null,version:0,locale:'en'},source:original});
 });
-router.put('/:type/:id',async(req,res)=>{
+router.put('/:type/:id',routeLimiter,async(req,res)=>{
  const {type,id}=req.params;const original=await source(type,id);
  const payload=validate(type,req.body.draft);
  const version=req.body.version;

@@ -6,7 +6,7 @@ const { migrate, migrationSpec } = require('../scripts/migrate-article-likes');
 
 test('article likes migration handles retries, recovery and checksum conflicts on isolated MySQL', { skip: process.env.ARTICLE_LIKES_MIGRATION_TEST !== 'true' }, async () => {
   // Fixed loopback port and a unique test database prevent using a configured production DB.
-  const connection = await mysql.createConnection({ host: '127.0.0.1', port: 33079, user: 'root', password: '' });
+  const connection = await mysql.createConnection({ host: '127.0.0.1', port: Number(process.env.TEST_DB_PORT || 33079), user: 'root', password: '' });
   const db = 'likes_migration_test_' + crypto.randomBytes(6).toString('hex');
   try {
     await connection.query(`CREATE DATABASE \`${db}\``);

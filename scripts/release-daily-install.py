@@ -8,7 +8,7 @@ WEB = pathlib.Path('/www/wwwroot/mooncci.site')
 NODE = '/opt/mooncci-node-v24.20.0/bin/node'
 BACKUP = pathlib.Path('/www/backup')
 MIGRATIONS = {'202611120002_post_aside.sql', '202611120003_daily_questions.sql'}
-BACKEND = {'src/index.js', 'src/lib/articlePublishing.js', 'src/lib/articleRevisions.js', 'src/lib/articleConflict.js', 'src/repositories/weatherMoodRepository.js', 'src/routes/articleDrafts.js', 'src/routes/posts.js', 'src/routes/weatherMood.js', 'src/lib/dailyQuestion.js', 'src/routes/dailyQuestions.js', 'scripts/migrate-post-aside.js', 'database/migrations/202611120002_post_aside.sql', 'database/migrations/202611120003_daily_questions.sql'}
+BACKEND = {'src/index.js', 'src/lib/articlePublishing.js', 'src/lib/articleRevisions.js', 'src/lib/articleConflict.js', 'src/repositories/weatherMoodRepository.js', 'src/routes/articleDrafts.js', 'src/routes/posts.js', 'src/routes/weatherMood.js', 'src/lib/dailyQuestion.js', 'src/routes/dailyQuestions.js', 'src/routes/serviceTokens.js', 'src/routes/publishing.js', 'src/routes/contentTranslations.js', 'scripts/migrate-article-likes.js', 'scripts/migrate-post-aside.js', 'database/migrations/202611120002_post_aside.sql', 'database/migrations/202611120003_daily_questions.sql'}
 
 def sha(p):
     return hashlib.sha256(p.read_bytes()).hexdigest()

@@ -1,5 +1,6 @@
 // Keep sensitive routes bounded even when mounted independently of the main app.
 const routeLimiter = require('express-rate-limit')({windowMs:60000,limit:200,standardHeaders:true,legacyHeaders:false});
+const readLimiter = require('express-rate-limit')({windowMs:60000,limit:200,standardHeaders:true,legacyHeaders:false});
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
@@ -137,7 +138,7 @@ function buildListQuery(query) {
   };
 }
 
-router.get('/meta/categories', async (req, res) => {
+router.get('/meta/categories', readLimiter, async (req, res) => {
   const [rows] = await db.query(`
     SELECT category, COUNT(*) AS count
     FROM posts
@@ -152,7 +153,7 @@ router.get('/meta/categories', async (req, res) => {
   res.json(rows);
 });
 
-router.get('/meta/tags', async (req, res) => {
+router.get('/meta/tags', readLimiter, async (req, res) => {
   const [rows] = await db.query(`
     SELECT tags
     FROM posts
@@ -180,7 +181,7 @@ router.get('/meta/tags', async (req, res) => {
 
 require('../lib/articleDiscovery').attachDiscovery(router,db);
 
-router.get('/', async (req, res) => {
+router.get('/', readLimiter, async (req, res) => {
   const { sql, params } = buildListQuery(req.query);
   const [rawRows] = await db.query(sql, params);
   const rows=await translations.publicPosts(db,rawRows,req.query.locale);
@@ -224,7 +225,7 @@ const prepareSummary=async(req,res,next)=>{try{
  if(p.status==='published'){const prepared=await require('../services/articleSummary').prepare(db,{...p,summary_mode:req.body.summary_mode||'',summary_receipt:req.body.summary_receipt||''},req.user.id);require('../lib/articleSummaryProof').assertReady(prepared);req.body={...req.body,summary:prepared.summary,summary_mode:prepared.summary_mode,summary_receipt:prepared.summary_receipt};}
  next();
 }catch(e){if(e.status)return res.status(e.status).json({message:e.message});next(e);}};
-router.post('/',authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHandler(async(c,req)=>{
+router.post('/',routeLimiter,authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHandler(async(c,req)=>{
  const normalized=normalizePostInput(req.body);if(normalized.error)throw writeError(normalized.error,400);
  const p=normalized.value;
  const [r]=await c.query('INSERT INTO posts (title,slug,summary,`aside`,content,cover_image,cover_crop,category,tags,summary_mode,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',[p.title,p.slug,p.summary,p.aside,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.summary_mode,p.status,req.user.id,p.status==='published'?new Date():null]);
@@ -232,7 +233,7 @@ router.post('/',authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHand
  await revisions.record(c,{post_id:r.insertId},p,p.status==='published'?'publish':'manual',req.user.id,p.status==='published'?1:null);
  return {message:'创建成功'};
 }));
-router.put('/:id',authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHandler(async(c,req)=>{
+router.put('/:id',routeLimiter,authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHandler(async(c,req)=>{
  const [[old]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[req.params.id]);
  if(!old)throw writeError('文章不存在',404);
  if(!canManagePost(req.user,old))throw writeError('无权限编辑这篇文章',403);

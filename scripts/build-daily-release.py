@@ -3,7 +3,7 @@
 import argparse, hashlib, io, json, pathlib, re, subprocess, tarfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-BACKEND = ('src/index.js', 'src/lib/articlePublishing.js', 'src/lib/articleRevisions.js', 'src/lib/articleConflict.js', 'src/repositories/weatherMoodRepository.js', 'src/routes/articleDrafts.js', 'src/routes/posts.js', 'src/routes/weatherMood.js', 'src/lib/dailyQuestion.js', 'src/routes/dailyQuestions.js', 'scripts/migrate-post-aside.js', 'database/migrations/202611120002_post_aside.sql', 'database/migrations/202611120003_daily_questions.sql')
+BACKEND = ('src/index.js', 'src/lib/articlePublishing.js', 'src/lib/articleRevisions.js', 'src/lib/articleConflict.js', 'src/repositories/weatherMoodRepository.js', 'src/routes/articleDrafts.js', 'src/routes/posts.js', 'src/routes/weatherMood.js', 'src/lib/dailyQuestion.js', 'src/routes/dailyQuestions.js', 'src/routes/serviceTokens.js', 'src/routes/publishing.js', 'src/routes/contentTranslations.js', 'scripts/migrate-article-likes.js', 'scripts/migrate-post-aside.js', 'database/migrations/202611120002_post_aside.sql', 'database/migrations/202611120003_daily_questions.sql')
 MIGRATIONS = ('202611120002_post_aside.sql', '202611120003_daily_questions.sql')
 TOOLS = ('release-daily-install.py', 'release-daily-migrate.cjs', 'release-daily-backup.cjs')
 REVIEWED = {
@@ -16,6 +16,10 @@ REVIEWED = {
     'src/routes/posts.js': '5e9cbedad5c2ed626cf073d5f5eb61435725b584010c1d650b5709417c1fceea',
     'src/routes/weatherMood.js': '4d4003b9b241d0c014e4904ea5e9f84cabedacb29daeb33b455febcd91d471c5',
     'src/lib/dailyQuestion.js': None, 'src/routes/dailyQuestions.js': None,
+    'src/routes/serviceTokens.js': '16d7f5c9481464c89f71a27c4ed295fccbe80f08a022f80e092f00d79447045c',
+    'src/routes/publishing.js': '925fbc9f29c23d70150d35b070dfb80c65877ad7f24f88ec48b6140b1758bb97',
+    'src/routes/contentTranslations.js': '07282d5d58c23d8b09a5c11c2f2c642826080a7c388b8fd50ea791b17f75cfd1',
+    'scripts/migrate-article-likes.js': None,
     'scripts/migrate-post-aside.js': None,
     'database/migrations/202611120002_post_aside.sql': None,
     'database/migrations/202611120003_daily_questions.sql': None,

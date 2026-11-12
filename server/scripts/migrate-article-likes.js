@@ -15,8 +15,8 @@ async function assertTable(connection) {
   const [tables] = await connection.query("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='article_likes'");
   if (tables.length !== 1 || tables[0].ENGINE !== 'InnoDB') throw new Error('Unexpected article_likes engine');
   const [columns] = await connection.query('SHOW COLUMNS FROM article_likes');
-  const expected = { user_id: 'int', post_id: 'int', created_at: 'datetime(3)' };
-  if (columns.length !== 3 || columns.some(c => !expected[c.Field] || !new RegExp('^' + expected[c.Field].replace(/[()]/g, '\\$&') + (c.Field === 'created_at' ? '$' : '(?:\\(11\\))?$'), 'i').test(c.Type) || c.Null !== 'NO'))
+  const expected = { user_id: /^int(?:\(11\))?$/i, post_id: /^int(?:\(11\))?$/i, created_at: /^datetime\(3\)$/i };
+  if (columns.length !== 3 || columns.some(c => !Object.hasOwn(expected, c.Field) || !expected[c.Field].test(c.Type) || c.Null !== 'NO'))
     throw new Error('Unexpected article_likes columns');
   const [indexes] = await connection.query('SHOW INDEX FROM article_likes');
   const primary = indexes.filter(i => i.Key_name === 'PRIMARY').sort((a, b) => a.Seq_in_index - b.Seq_in_index);
