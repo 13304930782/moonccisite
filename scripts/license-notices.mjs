@@ -15,7 +15,9 @@ export function licenseNotices() {
     },
     generateBundle() {
       if (!notices.size) throw new Error('Third-party license collection unexpectedly empty');
-      this.emitFile({ type:'asset', fileName:'THIRD_PARTY_LICENSES.txt', source:[...notices,fs.readFileSync('src/components/TIPTAP-LICENSE.txt','utf8')].sort().join('\n\n')+'\n' });
+      const flagLicense = fs.readFileSync('node_modules/country-flag-emoji-polyfill/LICENSE.md', 'utf8');
+      const flagCredit = 'Twemoji Country Flags: Twemoji artwork by Twitter, Inc. and contributors (https://github.com/twitter/twemoji), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). The font is the upstream subset supplied by country-flag-emoji-polyfill; no further changes were made.';
+      this.emitFile({ type:'asset', fileName:'THIRD_PARTY_LICENSES.txt', source:[...notices,fs.readFileSync('src/components/TIPTAP-LICENSE.txt','utf8'),flagCredit,flagLicense].sort().join('\n\n')+'\n' });
     },
   };
 }

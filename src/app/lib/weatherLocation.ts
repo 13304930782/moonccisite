@@ -7,6 +7,31 @@ export type WeatherLocation = {
   latitude: number;
   longitude: number;
 };
+export function weatherLocationFlag(location: WeatherLocation | null): string {
+  let code = location?.countryCode?.trim().toUpperCase() || '';
+  if (code === 'CN' && location) {
+    const parts = [location.name, ...location.region.split(/\s*[·,，]\s*/)].map(value => value.trim());
+    const regions: [string, RegExp, string][] = [
+      ['81', /^(?:香港(?:特别行政区|特別行政區)?|hong kong(?: sar)?)$/i, 'HK'],
+      ['82', /^(?:澳门(?:特别行政区)?|澳門(?:特別行政區)?|maca[ou](?: sar)?)$/i, 'MO'],
+      ['71', /^(?:台湾(?:省)?|臺灣(?:省)?|台北(?:市)?|臺北(?:市)?|taiwan(?: province)?|taipei(?: city)?)$/i, 'TW'],
+    ];
+    code = regions.find(([prefix, name]) => location.adcode?.startsWith(prefix) || parts.some(part => name.test(part)))?.[2] || code;
+  }
+  if (code === 'TW') return 'TW';
+  return /^[A-Z]{2}$/.test(code) ? String.fromCodePoint(...Array.from(code, char => 0x1f1e6 + char.charCodeAt(0) - 65)) : '🌐';
+}
+
+export function weatherLocationRegion(location: WeatherLocation): string {
+  const code = location.countryCode?.toUpperCase();
+  let countryNames: string[] = [];
+  if (code && /^[A-Z]{2}$/.test(code)) {
+    try { countryNames = ['zh-CN', 'en'].map(locale => new Intl.DisplayNames([locale], { type: 'region' }).of(code) || ''); } catch { /* Keep the original region if display names are unavailable. */ }
+  }
+  return location.region.split(/\s*[·,，]\s*/).map(part => part.trim())
+    .filter(part => part && part.toLowerCase() !== location.name.toLowerCase() && !countryNames.some(name => name.toLowerCase() === part.toLowerCase()))
+    .join(' · ');
+}
 export const WEATHER_LOCATION_KEY = 'mooncci-weather-location-v2';
 export const LEGACY_WEATHER_LOCATION_KEY = 'mooncci-weather-location-v1';
 export const WEATHER_LOCATION_TTL = 30 * 24 * 60 * 60 * 1000;

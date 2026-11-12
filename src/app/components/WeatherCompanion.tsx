@@ -777,20 +777,14 @@ export default function WeatherCompanion() {
               {data?.status === 'ready' && (
                 <div className="weather-companion-forecast">
                   <strong>
-                    {data.city?.name} · {data.weather?.label}
+                    {data.weather?.label}
                   </strong>
                   <span>
                     {data.weatherSource === 'amap' ? (
                       <>
-                         {t("m_85217f7aff")}{' '}
-                        {data.weather?.dayTemperature == null
-                          ? '—'
-                          : Math.round(data.weather.dayTemperature)}
-                         {t("m_6f594ac811")}{' '}
-                        {data.weather?.nightTemperature == null
-                          ? '—'
-                          : Math.round(data.weather.nightTemperature)}
-                        °
+                        {data.weather?.dayTemperature == null || data.weather?.nightTemperature == null
+                          ? (data.weather?.dayTemperature ?? data.weather?.nightTemperature) == null ? '—' : `${Math.round((data.weather?.dayTemperature ?? data.weather?.nightTemperature) as number)}°`
+                          : `${Math.round(Math.min(data.weather.dayTemperature, data.weather.nightTemperature))}–${Math.round(Math.max(data.weather.dayTemperature, data.weather.nightTemperature))}°`}
                       </>
                     ) : (
                       <>
@@ -805,7 +799,6 @@ export default function WeatherCompanion() {
                       </>
                     )}
                   </span>
-                  <small>{data.date}  {t("m_1e106ea5f7")}</small>
                 </div>
               )}
               </div>}
@@ -866,7 +859,7 @@ export default function WeatherCompanion() {
                       ? t("m_1ecb3ba10a")
                       : cityAttribution === 'geonames'
                         ? 'GeoNames'
-                        : '© OpenStreetMap contributors'}
+                        : '© OpenStreetMap'}
                   </a>
                 )}
                 {cityAttribution && data?.weatherSource && (

@@ -2,6 +2,13 @@ const {fixture:i18nFixture}=require('./helpers/i18n.cjs');
 const {test}=require('node:test'),assert=require('node:assert/strict'),ts=require('typescript'),fs=require('node:fs');
 const React=require('react'),{act,create}=require('react-test-renderer');
 function load(file,requireMock){const m={exports:{}};new Function('exports','require',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText)(m.exports,requireMock);return m.exports;}
+test('city flags use region codes without changing stored weather locations',()=>{
+ const {weatherLocationFlag,weatherLocationRegion}=load('src/app/lib/weatherLocation.ts',require);
+ const city=(name,region,countryCode,adcode)=>({name,region,countryCode,adcode,latitude:0,longitude:0});
+ for(const [location,flag] of [[city('San Jose','United States · California','US'),'🇺🇸'],[city('香港','中国 · 香港','CN','810000'),'🇭🇰'],[city('澳门','中国 · 澳门','CN','820000'),'🇲🇴'],[city('台北','中国 · 台湾','CN','710100'),'TW'],[city('台北','台湾','TW'),'TW'],[city('葫芦岛','中国 · 辽宁','CN'),'🇨🇳'],[city('东京','日本','JP'),'🇯🇵'],[city('香港','香港','HK'),'🇭🇰'],[city('任意','',undefined),'🌐'],[city('任意','','USA'),'🌐'],[city('Taipei','Texas','US'),'🇺🇸']]) assert.equal(weatherLocationFlag(location),flag);
+ assert.equal(weatherLocationRegion(city('San Jose','United States · California','US')),'California');
+ assert.equal(weatherLocationRegion(city('葫芦岛','辽宁','CN')),'辽宁');
+});
 test('city lookup accepts coarse desktop positions, requires confirmation and preserves a working city on failure',async()=>{
  const city={name:'杭州市',region:'中国 · 浙江省',countryCode:'CN',adcode:'330100',latitude:30.3,longitude:120.2};
  const positions={coords:{latitude:30.274,longitude:120.155,accuracy:5000}};

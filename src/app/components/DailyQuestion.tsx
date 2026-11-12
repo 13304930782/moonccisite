@@ -73,14 +73,14 @@ export function DailyQuestionCard({ daily, onReceived }: { daily: DailyState; on
   const question = daily.question;
   useEffect(() => { setSelection(null); setText(''); }, [question?.id]);
   if (!question) return null;
+  if (question.answered) return <div className="companion-ask-done" aria-label={t('每日一问')}><b>{t('已回答')}</b><button type="button" className="companion-ask-result" disabled={daily.busy} onClick={() => void daily.showPreview()}>{daily.busy ? t('加载中…') : t('查看结果')}</button>{daily.error && <p className="daily-question-error" role="alert">{t(daily.error)}</p>}</div>;
   return <section className="daily-question-card" aria-label={t('每日一问')}>
-    <div className="daily-question-header"><span>{t('今日一问')}</span>{question.answered && <span>{t('已回答')}</span>}</div>
+    <div className="daily-question-header"><span>{t('今日一问')}</span></div>
     <h3>{question.text}</h3>
-    {question.answered ? <button type="button" className="daily-question-secondary" disabled={daily.busy} onClick={() => void daily.showPreview()}>{t('查看回答预览')}</button> :
       <form onSubmit={event => { event.preventDefault(); const answer = question.choices ? selection === null ? null : { choiceIndex: selection } : text.trim() ? { text: text.trim() } : null; if (answer) void daily.submit(answer).then(ok => { if (ok) { setText(''); onReceived(); } }); }}>
         {question.choices ? <fieldset><legend className="sr-only">{t('选择一个答案')}</legend>{question.choices.map((choice, index) => <label className="daily-question-choice" key={index}><input type="radio" name="daily-question-choice" checked={selection === index} onChange={() => setSelection(index)} /><span>{choice}</span></label>)}</fieldset> : <label className="daily-question-answer"><span>{t('你的回答')}</span><textarea maxLength={80} rows={3} value={text} onChange={event => setText(event.target.value)} placeholder={t('写下你的想法')} /><small>{text.length} / 80</small></label>}
         <button type="submit" className="daily-question-submit" disabled={daily.busy || (question.choices ? selection === null : !text.trim())}>{daily.busy ? t('提交中…') : t('提交回答')}</button>
-      </form>}
+      </form>
     {daily.error && <p className="daily-question-error" role="alert">{t(daily.error)}</p>}
   </section>;
 }
@@ -91,7 +91,7 @@ export function DailyQuestionResult({ daily }: { daily: DailyState }) {
   const question = daily.question;
   return <Dialog open={daily.previewOpen} onOpenChange={daily.setPreviewOpen}><DialogPortal>
     <DialogOverlay className="daily-result-overlay" />
-    <DialogPrimitive.Content className="daily-result-dialog" onCloseAutoFocus={event => { event.preventDefault(); document.querySelector<HTMLButtonElement>('.daily-question-secondary')?.focus(); }}>
+    <DialogPrimitive.Content className="daily-result-dialog" onCloseAutoFocus={event => { event.preventDefault(); (document.querySelector<HTMLButtonElement>('.companion-ask-result') || document.querySelector<HTMLButtonElement>('.weather-city-current button'))?.focus(); }}>
       <DialogClose className="daily-result-close" aria-label={t('关闭')}><X size={18} aria-hidden="true" /></DialogClose>
       <DialogTitle className="daily-result-title">{t('回答预览')}</DialogTitle>
       <DialogDescription className="daily-result-description">{t('仅汇总，不展示原文。')}</DialogDescription>
