@@ -8,7 +8,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   page.on('pageerror',e=>errors.push(e.message));
   let zhId='11111111-1111-4111-8111-111111111111',enId='22222222-2222-4222-8222-222222222222';
   const drafts={};drafts[zhId]={id:zhId,locale:'zh-CN',version:1,post_id:42,post_status:'published',payload:{title:'中文标题',content:'## 中文正文\n\n原文内容',slug:'one-article',summary:'中文简介',summary_mode:'manual',category:'技术',tags:[]},workflow:{state:'draft'}};drafts[enId]={id:enId,locale:'en',source_changed:true,current_source_hash:'a'.repeat(64),version:1,post_id:42,post_status:'published',payload:{...drafts[zhId].payload,title:'English title',content:'## English body\n\nOriginal English',summary:'English summary'},workflow:{state:'draft'}};
-  let delaySave=null,failSave=false,identityCalls=0;
+  let delaySave=null,failSave=false,identityCalls=0;const publishes=[];
   await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
   await page.route('**/api/**',async r=>{
    const url=new URL(r.request().url()),p=url.pathname,m=r.request().method();let json={};
@@ -19,7 +19,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
    else if(p==='/api/article-seo/status')json={enabled:false};
    else if(p==='/api/article-drafts'&&m==='POST'){const input=r.request().postDataJSON();json=drafts[input.locale==='en'?enId:zhId];}
    else if(p.endsWith('/identity')){identityCalls++;const d=drafts[p.split('/')[3]];assert.equal(d.payload.slug,'');d.post_id ||= 84;drafts[enId].post_id=d.post_id;json=d;}
-   else if(p.startsWith('/api/article-drafts/')){const id=p.split('/')[3],d=drafts[id];assert.ok(d,p);if(m==='PUT'){const b=r.request().postDataJSON();assert.equal(b.locale,d.locale);writes.push({locale:b.locale,payload:b.payload,reviewed_source_hash:b.reviewed_source_hash});if(delaySave){const wait=delaySave;delaySave=null;await wait;}if(failSave)return r.fulfill({status:503,json:{message:'Isolated save failure'}});drafts[id]={...d,version:d.version+1,payload:b.payload,...(b.reviewed_source_hash?{source_changed:false}:{})};}json=drafts[id];}
+   else if(p.startsWith('/api/article-drafts/')){const id=p.split('/')[3],d=drafts[id];assert.ok(d,p);if(m==='PUT'){const b=r.request().postDataJSON();assert.equal(b.locale,d.locale);writes.push({locale:b.locale,payload:b.payload,reviewed_source_hash:b.reviewed_source_hash});if(delaySave){const wait=delaySave;delaySave=null;await wait;}if(failSave)return r.fulfill({status:503,json:{message:'Isolated save failure'}});drafts[id]={...d,version:d.version+1,payload:b.payload,...(b.reviewed_source_hash?{source_changed:false}:{})};}else if(m==='POST'&&p.endsWith('/publish')){const b=r.request().postDataJSON();assert.equal(b.locale,d.locale);assert.equal(b.version,d.version);publishes.push({id,locale:b.locale,payload:d.payload});drafts[id]={...d,translation_status:'published'};}json=drafts[id];}
    return r.fulfill({json});
   });
   await page.goto('http://127.0.0.1:4266/admin/write?draft='+zhId);const title=page.locator('#article-title');await title.waitFor();await page.locator('[data-markdown-editor]').waitFor();
@@ -55,7 +55,10 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.locator('.writing-content-language [role=group] button').nth(1).click();await page.waitForFunction(()=>document.querySelector('#article-title')?.value==='');
   await title.fill('Unpublished English preview');await page.locator('[data-markdown-editor]').fill('English preview without a URL');
   await page.getByRole('button',{name:'Publish',exact:true}).click();await page.locator('.article-full-preview').waitFor();
-  assert.match(await page.locator('.article-full-preview').innerText(),/Unpublished English preview/);await page.frameLocator('.article-full-preview iframe').getByText('English preview without a URL',{exact:true}).waitFor();await page.getByRole('button',{name:'Run pre-publication checks',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('.article-review-publish')?.disabled);
+  assert.match(await page.locator('.article-full-preview').innerText(),/Unpublished English preview/);await page.frameLocator('.article-full-preview iframe').getByText('English preview without a URL',{exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Run pre-publication checks',exact:true}).count(),0);
+  const confirmPublish=page.locator('.article-review-publish');await confirmPublish.waitFor();assert.equal(await confirmPublish.isEnabled(),true);await confirmPublish.click();
+  await page.waitForSelector('.article-published');assert.equal(publishes.length,1);assert.equal(publishes[0].id,enId);assert.equal(publishes[0].locale,'en');assert.equal(publishes[0].payload.title,'Unpublished English preview');assert.equal(publishes[0].payload.content,'English preview without a URL');
   assert.equal(identityCalls,1);assert.equal(drafts[zhId].post_id,drafts[enId].post_id);assert.equal(drafts[zhId].payload.slug,'');assert.deepEqual(errors,[]);
   console.log('PASS: UI-language switches preserve mounted editor, title/body/editorLocale; drafts save independently; failure retains English input; Chinese state survives round trip; no cross-language writes.');
  }finally{await browser.close();await server.close();}

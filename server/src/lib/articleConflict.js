@@ -30,6 +30,7 @@ async function resolve(c,d,user,input) {
   if (input.choice==='adopt-post' && !post) throw error('这份草稿还没有对应的网站文章。');
   if (!input.payload || typeof input.payload!=='object') throw error('当前编辑内容缺失，请保留内容后重试。');
   const current=payload(input.payload);
+  if (!Object.hasOwn(input.payload,'aside')) current.aside=d.payload.aside??post?.aside??null;
   // Preserve both the browser contents and the server draft before replacing either.
   await revisions.record(c,d,d.payload,'restore',user.id);
   if (revisions.hash(current)!==revisions.hash(d.payload)) await revisions.record(c,d,current,'restore',user.id);

@@ -11,6 +11,7 @@ import { useEffect, useRef } from 'react';
 import {useLocale} from '../context/LocaleContext';
 import {localizedPath} from '../lib/locale';
 import { articlePath } from '../lib/articleUrl';
+import { articleAsideStore } from '../lib/articleAside';
 import { CommentSection } from '../components/CommentSection';
 import {
   SitePage,
@@ -24,6 +25,11 @@ export default function ArticlePage() {
     resource = useResource(`/posts/${encodeURIComponent(id || '')}`);
   const location = useLocation(), navigate = useNavigate();
   const post = resource.data;
+  useEffect(() => {
+    const path = location.pathname;
+    articleAsideStore.set(path, contentLocale, !resource.loading && !resource.error && post?.status === 'published' && typeof post.aside === 'string' ? post.aside.trim() : '');
+    return () => articleAsideStore.clear(path);
+  }, [location.pathname, contentLocale, resource.loading, resource.error, post]);
   useEffect(() => {
     if (post?.status !== 'published') return;
     const canonical = articlePath(post,contentLocale);
@@ -40,7 +46,7 @@ export default function ArticlePage() {
         {post && (
           <>
             <div className="article-layout">
-              <ArticlePresentation post={post} languages={<ArticleLanguages post={post}/>} views={views} progress={<ReadingProgress key={post.id} postId={post.id}/>}/>
+              <ArticlePresentation post={post} languages={<ArticleLanguages post={post}/>} views={views} progress={<ReadingProgress key={post.id} postId={post.id} title={post.title}/>}/>
               <ArticleSeries id={post.id}/><ArticleDiscovery key={post.id} id={post.id} slug={post.slug} title={post.title}/><CommentSection postId={post.id} />
             </div>
           </>

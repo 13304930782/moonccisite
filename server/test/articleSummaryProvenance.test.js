@@ -20,10 +20,25 @@ test('draft publishing stores verified AI origin and clears it for manual summar
       return [{ insertId: 1 }];
     } };
     await publish(c, { id: 'draft', author_id: 1, payload: p, post_id: existing ? 1 : null, base_version: 1 }, { id: 1, role: 'owner' });
-    assert.equal(saved[8], mode);
+    assert.equal(saved[9], mode);
   }
   await assert.rejects(publish({ query: async () => { throw Error('must not write'); } },
     { payload: { title: 'Title', content: 'Body', summary: 'Forged', summary_mode: 'ai' } }, { id: 1 }), /重新生成/);
+});
+
+test('publishing a legacy draft preserves the aside while an explicit empty value clears it', async () => {
+  const written = [];
+  const c = { query: async (sql, values) => {
+    if (sql.startsWith('SELECT * FROM posts')) return [[{ id: 1, author_id: 1, version: 1, slug: 'title', aside: '已有旁白' }]];
+    if (sql.startsWith('SELECT post_id FROM article_slug_aliases')) return [[{ post_id: 1 }]];
+    if (sql.startsWith('SELECT')) return [[]];
+    if (sql.startsWith('UPDATE posts SET title=')) written.push(values[3]);
+    return [{ insertId: 1, affectedRows: 1 }];
+  } };
+  for (const extra of [{}, { aside: '' }]) {
+    await publish(c, { id: 'draft', post_id: 1, base_version: 1, payload: { title: 'Title', slug: 'title', content: 'Body', ...extra } }, { id: 1, role: 'owner' });
+  }
+  assert.deepEqual(written, ['已有旁白', null]);
 });
 
 test('direct updates retain origin only for unchanged or verified summaries', async t => {
@@ -40,7 +55,7 @@ test('direct updates retain origin only for unchanged or verified summaries', as
       if (sql.startsWith('SELECT')) return [[]];
     if (sql.startsWith('UPDATE posts SET title=')) {
       assert.match(sql, /tags=\?,summary_mode=\?,status=/);
-      row = { ...row, summary: values[2], summary_mode: values[8], version: row.version + 1 };
+      row = { ...row, summary: values[2], summary_mode: values[9], version: row.version + 1 };
     }
     return [{ affectedRows: 1, insertId: 1 }];
   };

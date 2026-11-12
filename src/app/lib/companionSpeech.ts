@@ -19,7 +19,7 @@ export function pageSpeech(pathname: string) {
 }
 
 export function idleSpeechKind(turn: number, hasPage: boolean, hasNews: boolean) {
-  return turn % 3 === 0 && hasPage ? 'page' : turn % 4 === 0 && hasNews ? 'news' : 'ambient';
+  return turn % 4 === 0 && hasNews ? 'news' : turn % 3 === 0 && hasPage ? 'page' : 'ambient';
 }
 
 export function publicNewsTitle(title: unknown) {

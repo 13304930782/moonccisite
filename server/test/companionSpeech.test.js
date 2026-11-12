@@ -33,7 +33,7 @@ test('page messages match public routes without adding them to authentication pa
 test('idle rotation schedules at most one page line per three turns and one news line per four', async () => {
   const { idleSpeechKind } = await import('../../src/app/lib/companionSpeech.ts');
   const turns = Array.from({length: 24}, (_, index) => idleSpeechKind(index + 1, true, true));
-  assert.deepEqual(turns.slice(0, 12), ['ambient', 'ambient', 'page', 'news', 'ambient', 'page', 'ambient', 'news', 'page', 'ambient', 'ambient', 'page']);
+  assert.deepEqual(turns.slice(0, 12), ['ambient', 'ambient', 'page', 'news', 'ambient', 'page', 'ambient', 'news', 'page', 'ambient', 'ambient', 'news']);
   for (let i = 0; i <= turns.length - 3; i++) assert.ok(turns.slice(i, i + 3).filter(kind => kind === 'page').length <= 1);
   for (let i = 0; i <= turns.length - 4; i++) assert.ok(turns.slice(i, i + 4).filter(kind => kind === 'news').length <= 1);
   assert.equal(idleSpeechKind(3, false, true), 'ambient');

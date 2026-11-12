@@ -78,6 +78,7 @@ jobs:
             .cache/bilingual-hydration-results.json
             .cache/public-history-*-375.png
       - run: node test/mobile-inputs.browser.cjs
+      - run: node scripts/test-daily-question-history-browser.cjs
       - run: node scripts/test-browser.cjs
       - run: node scripts/test-experience-fixes-browser.cjs
       - run: node scripts/test-ai-summary-browser.cjs
@@ -157,6 +158,16 @@ jobs:
       - run: node --test server/test/articleDrafts.integration.test.js
         env:
           DRAFT_INTEGRATION: "true"
+          TEST_DB_PORT: "3306"
+
+      - run: node --test server/test/dailyQuestion.integration.test.js
+        env:
+          DAILY_QUESTION_INTEGRATION: "true"
+          TEST_DB_PORT: "3306"
+
+      - run: node --test server/test/articleLikesMigration.integration.test.js
+        env:
+          ARTICLE_LIKES_MIGRATION_TEST: "true"
           TEST_DB_PORT: "3306"
 
       - run: node --test server/test/analytics.integration.test.js

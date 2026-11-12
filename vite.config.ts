@@ -1,6 +1,7 @@
 import { licenseNotices } from './scripts/license-notices.mjs'
 import { compactSyntax } from './scripts/compact-syntax.mjs'
 import { compactGrokGeometryPlugin } from './scripts/compact-grok-geometry.mjs'
+import { compactRe2UnicodePlugin } from './scripts/compact-re2-unicode.mjs'
 import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
@@ -25,6 +26,7 @@ export default defineConfig({
     licenseNotices(),
     compactSyntax(),
     compactGrokGeometryPlugin(),
+    compactRe2UnicodePlugin(),
     { name: 'editor-extension-entries', enforce: 'pre', resolveId(id) {
       if (id === '@tiptap/extensions') return path.resolve(__dirname, 'src/app/lib/tiptapExtensions.ts');
     } },
@@ -56,6 +58,7 @@ export default defineConfig({
         experimentalMinChunkSize: 5000,
         onlyExplicitManualChunks: true,
         manualChunks(id) {
+          if (/[\\/]src[\\/]app[\\/]pages[\\/](?:Admin(?:Posts|Content|SiteSettings|Electricity|Media|MailSettings|MailboxRequests|Comments|Series|Seo|UserSettings|LoginSettings|EditorApplications|Analytics|SendMail|BannedWords|Runtime|NodeMonitor|AiSettings|Taxonomy|Page)|Operations)Page\.tsx$/.test(id)) return 'admin-management';
           // Preserve account-route boundaries when merging small shared chunks.
           if (/[\\/]src[\\/]app[\\/]pages[\\/](?:CompleteRegistrationPage|EditorApplyPage)\.tsx$/.test(id)) return 'account-routes';
             // Keep non-rendering locale effects lazy instead of merging them into the entry.

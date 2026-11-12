@@ -13,6 +13,8 @@
 .article-presentation .hero-band .hero-pill:focus-visible { outline:2px solid rgba(255,255,255,.85); outline-offset:2px; }
 @media(prefers-reduced-motion:no-preference) { html:not([data-reduced-motion=true]) .article-presentation .hero-band .hero-pill { transition:background-color .18s ease; } }
 .neo-page .article-presentation .detail-title { margin:28px 0 0; color:var(--hero-text); text-align:center; font-size:36px; line-height:1.25; font-weight:600; letter-spacing:-.01em; text-wrap:balance; line-break:strict; }
+.article-presentation .article-aside { margin:12px auto 0; max-width:680px; text-align:center; font-size:14px; line-height:1.6; color:var(--muted-foreground); overflow-wrap:anywhere; }
+.article-presentation .hero-band .article-aside { color:rgba(255,255,255,.78); }
 .neo-page .article-presentation .hero-meta { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px 14px; min-height:28px; margin-top:14px; padding:0; color:var(--hero-meta); font-size:14px; line-height:24px; white-space:normal; overflow:visible; }
 .article-presentation .hero-meta .g { display:inline-flex; align-items:center; gap:12px; white-space:nowrap; max-width:100%; }
 .article-presentation .hero-meta-author { min-width:0; overflow:hidden; text-overflow:ellipsis; }
@@ -141,6 +143,12 @@
  .hero-card { aspect-ratio:4 / 3; }
  .hero-inner,.article-after,.article-route :is(.article-discovery,.article-layout>.publishing-card,.article-layout>.comment-section) { width:calc(100% - 32px); }
  .hero-heading .hero-inner { width:calc(100% - 32px); }
+ .hero-heading { padding-top:24px; padding-bottom:12px; }
+ .neo-page .article-presentation .hero-heading .detail-title { margin-top:16px; }
+ .neo-page .article-presentation .article-languages { flex-wrap:wrap; white-space:normal; overflow:visible; }
+ .neo-page .article-presentation .article-languages > * { max-width:100%; white-space:normal; }
+ .article-no-cover .article-after { padding-top:12px; }
+ .article-has-cover .article-after { padding-top:184px; }
  .hero-band { padding-top:24px; }
  .neo-page .article-presentation .hero-meta { font-size:13px; }
  .article-neighbors a { padding:14px; font-size:14px; }

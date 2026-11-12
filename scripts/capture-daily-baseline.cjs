@@ -1,0 +1,21 @@
+'use strict';
+// Read hashes only; do not read configuration or upload data.
+const fs = require('node:fs');
+const cp = require('node:child_process');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const fileList = cp.spawnSync('python', ['scripts/build-daily-release.py', '--list-files'], { cwd: root, encoding: 'utf8' });
+if (fileList.status !== 0) throw Error('Failed to enumerate build');
+const names = JSON.parse(fileList.stdout);
+const script = `import hashlib,json,pathlib\nnames=json.loads(${JSON.stringify(JSON.stringify(names))})\nout={}\nfor name in names:\n p=pathlib.PurePosixPath(name)\n if p.is_absolute() or '..' in p.parts: raise ValueError('unsafe path')\n if name.startswith('dist/'): base=pathlib.Path('/www/wwwroot/mooncci.site'); rel=name[5:]\n elif name.startswith('server/'): base=pathlib.Path('/www/wwwroot/mooncci-source/server'); rel=name[7:]\n else: raise ValueError('outside scope')\n dest=base.joinpath(*pathlib.PurePosixPath(rel).parts); node=dest\n while node != base:\n  if node.is_symlink(): raise ValueError('symlink target')\n  node=node.parent\n out[name]=hashlib.sha256(dest.read_bytes()).hexdigest() if dest.is_file() else None\nprint(json.dumps(out))\n`;
+const encoded = Buffer.from(script).toString('base64');
+const key = path.join(process.env.USERPROFILE || '', '.ssh', 'id_ed25519_mooncci_codex');
+const remote = `python3 -c "import base64;exec(base64.b64decode('${encoded}'))"`;
+const run = cp.spawnSync('ssh', ['-i', key, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=yes', 'root@182.92.179.81', remote], { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+if (run.status !== 0) throw Error('Baseline capture failed: ' + (run.stderr || 'SSH failed').trim());
+const values = JSON.parse(run.stdout);
+if (Object.keys(values).length !== names.length || names.some(n => !(n in values))) throw Error('Incomplete baseline');
+const output = path.join(root, '.cache', 'daily-release-production-baseline.json');
+fs.mkdirSync(path.dirname(output), { recursive: true });
+fs.writeFileSync(output, JSON.stringify(values, null, 2) + '\n');
+console.log('Baseline captured for ' + names.length + ' files: ' + output);

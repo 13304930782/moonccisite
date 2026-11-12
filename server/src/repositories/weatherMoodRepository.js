@@ -34,6 +34,7 @@ async function withLock(key, callback) {
   }
 }
 const OVERRIDE_KEY = 'weather_companion_override:v1';
+const STATUS_KEY = 'weather_companion_status:v1';
 async function readOverride() {
   const [rows] = await db.query(
     'SELECT setting_value FROM site_settings WHERE setting_key=?',
@@ -51,4 +52,21 @@ async function writeOverride(value) {
     [OVERRIDE_KEY, JSON.stringify(value)],
   );
 }
-module.exports = { withLock, readOverride, writeOverride };
+async function readStatus() {
+  const [rows] = await db.query(
+    'SELECT setting_value FROM site_settings WHERE setting_key=?',
+    [STATUS_KEY],
+  );
+  try {
+    return JSON.parse(rows[0]?.setting_value || 'null');
+  } catch {
+    return null;
+  }
+}
+async function writeStatus(value) {
+  await db.query(
+    'INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)',
+    [STATUS_KEY, JSON.stringify(value)],
+  );
+}
+module.exports = { withLock, readOverride, writeOverride, readStatus, writeStatus };

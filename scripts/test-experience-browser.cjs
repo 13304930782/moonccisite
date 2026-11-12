@@ -29,6 +29,8 @@ const {chromium,webkit}=require('playwright');
  // Invoke the same public helper used by real actions; exercise duplicate and queue limits.
  await page.evaluate(async()=>{const {notify}=await import('/src/app/lib/feedback.ts');notify.success('一');notify.success('一');notify.error('二');notify.success('三');});
  await page.waitForTimeout(450);assert.equal(await page.locator('[data-feedback-toast]').count(),2);
+ const repeatedError=page.locator('.feedback-toast--error');assert.equal(await repeatedError.getAttribute('data-shake'),'1');await repeatedError.evaluate(el=>{window.__genericErrorToast=el;});
+ await page.evaluate(async()=>{const {notify}=await import('/src/app/lib/feedback.ts');notify.error('二');});await page.waitForTimeout(500);assert.equal(await repeatedError.count(),1);assert.equal(await repeatedError.getAttribute('data-shake'),'2');assert.equal(await repeatedError.evaluate(el=>el===window.__genericErrorToast),true);
  assert.ok(await page.locator('[data-feedback-toast]').first().evaluate(el=>el.getBoundingClientRect().top >= document.querySelector('.account-topbar').getBoundingClientRect().bottom+8));assert.ok(await page.locator('[data-feedback-toast]').first().evaluate(el=>el.getBoundingClientRect().right>=innerWidth-40));await page.screenshot({path:'.cache/experience-qa/feedback-dark.png'});
  await page.mouse.click(1000,500);await page.waitForTimeout(450);assert.equal(await page.locator('[data-feedback-toast]').count(),0);
  failProfile=true;await page.getByRole('button',{name:'保存资料'}).click();await page.getByText('尚未确认操作结果，请先刷新或查看记录，确认后再重试。',{exact:true}).first().waitFor();assert.equal(await page.locator('[data-feedback-toast]').count(),0);

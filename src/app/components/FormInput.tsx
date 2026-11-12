@@ -1,3 +1,4 @@
+import './FloatingField.css';
 import { useI18n } from '../i18n';
 import { forwardRef, useId, useState, type InputHTMLAttributes } from 'react';
 

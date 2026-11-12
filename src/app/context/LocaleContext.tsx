@@ -1,4 +1,4 @@
-import {createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode} from 'react';
+import {createContext, startTransition, useCallback, useContext, useEffect, useRef, useState, type ReactNode} from 'react';
 import {useLocation, useNavigate, useNavigationType} from 'react-router-dom';
 import {api} from '../lib/api';
 import {languageLoadError, localizedPath, preferenceKey, readLanguage, sessionPreferenceKey, splitLocalePath, systemLocale, type LanguagePreference, type Locale, type StoredLanguage} from '../lib/locale';
@@ -57,7 +57,7 @@ export function LocaleProvider({children}: {children: ReactNode}) {
     setLanguageError('');
     try { await Promise.all([ensureMessages(locale),hydration]); } catch { if(version===selection.current)setLanguageError(languageLoadError(locale));return; }
     if (version !== selection.current) return;
-    setUiLocale(locale);setReady(true);
+    startTransition(() => { setUiLocale(locale);setReady(true); });
     if (changeUrl) await normalize(locale,preserveScroll);
   },[hydration,normalize]);
   const setLocale = useCallback((next: LanguagePreference) => {
@@ -76,11 +76,12 @@ export function LocaleProvider({children}: {children: ReactNode}) {
     const restored = (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type === 'back_forward';
     effective.current = restored && session && (!stored || session.version > stored.version) ? session : stored;
     const selected = effective.current?.preference || 'system';
-    setPreference(selected);
     const locale = selected === 'system' ? browserLanguage() : selected;
     // Explicit shared links retain their content; only the neutral home entry auto-selects a URL.
     void applyLocale(locale,restored || location.pathname === '/',restored);
-  },[applyLocale]);
+    const initialSelection=selection.current;
+    void Promise.resolve(hydration).then(() => { if(initialSelection===selection.current) startTransition(() => setPreference(selected)); });
+  },[applyLocale,hydration]);
 
   useEffect(() => {
     const restore = (event: PageTransitionEvent) => {

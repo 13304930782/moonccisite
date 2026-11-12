@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 const {readCoverCrop}=require('./articleCoverCrop');
-const fields = ['title','slug','summary','content','cover_image','category','source_url','summary_mode','summary_receipt'];
+const fields = ['title','slug','summary','aside','content','cover_image','category','source_url','summary_mode','summary_receipt'];
 function snapshot(input = {}) {
   const out = Object.fromEntries(fields.map(k => [k,String(input[k] ?? '')]));
   out.slug=require('./articleSlug').displayArticleSlug(out.slug);

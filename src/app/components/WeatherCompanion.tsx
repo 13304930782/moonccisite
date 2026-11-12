@@ -2,7 +2,7 @@ import {splitLocalePath} from '../lib/locale';
 import { useI18n } from '../i18n';
 import { reducedMotion } from '../lib/motionPreference';
 import { FestivalSlot } from './Festivals/Entry';
-import { useCallback, useEffect, useRef, useState, type HTMLAttributes } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type HTMLAttributes } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Link } from './LocaleLink';
 import { CloudSun, Hand, X, Zap } from 'lucide-react';
@@ -11,8 +11,11 @@ import GrokBall, {
 } from '../../vendor/grok-ball/grok-ball.ts';
 import { api } from '../lib/api';
 import { interactionSpeech, reactionDuration, pageSpeech, idleSpeechKind, publicNewsTitle } from '../lib/companionSpeech';
+import { articleAsideStore } from '../lib/articleAside';
+import { useLocale } from '../context/LocaleContext';
 import { useMoonTheme } from '../context/ThemeContext';
 import { WeatherCityPicker } from './WeatherCityPicker';
+import { DailyQuestionCard, DailyQuestionResult, useDailyQuestion } from './DailyQuestion';
 import {
   loadWeatherLocation,
   saveWeatherLocation,
@@ -51,13 +54,17 @@ const ambientMoments = [
 ];
 type Speech =
   | { kind: 'chat'; text: string }
+  | { kind: 'status'; text: string }
+  | { kind: 'aside'; text: string }
+  | { kind: 'question'; id: number; text: string }
+  | { kind: 'daily-summary'; text: string }
   | { kind: 'pulse'; title: string; href: string; type: 'post' | 'release' };
 
-function SpeechBubble({ speech, ...props }: { speech: Speech } & HTMLAttributes<HTMLDivElement>) {
+function SpeechBubble({ speech, onQuestion, ...props }: { speech: Speech; onQuestion: () => void } & HTMLAttributes<HTMLDivElement>) {
   const { t } = useI18n();
   return (
     <div {...props} className={`companion-bubble companion-bubble--${speech.kind}${props.className ? ` ${props.className}` : ''}`} role="status">
-      {speech.kind === 'chat' ? <p className="companion-bubble-chat">{t(speech.text)}</p> : <>
+      {speech.kind === 'question' ? <><span className="companion-bubble-question-label">{t('今日一问')}</span><p className="companion-bubble-question-title">{speech.text}</p><button type="button" className="companion-bubble-question-action" onClick={onQuestion}>{t('去回答')}</button></> : speech.kind === 'status' || speech.kind === 'aside' || speech.kind === 'daily-summary' ? <p className="companion-bubble-chat">{speech.text}</p> : speech.kind === 'chat' ? <p className="companion-bubble-chat">{t(speech.text)}</p> : <>
         <span className="companion-bubble-kicker">{t(speech.type === 'post' ? '最近更新：文章' : '最近更新：项目版本')}</span>
         <p className="companion-bubble-title">{speech.title}</p>
         <Link className="companion-bubble-go" to={speech.href}>{t('去看看')}</Link>
@@ -85,6 +92,8 @@ type DailyMood = {
   refreshAt: string;
   mode: 'weather' | 'manual';
   overrideEndsAt?: string | null;
+  statusLine?: string;
+  statusEndsAt?: string;
 };
 
 function isPhoneViewport() {
@@ -96,9 +105,13 @@ function isPhoneViewport() {
 
 export default function WeatherCompanion() {
   const { t, locale } = useI18n();
+  const { contentLocale } = useLocale();
   const { theme } = useMoonTheme();
+  const daily = useDailyQuestion();
   const routeLocation = useLocation();
   const {pathname}=splitLocalePath(routeLocation.pathname);
+  const articleAside = useSyncExternalStore(articleAsideStore.subscribe, articleAsideStore.getSnapshot, () => null);
+  const aside = /^\/article\/[^/]+\/?$/.test(pathname) && articleAside?.path === routeLocation.pathname && articleAside.locale === contentLocale ? articleAside.text : '';
   const [phoneViewport, setPhoneViewport] = useState(isPhoneViewport);
   const edgeMode = phoneViewport && /^\/article\/[^/]+/.test(pathname);
   const [edgeVisible, setEdgeVisible] = useState(false);
@@ -115,10 +128,17 @@ export default function WeatherCompanion() {
   const [focusSpeech, setFocusSpeech] = useState('');
   const [ambientSpeech, setAmbientSpeech] = useState('');
   const [reactionSpeech, setReactionSpeech] = useState('');
+  const [thankSpeech, setThankSpeech] = useState('');
+  const thankTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pageAwareSpeech, setPageAwareSpeech] = useState<Speech | null>(null);
+  const visiblePageSpeech = pageAwareSpeech?.kind === 'aside' && pageAwareSpeech.text !== aside || pageAwareSpeech?.kind === 'question' && (!daily.question || daily.question.answered || daily.question.id !== pageAwareSpeech.id) || pageAwareSpeech?.kind === 'daily-summary' && pageAwareSpeech.text !== daily.summary ? null : pageAwareSpeech;
   const speechRestore = useRef<ReturnType<typeof setTimeout> | null>(null);
   const speechHeld = useRef(false);
   const idleTurn = useRef(0);
+  const asideIdleTurn = useRef(0);
+  const dailyIdleTurn = useRef(0);
+  const summaryIdleTurn = useRef(0);
+  const regularIdleTurn = useRef(0);
   const newsCache = useRef<{ at: number; value: { title: string; path: string; type: 'post' | 'release' } | null }>({ at: 0, value: null });
   const reactionVersion = useRef(0);
   const speechVersion = useRef(0);
@@ -258,6 +278,13 @@ export default function WeatherCompanion() {
   const pointerClick = useRef(-Infinity);
   const disabled = data?.status === 'disabled';
   const emotion = inputMood === 'password' ? '00' : inputMood === 'account' ? '03' : reactionEmotion(reaction, (data?.mode === 'manual' ? data.mood?.emotionId : ambient?.id) || '02');
+  useEffect(() => () => { if (thankTimer.current) clearTimeout(thankTimer.current); }, []);
+  useEffect(() => {
+    if (!data?.statusEndsAt) return;
+    const delay = Date.parse(data.statusEndsAt) - Date.now();
+    const timer = setTimeout(() => setPageAwareSpeech(speech => speech?.kind === 'status' ? null : speech), Math.max(0, Math.min(delay, 2147483647)));
+    return () => clearTimeout(timer);
+  }, [data?.statusEndsAt]);
   useEffect(() => {
     let messageTimer: ReturnType<typeof setTimeout> | undefined;
     const syncFocus = () => {
@@ -283,7 +310,7 @@ export default function WeatherCompanion() {
     setAmbientSpeech('');
     setPageAwareSpeech(null);
     speechHeld.current = false;
-    if (reduced || collapsed || disabled || open || edgeMode || reaction || inputMood || data?.mode === 'manual') return;
+    if (reduced || collapsed || disabled || open || (edgeMode && !aside && !daily.question && !daily.summary) || reaction || inputMood || (data?.mode === 'manual' && !data.statusLine && !aside && !daily.question && !daily.summary)) return;
     let timer: ReturnType<typeof setTimeout>;
     const schedule = () => { timer = setTimeout(play, 28000 + Math.random() * 27000); };
     let stopped = false;
@@ -302,11 +329,24 @@ export default function WeatherCompanion() {
       }
       clearTimeout(speechRestore.current ?? undefined);
       const page = pageSpeech(pathname);
-      const choice = idleSpeechKind(++idleTurn.current, Boolean(page), Boolean(newsCache.current.value));
+      const status = data?.statusLine && data.statusEndsAt && Date.parse(data.statusEndsAt) > Date.now() ? data.statusLine : '';
+      const choice = ++asideIdleTurn.current % 3 === 0 && aside ? 'aside' : ++idleTurn.current % 3 === 0 && status ? 'status' : ++dailyIdleTurn.current % 3 === 0 && daily.question && !daily.question.answered ? 'question' : ++summaryIdleTurn.current % 4 === 0 && daily.summary ? 'daily-summary' : idleSpeechKind(++regularIdleTurn.current, Boolean(page), Boolean(newsCache.current.value));
+      if ((edgeMode && choice !== 'aside' && choice !== 'question' && choice !== 'daily-summary') || (data?.mode === 'manual' && choice !== 'aside' && choice !== 'status' && choice !== 'question' && choice !== 'daily-summary')) { schedule(); return; }
       if (choice !== 'ambient') {
         setAmbientSpeech('');
         const news = newsCache.current.value;
-        if (choice === 'page') setPageAwareSpeech({ kind: 'chat', text: page });
+        if (edgeMode && (choice === 'aside' || choice === 'question' || choice === 'daily-summary')) {
+            setEdgeVisible(true);
+            if (edgeTimer.current) clearTimeout(edgeTimer.current);
+            edgeTimer.current = setTimeout(() => { edgeTimer.current = null; if (!root.current?.contains(document.activeElement)) setEdgeVisible(false); }, 5500);
+        }
+        if (choice === 'aside') {
+          setPageAwareSpeech({ kind: 'aside', text: aside });
+        }
+        else if (choice === 'status') setPageAwareSpeech({ kind: 'status', text: status });
+        else if (choice === 'question' && daily.question) setPageAwareSpeech({ kind: 'question', id: daily.question.id, text: daily.question.text });
+        else if (choice === 'daily-summary') setPageAwareSpeech({ kind: 'daily-summary', text: daily.summary });
+        else if (choice === 'page') setPageAwareSpeech({ kind: 'chat', text: page });
         else if (news) setPageAwareSpeech({ kind: 'pulse', title: news.title, href: news.path, type: news.type });
         speechRestore.current = setTimeout(() => setPageAwareSpeech(null), 5500);
         schedule();
@@ -340,7 +380,7 @@ export default function WeatherCompanion() {
     const hide = () => { if(document.hidden) { speechHeld.current = false; clearTimeout(timer); clearTimeout(speechRestore.current ?? undefined); setAmbientSpeech(''); setPageAwareSpeech(null); } else { clearTimeout(timer); schedule(); } };
     schedule(); document.addEventListener('visibilitychange', hide);
     return () => { stopped = true; clearTimeout(timer); clearTimeout(speechRestore.current ?? undefined); document.removeEventListener('visibilitychange', hide); };
-  }, [reduced, collapsed, disabled, open, edgeMode, reaction, inputMood, data?.mode, pathname, locale]);
+  }, [reduced, collapsed, disabled, open, edgeMode, reaction, inputMood, data?.mode, data?.statusLine, data?.statusEndsAt, pathname, locale, aside, daily.question?.id, daily.question?.text, daily.question?.answered, daily.summary]);
   const emotionName = GrokBall.EMOTIONS.find(item => item.id === displayedEmotion)?.name;
   const ballLabel = emotionName && /^[\u3400-\u9fff]{1,8}$/u.test(emotionName) ? emotionName : '陪伴';
   const moodName =
@@ -397,6 +437,7 @@ export default function WeatherCompanion() {
           Date.now() + 60000,
           Date.parse(result.refreshAt),
           result.overrideEndsAt ? Date.parse(result.overrideEndsAt) : Infinity,
+          result.statusEndsAt ? Date.parse(result.statusEndsAt) : Infinity,
         );
       } catch {
         if (stopped) return;
@@ -500,10 +541,12 @@ export default function WeatherCompanion() {
   useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => {
+      if (daily.previewOpen) return;
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
     const escape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        if (event.defaultPrevented || document.querySelector('.daily-result-dialog')) return;
         if (root.current?.querySelector('dialog[open]')) return;
         setOpen(false);
         root.current
@@ -517,7 +560,7 @@ export default function WeatherCompanion() {
       document.removeEventListener('pointerdown', outside);
       document.removeEventListener('keydown', escape);
     };
-  }, [open]);
+  }, [open, daily.previewOpen]);
 
   function applyStats(value: InteractionStats) {
     if (
@@ -717,6 +760,7 @@ export default function WeatherCompanion() {
                 onChange={selectLocation}
                 onAttributionChange={setCityAttribution}
               />
+              <DailyQuestionCard daily={daily} onReceived={() => { setThankSpeech('收到了'); if (thankTimer.current) clearTimeout(thankTimer.current); thankTimer.current = setTimeout(() => setThankSpeech(''), 4500); }} />
               {(location || data?.mode === 'manual') && <div className="weather-companion-mood">
               <h2>{t(moodName)}</h2>
               {data?.mode === 'manual' && (
@@ -862,13 +906,14 @@ export default function WeatherCompanion() {
             </div>
           )}
           <div className="companion-unit">
-          {(focusSpeech || reactionSpeech || (!open && (pageAwareSpeech || ambientSpeech))) && (
+          {(focusSpeech || reactionSpeech || thankSpeech || (!open && (visiblePageSpeech || ambientSpeech))) && (
             <SpeechBubble
-              speech={focusSpeech || reactionSpeech ? { kind: 'chat', text: focusSpeech || reactionSpeech } : pageAwareSpeech || { kind: 'chat', text: ambientSpeech }}
-              onMouseEnter={() => { if (pageAwareSpeech?.kind === 'pulse') { speechHeld.current = true; clearTimeout(speechRestore.current ?? undefined); } }}
-              onMouseLeave={(event) => { if (!event.currentTarget.contains(document.activeElement)) { speechHeld.current = false; if (pageAwareSpeech?.kind === 'pulse') speechRestore.current = setTimeout(() => setPageAwareSpeech(null), 5500); } }}
-              onFocus={() => { if (pageAwareSpeech?.kind === 'pulse') { speechHeld.current = true; clearTimeout(speechRestore.current ?? undefined); } }}
-              onBlur={(event) => { if (!event.currentTarget.matches(':hover')) { speechHeld.current = false; if (pageAwareSpeech?.kind === 'pulse') speechRestore.current = setTimeout(() => setPageAwareSpeech(null), 5500); } }}
+              speech={focusSpeech || reactionSpeech || thankSpeech ? { kind: 'chat', text: focusSpeech || reactionSpeech || thankSpeech } : visiblePageSpeech || { kind: 'chat', text: ambientSpeech }}
+              onQuestion={() => { setOpen(true); requestAnimationFrame(() => root.current?.querySelector<HTMLElement>('.daily-question-card input, .daily-question-card textarea, .daily-question-card button')?.focus()); }}
+              onMouseEnter={() => { if (pageAwareSpeech?.kind === 'pulse' || pageAwareSpeech?.kind === 'question') { speechHeld.current = true; clearTimeout(speechRestore.current ?? undefined); } }}
+              onMouseLeave={(event) => { if (!event.currentTarget.contains(document.activeElement)) { speechHeld.current = false; if (pageAwareSpeech?.kind === 'pulse' || pageAwareSpeech?.kind === 'question') speechRestore.current = setTimeout(() => setPageAwareSpeech(null), 5500); } }}
+              onFocus={() => { if (pageAwareSpeech?.kind === 'pulse' || pageAwareSpeech?.kind === 'question') { speechHeld.current = true; clearTimeout(speechRestore.current ?? undefined); } }}
+              onBlur={(event) => { if (!event.currentTarget.matches(':hover')) { speechHeld.current = false; if (pageAwareSpeech?.kind === 'pulse' || pageAwareSpeech?.kind === 'question') speechRestore.current = setTimeout(() => setPageAwareSpeech(null), 5500); } }}
             />
           )}
           <div className="companion-ball-col">
@@ -956,6 +1001,7 @@ export default function WeatherCompanion() {
           </div>
         </>
       )}
+      <DailyQuestionResult daily={daily} />
     </aside>
   );
 }

@@ -45,6 +45,7 @@ export function ArticlePresentation({ post, preview = false, views = null,progre
       <div className="detail-intro"><nav className="detail-breadcrumb" aria-label={t("m_6c3f7b6a12")} data-reading-ignore>{preview ? <Link className={cover?'hero-pill':'hero-pill--light'} to="/articles">{t("m_9bb68df2c1")}</Link> : <SiteBack className={cover?'hero-pill':'hero-pill--light'}/>}</nav><div className="detail-label"><Link className={cover?'hero-pill':'hero-pill--light'} to={post.category ? `/category/${encodeURIComponent(post.category)}` : '/articles'}>{post.category_display_name || post.category||t("m_7d5a89f6b1")}</Link></div></div>
       {languages}
       <h1 lang={post.content_locale||'zh-CN'} className="detail-title">{post.title}</h1>
+      {typeof post.aside === 'string' && post.aside.trim() && <p className="article-aside" data-nosnippet>{post.aside.trim()}</p>}
       <SingleLine className="hero-meta" label={t("m_849fa6c202")}>
         <span className="g">
           {avatar?<img className="hero-meta-avatar" src={avatar} alt="" width={24} height={24}/>:<UserRound className="hero-meta-avatar" aria-hidden="true"/>}

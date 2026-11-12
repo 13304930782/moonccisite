@@ -1,3 +1,4 @@
+import './FloatingField.css';
 import { articleResourcePath, pendingArticle } from '../lib/articlePreload';
 import { Info, CircleAlert, LoaderCircle } from 'lucide-react';
 import { useI18n } from '../i18n';
@@ -278,8 +279,8 @@ export function SubscribeForm() {
       <div className={`subscribe-actions${!submitted && !status.data?.available ? " subscribe-feedback" : ""}`} >
         {submitted ? <div className="resource-notice" role="status"><div><strong>{t("m_ad74652984")}</strong><p>{t(message || '')}</p><p>{t("m_615b9f23a9")}</p></div><button type="button" className="quiet-button" onClick={() => { setSubmitted(false); setMessage(''); }}>{t("m_852471581c")}</button></div> : status.data?.available ? (
           <form onSubmit={submit}>
-            <label htmlFor="subscribe-email">{t("m_2e412e0383")}</label>
             <div className="subscribe-form">
+              <div className="floating-field subscribe-floating-field">
               <input
                 id="subscribe-email"
                 type="email"
@@ -291,6 +292,8 @@ export function SubscribeForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
               />
+              <label className="floating-field-label" htmlFor="subscribe-email">{t("m_2e412e0383")}</label>
+              </div>
               <button disabled={busy}>{busy ? t("m_26ef00b7d0") : t("m_80d5498052")}</button>
             </div>
             <small className="muted">{t("m_977837d429")}</small>

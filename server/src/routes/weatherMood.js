@@ -50,6 +50,13 @@ async function currentOverride() {
   }
   return pendingOverride;
 }
+function activeStatus(value) {
+  return typeof value?.text === 'string' && value.text.trim().length > 0 &&
+    value.text.trim().length <= 40 && typeof value.endsAt === 'string' &&
+    Date.parse(value.endsAt) > Date.now()
+    ? { text: value.text.trim(), endsAt: value.endsAt }
+    : null;
+}
 router.use((_req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
@@ -99,11 +106,13 @@ router.post('/locate-network', cityLimiter, async (req, res) => {
 async function publicMood(req, res, next) {
   try {
     res.set('Cache-Control', 'no-store');
-    const [snapshot, manual] = await Promise.all([
+    const [snapshot, manual, savedStatus] = await Promise.all([
       getMood(req.method === 'POST' ? req.body?.location : null),
       currentOverride().catch(() => null),
+      repository.readStatus().catch(() => null),
     ]);
-    res.json({ data: applyOverride(snapshot, manual) });
+    const status = activeStatus(savedStatus);
+    res.json({ data: { ...applyOverride(snapshot, manual), ...(status ? { statusLine: status.text, statusEndsAt: status.endsAt } : {}) } });
   } catch (error) {
     if (error.status === 400)
       return res.status(400).json({ message: error.message });
@@ -119,15 +128,40 @@ admin.use((_req, res, next) => {
 });
 admin.get('/', async (_req, res, next) => {
   try {
+    const [savedOverride, savedStatus] = await Promise.all([repository.readOverride(), repository.readStatus()]);
     res.json({
       data: {
-        override: activeOverride(await repository.readOverride()),
+        override: activeOverride(savedOverride),
+        status: activeStatus(savedStatus),
         moods: MANUAL_MOODS,
       },
     });
   } catch (error) {
     next(error);
   }
+});
+admin.put('/status', async (req, res, next) => {
+  try {
+    if (typeof req.body?.text !== 'string') return res.status(400).json({ message: '请输入有效的状态。' });
+    const text = req.body.text.trim();
+    if (!text) {
+      await repository.writeStatus(null);
+      return res.json({ data: { status: null } });
+    }
+    const endsAt = req.body.endsAt;
+    if (text.length > 40 || typeof endsAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(endsAt) || !Number.isFinite(Date.parse(endsAt))) {
+      return res.status(400).json({ message: '状态不能超过 40 字，结束时间须为有效的 ISO 时间。' });
+    }
+    const value = { text, endsAt: new Date(endsAt).toISOString() };
+    await repository.writeStatus(value);
+    res.json({ data: { status: activeStatus(value) } });
+  } catch (error) { next(error); }
+});
+admin.delete('/status', async (_req, res, next) => {
+  try {
+    await repository.writeStatus(null);
+    res.json({ data: { status: null } });
+  } catch (error) { next(error); }
 });
 admin.put('/', async (req, res, next) => {
   try {

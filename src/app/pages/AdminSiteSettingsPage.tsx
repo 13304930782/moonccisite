@@ -13,6 +13,7 @@ import '../../styles/article-workspace.css';
 import '../../styles/site-settings.css';
 import '../../styles/admin-site-settings.css';
 import { AdminWeatherCompanionSettings } from '../components/AdminWeatherCompanionSettings';
+import { AdminDailyQuestions } from '../components/AdminDailyQuestions';
 
 const IMAGE_ACCEPT =
   'image/jpeg,image/png,image/gif,image/webp,image/x-icon,image/vnd.microsoft.icon,.ico';
@@ -492,7 +493,7 @@ export default function AdminSiteSettingsPage() {
         <h2 className="settings-translation-title">{t('当前近况 · 英文版')}</h2>
         <TranslationFields type="now" id="1" source={now}/>
       </section>
-      <div hidden={activeSection !== 'weather-companion'}><AdminWeatherCompanionSettings /></div>
+      <div hidden={activeSection !== 'weather-companion'}><AdminWeatherCompanionSettings /><AdminDailyQuestions /></div>
     </div>
   );
 }
