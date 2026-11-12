@@ -57,6 +57,7 @@ try{for(const[name,engine]of engines.filter(([name])=>!process.env.QA_BROWSER||n
  assert.equal(await page.locator('link[rel="alternate"][hreflang="en"]').count(),0);
  assert.doesNotMatch(await page.locator('meta[name="robots"]').getAttribute('content'),/noindex/i);
  await page.goto(origin+'/article/shared-post');
+ await page.waitForFunction(()=>document.querySelector('.neo-page')?.getAttribute('lang')==='en');
  const languageButton=page.locator('.language-trigger:visible').first();
  await languageButton.focus();await languageButton.press('ArrowDown');
  await page.getByRole('menuitemradio',{name:'English',exact:true}).waitFor({state:'visible'});
