@@ -122,7 +122,7 @@ test('shared shell, content components and theme retain approved bilingual navig
  const pins={
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
   'src/styles/globals.css':'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391',
-  'src/styles/editorial.css':'fdfea47f2374f794ba53240844c1ae552316b9d4', // Shared footer status placement and iframe styling.
+  'src/styles/editorial.css':'5356f59d0d6ec013d12a4e89698c65945a695dbb', // Shared footer and centered subscription form.
   'src/styles/project-card.css':'08306a6737ea3bbf30b5792d54fe0c43a12421b7',
   'src/app/components/Header.tsx':'67c355b882d2c8cc4f6c450556fcf930162d6922', // Homepage-only festival slot and menu-contained language control.
   'src/app/components/SiteFooter.tsx':'c4e8a57e3afc1d3fcefc8d6d8c4cb5ad5f837d55', // Status appears on the homepage only.
