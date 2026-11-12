@@ -94,7 +94,7 @@
   bottom: 114px;
   right: 0;
   width: min(292px, calc(100vw - 40px));
-  padding: 16px 16px 14px;
+  padding: 14px 14px 12px;
   border: 1px solid var(--border);
   border-radius: 22px;
   background: var(--card);
@@ -196,7 +196,7 @@
   align-items: baseline;
   flex-wrap: nowrap;
   gap: 3px 6px;
-  margin-top: 16px;
+  margin-top: 10px;
   color: var(--muted-foreground);
   font-size: 11px;
   line-height: 1.6;
@@ -452,7 +452,7 @@
   font-size: 12px;
   line-height: 1.6;
 }
-.companion-stat { padding: 4px 10px; color: var(--muted-foreground); }
+.companion-stat { padding: 4px 2px; color: var(--muted-foreground); }
 .companion-stat b, .companion-stat span { display: block; }
 .companion-stat b { color: var(--foreground); font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .companion-stat span { margin-top: 1px; font-size: 12px; }

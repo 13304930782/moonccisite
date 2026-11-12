@@ -269,7 +269,7 @@ export function WeatherCityPicker({
             setEditing(true);
           }}
         >
-          {selected ? t("m_b7b2750104") : t("m_317f75c9da")}
+          {selected ? t('切换') : t("m_317f75c9da")}
         </button>
       </div>
       <dialog

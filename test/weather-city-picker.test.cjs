@@ -22,13 +22,13 @@ test('city lookup accepts coarse desktop positions, requires confirmation and pr
  const button=text=>root.root.findAllByType('button').find(b=>b.children.includes(text));
  try {
   await act(async()=>{root=create(React.createElement(WeatherCityPicker,props),{createNodeMock:element=>element.type==='dialog'?{open:false,showModal(){this.open=true},close(){this.open=false}}:null});});
-  await act(async()=>button('切换城市').props.onClick());
+  await act(async()=>button('切换').props.onClick());
   await act(async()=>button('使用当前位置').props.onClick());
   assert.equal(calls,1);assert.equal(picked.length,0);
   assert.match(JSON.stringify(root.toJSON()),/设备仅提供了大致位置/);
   await act(async()=>root.unmount());
   await act(async()=>{root=create(React.createElement(WeatherCityPicker,{...props,selected:{name:'当前位置附近',region:'',latitude:0,longitude:0}}),{createNodeMock:element=>element.type==='dialog'?{open:false,showModal(){this.open=true},close(){this.open=false}}:null});});
-  await act(async()=>button('切换城市').props.onClick());
+  await act(async()=>button('切换').props.onClick());
   await act(async()=>button('使用当前位置').props.onClick());
   assert.equal(positionCalls,2,'retry must call the browser again');
   assert.equal(lastLocation.latitude,30.274,'do not reuse the saved coordinate');
@@ -37,7 +37,7 @@ test('city lookup accepts coarse desktop positions, requires confirmation and pr
   await act(async()=>root.unmount());
   fail=true;
   await act(async()=>{root=create(React.createElement(WeatherCityPicker,props));});
-  await act(async()=>button('切换城市').props.onClick());
+  await act(async()=>button('切换').props.onClick());
   await act(async()=>button('使用当前位置').props.onClick());
   assert.equal(picked.length,0);
   assert.match(JSON.stringify(root.toJSON()),/暂时无法识别城市名称/);
@@ -56,7 +56,7 @@ test('city editor keeps the weather card compact and ignores results arriving af
   await act(async()=>{root=create(React.createElement(WeatherCityPicker,{selected:city,onChange(){saved++;return true},onAttributionChange(){}}),{createNodeMock:e=>e.type==='dialog'?{open:false,showModal(){this.open=true},close(){this.open=false}}:null});});
   assert.equal(root.root.findAllByType('input').length,0);
   assert.equal(root.root.findAllByType('form').length,0);
-  await act(async()=>button('切换城市').props.onClick());
+  await act(async()=>button('切换').props.onClick());
   const editor=root.root.findAllByType('dialog').find(d=>d.props['aria-labelledby']==='weather-city-editor-title');
   assert.equal(editor.findAllByType('input').length,1);
   const field=editor.findByType('input');
@@ -68,7 +68,7 @@ test('city editor keeps the weather card compact and ignores results arriving af
   assert.equal(root.root.findAllByType('input').length,0);
   assert.equal(root.root.findAllByType('ul').length,0);
   assert.equal(saved,0);
-  assert(button('切换城市'),'the weather card remains usable after dismissing the editor');
+  assert(button('切换'),'the weather card remains usable after dismissing the editor');
  }finally{if(root)await act(async()=>root.unmount());}
 });
 test('device failures use IP but valid coordinates are never replaced when city lookup fails',async()=>{

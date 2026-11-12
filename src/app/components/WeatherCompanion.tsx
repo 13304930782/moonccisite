@@ -5,7 +5,7 @@ import { FestivalSlot } from './Festivals/Entry';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type HTMLAttributes } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Link } from './LocaleLink';
-import { CloudSun, Hand, X, Zap } from 'lucide-react';
+import { CloudSun, X } from 'lucide-react';
 import GrokBall, {
   type GrokBallEngine,
 } from '../../vendor/grok-ball/grok-ball.ts';
@@ -812,8 +812,8 @@ export default function WeatherCompanion() {
                 {statsError && <small>{t(statsError || '')}</small>}
               </div>
               <div className="weather-companion-actions">
-                <button type="button" onClick={pet}><Hand size={16} aria-hidden="true" />{t("m_b545d54af6")}</button>
-                <button type="button" onClick={() => react('hit')}><Zap size={16} aria-hidden="true" />{t('打一下')}</button>
+                <button type="button" onClick={pet}>{t("m_b545d54af6")}</button>
+                <button type="button" onClick={() => react('hit')}>{t('打一下')}</button>
               </div>
               <footer className="weather-companion-foot">
                 <button onClick={() => collapse(true)}>
