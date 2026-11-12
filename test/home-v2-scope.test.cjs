@@ -126,7 +126,7 @@ test('shared shell, content components and theme retain approved bilingual navig
   'src/styles/project-card.css':'08306a6737ea3bbf30b5792d54fe0c43a12421b7',
   'src/app/components/Header.tsx':'67c355b882d2c8cc4f6c450556fcf930162d6922', // Homepage-only festival slot and menu-contained language control.
   'src/app/components/SiteFooter.tsx':'c4e8a57e3afc1d3fcefc8d6d8c4cb5ad5f837d55', // Status appears on the homepage only.
-  'src/app/components/ContentUI.tsx':'bc65820c5fe0f235f0d84e172c561b73d67ab865', // Keep the inline error without a duplicate toast.
+  'src/app/components/ContentUI.tsx':'5b27506739b3bab98c03a0878a8f6b2f179b890c', // Subscription field uses the floating label.
   // Approved slug URL wiring; card markup and styles are unchanged.
   'src/app/components/BlogCard.tsx':'7eecded041ce5501961d45ebbacd21e0924ba927',
   'src/app/components/ProjectCard.tsx':'1cef15845c7312d82533b7344f23c96f76e1008f',

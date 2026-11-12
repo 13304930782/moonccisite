@@ -71,6 +71,7 @@ function normalizePostInput(body, oldPost = null) {
     title: Object.prototype.hasOwnProperty.call(input, 'title') ? cleanString(input.title) : cleanString(oldPost?.title),
     slug: Object.prototype.hasOwnProperty.call(input, 'slug') ? cleanString(input.slug) : cleanString(oldPost?.slug),
     summary: Object.prototype.hasOwnProperty.call(input, 'summary') ? cleanString(input.summary) : cleanString(oldPost?.summary),
+    aside: (Object.prototype.hasOwnProperty.call(input, 'aside') ? cleanString(input.aside) : cleanString(oldPost?.aside)) || null,
     content: Object.prototype.hasOwnProperty.call(input, 'content') ? String(input.content || '').trim() : String(oldPost?.content || '').trim(),
     cover_image: Object.prototype.hasOwnProperty.call(input, 'cover_image') ? cleanString(input.cover_image) : cleanString(oldPost?.cover_image),
     category: Object.prototype.hasOwnProperty.call(input, 'category') ? cleanString(input.category) : cleanString(oldPost?.category),
@@ -83,6 +84,7 @@ function normalizePostInput(body, oldPost = null) {
   next.summary_mode = generated ? 'ai' : input.summary_mode === 'manual' || !summaryUnchanged ? 'manual' : (oldPost.summary_mode || '');
   next.summary_receipt = generated ? input.summary_receipt : '';
 
+  if (next.aside && Array.from(next.aside).length > 40) return { error: '旁白不能超过 40 字。' };
   if (!next.title) return { error: '文章标题不能为空' };
   try { next.slug=validateArticleSlug(next.slug,oldPost?.slug); } catch(e) { return {error:e.message}; }
   if (!next.content) return { error: '文章内容不能为空' };
@@ -225,7 +227,7 @@ const prepareSummary=async(req,res,next)=>{try{
 router.post('/',authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHandler(async(c,req)=>{
  const normalized=normalizePostInput(req.body);if(normalized.error)throw writeError(normalized.error,400);
  const p=normalized.value;
- const [r]=await c.query('INSERT INTO posts (title,slug,summary,content,cover_image,cover_crop,category,tags,summary_mode,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',[p.title,p.slug,p.summary,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.summary_mode,p.status,req.user.id,p.status==='published'?new Date():null]);
+ const [r]=await c.query('INSERT INTO posts (title,slug,summary,`aside`,content,cover_image,cover_crop,category,tags,summary_mode,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',[p.title,p.slug,p.summary,p.aside,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.summary_mode,p.status,req.user.id,p.status==='published'?new Date():null]);
  await claimArticleSlug(c,r.insertId,p.slug);
  await revisions.record(c,{post_id:r.insertId},p,p.status==='published'?'publish':'manual',req.user.id,p.status==='published'?1:null);
  return {message:'创建成功'};
@@ -239,7 +241,7 @@ router.put('/:id',authRequired,editorOrAdmin,publishGuard,prepareSummary,writeHa
  const p=normalized.value;const publishedAt=old.published_at||(p.status==='published'?new Date():null);
  await claimArticleSlug(c,old.id,p.slug,old.slug);
  await revisions.baseline(c,old,req.user.id);
- const [updated]=await c.query('UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,cover_crop=?,category=?,tags=?,summary_mode=?,status=?,published_at=?,updated_at=NOW(),version=version+1 WHERE id=? AND version=?',[p.title,p.slug,p.summary,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.summary_mode,p.status,publishedAt,req.params.id,old.version]);
+ const [updated]=await c.query('UPDATE posts SET title=?,slug=?,summary=?,`aside`=?,content=?,cover_image=?,cover_crop=?,category=?,tags=?,summary_mode=?,status=?,published_at=?,updated_at=NOW(),version=version+1 WHERE id=? AND version=?',[p.title,p.slug,p.summary,p.aside,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.summary_mode,p.status,publishedAt,req.params.id,old.version]);
  if(!updated.affectedRows)throw writeError('文章已被更新，请刷新后重试。',409);
  await revisions.record(c,{post_id:old.id},p,p.status==='published'?'publish':'manual',req.user.id,p.status==='published'?old.version+1:null);
  return {message:'更新成功'};

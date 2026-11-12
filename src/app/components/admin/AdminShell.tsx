@@ -31,6 +31,7 @@ import {
   Newspaper,
   PanelsTopLeft,
   Radio,
+  SearchCheck,
   Server,
   Sparkles,
   UserRound,
@@ -245,6 +246,7 @@ export function AdminShell({ children }: AdminShellProps) {
       { title: t("m_2ea2bbfe61"), to: '/admin/send-mail', icon: Bell, show: manager }
     ]},
     {label:t("m_95dbef1fb4"), items:[
+      {title:t('SEO 与索引'),to:'/admin/seo',icon:SearchCheck,show:manager},
       {title:t("m_85857d157f"),to:'/admin/festivals',icon:CalendarDays,show:manager},
       {title:t("m_54531f63f4"),to:'/admin/ai-settings',icon:Sparkles,show:user?.role==='owner'},
       {title:t("m_07e96c1e12"),to:"/admin/node-monitor",icon:Server,show:owner},

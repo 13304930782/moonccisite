@@ -14,6 +14,7 @@ type Override = {
 type Settings = {
   override: Override | null;
   moods: { emotionId: string; name: string }[];
+  status?: { text: string; endsAt: string } | null;
 };
 export function AdminWeatherCompanionSettings() {
   const { locale,  t } = useI18n();
@@ -22,10 +23,17 @@ export function AdminWeatherCompanionSettings() {
   const [days, setDays] = useState('1');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [status, setStatus] = useState<Settings['status']>(null);
+  const [statusText, setStatusText] = useState('');
+  const [statusEnd, setStatusEnd] = useState<'tonight' | '24h'>('tonight');
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [statusError, setStatusError] = useState('');
   async function load() {
     try {
       const response = await api('/admin/weather-companion');
       setSettings(response.data);
+      setStatus(response.data.status || null);
+      setStatusText(response.data.status?.text || '');
       if (response.data.override) {
         setEmotionId(response.data.override.emotionId);
         setDays(String(response.data.override.durationDays));
@@ -38,6 +46,13 @@ export function AdminWeatherCompanionSettings() {
   useEffect(() => {
     void load();
   }, []);
+  useEffect(() => {
+    if (!status?.endsAt) return;
+    const delay = Date.parse(status.endsAt) - Date.now();
+    if (delay <= 0) { setStatus(null); return; }
+    const timer = setTimeout(() => setStatus(null), Math.min(delay, 2147483647));
+    return () => clearTimeout(timer);
+  }, [status]);
   async function save(event?: FormEvent) {
     event?.preventDefault();
     setBusy(true);
@@ -63,7 +78,29 @@ export function AdminWeatherCompanionSettings() {
     settings?.override && Date.parse(settings.override.endsAt) > Date.now()
       ? settings.override
       : null;
+  const activeStatus = status && Date.parse(status.endsAt) > Date.now() ? status : null;
+  async function saveStatus(clear = false) {
+    const text = statusText.trim();
+    if (!clear && !text) { setStatusError(t('请输入今天在写什么。')); return; }
+    setStatusBusy(true);
+    setStatusError('');
+    try {
+      const now = Date.now();
+      const beijing = new Date(now + 8 * 3600000);
+      const end = statusEnd === '24h' ? now + 24 * 3600000 : Date.UTC(beijing.getUTCFullYear(), beijing.getUTCMonth(), beijing.getUTCDate() + 1) - 8 * 3600000;
+      const response = await api('/admin/weather-companion/status', {
+        method: clear ? 'DELETE' : 'PUT',
+        ...(!clear ? { body: JSON.stringify({ text, endsAt: new Date(end).toISOString() }) } : {}),
+      });
+      setStatus(response.data.status);
+      setStatusText(clear ? '' : text);
+      notify.success(t(clear ? '状态已清空' : '状态已保存'));
+    } catch (error: any) {
+      setStatusError(error.message || t('状态保存失败，请重试。'));
+    } finally { setStatusBusy(false); }
+  }
   return (
+    <>
     <form id="weather-companion" className="settings-section" onSubmit={save}>
       <div className="settings-section-heading">
         <h2>{t("m_acf6ef3f39")}</h2>
@@ -123,5 +160,16 @@ export function AdminWeatherCompanionSettings() {
         </p>
       )}
     </form>
+    <form id="weather-companion-status" className="settings-section" onSubmit={(event) => { event.preventDefault(); void saveStatus(); }}>
+      <div className="settings-section-heading"><h2>{t('今天在写什么')}</h2><p>{t('小球会在闲置时偶尔说出这句话。')}</p></div>
+      <fieldset disabled={statusBusy || !settings}>
+        <div className="companion-status-current"><span>{t('当前状态')}</span><strong>{activeStatus ? activeStatus.text : t('当前没有状态')}</strong>{activeStatus && <small>{t('到期')} {new Date(activeStatus.endsAt).toLocaleString(locale, { timeZone: 'Asia/Shanghai', hour12: false })} · {t('北京时间')}</small>}</div>
+        <label className="settings-field"><span className="companion-status-label">{t('状态内容')} <small>{statusText.length} / 40</small></span><input type="text" maxLength={40} value={statusText} onChange={(event) => setStatusText(event.target.value)} placeholder={t('例如：在改小球的气泡')} /></label>
+        <div className="settings-field"><span>{t('结束时间')}</span><DropdownMenu><DropdownMenuTrigger asChild><button type="button" className="language-trigger weather-mood-trigger" aria-label={t('结束时间')}><span>{t(statusEnd === 'tonight' ? '今晚 24:00（北京时间）' : '24 小时后')}</span><ChevronDown size={16} aria-hidden="true" /></button></DropdownMenuTrigger><DropdownMenuContent className="language-menu weather-mood-menu" align="start" sideOffset={6}><DropdownMenuRadioGroup value={statusEnd} onValueChange={(value) => setStatusEnd(value as 'tonight' | '24h')}><DropdownMenuRadioItem value="tonight">{t('今晚 24:00（北京时间）')}</DropdownMenuRadioItem><DropdownMenuRadioItem value="24h">{t('24 小时后')}</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu></div>
+        {statusError && <p className="companion-status-error" role="alert">{statusError}</p>}
+        <div className="settings-save"><button type="submit" className="button-primary">{statusBusy ? t('保存中…') : t('保存状态')}</button><button type="button" className="quiet-button" onClick={() => void saveStatus(true)} disabled={!activeStatus}>{t('清空')}</button></div>
+      </fieldset>
+    </form>
+    </>
   );
 }

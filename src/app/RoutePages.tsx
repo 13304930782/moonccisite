@@ -14,6 +14,7 @@ const NodeMonitorPage=lazy(()=>import('./pages/NodeMonitorPage'));
 const AdminNodeMonitorPage=lazy(()=>import('./pages/AdminNodeMonitorPage'));
 const SessionsPage=lazy(()=>import('./pages/SessionsPage'));
 const OperationsPage=lazy(()=>import('./pages/OperationsPage'));
+const AdminSeoPage=lazy(()=>import('./pages/AdminSeoPage'));
 const NotificationsPage=lazy(()=>import('./pages/NotificationsPage'));
 const ReadingHistoryPage=lazy(()=>import('./pages/ReadingHistoryPage'));
 const SeriesPage=lazy(()=>import('./pages/SeriesPage'));
@@ -196,6 +197,7 @@ export default function RoutePages(){const location=useLocation();const route=sp
           <Route path="/account/notifications" element={<Guard><AccountWorkspace><NotificationsPage/></AccountWorkspace></Guard>}/>
 <Route path="/account/sessions" element={<Guard><AccountWorkspace><SessionsPage/></AccountWorkspace></Guard>}/>
 <Route path="/admin/operations" element={<Guard adminOnly><AdminShell><OperationsPage/></AdminShell></Guard>}/>
+<Route path="/admin/seo" element={<Guard adminOnly><AdminShell><AdminSeoPage/></AdminShell></Guard>}/>
 <Route path="/account/history" element={<Guard><AccountWorkspace><ReadingHistoryPage/></AccountWorkspace></Guard>}/>
 <Route path="/account/bookmarks" element={<Guard><AccountWorkspace><BookmarksPage /></AccountWorkspace></Guard>} />
           <Route path="/account/settings" element={<Guard><AccountWorkspace><AccountSettingsPage /></AccountWorkspace></Guard>} />

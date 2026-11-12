@@ -50,20 +50,25 @@ const images={
     await page.goto('http://127.0.0.1:4269/admin/write?draft='+draft.id);
     await page.evaluate(()=>new Promise(resolve=>{const link=document.createElement('link');link.rel='stylesheet';link.href='/fixture-review.css';link.onload=resolve;document.head.appendChild(link);}));
     await page.getByRole('button',{name:'发布',exact:true}).click();
-    const check=page.getByRole('button',{name:'运行发布前检查',exact:true});
-    await check.waitFor();
-    await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(button=>button.textContent==='运行发布前检查'&&!button.disabled),null,{timeout:3000});
+    assert.equal(await page.getByRole('button',{name:'运行发布前检查',exact:true}).count(),0);
     await page.frameLocator('iframe[title="文章设备预览"]').getByRole('heading',{name:post.title,exact:true}).waitFor();
     assert.ok(stalledStyles>0,'the iframe stylesheet must still be pending');
-    await check.click();
-    await page.getByRole('heading',{name:'检查通过，可以继续',exact:true}).waitFor();
     assert.ok(await page.getByRole('button',{name:'确认发布',exact:true}).isEnabled());
     releaseStyles();
     // Repeat mounting with the stylesheet now cached, covering missed load events.
     await page.getByRole('button',{name:'返回编辑',exact:true}).first().click();
     await page.getByRole('button',{name:'发布',exact:true}).click();
-    await check.click();
-    await page.getByRole('heading',{name:'检查通过，可以继续',exact:true}).waitFor();
+    await page.frameLocator('iframe[title="文章设备预览"]').getByRole('heading',{name:post.title,exact:true}).waitFor();
+    assert.ok(await page.getByRole('button',{name:'确认发布',exact:true}).isEnabled());
+    for (const screenWidth of [375,1024,1440]) {
+     await page.setViewportSize({width:screenWidth,height:950});
+     for (const [label,deviceWidth] of [['手机 · 375px',375],['平板 · 768px',768],['桌面 · 1024px',1024]]) {
+      await page.getByRole('radio',{name:label,exact:true}).click();
+      await page.waitForFunction(()=>{const el=document.querySelector('.article-review-scroll'),frame=el?.querySelector('iframe');if(!el||!frame)return false;const a=el.getBoundingClientRect(),b=frame.getBoundingClientRect();return el.scrollWidth<=el.clientWidth+1&&b.left>=a.left-1&&b.right<=a.right+1;});
+      assert.equal(await page.frameLocator('iframe[title="文章设备预览"]').locator('body').evaluate(()=>innerWidth),deviceWidth,`selected ${deviceWidth}px retains its actual viewport`);
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`screen ${screenWidth}px has no horizontal overflow`);
+     }
+    }
     for(const width of [320,390,768,1440])for(const dark of [false,true]) {
      await page.setViewportSize({width,height:950});
      for(const routePath of width===390||width===1440?['/articles','/','/account/bookmarks','/series/card-fixture','/series']:['/articles']) {
@@ -135,7 +140,7 @@ const images={
     }
     assert.deepEqual(posts[1].cover_crop,legacyCrop,'legacy fixture parameters are never mutated');
     assert.deepEqual(errors,[]);
-    console.log(`PASS ${name}: publication checks; home article titles/summaries/links/thumbnails; full portrait/landscape/square and legacy-crop cards across list/bookmarks/series; 320/390/768/1440 light/dark layouts, no overflow.`);
+    console.log(`PASS ${name}: publication preview without prechecks; home article titles/summaries/links/thumbnails; full portrait/landscape/square and legacy-crop cards across list/bookmarks/series; 320/390/768/1440 light/dark layouts, no overflow.`);
    } finally {releaseStyles?.();await browser.close();}
   }
  } finally {await new Promise(resolve=>server.httpServer.close(resolve));}

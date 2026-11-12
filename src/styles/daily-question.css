@@ -1,0 +1,53 @@
+.daily-question-card { display:grid; gap:10px; padding:14px; border:1px solid var(--border); border-radius:14px; background:var(--card); }
+.daily-question-header { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--muted-foreground); font-size:12px; }
+.daily-question-card h3 { margin:0; font-size:15px; line-height:1.5; font-weight:600; overflow-wrap:anywhere; }
+.daily-question-card form { display:grid; gap:10px; }
+.daily-question-card fieldset { display:grid; gap:6px; margin:0; padding:0; border:0; min-width:0; }
+.daily-question-choice { display:flex; align-items:center; gap:9px; min-height:44px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; cursor:pointer; }
+.daily-question-choice:has(input:checked) { border-color:var(--foreground); background:var(--muted); }
+.daily-question-choice input { accent-color:var(--foreground); flex:none; }
+.daily-question-choice span { min-width:0; overflow-wrap:anywhere; }
+.daily-question-answer { display:grid; gap:6px; font-size:13px; }
+.daily-question-answer textarea { width:100%; min-width:0; resize:vertical; padding:10px; border:1px solid var(--border); border-radius:10px; background:var(--background); color:var(--foreground); font:inherit; font-size:16px; }
+.daily-question-answer small { color:var(--muted-foreground); text-align:right; }
+.weather-companion .daily-question-submit, .weather-companion .daily-question-secondary { min-height:44px; padding:9px 12px; border:1px solid var(--foreground); border-radius:10px; }
+.weather-companion .daily-question-submit { background:var(--foreground); color:var(--background); }
+.weather-companion .daily-question-secondary { background:var(--card); color:var(--foreground); }
+.weather-companion .daily-question-submit:disabled, .weather-companion .daily-question-secondary:disabled { opacity:.5; cursor:not-allowed; }
+.daily-question-error { margin:0; color:var(--destructive); font-size:13px; }
+.companion-bubble--question { width:min(240px,calc(100vw - 48px)); padding:12px 14px; pointer-events:auto; }
+.companion-bubble-question-label { display:block; margin-bottom:4px; color:var(--muted-foreground); font-size:12px; }
+.companion-bubble-question-title { margin:0; font-size:14px; font-weight:600; line-height:1.5; overflow-wrap:anywhere; }
+.weather-companion .companion-bubble-question-action { min-height:44px; padding:0; border:0; background:none; text-decoration:underline; text-underline-offset:3px; }
+.daily-result-overlay { position:fixed; inset:0; z-index:100; background:rgba(18,20,28,.42); }
+.daily-result-dialog { position:fixed; z-index:101; top:50%; left:50%; width:min(420px,calc(100vw - 32px)); max-height:min(80vh,640px); overflow:auto; padding:24px; border:1px solid var(--border); border-radius:12px; background:var(--card); color:var(--foreground); box-shadow:0 8px 24px rgba(0,0,0,.25); transform:translate(-50%,-50%); }
+.daily-result-title { margin:0; padding-right:44px; font-size:18px; font-weight:650; }
+.daily-result-description { margin:8px 0 18px; color:var(--muted-foreground); font-size:13px; line-height:1.5; }
+.daily-result-close { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:44px; height:44px; border:0; border-radius:8px; background:transparent; color:var(--foreground); cursor:pointer; }
+.daily-result-close:hover { background:var(--muted); }
+.daily-result-choices { display:grid; gap:16px; }
+.daily-result-choice > div:first-child { display:flex; justify-content:space-between; gap:16px; font-size:14px; }
+.daily-result-track { height:8px; margin-top:7px; overflow:hidden; border-radius:99px; background:var(--muted); }
+.daily-result-track > span { display:block; height:100%; border-radius:inherit; background:var(--foreground); }
+.daily-result-choice small, .daily-result-count { color:var(--muted-foreground); font-size:12px; }
+.answer-cloud { position:relative; width:min(100%,320px); height:200px; margin:8px auto 6px; }
+.answer-cloud-word { position:absolute; display:inline-grid; grid-template-columns:minmax(0,auto) auto; align-items:baseline; width:max-content; max-width:calc(100% - 8px); color:var(--foreground); font-weight:640; line-height:1; white-space:nowrap; letter-spacing:-.03em; }
+.answer-cloud-text { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.answer-cloud-word small { margin-left:4px; font-size:.55em; font-weight:500; opacity:.4; }
+.daily-result-count { margin:18px 0; }
+.daily-result-done { display:block; min-width:88px; min-height:44px; margin-left:auto; padding:8px 14px; border:0; border-radius:8px; background:var(--foreground); color:var(--background); cursor:pointer; }
+.daily-result-dialog :is(button,input,textarea):focus-visible, .daily-question-card :is(button,input,textarea):focus-visible { outline:2px solid var(--ring,var(--foreground)); outline-offset:3px; }
+.daily-result-overlay[data-state=open] { animation:daily-overlay-in 320ms cubic-bezier(.215,.61,.355,1) both; }
+.daily-result-overlay[data-state=closed] { animation:daily-overlay-out 280ms cubic-bezier(.645,.045,.355,1) both; }
+.daily-result-dialog[data-state=open] { animation:daily-modal-in 320ms cubic-bezier(.215,.61,.355,1) both; }
+.daily-result-dialog[data-state=closed] { animation:daily-modal-out 280ms cubic-bezier(.645,.045,.355,1) both; }
+@supports (animation-timing-function:linear(0,1)) {
+ .daily-result-overlay[data-state=open], .daily-result-dialog[data-state=open] { animation-timing-function:linear(0,.271,.488,.657,.784,.875,.936,.973,.992,.999,1); }
+ .daily-result-overlay[data-state=closed], .daily-result-dialog[data-state=closed] { animation-timing-function:linear(0,.004,.032,.108,.256,.5,.744,.892,.968,.996,1); }
+}
+@keyframes daily-overlay-in { from { opacity:0; } to { opacity:1; } }
+@keyframes daily-overlay-out { from { opacity:1; } to { opacity:0; } }
+@keyframes daily-modal-in { from { opacity:0; transform:translate(-50%,-50%) scale(.9); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+@keyframes daily-modal-out { from { opacity:1; transform:translate(-50%,-50%) scale(1); } to { opacity:0; transform:translate(-50%,-50%) scale(.9); } }
+@media (prefers-reduced-motion:reduce) { .daily-result-overlay[data-state], .daily-result-dialog[data-state] { animation-duration:1ms; } }
+html[data-reduced-motion=true] .daily-result-overlay[data-state], html[data-reduced-motion=true] .daily-result-dialog[data-state] { animation-duration:1ms; }

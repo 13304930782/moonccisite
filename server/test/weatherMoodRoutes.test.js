@@ -5,7 +5,7 @@ test('weather administration requires active owner/admin login and persists set/
   const db = require('../src/db');
   const jwt = require('jsonwebtoken');
   const express = require('express');
-  let stored = null;
+  const stored = new Map();
   t.mock.method(db, 'query', async (sql, params) => {
     if (sql.includes('FROM users'))
       return [
@@ -19,9 +19,9 @@ test('weather administration requires active owner/admin login and persists set/
         ],
       ];
     if (sql.startsWith('SELECT setting_value'))
-      return [[{ setting_value: JSON.stringify(stored) }]];
+      return [[{ setting_value: JSON.stringify(stored.get(params[0]) ?? null) }]];
     if (sql.startsWith('INSERT INTO site_settings')) {
-      stored = JSON.parse(params[1]);
+      stored.set(params[0], JSON.parse(params[1]));
       return [{}];
     }
     throw new Error('Unexpected query');
@@ -102,5 +102,30 @@ test('weather administration requires active owner/admin login and persists set/
   assert.equal((await request('/admin', 'DELETE', 2)).status, 403);
   assert.equal((await request('/admin', 'DELETE', 1)).status, 200);
   assert.equal((await (await request('/public')).json()).data.mode, 'weather');
-  assert.equal(stored, null);
+  assert.equal(stored.get('weather_companion_override:v1'), null);
+
+  const publicData = async () => (await (await request('/public', 'POST', undefined, {})).json()).data;
+  const empty = await publicData();
+  assert.equal('statusLine' in empty, false);
+  assert.equal('statusEndsAt' in empty, false);
+  const endsAt = new Date(Date.now() + 60_000).toISOString();
+  assert.equal((await request('/admin/status', 'PUT', undefined, { text: '写代码', endsAt })).status, 401);
+  assert.equal((await request('/admin/status', 'PUT', 2, { text: '写代码', endsAt })).status, 403);
+  assert.equal((await request('/admin/status', 'PUT', 1, { text: 'x'.repeat(41), endsAt })).status, 400);
+  assert.equal((await request('/admin/status', 'PUT', 1, { text: '写代码', endsAt: 'bad' })).status, 400);
+  const statusSave = await request('/admin/status', 'PUT', 3, { text: '  在写代码  ', endsAt });
+  assert.equal(statusSave.status, 200);
+  assert.deepEqual((await statusSave.json()).data.status, { text: '在写代码', endsAt });
+  assert.equal((await (await request('/admin', 'GET', 1)).json()).data.status.text, '在写代码');
+  const active = await publicData();
+  assert.equal(active.statusLine, '在写代码');
+  assert.equal(active.statusEndsAt, endsAt);
+  const past = new Date(Date.now() - 60_000).toISOString();
+  assert.equal((await request('/admin/status', 'PUT', 1, { text: '过期', endsAt: past })).status, 200);
+  assert.equal('statusLine' in await publicData(), false);
+  assert.equal((await (await request('/admin', 'GET', 1)).json()).data.status, null);
+  assert.equal((await request('/admin/status', 'DELETE', 2)).status, 403);
+  assert.equal((await request('/admin/status', 'DELETE', 1)).status, 200);
+  assert.equal('statusLine' in await publicData(), false);
+  assert.equal((await request('/admin/status', 'PUT', 1, { text: '   ' })).status, 200);
 });

@@ -568,6 +568,10 @@
   transform: rotate(45deg);
 }
 .companion-bubble--chat { width: max-content; padding: 10px 14px; }
+.companion-unit:has(.companion-bubble--status), .companion-unit:has(.companion-bubble--aside) { width: min(588px, calc(100vw - 48px)); }
+.companion-bubble--status, .companion-bubble--aside { width: max-content; padding: 10px 14px; }
+.companion-bubble--status .companion-bubble-chat, .companion-bubble--aside .companion-bubble-chat { white-space: nowrap; }
+@media (max-width: 640px) { .companion-bubble--status .companion-bubble-chat, .companion-bubble--aside .companion-bubble-chat { white-space: normal; } }
 .companion-bubble-chat { margin: 0; font-size: 14px; line-height: 1.35; font-weight: 560; overflow-wrap: anywhere; }
 .companion-bubble--pulse { width: 200px; padding: 12px 14px 11px; display: grid; grid-template-rows: auto auto auto; row-gap: 8px; justify-items: start; pointer-events: auto; }
 .companion-bubble-kicker { font-size: 11px; line-height: 1; color: var(--muted-foreground); }

@@ -8,7 +8,7 @@ import {api,ApiError} from './api';
 import {readBackup,writeBackup,DraftBackup} from './draftStorage';
 import {useUnsavedLeave} from './useUnsavedLeave';
 import {draftSnapshot,settleDraftSave} from './articleDraftState';
-export const emptyArticle={title:'',content:'',slug:'',summary:'',cover_image:'',cover_crop:null,category:'',tags:[] as string[]};
+export const emptyArticle={title:'',content:'',slug:'',summary:'',aside:'',cover_image:'',cover_crop:null,category:'',tags:[] as string[]};
 export function useArticleDraft(userId:number,postId?:string,locale:Locale='zh-CN',enabled=true){
   const { t, locale: uiLocale } = useI18n();
  const navigate=useNavigate();

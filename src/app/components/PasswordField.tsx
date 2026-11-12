@@ -10,26 +10,28 @@ type PasswordFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | '
   /** Right-aligned content on the label row, e.g. a "forgot password" link. */
   labelAside?: ReactNode;
   hint?: ReactNode;
+  floatingLabel?: boolean;
   /** Field-level error shown beneath the input and announced to assistive tech. */
   error?: string;
 };
 
 /** Password input with a show/hide control, so typos are visible before submitting. */
-export function PasswordField({ id, label, labelAside, hint, error, className, ...props }: PasswordFieldProps) {
+export function PasswordField({ id, label, labelAside, hint, error, className, floatingLabel = false, ...props }: PasswordFieldProps) {
   const { t } = useI18n();
   const [visible, setVisible] = useState(false);
   const messageId = useId();
   const describedBy = [props['aria-describedby'], hint ? `${messageId}-hint` : '', error ? `${messageId}-error` : ''].filter(Boolean).join(' ') || undefined;
   return <div className="auth-field">
-    <div className="auth-field-label">
-      <label htmlFor={id}>{label}</label>
+    <div className={`auth-field-label${floatingLabel ? " auth-floating-aside" : ""}`}>
+      {!floatingLabel && <label htmlFor={id}>{label}</label>}
       {labelAside}
     </div>
-    <div className="auth-field-control auth-field-control--reveal">
+    <div className={`auth-field-control auth-field-control--reveal${floatingLabel ? " floating-field floating-field--icon" : ""}`}>
       <Lock aria-hidden="true" />
       <FormInput {...props} id={id} type={visible ? 'text' : 'password'} className={className}
         aria-invalid={error ? true : undefined} aria-describedby={describedBy}
         autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+      {floatingLabel && <label className="floating-field-label" htmlFor={id}>{label}</label>}
       <button type="button" className="auth-reveal" aria-pressed={visible} aria-controls={id}
         aria-label={visible ? t("m_dd1d07bd9c") : t("m_ffe21a6711")} onClick={() => setVisible(value => !value)}>
         {visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}

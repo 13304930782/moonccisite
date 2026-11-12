@@ -1,0 +1,36 @@
+/* Floating labels stay associated with their native inputs, including autofill. */
+.floating-field { position: relative; min-width: 0; }
+.floating-field > input,
+.auth-panel .auth-field-control.floating-field > input,
+.subscribe-inner .subscribe-form .subscribe-floating-field > input {
+  min-height: 46px; padding-top: 10px; padding-bottom: 10px;
+  border: 0; box-shadow: inset 0 0 0 1.5px var(--border);
+  transition: border-color .15s cubic-bezier(.33, 1, .68, 1), box-shadow .15s cubic-bezier(.33, 1, .68, 1);
+}
+.floating-field > input:focus,
+.auth-panel .auth-field-control.floating-field > input:focus,
+.subscribe-inner .subscribe-form .subscribe-floating-field > input:focus {
+  outline: none; box-shadow: inset 0 0 0 2.2px var(--foreground);
+}
+.floating-field > input::placeholder { color: transparent; }
+.floating-field:focus-within > input::placeholder { color: var(--muted-foreground); }
+.floating-field > .floating-field-label {
+  position: absolute; top: 14px; left: 10px; z-index: 1; margin: 0; padding: 0 4px; pointer-events: none;
+  color: var(--muted-foreground); font-size: 15px; line-height: 18px; font-weight: 400;
+  transform-origin: left top; transition: transform .24s cubic-bezier(.33, 1, .68, 1), color .15s cubic-bezier(.33, 1, .68, 1);
+}
+.auth-panel .floating-field { --floating-label-outer: var(--auth-fill); }
+.floating-field--icon > .floating-field-label { left: 38px; }
+.floating-field:focus-within > .floating-field-label,
+.floating-field:has(input:not(:placeholder-shown)) > .floating-field-label,
+.floating-field:has(input:-webkit-autofill) > .floating-field-label { transform: translateY(-21px) scale(.766667); background: linear-gradient(to bottom, var(--floating-label-outer, var(--background)) 50%, var(--floating-label-inner, var(--background)) 50%); }
+.floating-field:focus-within > .floating-field-label { color: var(--foreground); }
+.auth-field-control.floating-field > svg { top: 14px; }
+.auth-field-control.floating-field .auth-reveal { top: 1px; }
+.auth-floating-aside { justify-content: flex-end; margin: 0; }
+.auth-floating-aside:empty { display: none; }
+.subscribe-floating-field { flex: 1 1 auto; --floating-label-outer: var(--fill); --floating-label-inner: var(--card); }
+.subscribe-inner .subscribe-form .subscribe-floating-field input { min-height: 46px; }
+.subscribe-form > button { align-self: stretch; }
+@media (prefers-reduced-motion: reduce) { .floating-field > input, .floating-field > .floating-field-label { transition: none; } }
+html[data-reduced-motion=true] .floating-field > input, html[data-reduced-motion=true] .floating-field > .floating-field-label { transition: none; }

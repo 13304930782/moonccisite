@@ -105,9 +105,7 @@ export default function RegisterPage() {
 
       <form onSubmit={submit} className="auth-form">
         <div>
-          <label htmlFor="username" className="auth-field-label">
-             {t("m_1a3f0617d6")} </label>
-          <div className="auth-field-control">
+          <div className="auth-field-control floating-field floating-field--icon">
             <User aria-hidden="true" />
             <FormInput
               type="text"
@@ -121,13 +119,12 @@ export default function RegisterPage() {
               onChange={(event) => setUsername(event.target.value)}
               placeholder={t("m_49a731ce15")}
             />
+            <label className="floating-field-label" htmlFor="username">{t("m_1a3f0617d6")}</label>
           </div>
         </div>
 
         <div>
-          <label htmlFor="register-email" className="auth-field-label">
-             {t("m_73075237fd")} </label>
-          <div className="auth-field-control">
+          <div className="auth-field-control floating-field floating-field--icon">
             <Mail aria-hidden="true" />
             <FormInput
               type="email"
@@ -142,11 +139,13 @@ export default function RegisterPage() {
               validateOnBlur
               placeholder="name@example.com"
             />
+            <label className="floating-field-label" htmlFor="register-email">{t("m_73075237fd")}</label>
           </div>
         </div>
 
         <div>
           <PasswordField
+            floatingLabel
             id="new-password"
             name="password"
             label={t("m_a621ab606d")}
@@ -160,6 +159,7 @@ export default function RegisterPage() {
         </div>
 
         <PasswordField
+            floatingLabel
           id="confirm-password"
           name="confirmPassword"
           label={t("m_81b17bc0c3")}

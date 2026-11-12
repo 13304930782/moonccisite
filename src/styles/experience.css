@@ -5,9 +5,14 @@
 .feedback-symbol { display:grid; place-items:center; width:18px; height:18px; flex:none; background:#3977ed; color:#fff; border-radius:50%; }
 .feedback-toast--error .feedback-symbol { background:#c43831; color:#fff; }
 .feedback-toast::after { content:""; position:absolute; bottom:0; left:0; height:2px; width:100%; background:currentColor; transform-origin:left; animation:feedback-countdown 3s linear forwards; }
-.feedback-toast--error::after { animation-duration:6s; }
+.feedback-toast--error::after { background:#c43831; animation-duration:6s; }
 .feedback-toast[data-paused="true"]::after { animation-play-state:paused; }
 @keyframes feedback-enter { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:translateX(0); } }
+@keyframes feedback-shake { 0%,100% { transform:translateX(0); } 20%,60% { transform:translateX(-4px); } 40%,80% { transform:translateX(4px); } }
+.feedback-toast[data-shake] { animation:feedback-enter 350ms cubic-bezier(.22,1,.36,1) both, feedback-shake 300ms ease-in-out 350ms; }
+.feedback-toast[data-shake="2"] { animation-duration:350ms,220ms; }
+.feedback-toast[data-shake="3"] { animation-duration:350ms,150ms; }
+html[data-reduced-motion="true"] .feedback-toast[data-shake] { animation:none; }
 @keyframes feedback-countdown { from { transform:scaleX(1); } to { transform:scaleX(0); } }
 .action-progress { display:inline-block; flex:none; width:16px; height:16px; margin-inline-end:8px; vertical-align:middle; border:2px solid #3977ed; border-right-color:rgba(57,119,237,.2); border-radius:50%; animation:action-progress-spin 770ms linear infinite; }
 .action-success { display:inline-grid; place-items:center; flex:none; width:18px; height:18px; margin-inline-end:8px; vertical-align:middle; border-radius:50%; color:#fff; background:#3977ed; animation:action-success-enter 250ms cubic-bezier(.22,1,.36,1) both; }
@@ -38,7 +43,7 @@ html[data-reduced-motion="true"] .action-progress,html[data-reduced-motion="true
  .weather-companion { bottom:calc(80px + env(safe-area-inset-bottom)); }
 }
 @media(prefers-reduced-motion:reduce) {
- .feedback-toast { animation:none; }
+ .feedback-toast, .feedback-toast[data-shake] { animation:none; }
  .feedback-toast::after { animation:none; display:none; }
  .action-progress,.action-success { animation:none; }
  [data-sonner-toast] { transition:opacity 120ms !important; }

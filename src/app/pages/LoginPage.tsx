@@ -98,9 +98,7 @@ export default function LoginPage() {
 
       <form onSubmit={submit} className="auth-form">
         <div>
-          <label htmlFor="email" className="auth-field-label">
-             {t("m_73075237fd")} </label>
-          <div className="auth-field-control">
+          <div className="auth-field-control floating-field floating-field--icon">
             <Mail aria-hidden="true" />
             <FormInput
               type="email"
@@ -114,11 +112,13 @@ export default function LoginPage() {
               onChange={(event) => { setEmail(event.target.value); setFormError(''); }}
               placeholder="name@example.com"
             />
+            <label className="floating-field-label" htmlFor="email">{t("m_73075237fd")}</label>
           </div>
         </div>
 
         <div>
           <PasswordField
+            floatingLabel
             id="password"
             name="password"
             label={t("m_a621ab606d")}

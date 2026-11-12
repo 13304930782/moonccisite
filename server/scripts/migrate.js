@@ -175,7 +175,8 @@ async function run() {
         console.log(`[migrate] applied: ${item.filename} (${Date.now() - startedAt}ms)`);
         continue;
       }
-      await connection.query(item.sql);
+      if (item.filename === '202611120002_post_aside.sql') await require('./migrate-post-aside').applyPostAside(connection, item.sql);
+      else await connection.query(item.sql);
       await connection.query(
         'INSERT INTO schema_migrations (filename, checksum) VALUES (?, ?)',
         [item.filename, item.hash]

@@ -16,7 +16,7 @@ export function FeedbackHost() {
   useEffect(() => {
     for (const id of displayed.current.keys()) if (!messages.some(item => item.id === id)) toast.dismiss(id);
     for (const item of messages) if (displayed.current.get(item.id) !== item.version) {
-      toast.custom(() => <FeedbackToast key={`${item.id}:${item.version}`} {...item}/>, { id: item.id, duration: Infinity });
+      toast.custom(() => <FeedbackToast key={item.id} {...item}/>, { id: item.id, duration: Infinity });
     }
     displayed.current = new Map(messages.map(item => [item.id, item.version]));
   }, [messages]);
@@ -25,7 +25,10 @@ export function FeedbackHost() {
   const trigger = useRef<HTMLElement | null>(null);
   if (request) trigger.current = request.trigger;
   useEffect(() => {
-    const outside = (event: MouseEvent) => { if (!(event.target instanceof Element) || !event.target.closest('[data-sonner-toaster]')) dismissOutsideFeedback(); };
+    const outside = (event: MouseEvent) => {
+      if (event.target instanceof Element && (event.target.closest('[data-sonner-toaster]') || (event.target.closest('button, [role="button"], input[type="submit"]') && feedbackStore.getSnapshot().some(item => item.kind === 'error')))) return;
+      dismissOutsideFeedback();
+    };
     document.addEventListener('click', outside, true);
     return () => document.removeEventListener('click', outside, true);
   }, []);

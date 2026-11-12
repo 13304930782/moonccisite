@@ -40,6 +40,12 @@
   font-weight: 500;
   margin: 0 0 10px;
 }
+#weather-companion-status .companion-status-current { display: grid; gap: 5px; padding: 16px; background: var(--muted); border-radius: 12px; overflow-wrap: anywhere; }
+#weather-companion-status .companion-status-current span, #weather-companion-status .companion-status-current small { color: var(--muted-foreground); font-size: 13px; line-height: 1.5; }
+#weather-companion-status .companion-status-current strong { font-size: 15px; font-weight: 600; }
+#weather-companion-status .companion-status-label { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+#weather-companion-status .companion-status-error { color: var(--destructive); margin: 0; }
+#weather-companion-status .weather-mood-trigger { min-height: 44px; }
 .settings-section-heading p,
 .settings-hint,
 .settings-field small {

@@ -5,7 +5,8 @@ import {createPortal} from 'react-dom';
 import {useAuth} from '../context/AuthContext';
 import {useEngagement} from '../lib/useEngagement';
 import {api} from '../lib/api';
-export function ReadingProgress({postId}:{postId:number}){
+import {X} from 'lucide-react';
+export function ReadingProgress({postId,title}:{postId:number;title:string}){
   const { t } = useI18n();
  const {user}=useAuth(),enabled=useEngagement(),[saved,setSaved]=useState<any>(null),[error,setError]=useState(''),[connection,setConnection]=useState(0);
  const [hovered,setHovered]=useState(false),[focused,setFocused]=useState(false),[leaving,setLeaving]=useState(false);
@@ -70,10 +71,10 @@ export function ReadingProgress({postId}:{postId:number}){
  };
  if(!enabled)return null;
  return createPortal(<>
-  {visible&&<div className="resume-toast" data-leaving={leaving||undefined} data-reading-ignore role="status" aria-live="polite" onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)} onFocusCapture={()=>setFocused(true)} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))setFocused(false);}}>
-   <span>{t("m_e8a1780965")} {Math.round(progress*100)}%{!user&&<span className="sr-only">  {t("m_0225774a5c")}</span>}</span>
-   <span aria-hidden="true">·</span><button type="button" onClick={resume}>{t("m_4ec2a77b1a")}</button><button type="button" className="resume-toast-close" aria-label={t("m_3fd47edce4")} onClick={dismiss}><span aria-hidden="true">×</span></button>
-  </div>}
+  {visible&&<article className="resume-toast continue-reading" data-leaving={leaving||undefined} data-reading-ignore role="status" aria-live="polite" onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)} onFocusCapture={()=>setFocused(true)} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))setFocused(false);}}>
+   <div className="continue-reading-copy"><span className="continue-reading-kicker">{t("m_e8a1780965")} {Math.round(progress*100)}%{!user&&<span className="sr-only"> {t("m_0225774a5c")}</span>}</span><p className="continue-reading-title">{title}</p><div className="continue-reading-track" aria-hidden="true"><i style={{width:`${Math.round(progress*100)}%`}}/></div></div>
+   <button type="button" className="continue-reading-go" onClick={resume}>{t('继续')}</button><button type="button" className="continue-reading-x" aria-label={t("m_3fd47edce4")} onClick={dismiss}><X size={14} aria-hidden="true"/></button>
+  </article>}
   {error&&<div className="resume-toast resume-toast--error" data-reading-ignore role="status" aria-live="polite"><span>{t(error || '')}</span><button type="button" onClick={()=>{setError('');setConnection(n=>n+1);}}>{t("m_68891ab35c")}</button></div>}
  </>,document.body);
 }

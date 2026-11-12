@@ -11,8 +11,8 @@ else if(p==='/api/site-settings')body={brand:{},weather:{enabled:false}};
 else if(p.includes('/series/article/'))body=null;
 else if(p.includes('related'))body={items:[]};
 await route.fulfill({json:body});});
-await page.goto('http://127.0.0.1:4201/article/1');await page.getByRole('button',{name:'继续阅读',exact:true}).waitFor();
-await page.getByRole('button',{name:'继续阅读',exact:true}).click();
+await page.goto('http://127.0.0.1:4201/article/1');await page.getByRole('button',{name:'继续',exact:true}).waitFor();
+await page.getByRole('button',{name:'继续',exact:true}).click();
 await page.waitForFunction(()=>window.scrollY>0);
 await page.evaluate(()=>window.scrollTo(0,1200));
 await page.waitForResponse(r=>r.request().method()==='PUT'&&r.url().includes('/engagement/history/1'),{timeout:20000});
@@ -27,6 +27,6 @@ await page.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(500);awa
 await page.waitForFunction(()=>!!localStorage.getItem('mooncci-reading-1'),null,{timeout:20000});
 assert.equal(writes.length,authenticatedWrites);
 const local=await page.evaluate(()=>JSON.parse(localStorage.getItem('mooncci-reading-1')));assert.ok(local.progress>0);
-await page.reload();await page.getByRole('button',{name:'继续阅读',exact:true}).waitFor();
+await page.reload();await page.getByRole('button',{name:'继续',exact:true}).waitFor();
 console.log('PASS: authenticated throttled progress write with revision/epoch, anchor restore, uncertain write pause and explicit reconnect, guest local-only persistence and reload recovery.');
 }finally{await browser.close();await new Promise(r=>server.httpServer.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});

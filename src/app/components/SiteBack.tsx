@@ -24,7 +24,7 @@ export function SiteBack({to, fallback, children, label, variant='text', classNa
   const path = safeRoutePath(to || previousPath || fallback || defaultFallback, '/');
   if (!to && pathname === '/') return null;
   const historyBack = !to && !!previousPath;
-  return <Link to={path} aria-label={label} className={className ?? (variant==='text'?'text-link':variant==='pill'?'quiet-button':'hero-pill')} data-site-back onClick={event => {
+  return <Link to={path} replace={!to && !historyBack && pathname.startsWith('/article/')} aria-label={label} className={className ?? (variant==='text'?'text-link':variant==='pill'?'quiet-button':'hero-pill')} data-site-back onClick={event => {
     if (historyBack && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
       event.preventDefault();
       navigate(-1);

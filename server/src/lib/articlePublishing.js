@@ -7,6 +7,8 @@ const allowed=(user,row)=>isAdminLike(user)||Number(user.id)===Number(row.author
 const keys=['title','slug','summary','content','cover_image','category'];
 function payload(input={}) {
   const p=Object.fromEntries(keys.map(k=>[k,String(input[k]??'')]));
+  p.aside=String(input.aside??'').trim()||null;
+  if(p.aside && Array.from(p.aside).length>40)throw error('旁白不能超过 40 字。');
   p.cover_crop=coverCropForInput(input,p.cover_image);
   p.tags=Array.isArray(input.tags)?input.tags.map(String).map(x=>x.trim()).filter(Boolean).slice(0,20):[];
   p.summary_mode=input.summary_mode==='ai'?'ai':input.summary_mode==='manual'?'manual':'';
@@ -18,14 +20,15 @@ function payload(input={}) {
  p.source_url=String(input.source_url||'').slice(0,1000);
  return p;
 }
-const fields=p=>[p.title.trim(),p.slug.trim(),p.summary,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.summary_mode];
+const fields=p=>[p.title.trim(),p.slug.trim(),p.summary,p.aside,p.content,p.cover_image,serializeCoverCrop(p.cover_crop),p.category,JSON.stringify(p.tags),p.summary_mode];
 async function publish(c,d,user) {
     if(d.locale==='en')return require('./articleTranslations').publish(c,d,user);
+    const hasAside=Object.hasOwn(d.payload,'aside');
     const p=payload(d.payload);if(!p.title.trim()||!p.content.trim())throw error('发布前请填写标题和正文。');
     require('./articleSummaryProof').assertReady(p);
     let postId=d.post_id, nextVersion=1;
-    if(postId){const [[post]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[postId]);if(!post||!allowed(user,post))throw error('无权限发布。',403);if(post.version!==d.base_version)throw error('公开文章已有新版本，请重新加载后编辑。',409);p.slug=validateArticleSlug(p.slug,post.slug);await claimArticleSlug(c,postId,p.slug,post.slug);await revisions.baseline(c,post,user.id);nextVersion=post.version+1;await c.query('UPDATE posts SET title=?,slug=?,summary=?,content=?,cover_image=?,cover_crop=?,category=?,tags=?,summary_mode=?,status="published",published_at=COALESCE(published_at,NOW()),updated_at=NOW(),version=version+1 WHERE id=?',[...fields(p),postId]);}
-    else {p.slug=validateArticleSlug(p.slug);const [r]=await c.query('INSERT INTO posts(title,slug,summary,content,cover_image,cover_crop,category,tags,summary_mode,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,?,?,"published",?,COALESCE(?,NOW()))',[...fields(p),d.author_id,p.published_at||null]);postId=r.insertId;await claimArticleSlug(c,postId,p.slug);}
+    if(postId){const [[post]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[postId]);if(!post||!allowed(user,post))throw error('无权限发布。',403);if(post.version!==d.base_version)throw error('公开文章已有新版本，请重新加载后编辑。',409);if(!hasAside)p.aside=post.aside??null;p.slug=validateArticleSlug(p.slug,post.slug);await claimArticleSlug(c,postId,p.slug,post.slug);await revisions.baseline(c,post,user.id);nextVersion=post.version+1;await c.query('UPDATE posts SET title=?,slug=?,summary=?,`aside`=?,content=?,cover_image=?,cover_crop=?,category=?,tags=?,summary_mode=?,status="published",published_at=COALESCE(published_at,NOW()),updated_at=NOW(),version=version+1 WHERE id=?',[...fields(p),postId]);}
+    else {p.slug=validateArticleSlug(p.slug);const [r]=await c.query('INSERT INTO posts(title,slug,summary,`aside`,content,cover_image,cover_crop,category,tags,summary_mode,status,author_id,published_at) VALUES (?,?,?,?,?,?,?,?,?,?,"published",?,COALESCE(?,NOW()))',[...fields(p),d.author_id,p.published_at||null]);postId=r.insertId;await claimArticleSlug(c,postId,p.slug);}
     await c.query('UPDATE article_revisions SET post_id=? WHERE draft_id=? AND post_id IS NULL',[postId,d.id]);
     await revisions.record(c,{id:d.id,post_id:postId},p,'publish',user.id,nextVersion);
     await c.query('UPDATE article_drafts SET post_id=?,base_version=?,dirty=0,published_version=version WHERE id=?',[postId,nextVersion,d.id]);
