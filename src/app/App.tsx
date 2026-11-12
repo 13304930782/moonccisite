@@ -23,10 +23,12 @@ import { SitePage, ContentSkeleton } from './components/ContentUI';
 import { ThemeProvider } from './context/ThemeContext';
 import {LocaleProvider} from './context/LocaleContext';
 import {splitLocalePath} from './lib/locale';
+import {useFloatingControl} from './lib/floatingPreference';
 
 const LocaleEffects = lazy(() => import('./components/LocaleEffects'));
 const ReadingTools = lazy(() => import('./components/ReadingTools'));
 const WeatherCompanion = lazy(() => import('./components/WeatherCompanion'));
+const BackToTop = lazy(() => import('./components/BackToTop'));
 const RoutePages=lazy(()=>import('./RoutePages'));
 function DeferredFeedbackHost() {
   const [ready,setReady]=useState(false);
@@ -37,10 +39,11 @@ function DeferredFeedbackHost() {
 }
 function PublicWeatherCompanion() {
   const [ready, setReady] = useState(false);
+  const floating=useFloatingControl();
   useEffect(() => afterInitialLoad(() => setReady(true)), []);
   const { pathname } = useLocation();
   if (!ready || (pathname.startsWith('/admin') && pathname !== '/admin-login') || pathname.startsWith('/account')) return null;
-  return <Suspense fallback={null}><WeatherCompanion /></Suspense>;
+  return <Suspense fallback={null}>{floating==='arrow'?<BackToTop/>:<WeatherCompanion />}</Suspense>;
 }
 
 function RouteLoader() {

@@ -78,7 +78,7 @@ function ImageField({
       onChange(r.url);
       setError('');
     } catch (e: any) {
-      setError(e.message); notify.error(e.message);
+      setError(e.message);
     } finally {
       setBusy(false);
     }
@@ -138,7 +138,7 @@ export function AdminUpdatesPage() {
     if(translation.dirty&&!await confirmAction(t('m_a0731c0410'))){saving.current=false;return;}
     setBusy(true);setMessage('');
     try{await api(form.id?`/admin/updates/${form.id}`:'/admin/updates',{method:form.id?'PUT':'POST',body:JSON.stringify(form)});flushSync(finish);notify.success(t('m_5c4bcec56b'));if(!form.id&&page!==1)setPage(1);else resource.reload();}
-    catch(error:any){setMessage(error.message);notify.error(error.message);}finally{saving.current=false;setBusy(false);}
+    catch(error:any){setMessage(error.message);}finally{saving.current=false;setBusy(false);}
   }
   return <div className="content-admin content-admin--updates">
     {editing?<>
@@ -197,7 +197,7 @@ export function AdminProjectsPage() {
     if(pending.current||imageBusy||translation.busy||resource.loading||resource.error)return false;
     pending.current=true;setBusy(true);setMessage('');
     try{const result=await api(path,{method,body:body?JSON.stringify(body):undefined});notify.success(result.message||t('m_db8102ba6e'));resource.reload();return true;}
-    catch(error:any){setMessage(error.message);notify.error(error.message);return false;}finally{pending.current=false;setBusy(false);}
+    catch(error:any){setMessage(error.message);return false;}finally{pending.current=false;setBusy(false);}
   }
   async function save(event:FormEvent){
     event.preventDefault();if(pending.current||imageBusy||translation.busy||resource.loading||resource.error)return;
@@ -207,7 +207,7 @@ export function AdminProjectsPage() {
       setMessage('');const creating=!form.id;
       await api(form.id?`/admin/projects/${form.id}`:'/admin/projects',{method:form.id?'PUT':'POST',body:JSON.stringify(form)});
       flushSync(finish);notify.success(t('m_db8102ba6e'));if(creating&&page!==1)setPage(1);else resource.reload();
-    }catch(error:any){setMessage(error.message);notify.error(error.message);}finally{pending.current=false;setBusy(false);}
+    }catch(error:any){setMessage(error.message);}finally{pending.current=false;setBusy(false);}
   }
   return <div className="content-admin content-admin--projects">
     {editing?<>
@@ -385,7 +385,7 @@ function ReleaseManager({ id, onClose }: { id: number; onClose: () => void }) {
       r.reload();
       notify.success(release.hidden ? t("m_5c3799f1f3") : t("m_73e60ca4a7"));
     } catch (e: any) {
-      setError(e.message); notify.error(e.message);
+      setError(e.message);
     } finally { setBusyId(null); }
   }
   return (
@@ -441,7 +441,7 @@ export function AdminNewsletterPage() {
       r.reload();
       sub.reload();
     } catch (e: any) {
-      setMessage(e.message); notify.error(e.message);
+      setMessage(e.message);
     } finally {
       setBusy(false);
     }

@@ -63,7 +63,7 @@ export default function AdminBannedWordsPage() {
       notify.success(t("m_ee1a3c93ab"));
       await loadWords();
     } catch (err: any) {
-      setMessage(err.message || t("m_2ca15f1e2b")); notify.error(err.message || t("m_2ca15f1e2b"));
+      setMessage(err.message || t("m_2ca15f1e2b"));
     } finally {
       setAdding(false);
     }
@@ -80,7 +80,7 @@ export default function AdminBannedWordsPage() {
       notify.success(t("m_5223f91b96"));
       await loadWords();
     } catch (err: any) {
-      setMessage(err.message || t("m_c228558cf2")); notify.error(err.message || t("m_c228558cf2"));
+      setMessage(err.message || t("m_c228558cf2"));
     } finally {
       setRemovingId(null);
     }

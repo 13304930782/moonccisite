@@ -6,14 +6,19 @@ import {createRequire} from 'node:module';
 import {chromium,webkit} from 'playwright';
 import {renderDocument} from '../server/runtime/document.mjs';
 const require=createRequire(import.meta.url),{injectDocument}=require('../server/src/lib/publicDocument.js');
+const seo=require('../server/src/lib/seo.js');
 const template=await fs.readFile('dist/index.html','utf8'),root=path.resolve('dist');
 const post={id:7,slug:'shared-post',status:'published',title:'中文文章',summary:'中文简介',content:'## 中文标题\n\n中文正文',tags:[],author_name:'mooncci',published_at:'2026-11-01',content_locale:'zh-CN',available_locales:['zh-CN','en']};
+const onlyChinese={...post,id:8,slug:'only-chinese',available_locales:['zh-CN']};
+const english={...post,title:'English article',summary:'English summary',content:'## English heading\n\nEnglish body.',content_locale:'en'};
 async function load(value){const url=new URL(value,'http://local'),p=url.pathname,en=url.searchParams.get('locale')==='en';
  if(p==='/auth/session')return {user:null};
  if(p==='/settings/site')return {brand:{site_title:'mooncci'},hero:{},footer:{},weather:{enabled:false}};
  if(p==='/publishing/config')return {enabled:true};
  if(p==='/subscriptions/status')return {available:false};
- if(p==='/posts/shared-post')return en?{...post,title:'English article',summary:'English summary',content:'## English heading\n\nEnglish body.',content_locale:'en'}:post;
+ if(p==='/posts/shared-post')return en?english:post;
+ if(p==='/posts/only-chinese')return onlyChinese;
+ if(p==='/seo'){const target=url.searchParams.get('path')||'';return seo.articleMeta(target.includes('only-chinese')?onlyChinese:target.startsWith('/en/')?english:post,{site_title:'mooncci'});}
  if(p.endsWith('/discovery'))return {previous:null,next:null,related:[]};
  if(p.includes('/comments'))return [];
  if(p.startsWith('/series/article/'))throw Object.assign(Error('No series'),{status:404});
@@ -21,14 +26,37 @@ async function load(value){const url=new URL(value,'http://local'),p=url.pathnam
  if(p==='/settings/blog-pages')return {about:null,links:[]};
  return {items:[],total:0};
 }
-const pages={};for(const url of ['/article/shared-post','/en/article/shared-post'])pages[url]=await injectDocument(template.replace('lang="zh-CN"','lang="'+(url.startsWith('/en/')?'en':'zh-CN')+'"'),await renderDocument(url,load));
+const pages={};for(const url of ['/article/shared-post','/en/article/shared-post','/article/only-chinese']){const meta=seo.articleMeta(url.includes('only-chinese')?onlyChinese:url.startsWith('/en/')?english:post,{site_title:'mooncci'});const rendered=await renderDocument(url,load);rendered.data.seo=meta;pages[url]=await injectDocument(seo.renderHtml(template,meta),rendered);}
 const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://local');if(url.pathname.startsWith('/api/')){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(await load(req.url.slice(4))));}if(pages[url.pathname]){res.setHeader('Content-Type','text/html');return res.end(pages[url.pathname]);}const file=path.resolve(root,'.'+url.pathname);if(!file.startsWith(root+path.sep))throw Error('outside');const mime={'.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'};res.setHeader('Content-Type',mime[path.extname(file)]||'application/octet-stream');res.end(await fs.readFile(file));}catch{res.statusCode=404;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({message:'Not found'}));}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port,records=[];
-try{for(const[name,engine]of[['chromium',chromium],['webkit',webkit]]){const browser=await engine.launch(name==='chromium'&&process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{});try{
+const engines=[['chromium',chromium],['webkit',webkit]];
+if(process.env.QA_BROWSER&&!engines.some(([name])=>name===process.env.QA_BROWSER))throw Error('Unknown QA_BROWSER');
+try{for(const[name,engine]of engines.filter(([name])=>!process.env.QA_BROWSER||name===process.env.QA_BROWSER)){const browser=await engine.launch(name==='chromium'&&process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{});try{
  const nojs=await browser.newContext({javaScriptEnabled:false});await nojs.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());for(const[route,title]of[['/article/shared-post','中文文章'],['/en/article/shared-post','English article']]){const page=await nojs.newPage();await page.goto(origin+route);assert.equal(await page.locator('h1').textContent(),title);assert.equal(await page.locator('h1').isVisible(),true);assert.equal(await page.getByText(route.startsWith('/en/')?'English body.':'中文正文',{exact:true}).isVisible(),true);await page.close();}await nojs.close();
  const context=await browser.newContext({locale:'zh-CN'});await context.addInitScript(()=>{try{localStorage.setItem('mooncci:language',JSON.stringify({preference:'en',version:1}))}catch{}});await context.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());const errors=[];let page;
  const newObservedPage=async()=>{const next=await context.newPage();next.on('pageerror',e=>errors.push(e.message));next.on('console',m=>{if(m.type()==='error'&&/hydration|Minified React error|did not match/i.test(m.text()))errors.push(m.text())});return next;};
- for(const[route,title,lang]of[['/en/article/shared-post','English article','en'],['/article/shared-post','中文文章','zh-CN']]){if(page)await page.close();page=await newObservedPage();await page.goto(origin+route);await page.waitForFunction(()=>document.documentElement.lang==='en'&&document.querySelector('.language-trigger')?.textContent==='English').catch(async error=>{console.error({errors,lang:await page.locator('html').getAttribute('lang'),triggers:await page.locator('.language-trigger').allTextContents(),body:(await page.locator('body').innerText()).slice(0,1200)});throw error;});assert.equal(await page.locator('h1').textContent(),title);assert.equal(await page.locator('h1').getAttribute('lang'),lang);assert.equal(await page.locator('.neo-page').first().getAttribute('lang'),'en');assert.equal(new URL(page.url()).pathname,route);assert.equal(await page.locator('.language-trigger').first().getAttribute('aria-label'),'Interface language');}
+ for(const[route,title,lang]of[['/en/article/shared-post','English article','en'],['/article/shared-post','中文文章','zh-CN']]){if(page)await page.close();page=await newObservedPage();await page.goto(origin+route);await page.waitForFunction(()=>document.querySelector('.language-trigger')?.textContent==='English');assert.equal(await page.locator('h1').textContent(),title);assert.equal(await page.locator('h1').getAttribute('lang'),lang);assert.equal(await page.locator('.neo-page').first().getAttribute('lang'),'en');assert.equal(new URL(page.url()).pathname,route);assert.equal(await page.locator('.language-trigger').first().getAttribute('aria-label'),'Interface language');const meta=seo.articleMeta(lang==='en'?english:post,{site_title:'mooncci'});assert.equal(await page.title(),meta.title);assert.equal(await page.locator('meta[name="description"]').getAttribute('content'),meta.description);assert.equal(await page.locator('meta[name="description"]').count(),1);assert.equal(await page.locator('link[rel="canonical"]').count(),1);assert.ok((await page.locator('link[rel="canonical"]').getAttribute('href')).endsWith(route));assert.equal(await page.locator('.article-languages[data-nosnippet]').count(),1);}
+ await page.locator('.article-languages a[hreflang="en"]').click();
+ await page.waitForURL(origin+'/en/article/shared-post');
+ await page.waitForFunction(()=>document.title.startsWith('English article'));
+ assert.equal(await page.locator('meta[name="description"]').getAttribute('content'),seo.articleMeta(english,{site_title:'mooncci'}).description);
+ assert.equal(await page.locator('meta[name="description"]').count(),1);assert.equal(await page.locator('link[rel="canonical"]').count(),1);
+ assert.ok((await page.locator('link[rel="canonical"]').getAttribute('href')).endsWith('/en/article/shared-post'));
+ assert.equal(await page.locator('.article-languages[data-nosnippet]').count(),1);
+ await page.goto(origin+'/article/only-chinese');
+ await page.waitForFunction(()=>document.querySelector('.language-trigger')?.textContent==='English');
+ const nav=page.locator('.article-languages');assert.notEqual(await nav.getAttribute('data-nosnippet'),null);assert.equal(await nav.locator('a[hreflang="en"]').count(),0);
+ assert.equal(await page.locator('html').getAttribute('lang'),'zh-CN');assert.equal(await page.locator('.neo-page').first().getAttribute('lang'),'en');
+ assert.match(await nav.innerText(),/English translation unavailable/);assert.match(await nav.innerText(),/remains in Chinese/i);
+ assert.equal(await page.locator('h1').evaluate(e=>!!e.closest('[data-nosnippet]')),false);
+ assert.equal(await page.locator('.detail-body').evaluate(e=>!!e.closest('[data-nosnippet]')),false);
+ assert.equal(await page.locator('.article-ai-summary').evaluate(e=>!!e.closest('[data-nosnippet]')),false);
+ for(const selector of ['meta[name="description"]','link[rel="canonical"]','meta[name="robots"]'])assert.equal(await page.locator(selector).count(),1);
+ assert.equal(await page.title(),seo.articleMeta(onlyChinese,{site_title:'mooncci'}).title);
+ assert.equal(await page.locator('meta[name="description"]').getAttribute('content'),seo.articleMeta(onlyChinese,{site_title:'mooncci'}).description);
+ assert.equal(await page.locator('link[rel="alternate"][hreflang="en"]').count(),0);
+ assert.doesNotMatch(await page.locator('meta[name="robots"]').getAttribute('content'),/noindex/i);
+ await page.goto(origin+'/article/shared-post');
  const languageButton=page.locator('.language-trigger:visible').first();
  await languageButton.focus();await languageButton.press('ArrowDown');
  await page.getByRole('menuitemradio',{name:'English',exact:true}).waitFor({state:'visible'});

@@ -54,7 +54,7 @@ export function AdminWeatherCompanionSettings() {
           ? t("m_fbc4006266")
           : t("m_1fe9c135d6"));
     } catch (error: any) {
-      setMessage(error.message || t("m_f42a1238b4")); notify.error(error.message || t("m_f42a1238b4"));
+      setMessage(error.message || t("m_f42a1238b4"));
     } finally {
       setBusy(false);
     }

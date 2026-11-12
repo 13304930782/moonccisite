@@ -10,7 +10,7 @@ import {usePublishing} from '../../lib/usePublishing';
 import { useSiteSettings } from '../../context/SiteSettingsContext';
 import { safeImageSrc } from '../../lib/safeUrl';
 import { ThemeToggle } from '../../context/ThemeContext';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {Link} from '../LocaleLink';
@@ -161,6 +161,37 @@ export function AdminShell({ children }: AdminShellProps) {
   const writer = canWrite(role);
   const owner = role === 'owner';
 
+  useLayoutEffect(() => {
+    const menus = [sidebarRef.current, mobileMenuRef.current]
+      .map(root => root?.querySelector<HTMLElement>('.admin-menu'))
+      .filter((menu): menu is HTMLElement => !!menu);
+    const update = () => menus.forEach(menu => {
+      const indicator = menu.querySelector<HTMLElement>('.admin-menu-indicator');
+      const active = menu.querySelector<HTMLElement>('.admin-menu-group a[aria-current="page"]');
+      if (!indicator) return;
+      if (!active || active.getClientRects().length === 0) {
+        indicator.hidden = true;
+        return;
+      }
+      const menuRect = menu.getBoundingClientRect();
+      const activeRect = active.getBoundingClientRect();
+      indicator.hidden = false;
+      indicator.style.transform = `translateY(${activeRect.top - menuRect.top}px)`;
+      indicator.style.height = `${activeRect.height}px`;
+    });
+    update();
+    const frame = requestAnimationFrame(() => menus.forEach(menu => { menu.dataset.indicatorReady = 'true'; }));
+    const observer = new ResizeObserver(update);
+    menus.forEach(menu => { observer.observe(menu); menu.addEventListener('toggle', update, true); });
+    window.addEventListener('resize', update);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      menus.forEach(menu => menu.removeEventListener('toggle', update, true));
+      window.removeEventListener('resize', update);
+    };
+  }, [location.pathname, mobileOpen, role, operations, publishing]);
+
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
@@ -250,6 +281,7 @@ export function AdminShell({ children }: AdminShellProps) {
       </p>
       <div className="navigation-language-row"><span>{t("m_3d13868593")}</span><LanguageSwitch /></div>
       <nav className="admin-menu" aria-label={t("m_92922c76c0")}>
+        <span className="admin-menu-indicator" aria-hidden="true" hidden />
         {menuGroups.map(group => <details className="admin-menu-group" key={group.label+location.pathname} open={group.defaultOpen || group.items.some(item => item.to === '/admin' ? location.pathname === '/admin' : location.pathname.startsWith(item.to))}>
           <summary>{group.label}</summary>
           {group.items.map(item => <NavLink key={item.to} to={item.to} end={item.to === '/admin'} onClick={closeMobile}><item.icon aria-hidden="true"/><span>{item.title}</span></NavLink>)}

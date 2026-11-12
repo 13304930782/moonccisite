@@ -1,6 +1,6 @@
 .markdown-body .code-block { position:relative; min-width:0; }
 .markdown-body .code-block pre { padding-top:48px; }
-.markdown-body .code-copy { position:absolute; top:6px; right:6px; display:flex; align-items:center; justify-content:center; width:36px; height:36px; padding:0; border:1px solid var(--border); border-radius:6px; background:var(--muted); color:var(--muted-foreground); cursor:pointer; }
+.markdown-body .code-copy { position:absolute; top:2px; right:2px; display:flex; align-items:center; justify-content:center; width:44px; height:44px; padding:0; border:1px solid var(--border); border-radius:6px; background:var(--muted); color:var(--muted-foreground); cursor:pointer; }
 .markdown-body .code-copy:hover { color:var(--foreground); }
 .markdown-body .code-copy:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 .markdown-body .code-copy:disabled { opacity:.6; cursor:wait; }
@@ -24,3 +24,5 @@
 .markdown-body .hljs-variable,.markdown-body .hljs-template-variable {color:#a9b7c6;}
 .markdown-body .hljs-tag,.markdown-body .hljs-name {color:#e8bf6a;}
 .markdown-body .hljs-deletion {color:#ff8080;}
+
+.markdown-body .code-copy-feedback,.markdown-body .code-copy-hint{position:absolute;top:50%;right:52px;transform:translateY(-50%);font:12px/1.4 system-ui,sans-serif;color:#fff;white-space:nowrap;background:#343638;padding:4px 7px;border-radius:6px;z-index:2}.markdown-body .code-copy-feedback{top:24px;display:inline-flex;align-items:center;gap:5px}.markdown-body .code-copy-check{color:#60d4a0}.markdown-body .code-copy-hint{top:24px;opacity:0;pointer-events:none}.markdown-body .code-block:has(.code-copy:hover) .code-copy-hint,.markdown-body .code-block:has(.code-copy:focus-visible) .code-copy-hint{opacity:1}.markdown-body .code-block:has(.code-copy-feedback) .code-copy-hint{opacity:0}

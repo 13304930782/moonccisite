@@ -1,6 +1,5 @@
 import { useI18n } from '../i18n';
 import { articlePath } from '../lib/articleUrl';
-import { notify } from '../lib/feedback';
 import {useEffect,useState} from 'react';
 
 import {Link} from '../components/LocaleLink';
@@ -14,7 +13,7 @@ export default function ReadingHistoryPage(){
  const enabled=useEngagement(),[items,setItems]=useState<any[]|null>(null),[prefs,setPrefs]=useState<any>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[confirm,setConfirm]=useState(false);
  const load=async()=>{try{const [r,p]=await Promise.all([api('/engagement/history?page='+page),api('/engagement/preferences')]);setItems(r.items);setTotal(r.total||0);if(r.page&&r.page!==page)setPage(r.page);setPrefs(p);setError('');}catch(e:any){setError(e.message);}};
  useEffect(()=>{if(enabled)void load();},[enabled,page]);
- const act=async(fn:()=>Promise<any>)=>{setBusy(true);try{await fn();await load();setConfirm(false);}catch(e:any){setError(e.message); notify.error(e.message);}finally{setBusy(false);}};
+ const act=async(fn:()=>Promise<any>)=>{setBusy(true);try{await fn();await load();setConfirm(false);}catch(e:any){setError(e.message);}finally{setBusy(false);}};
  return <section><header className="account-page-heading"><div><span className="account-eyebrow">{t("m_992be7fe00")}</span><h1>{t("m_1aac8f2911")}</h1><p>{t("m_01b4cdd5df")}</p></div><button className="engagement-button" disabled={!items?.length||busy} onClick={()=>setConfirm(true)}>{t("m_17ac4a3317")}</button></header>
  {error&&<p role="alert" className="engagement-alert">{t(error || '')}<button onClick={()=>void load()}>{t("m_b8784c8dd5")}</button></p>}
  {prefs&&<label className="engagement-panel engagement-toggle"><div><strong>{t("m_052c1aaa6f")}</strong><small>{t("m_19e291f788")}</small></div><input type="checkbox" checked={prefs.history_enabled} disabled={busy} onChange={e=>void act(()=>api('/engagement/preferences',{method:'PUT',body:JSON.stringify({history_enabled:e.target.checked})}))}/></label>}

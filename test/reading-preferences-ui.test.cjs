@@ -40,6 +40,7 @@ test('reading controls apply immediately, persist under the existing key, synchr
   const focus=loadTs('src/app/lib/focusLoop.ts');
   const Header=loadTs('src/app/components/Header.tsx',{
    './Festivals/Entry':{FestivalSlot:()=>null},
+   '../lib/floatingPreference':{useNavigationMotion:()=>0},'../context/LocaleContext':{useLocale:()=>({uiLocale:'zh-CN'})},'../lib/motionPreference':motion,
    'react-router-dom':{useLocation:()=>({pathname:'/article/17',search:''}),useNavigate:()=>()=>{},Link,NavLink:Link},
    '../context/ThemeContext':theme,'../lib/focusLoop':focus,'../lib/responsiveImage':{responsiveImage:src=>({src})},
    '../lib/usePublishing':{usePublishing:()=>false},'../context/AuthContext':{useAuth:()=>({user:null,logout:async()=>true,loggingOut:false,logoutError:''})},

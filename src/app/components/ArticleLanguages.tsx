@@ -7,7 +7,7 @@ export function ArticleLanguages({post}:{post:any}){
   const { t } = useI18n();
  const {setLocale,uiLocale}=useLocale();
  const available:Locale[]=post.available_locales||['zh-CN'];
- return <nav className="inline-actions article-languages" aria-label={t("m_ea3597ab05")}>
+ return <nav className="inline-actions article-languages" aria-label={t("m_ea3597ab05")} data-nosnippet="">
   <span>{t("m_ea3597ab05")}</span>
   {available.map(language=><a className="text-link" key={language} href={articlePath(post,language)} hrefLang={language} lang={language==='en'?'en':uiLocale}
    aria-current={(post.content_locale||'zh-CN')===language?'page':undefined}

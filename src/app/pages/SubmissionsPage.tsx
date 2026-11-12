@@ -1,6 +1,5 @@
 import { useI18n } from '../i18n';
 import { articlePath } from '../lib/articleUrl';
-import { notify } from '../lib/feedback';
 import {useEffect,useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {Link} from '../components/LocaleLink';
@@ -14,7 +13,7 @@ export default function SubmissionsPage(){
  const navigate=useNavigate();const enabled=usePublishing();const [page,setPage]=useState(1),[data,setData]=useState<any>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const load=()=>api('/article-drafts?mine=true&page='+page).then(r=>{setData(r);setError('');}).catch(e=>setError(e.message));
  useEffect(()=>{if(enabled)void load();},[page,enabled]);
- async function cancel(d:any){setBusy(true);try{await api('/publishing/'+d.id+'/cancel',{method:'POST',body:JSON.stringify({version:d.version})});navigate('/account/write?draft='+encodeURIComponent(d.id));}catch(e:any){setError(e.message); notify.error(e.message);}finally{setBusy(false);}}
+ async function cancel(d:any){setBusy(true);try{await api('/publishing/'+d.id+'/cancel',{method:'POST',body:JSON.stringify({version:d.version})});navigate('/account/write?draft='+encodeURIComponent(d.id));}catch(e:any){setError(e.message);}finally{setBusy(false);}}
  return <section className="submissions-page"><header className="account-page-heading"><div><span className="account-eyebrow">{t("m_43bb4524ff")}</span><h1>{t("m_aff9ef1e32")}</h1><p>{t("m_b8a266168c")}</p></div>{enabled&&<Link className="account-primary-button" to="/account/write"><Plus size={17}/>{t("m_6bbde83d85")}</Link>}</header>
  {error&&<div className="account-feedback" role="alert">{t(error || '')}<button onClick={()=>void load()}>{t("m_b8784c8dd5")}</button></div>}
  {!enabled?<div className="account-empty">{t("m_cc3b1f7227")}</div>:!data?<div className="account-empty" role="status">{t("m_29ab25efcb")}</div>:<>

@@ -124,9 +124,9 @@ test('shared shell, content components and theme retain approved bilingual navig
   'src/styles/globals.css':'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391',
   'src/styles/editorial.css':'fdfea47f2374f794ba53240844c1ae552316b9d4', // Shared footer status placement and iframe styling.
   'src/styles/project-card.css':'08306a6737ea3bbf30b5792d54fe0c43a12421b7',
-  'src/app/components/Header.tsx':'0d1804b5084fd64d80d3d624d026909ad2a2ed6e', // Homepage-only festival slot and menu-contained language control.
+  'src/app/components/Header.tsx':'67c355b882d2c8cc4f6c450556fcf930162d6922', // Homepage-only festival slot and menu-contained language control.
   'src/app/components/SiteFooter.tsx':'c4e8a57e3afc1d3fcefc8d6d8c4cb5ad5f837d55', // Status appears on the homepage only.
-  'src/app/components/ContentUI.tsx':'316e503dfbfaa6dcd0a79af2e568fcf3648dbd3c',
+  'src/app/components/ContentUI.tsx':'bc65820c5fe0f235f0d84e172c561b73d67ab865', // Keep the inline error without a duplicate toast.
   // Approved slug URL wiring; card markup and styles are unchanged.
   'src/app/components/BlogCard.tsx':'7eecded041ce5501961d45ebbacd21e0924ba927',
   'src/app/components/ProjectCard.tsx':'1cef15845c7312d82533b7344f23c96f76e1008f',

@@ -1,5 +1,6 @@
 import { licenseNotices } from './scripts/license-notices.mjs'
 import { compactSyntax } from './scripts/compact-syntax.mjs'
+import { compactGrokGeometryPlugin } from './scripts/compact-grok-geometry.mjs'
 import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
@@ -23,6 +24,7 @@ export default defineConfig({
   plugins: [
     licenseNotices(),
     compactSyntax(),
+    compactGrokGeometryPlugin(),
     { name: 'editor-extension-entries', enforce: 'pre', resolveId(id) {
       if (id === '@tiptap/extensions') return path.resolve(__dirname, 'src/app/lib/tiptapExtensions.ts');
     } },
@@ -51,7 +53,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Merge tiny shared fragments; preserve lazy route and editor boundaries.
-        experimentalMinChunkSize: 10000,
+        experimentalMinChunkSize: 5000,
         onlyExplicitManualChunks: true,
         manualChunks(id) {
           // Preserve account-route boundaries when merging small shared chunks.

@@ -2,6 +2,7 @@ import { useI18n } from '../i18n';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import { notify } from '../lib/feedback';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import Editor from './festivals-v2/Editor';
 import FestivalSelect from './festivals-v2/Select';
@@ -15,7 +16,7 @@ export default function AdminFestivalsPage() {
   const { t } = useI18n();
   const navigate=useNavigate(), {data:settings}=useSiteSettings();
   const [data,setData]=useState<Response|null>(null), [config,setConfig]=useState<Config|null>(null);
-  const [error,setError]=useState(''),[toast,setToast]=useState(''),[busy,setBusy]=useState(false);
+  const [error,setError]=useState(''),[busy,setBusy]=useState(false);
   const [editing,setEditing]=useState<string|null>(null), trigger=useRef<HTMLElement|null>(null);
   const [windows,setWindows]=useState<FestivalWindow[]>([]),[timelineError,setTimelineError]=useState('');
   const [previewId,setPreviewId]=useState('halloween'),[previewAt,setPreviewAt]=useState(()=>shanghaiInput(new Date().toISOString()));
@@ -29,8 +30,7 @@ export default function AdminFestivalsPage() {
   const saved= data?.config, year=data?shanghaiYear(data.state.serverTime):0;
   useEffect(()=>{if(!saved||!year)return;const controller=new AbortController();setTimelineError('');setWindows([]);void loadYearWindows(saved,year,(configuration,at)=>api('/settings/festivals/preview',{method:'POST',readOnly:true,signal:controller.signal,body:JSON.stringify({config:configuration,at})})).then(result=>{if(!controller.signal.aborted)setWindows(result);}).catch(()=>{if(!controller.signal.aborted)setTimelineError(t("m_ce46123517"));});return()=>controller.abort();},[saved,year]);
   useEffect(()=>{if(!dirty)return;const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty]);
-  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(''),4000);return()=>clearTimeout(timer);},[toast]);
-  async function save(event:FormEvent){event.preventDefault();if(!config||busy)return;setBusy(true);setError('');try{const result:Response=await api('/settings/festivals',{method:'PUT',body:JSON.stringify(config)});setData(result);setConfig(result.config);window.dispatchEvent(new Event('site-settings-updated'));window.dispatchEvent(new Event('mooncci:festivals-updated'));setToast(t("m_1bd91a7d0c"));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+  async function save(event:FormEvent){event.preventDefault();if(!config||busy)return;setBusy(true);setError('');try{const result:Response=await api('/settings/festivals',{method:'PUT',body:JSON.stringify(config)});setData(result);setConfig(result.config);window.dispatchEvent(new Event('site-settings-updated'));window.dispatchEvent(new Event('mooncci:festivals-updated'));notify.success(t("m_1bd91a7d0c"));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
   async function preview(event:FormEvent){event.preventDefault();setBusy(true);setError('');try{const at=fromShanghai(previewAt);await api('/settings/festivals/preview',{method:'POST',readOnly:true,body:JSON.stringify({festivalId:previewId,at})});sessionStorage.setItem('mooncci-festival-preview',JSON.stringify({festivalId:previewId,at,expiresAt:Date.now()+1800000}));window.dispatchEvent(new Event('mooncci:festival-preview'));navigate('/');}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
   if(!data||!config)return <div className="fest-v2 fv-page"><h1>{t("m_85857d157f")}</h1>{error?<><p role="alert">{t(error || '')}</p><button className="fv-ghost" onClick={()=>void load()}>{t("m_7bdd5ce1e2")}</button></>:<div role="status" aria-label={t("m_ef2bc61202")} className="fv-skeleton"><div/><div/><div/></div>}</div>;
   const active=data.catalog.find(item=>item.id===data.state.active?.id), next=nextFestival(data), currentRow=data.state.modules.find(item=>item.id===active?.id);
@@ -48,7 +48,6 @@ export default function AdminFestivalsPage() {
     <section className="fv-catalog" aria-label={t("m_bec0668026")}><div className="fv-list-heading"><h2>{t("m_e0ba7ad3b8")} <span>{data.catalog.length}</span></h2><p>{t("m_325cc51fe0")}</p></div><div className="fv-list">{data.catalog.map(item=>{const current=config.modules[item.id];if(!current)return null;const status=data.state.modules.find(row=>row.id===item.id),showing=active?.id===item.id;return <div key={item.id} className={`fv-row ${showing?'is-active':''}`} role="button" tabIndex={busy?-1:0} aria-label={t("m_6392c09e95", {v0: t(item.name)})} aria-haspopup="dialog" onClick={event=>{if(!busy){trigger.current=event.currentTarget;setEditing(item.id);}}} onKeyDown={event=>{if(!busy&&event.target===event.currentTarget&&['Enter',' '].includes(event.key)){event.preventDefault();trigger.current=event.currentTarget;setEditing(item.id);}}}><span className="fv-icon">{item.id==='halloween'?<Pumpkin/>:<span className="fv-placeholder"/>}</span><div className="fv-row-name"><strong>{t(item.name)}</strong><p>{ruleSummary(current.rule,t)}</p></div><span className={`fv-row-status ${showing?'fv-success':''}`}>{showing?t("m_5725c7666b"):!current.enabled?t("m_6744b4c6a9"):!item.implemented?t("m_48a0eefb85"):t(status?.reason||'—')}</span><span className="fv-row-next">{showing?t("m_15a37d8cd3"):status?.nextStart?<>{t("m_6f7517d250")} <time dateTime={status.nextStart}>{dateOnly(status.nextStart)}</time></>:'—'}</span><Toggle label={t("m_a3089a8184", {v0: t(item.name)})} value={current.enabled} disabled={busy} onChange={()=>setConfig({...config,modules:{...config.modules,[item.id]:{...current,enabled:!current.enabled}}})}/><span className="fv-chevron" aria-hidden="true">›</span></div>;})}</div></section>
     {error&&<p role="alert" className="fv-error">{t(error || '')}</p>}
     {dirty&&<div className="fv-savebar" role="status"><span>{t("m_c2277872cd")}<small className="fv-save-note">{t("m_6308d045e7")}</small></span><button className="fv-ghost" disabled={busy} onClick={()=>{setConfig(structuredClone(data.config));setError('');}}>{t("m_e7f51b070e")}</button><button className="fv-solid" type="submit" form="fv-settings" disabled={busy}>{busy?t("m_ff509c9ba0"):t("m_fa5b145ab6")}</button></div>}
-    {toast&&<div className="fv-toast" role="status">{toast}</div>}
     {editing&&<Editor key={editing} item={data.catalog.find(item=>item.id===editing)!} current={config.modules[editing]} saved={data.config.modules[editing]} status={data.state.modules.find(item=>item.id===editing)} coverageLabel={coverage?t("m_330e814dfa", {v0: coverage.from, v1: coverage.to}):t("m_7ab5cd56d5")} trigger={trigger.current} onClose={()=>setEditing(null)} onSave={module=>{setConfig({...config,modules:{...config.modules,[editing]:module}});setEditing(null);}}/>}
   </div>;
 }

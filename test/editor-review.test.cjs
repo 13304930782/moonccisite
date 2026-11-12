@@ -11,7 +11,7 @@ test('editor review cancellation sends nothing and an in-flight review disables 
  const api=(path,options)=>options?(writes.push({path,...options}),new Promise((resolve,reject)=>{finish=resolve;fail=reject;})):Promise.resolve([item]);
  const code=ts.transpileModule(fs.readFileSync('src/app/pages/AdminEditorApplicationsPage.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const module={exports:{}};
- new Function('exports','require',code)(module.exports,name=>i18nFixture(name)?i18nFixture(name):name.endsWith('/api')?{api}:name.endsWith('/feedback')?{notify:{success:()=>{},error:message=>alerts.push(message)}}:name.endsWith('/AdminState')?{AdminEmpty:()=>null,AdminError:()=>null,AdminLoading:()=>null,AdminNotice:()=>null}:name.endsWith('.css')?{}:name.endsWith('/ThemeSelect')?{ThemeSelect:({children})=>React.createElement('select',null,children)}:name.endsWith('/LocaleLink')||name==='react-router-dom'?{Link:'a'}:name.endsWith('/dialog')?{Dialog:({open,children})=>open?children:null,DialogContent:'div',DialogTitle:'h2',DialogDescription:'p'}:require(name));
+ new Function('exports','require',code)(module.exports,name=>i18nFixture(name)?i18nFixture(name):name.endsWith('/api')?{api}:name.endsWith('/feedback')?{notify:{success:()=>{},error:message=>alerts.push(message)}}:name.endsWith('/AdminState')?{AdminEmpty:()=>null,AdminError:()=>null,AdminLoading:()=>null,AdminNotice:({children})=>React.createElement('p',{'data-notice':true},children)}:name.endsWith('.css')?{}:name.endsWith('/ThemeSelect')?{ThemeSelect:({children})=>React.createElement('select',null,children)}:name.endsWith('/LocaleLink')||name==='react-router-dom'?{Link:'a'}:name.endsWith('/dialog')?{Dialog:({open,children})=>open?children:null,DialogContent:'div',DialogTitle:'h2',DialogDescription:'p'}:require(name));
  let root;
  const text=node=>[].concat(node.props.children).join('');
  const button=match=>root.root.findAllByType('button').find(node=>match(String(node.props['aria-label']||''),text(node)));
@@ -45,7 +45,8 @@ test('editor review cancellation sends nothing and an in-flight review disables 
   assert.deepEqual(JSON.parse(writes[1].body),{status:'rejected',review_note:'补充理由'});
   await act(async()=>{fail(new Error('本地模拟失败'));await pending;});
   assert.ok(reviewButtons().every(node=>!node.props.disabled));
-  assert.deepEqual(alerts,['本地模拟失败']);
+  assert.deepEqual(alerts,[],'The persistent error must not be duplicated as a toast');
+  assert.ok(root.root.findAll(node=>node.props['data-notice']&&node.props.children==='本地模拟失败').length);
   assert.ok(confirm(),'A failed review keeps the dialog open for retry');
   assert.equal(root.root.findByType('textarea').props.value,'补充理由','A failed review preserves the note');
   await act(async()=>{pending=confirm().props.onClick();});

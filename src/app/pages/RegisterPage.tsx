@@ -1,11 +1,12 @@
 import { useI18n } from '../i18n';
 import { FormInput } from '../components/FormInput';
+import { ActionProgress, waitActionSuccess } from '../components/ActionProgress';
 import {authLink, loginDestination} from '../lib/loginDestination';
 import { ArrowRight, Mail, User } from 'lucide-react';
 import { PasswordField, PasswordRules } from '../components/PasswordField';
 import { passwordProblem } from '../lib/passwordRules';
 import { notify } from '../lib/feedback';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthShell } from '../components/AuthShell';
 import { SocialLoginButtons } from '../components/SocialLoginButtons';
@@ -23,6 +24,9 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const mounted=useRef(true);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
 
   const [confirmTouched, setConfirmTouched] = useState(false);
   const mismatch = confirmTouched && confirmPassword !== '' && password !== confirmPassword;
@@ -37,16 +41,20 @@ export default function RegisterPage() {
     if (password !== confirmPassword) { setConfirmTouched(true); return setMessage(t("m_5880774570")); }
 
     setLoading(true);
+    setCompleted(false);
     setMessage('');
 
     try {
       await register(username.trim(), email.trim(), password);
+      setCompleted(true);
+      await waitActionSuccess();
+      if(!mounted.current)return;
       notify.success(t("m_98d83fcec5"));
       navigate(authLink('/login', destination), {replace:true});
     } catch (err: any) {
-      setMessage(err.message || t("m_6d57824e03"));
+      if(mounted.current)setMessage(err.message || t("m_6d57824e03"));
     } finally {
-      setLoading(false);
+      if(mounted.current)setLoading(false);
     }
   };
 
@@ -131,6 +139,7 @@ export default function RegisterPage() {
               inputMode="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              validateOnBlur
               placeholder="name@example.com"
             />
           </div>
@@ -168,8 +177,8 @@ export default function RegisterPage() {
           disabled={loading}
           className="neo-button neo-button-dark auth-submit disabled:opacity-60"
         >
-          {loading ? t("m_bda8d590a9") : t("m_f48d12cf53")}
-          <ArrowRight aria-hidden="true" className="h-4 w-4" />
+          {loading && <ActionProgress success={completed} />}{completed ? t("m_053461ce86") : loading ? t("m_bda8d590a9") : t("m_f48d12cf53")}
+          {!loading && <ArrowRight aria-hidden="true" className="h-4 w-4" />}
         </button>
       </form>
 

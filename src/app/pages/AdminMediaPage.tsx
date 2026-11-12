@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { safeImageSrc } from '../lib/safeUrl';
+import { reducedMotion } from '../lib/motionPreference';
 import '../../styles/admin-ui-v2.css';
 import '../../styles/admin-media.css';
 
@@ -111,6 +112,12 @@ export default function AdminMediaPage() {
   const [renameTo, setRenameTo] = useState('');
   const [recompressQuality, setRecompressQuality] = useState('medium');
   const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState<string[]>([]);
+  const animateRemoval = async (filenames: string[]) => {
+    if (reducedMotion()) return;
+    setRemoving(filenames);
+    await new Promise<void>(resolve => setTimeout(resolve, 300));
+  };
   const uploadInput = useRef<HTMLInputElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const clearSearch = () => { setKeyword(''); updateQuery({ q: '', page: '' }); searchInput.current?.focus(); };
@@ -257,7 +264,7 @@ export default function AdminMediaPage() {
       notify.success(renamed ? t("m_f7c2095ec7") : t("m_f3fce825b8"));
     } catch (err: any) {
       const error = metadataSaved ? t("m_9d9635df6b", {v0: err.message || t("m_a2577bae3c")}) : err.message || t("m_6309a3bb5b");
-      setMessage(error); notify.error(error);
+      setMessage(error);
     } finally {
       setSaving(false);
     }
@@ -283,7 +290,7 @@ export default function AdminMediaPage() {
       setRenameTo(value => value === selected.filename ? updated.filename : value);
       notify.success(t("m_36ddf85f15", {v0: updated.size_text}));
     } catch (err: any) {
-      setMessage(err.message || t("m_28b0969e1a")); notify.error(err.message || t("m_28b0969e1a"));
+      setMessage(err.message || t("m_28b0969e1a"));
     } finally {
       setSaving(false);
     }
@@ -313,7 +320,7 @@ export default function AdminMediaPage() {
           return;
         }
       } else {
-        setMessage(err.message || t("m_c228558cf2")); notify.error(err.message || t("m_c228558cf2"));
+        setMessage(err.message || t("m_c228558cf2"));
       }
     } finally {
       setSaving(false);
@@ -336,7 +343,7 @@ export default function AdminMediaPage() {
       notify.success(t("m_62a5696d0d"));
       await load();
     } catch (err: any) {
-      setMessage(err.message || t("m_89281a45e0")); notify.error(err.message || t("m_89281a45e0"));
+      setMessage(err.message || t("m_89281a45e0"));
     } finally {
       setSaving(false);
     }
@@ -357,9 +364,11 @@ export default function AdminMediaPage() {
       setSelected(null);
       setSelectedFilenames((current) => current.filter((filename) => filename !== selected.filename));
       notify.success(t("m_9a7af4d584"));
+      await animateRemoval([selected.filename]);
       await load();
+      setRemoving([]);
     } catch (err: any) {
-      setMessage(err.message || t("m_8f648036ae")); notify.error(err.message || t("m_8f648036ae"));
+      setMessage(err.message || t("m_8f648036ae"));
     } finally {
       setSaving(false);
     }
@@ -395,7 +404,7 @@ export default function AdminMediaPage() {
       }
       // A batch can partially commit before returning an error; re-read without retrying writes.
       await load();
-      setMessage(err.message || t("m_27b8c99cf5")); notify.error(err.message || t("m_27b8c99cf5"));
+      setMessage(err.message || t("m_27b8c99cf5"));
     } finally {
       setSaving(false);
     }
@@ -419,7 +428,7 @@ export default function AdminMediaPage() {
       await load();
     } catch (err: any) {
       await load();
-      setMessage(err.message || t("m_53aa621948")); notify.error(err.message || t("m_53aa621948"));
+      setMessage(err.message || t("m_53aa621948"));
     } finally {
       setSaving(false);
     }
@@ -445,10 +454,12 @@ export default function AdminMediaPage() {
       setSelected(null);
       setSelectedFilenames([]);
       notify.success(data.message || t("m_251ce66c25"));
+      await animateRemoval(selectedFilenames);
       await load();
+      setRemoving([]);
     } catch (err: any) {
       await load();
-      setMessage(err.message || t("m_325ae4d2d7")); notify.error(err.message || t("m_325ae4d2d7"));
+      setMessage(err.message || t("m_325ae4d2d7"));
     } finally {
       setSaving(false);
     }
@@ -479,14 +490,14 @@ export default function AdminMediaPage() {
       <div className="media-list-content">
       {message && !selected && <p role="alert" className="media-notice">{t(message || '')}</p>}
       {loadError && <AdminError message={items.length ? `${t("m_5eeaf6dc35")}：${t(loadError)}` : t(loadError)} onRetry={loading ? undefined : () => void load()} />}
-      {loading && !filtered.length ? <AdminLoading label={t("m_ca1a598c1f")} /> : filtered.length === 0 && !loadError ? <div className="admin-empty-result"><AdminEmpty
+      {loading && !filtered.length ? <AdminLoading label={t("m_ca1a598c1f")} /> : filtered.length === 0 && !loadError ? <div className={`admin-empty-result${status === 'trashed' ? ' media-trash-empty' : ''}`}><AdminEmpty
         title={t(search ? 'media.empty.search.title' : status === 'trashed' ? 'media.empty.trash.title' : 'media.empty.active.title')}
         hint={t(search ? 'media.empty.search.hint' : status === 'trashed' ? 'media.empty.trash.hint' : 'media.empty.active.hint')}
         action={search ? <button type="button" className="quiet-button" onClick={clearSearch}>{t('media.empty.clear')}</button> : status === 'active' ? <button type="button" className="ui-btn media-upload-primary" disabled={uploading} onClick={()=>uploadInput.current?.click()}>{t(uploading ? "m_ce1c9d6156" : "m_9fbb4750bb")}</button> : undefined}
       /></div> : <div className="media-file-grid">
         {filtered.map(item => {
           const imageUrl = safeImageSrc(item.url), markdown = `![${item.alt_text || mediaName(item)}](${item.url})`, checked = selectedSet.has(item.filename);
-          return <article className="media-file" key={item.filename}>
+          return <article className={`media-file${removing.includes(item.filename) ? ' media-file-removing' : ''}`} key={item.filename}>
             <div className={`media-file-image${checked ? ' is-selected' : ''}`}>
               <button type="button" className="media-detail-trigger" aria-label={mediaName(item)} disabled={saving && selecting} onClick={event => selecting ? toggleOne(item.filename) : openDetail(item, event.currentTarget)}>{imageUrl ? <img src={imageUrl} alt="" loading="lazy" /> : <ImageIcon size={32} aria-hidden="true" />}</button>
               <label className="media-file-select"><input type="checkbox" aria-label={t("m_2bb6946df9", {v0: mediaName(item)})} checked={checked} disabled={saving} onChange={() => toggleOne(item.filename)} /><span aria-hidden="true"><Check size={18} strokeWidth={2.5} /></span></label>

@@ -13,11 +13,11 @@ export function AccountProfileForm({ user, base, onSaved }: { user: AccountProfi
     if (!file) return;
     setBusy(true); setMessage(''); uploadController.current = new AbortController();
     try { const data = new FormData(); data.append('avatar', file); const result = await api(`${base}/avatar`, {method:'POST',body:data,signal:uploadController.current.signal}); onSaved(result.user); notify.success(result.message); }
-    catch(e:any) { setMessage(e.message); notify.error(e.message); } finally { uploadController.current = null; setBusy(false); }
+    catch(e:any) { setMessage(e.message); } finally { uploadController.current = null; setBusy(false); }
   };
   return <section className="account-section">
     <div><h2>{t("m_b94d13a45e")}</h2><p>{t("m_82ea0e8770")}</p></div>
-    <form onSubmit={async e=>{e.preventDefault();setBusy(true);setMessage('');try { const r=await api(base.endsWith('/account')?base:`${base}/settings`,{method:'PUT',body:JSON.stringify({username:name,version:user.version})});onSaved(r.user);notify.success(r.message); }catch(e:any){setMessage(e.message); notify.error(e.message);}finally{setBusy(false);}}}>
+    <form onSubmit={async e=>{e.preventDefault();setBusy(true);setMessage('');try { const r=await api(base.endsWith('/account')?base:`${base}/settings`,{method:'PUT',body:JSON.stringify({username:name,version:user.version})});onSaved(r.user);notify.success(r.message); }catch(e:any){setMessage(e.message);}finally{setBusy(false);}}}>
       <fieldset disabled={busy || Boolean(user.deleted_at)} className="account-fields">
         <div className="account-avatar-row">{user.avatar_url ? <img className="account-avatar" src={safeImageSrc(user.avatar_url)} alt={t("m_fb06241b72")}/> : <span className="account-avatar account-avatar-empty">{user.username.slice(0,1)}</span>}
           <div className="account-upload"><label className="account-upload-trigger"><span>{t("m_d7d2344d54")}</span><FormInput aria-label={t("m_d7d2344d54")} type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{void upload(e.target.files?.[0]);e.target.value='';}}/></label><small>{t("m_340d830116")}</small></div>

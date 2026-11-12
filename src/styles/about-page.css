@@ -4,4 +4,15 @@
 .about-activity-card{transition:transform .15s,border-color .15s}.about-activity-card:hover{transform:translateY(-2px)}.about-profile-links a{transition:border-color .15s,color .15s}.about-profile-links a:hover{color:var(--primary)}@media(prefers-reduced-motion:reduce){.about-activity-card,.about-profile-links a{transition:none}.about-activity-card:hover{transform:none}}
 
 .about-profile-initial{font-size:40px;font-weight:700;background:var(--primary);color:var(--primary-foreground)}
+.about-timeline[data-animated=true]{position:relative}
+.about-timeline[data-animated=true]:before{content:"";position:absolute;left:-2px;top:0;width:2px;height:var(--timeline-fill,0px);background:#df742d;border-radius:2px}
+.about-timeline[data-animated=true] li:before{box-sizing:border-box;background:var(--background);border:2px solid var(--border)}
+.about-timeline[data-animated=true] li[data-reached=true]:before{border-color:#df742d}
+.about-timeline[data-animated=true] li:after{content:"";position:absolute;left:-24px;top:11px;width:6px;height:6px;border-radius:50%;background:#df742d;transform:scale(var(--timeline-reveal,0))}
+.about-timeline[data-animated=true] .about-timeline-copy small{color:#df742d}.about-timeline[data-animated=true] .about-timeline-copy{opacity:var(--timeline-reveal,0);transform:translateX(var(--timeline-shift,16px))}
+@media(prefers-reduced-motion:reduce){.about-timeline[data-animated=true]:before{height:100%}.about-timeline[data-animated=true] li:before{border-color:#df742d}.about-timeline[data-animated=true] li:after{transform:scale(1)}.about-timeline[data-animated=true] .about-timeline-copy{opacity:1;transform:none}}
+html[data-reduced-motion=true] .about-timeline[data-animated=true]:before{height:100%}html[data-reduced-motion=true] .about-timeline[data-animated=true] li:before{border-color:#df742d}html[data-reduced-motion=true] .about-timeline[data-animated=true] li:after{transform:scale(1)}html[data-reduced-motion=true] .about-timeline[data-animated=true] .about-timeline-copy{opacity:1;transform:none}
 .about-back-link{display:inline-flex;align-items:center;min-height:44px;font-size:14px;margin-bottom:18px}.about-back-link:focus-visible{outline:2px solid var(--ring);outline-offset:3px}
+
+
+.about-page .about-back-pill{display:inline-flex;align-items:center;min-height:44px;padding:6px 14px;border-radius:999px;background:var(--fill);color:var(--foreground);font-size:13px;text-decoration:none}.about-page .about-back-pill:hover{background:color-mix(in srgb,var(--foreground) 9%,var(--background))}.about-page .about-back-pill:focus-visible{outline:2px solid var(--ring);outline-offset:2px}

@@ -30,6 +30,19 @@ assert.equal(enDom.querySelector('a[hreflang="en"]')?.getAttribute('href'),'/en/
 assert.equal(enDom.querySelector('a[hreflang="en"]')?.getAttribute('aria-current'),'page');
 assert.equal(enDom.querySelector('a[hreflang="zh-CN"]')?.getAttribute('href'),'/article/shared-post');
 assert.equal(zhDom.querySelector('a[hreflang="zh-CN"]')?.getAttribute('aria-current'),'page');
+for(const dom of [zhDom,enDom]){
+ const nav=dom.querySelector('nav.article-languages');
+ assert.ok(nav?.hasAttribute('data-nosnippet'));
+ assert.ok(nav.querySelector('a[hreflang="zh-CN"]'));
+ assert.equal(dom.querySelector('h1')?.closest('[data-nosnippet]'),null);
+ assert.equal(dom.querySelector('.detail-body')?.closest('[data-nosnippet]'),null);
+ assert.ok(dom.querySelector('.article-ai-summary'));
+ assert.equal(dom.querySelector('.article-ai-summary').closest('[data-nosnippet]'),null);
+}
+const untranslated=await renderDocument('/article/shared-post',async path=>new URL(path,'http://local').pathname==='/posts/shared-post'?{...chinese,available_locales:['zh-CN']}:load(path));
+const untranslatedDom=JSDOM.fragment(untranslated.html);
+assert.ok(untranslatedDom.querySelector('.article-languages[data-nosnippet] [role="status"]'));
+assert.equal(untranslatedDom.querySelector('.article-languages a[hreflang="en"]'),null);
 assert.doesNotMatch(zh.html,/m_[a-f0-9]{10}/,'Chinese SSR must seed the source catalog before rendering');
 assert.doesNotMatch(en.html,/m_[a-f0-9]{10}/,'English SSR must resolve compact catalog keys');
 const missing=await renderDocument('/en/article/missing',load,404);

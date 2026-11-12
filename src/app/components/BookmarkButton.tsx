@@ -26,7 +26,7 @@ function SavedButton({id}:{id:number}){
  async function toggle(){
   if(busy)return;setBusy(true);setActionError('');
   try{const r=await api(`/bookmarks/${id}`,{method:saved?'DELETE':'PUT'});setSaved(r.bookmarked);notify.success(r.bookmarked?t("m_4220592340"):t("m_7fa7b63b0e"));}
-  catch(e:any){setActionError(e.message); notify.error(e.message);}
+  catch(e:any){setActionError(e.message);}
   finally{setBusy(false);}
  }
  return <><button className="quiet-button" aria-pressed={saved===true} disabled={busy||saved===null} onClick={()=>void toggle()}><Bookmark size={16} aria-hidden="true" fill={saved?'currentColor':'none'}/>{busy?t("m_6bdb443509"):saved?t("m_471dd4d7f8"):t("m_60a53514eb")}</button>{(error||actionError)&&<span role="status">{actionError||error} <button className="text-link" onClick={()=>setTick(n=>n+1)}>{t("m_b8784c8dd5")}</button></span>}</>;

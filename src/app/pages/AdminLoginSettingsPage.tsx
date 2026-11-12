@@ -25,7 +25,7 @@ function ProviderForm({ initial, onSaved, hidden }: { initial: Provider; onSaved
     try {
       const data = await api(`/auth/providers/manage/${form.provider}`, { method: 'PUT', body: JSON.stringify({ enabled: form.enabled, client_id: form.client_id.trim(), client_secret: form.client_secret || '', clear_secret: form.clear_secret || false, version: form.version }) });
       setForm(data.provider); onSaved(data.provider); notify.success(data.message);
-    } catch (error: any) { setMessage(error.message || t("m_6309a3bb5b")); notify.error(error.message || t("m_6309a3bb5b")); }
+    } catch (error: any) { setMessage(error.message || t("m_6309a3bb5b")); }
     finally { setSaving(false); }
   };
   return <form id={`provider-${initial.provider}`} hidden={hidden} onSubmit={save} className="provider-settings-card">

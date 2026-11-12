@@ -42,6 +42,42 @@ test('SEO endpoint rejects untranslated English article without exposing source 
  assert.equal(response.status,404);const result=await response.json();assert.match(result.robots,/noindex/);assert.doesNotMatch(JSON.stringify(result),/private source/);
 });
 
+test('article documents and SEO endpoint preserve language-specific metadata and published alternates',async t=>{
+ const {createSeoRouter}=require('../src/routes/seo');
+ const original={id:1,slug:'hello',title:'中文标题',summary:'这里是足够长的中文文章简介，用于验证搜索结果摘要优先采用文章提供的简介内容。',content:'中文正文回退内容',status:'published'};
+ const english={post_id:1,title:'English title',summary:'This published English summary is long enough to be used as the page description.',content:'English fallback body',published_at:'2026-01-01'};
+ let translated=true;
+ const db={query:async sql=>{
+  if(sql.includes('site_settings'))return [[]];
+  if(sql.includes('content_translations'))return [[]];
+  if(sql.includes('post_translations'))return [[...(translated?[english]:[])]];
+  if(sql.includes('JOIN users'))return [[original]];
+  return [[]];
+ }};
+ const readTemplate=async()=>'<html lang="zh-CN"><head><title>old</title><meta name="description" content="old"><link rel="canonical" href="https://old.test"></head><body><div id="root"></div></body></html>';
+ const renderDocument=async()=>({html:'',data:{resources:{},errors:{}}});
+ const injectDocument=async html=>html;
+ const app=express();app.use(createSeoRouter({db,readTemplate,renderDocument,injectDocument}));
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));
+ const origin=`http://127.0.0.1:${server.address().port}`;
+ for(const [path,title,summary,canonical] of [
+  ['/article/hello','中文标题',original.summary,'/article/hello'],
+  ['/en/article/hello','English title',english.summary,'/en/article/hello'],
+ ]){
+  const response=await fetch(origin+path);assert.equal(response.status,200);const html=await response.text();
+  assert.match(html,new RegExp(`<title>${title} · mooncci</title>`));assert.ok(html.includes(`name="description" content="${summary}"`));
+  assert.equal((html.match(/name="description"/g)||[]).length,1);assert.equal((html.match(/rel="canonical"/g)||[]).length,1);
+  assert.ok(html.includes(`rel="canonical" href="${seo.origin()+canonical}"`));assert.ok(html.includes('hreflang="zh-CN"'));assert.ok(html.includes('hreflang="en"'));assert.doesNotMatch(html,/noindex/);
+  assert.equal((html.match(/hreflang="zh-CN"/g)||[]).length,1);assert.equal((html.match(/hreflang="en"/g)||[]).length,1);
+  const api=await fetch(origin+'/api/seo?path='+encodeURIComponent(path)+'&locale=en');const meta=await api.json();
+  assert.equal(meta.title,title+' · mooncci');assert.equal(meta.description,summary);assert.equal(meta.canonical,seo.origin()+canonical);assert.equal(meta.robots,'index, follow');
+ }
+ translated=false;
+ const chinese=await fetch(origin+'/article/hello');const chineseHtml=await chinese.text();assert.equal(chinese.status,200);assert.doesNotMatch(chineseHtml,/hreflang="en"/);assert.doesNotMatch(chineseHtml,/noindex/);
+ const englishMissing=await fetch(origin+'/en/article/hello');const missingHtml=await englishMissing.text();assert.equal(englishMissing.status,404);assert.doesNotMatch(missingHtml,/hreflang="en"|中文正文回退内容/);assert.match(missingHtml,/noindex/);
+ original.summary='';const fallback=await fetch(origin+'/api/seo?path=%2Farticle%2Fhello&locale=en');assert.equal((await fallback.json()).description,original.content);
+});
+
 test('reordering shared settings lists keeps translations attached to their original records',()=>{
  const first={name:'甲',url:'https://a.test'},second={name:'乙',url:'https://b.test'};
  assert.deepEqual(overlay([second,first],[{name:'A'},{name:'B'}],[first,second]),[{...second,name:'B'},{...first,name:'A'}]);

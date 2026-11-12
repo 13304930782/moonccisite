@@ -20,7 +20,7 @@ export default function AdminUserSettingsPage() {
   const run=async(path:string,method:string,body?:object)=>{
     setBusy(true);setMessage('');
     try{const r=await api(path,{method,...(body?{body:JSON.stringify(body)}:{})});notify.success(r.message);if(r.user)setUser(r.user);else await load();return true;}
-    catch(e:any){setMessage(e.message); notify.error(e.message);return false;}finally{setBusy(false);}
+    catch(e:any){setMessage(e.message);return false;}finally{setBusy(false);}
   };
   return <div className="admin-page"><PageHeading variant="admin" titleClassName="admin-title" title={t("m_7ce710f646")} back={<SiteBack to="/admin/users">{t("m_7232718ecc")}</SiteBack>}/>
     {error?<p role="alert">{t(error || '')}<button onClick={load}>{t("m_b8784c8dd5")}</button></p>:!user?<p role="status">{t("m_21bd738e0d")}</p>:<>

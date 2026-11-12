@@ -74,7 +74,7 @@ export default function EditorApplyPage() {
       notify.success(res.message || t("m_5a4423372d"));
       setReason('');
     } catch (err: any) {
-      setMessage(err.message || t("m_2084657131")); notify.error(err.message || t("m_2084657131"));
+      setMessage(err.message || t("m_2084657131"));
     } finally {
       setLoading(false);
     }

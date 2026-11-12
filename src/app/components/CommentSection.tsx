@@ -192,7 +192,7 @@ function CommentThread({ postId, updateId, compact = false, variant, onCountChan
       setContent('');
       loadComments(note ? { content, knownIds: new Set(comments.map(item => item.id)) } : undefined);
     } catch (err: any) {
-      setMessage(err.message || t("m_e7a9a2610b")); notify.error(err.message || t("m_e7a9a2610b"));
+      setMessage(err.message || t("m_e7a9a2610b"));
     } finally {
       setLoading(false);
     }
@@ -226,7 +226,7 @@ function CommentThread({ postId, updateId, compact = false, variant, onCountChan
       setReplyingTo(null);
       loadComments(note ? { content: replyContent, knownIds: new Set(comments.map(item => item.id)) } : undefined);
     } catch (err: any) {
-      setMessage(err.message || t("m_36fadc3147")); notify.error(err.message || t("m_36fadc3147"));
+      setMessage(err.message || t("m_36fadc3147"));
     } finally {
       setSubmittingReply(false);
     }
@@ -256,7 +256,7 @@ function CommentThread({ postId, updateId, compact = false, variant, onCountChan
 
       loadComments();
     } catch (err: any) {
-      setMessage(err.message || t("m_0c3b4cf7aa")); notify.error(err.message || t("m_0c3b4cf7aa"));
+      setMessage(err.message || t("m_0c3b4cf7aa"));
     }
   };
 
@@ -268,7 +268,7 @@ function CommentThread({ postId, updateId, compact = false, variant, onCountChan
       notify.success(res.message || t("m_c9e7f26c74"));
       loadComments();
     } catch (err: any) {
-      setMessage(err.message || t("m_c228558cf2")); notify.error(err.message || t("m_c228558cf2"));
+      setMessage(err.message || t("m_c228558cf2"));
     }
   };
 

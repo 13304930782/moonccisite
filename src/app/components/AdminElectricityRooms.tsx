@@ -163,11 +163,7 @@ export function AdminElectricityRooms({
           : e instanceof Error
             ? e.message
             : t("m_b3b75bd055"),
-      ); notify.error(e instanceof SyntaxError
-          ? t("m_2c64696391")
-          : e instanceof Error
-            ? e.message
-            : t("m_b3b75bd055"));
+      );
     } finally {
       setBusy(false);
     }

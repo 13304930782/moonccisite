@@ -64,6 +64,7 @@ const AdminAiSettingsPage = lazy(() => import('./pages/AdminAiSettingsPage'));
 const AdminLoginSettingsPage = lazy(() => import('./pages/AdminLoginSettingsPage'));
 const BookmarksPage = lazy(() => import('./pages/BookmarksPage'));
 const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'));
+const MotionSettingsPage = lazy(() => import('./pages/MotionSettingsPage'));
 const AdminUserSettingsPage = lazy(() => import('./pages/AdminUserSettingsPage'));
 const CompleteRegistrationPage = lazy(() => import('./pages/CompleteRegistrationPage'));
 const AdminMailSettingsPage = lazy(() => import('./pages/AdminMailSettingsPage'));
@@ -198,6 +199,7 @@ export default function RoutePages(){const location=useLocation();const route=sp
 <Route path="/account/history" element={<Guard><AccountWorkspace><ReadingHistoryPage/></AccountWorkspace></Guard>}/>
 <Route path="/account/bookmarks" element={<Guard><AccountWorkspace><BookmarksPage /></AccountWorkspace></Guard>} />
           <Route path="/account/settings" element={<Guard><AccountWorkspace><AccountSettingsPage /></AccountWorkspace></Guard>} />
+          <Route path="/account/motion" element={<Guard><AccountWorkspace><MotionSettingsPage /></AccountWorkspace></Guard>} />
           <Route path="/account/mailbox" element={<Guard><AccountWorkspace><MailboxPage /></AccountWorkspace></Guard>} />
 <Route path="/account/submissions" element={<Guard><AccountWorkspace><SubmissionsPage /></AccountWorkspace></Guard>} />
 <Route path="/account/write" element={<Guard><AccountWorkspace><AdminWritePage /></AccountWorkspace></Guard>} />

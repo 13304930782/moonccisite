@@ -98,7 +98,7 @@ export default function AdminPostsPage() {
       setAllPosts(null); setAllTotal(previous => previous === null ? null : Math.max(0, previous - 1));
       setRefresh(value => value + 1);
     } catch (error: any) {
-      setMessage(error.message || t("m_c228558cf2")); notify.error(error.message || t("m_c228558cf2"));
+      setMessage(error.message || t("m_c228558cf2"));
     } finally { setRemoving(null); }
   }
 
@@ -110,7 +110,7 @@ export default function AdminPostsPage() {
       requestVersion.current++;
       setDrafts(previous => previous.filter(item => item.id !== draft.id));
       setDraftsLoaded(false); setDraftPage(1); setRefresh(value => value + 1);
-    } catch (error: any) { setMessage(error.message); notify.error(error.message); }
+    } catch (error: any) { setMessage(error.message); }
     finally { setRemoving(null); }
   }
 

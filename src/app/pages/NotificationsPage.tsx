@@ -1,5 +1,4 @@
 import { useI18n } from '../i18n';
-import { notify } from '../lib/feedback';
 import {ThemeSelect} from '../components/ThemeSelect';
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from '../components/ui/dialog';
 import '../../styles/workspace-polish.css';
@@ -17,7 +16,7 @@ export default function NotificationsPage(){
  const verify=async(confirm=false)=>{setBusy(true);setVerifyError('');try{await api(confirm?'/engagement/verify-email/confirm':'/engagement/verify-email',{method:'POST',...(confirm?{body:JSON.stringify({code})}:{})});if(confirm){await load();setVerifyOpen(false);setCode('');setSent(false);}else{setSent(true);setResendAt(Date.now()+60000);setNow(Date.now());setVerifyMessage(t("m_74e8b340c7"));}}catch(e:any){setVerifyError(e.message);}finally{setBusy(false);}};
  const load=async()=>{try{const [n,p]=await Promise.all([api('/engagement/notifications?page='+page+'&kind='+kind),api('/engagement/preferences')]);setData(n);setPrefs(p);setError('');}catch(e:any){setError(e.message);}};
  useEffect(()=>{if(!enabled)return;void load();const timer=setInterval(()=>{if(document.visibilityState==='visible')void load();},60000);return()=>clearInterval(timer);},[enabled,kind,page]);
- const act=async(fn:()=>Promise<any>,text='')=>{setBusy(true);setError('');try{await fn();setMessage(text);await load();}catch(e:any){setError(e.message); notify.error(e.message);}finally{setBusy(false);}};
+ const act=async(fn:()=>Promise<any>,text='')=>{setBusy(true);setError('');try{await fn();setMessage(text);await load();}catch(e:any){setError(e.message);}finally{setBusy(false);}};
  return <section><header className="account-page-heading"><div><span className="account-eyebrow">{t("m_df252c1e9a")}</span><h1>{t("m_b41f4fa6f5")}</h1><p>{t("m_64b009266a")}</p></div><button className="engagement-button" disabled={busy||!data?.unread} onClick={()=>void act(()=>api('/engagement/notifications/read',{method:'PUT',body:'{}'}))}><CheckCheck size={16}/>{t("m_231cbc4337")}</button></header>
  {error&&<p role="alert" className="engagement-alert">{t(error || '')}<button className="engagement-button" onClick={()=>void load()}>{t("m_ae7a12729c")}</button></p>}{message&&<p role="status">{t(message || '')}</p>}
  {!enabled?<p>{t("m_18a9370e44")}</p>:<>

@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n';
 import {distinctArticleSummary} from '../lib/articleSummary';
-import {useEffect,useMemo,useState,type CSSProperties,type ReactNode} from 'react';
+import {useEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from 'react';
 import {isArticleOld,stripLegacyAgeNotice} from '../lib/articleAge';
 
 import {Link} from './LocaleLink';
@@ -17,8 +17,10 @@ import {SiteBack} from './SiteBack';
 import {coverFrame,normalizeCoverCrop} from '../lib/coverCrop';
 import '../../styles/article-detail.css';
 import {ArticleAiSummary} from './ArticleAiSummary';
+import {ImageLightbox} from './ImageLightbox';
 export function ArticlePresentation({ post, preview = false, views = null,progress,languages }: { post: any; preview?: boolean; views?: number | null;progress?:ReactNode;languages?:ReactNode }) {
   const { t , formatDate} = useI18n();
+  const articleRef = useRef<HTMLElement>(null);
   const content=stripLegacyAgeNotice(post?.content);
   const summary=distinctArticleSummary(stripLegacyAgeNotice(post?.summary),content);
   const [now,setNow]=useState(()=>new Date());
@@ -36,7 +38,8 @@ export function ArticlePresentation({ post, preview = false, views = null,progre
   const framing=normalizeCoverCrop(post.cover_crop);
   let tags: string[] = [];
   try { tags = Array.isArray(post.tags) ? post.tags : JSON.parse(post.tags || '[]'); } catch {}
-  return <article className={`article-presentation ${cover?'article-has-cover':'article-no-cover'} ${preview?'detail-preview':''}`} data-reading-content={preview?undefined:true}>
+  return <article ref={articleRef} className={`article-presentation ${cover?'article-has-cover':'article-no-cover'} ${preview?'detail-preview':''}`} data-reading-content={preview?undefined:true}>
+    {!preview && <ImageLightbox rootRef={articleRef}/>}
     {progress}
     <header className={cover?'hero-band':'hero-heading'} style={cover?bandStyle:undefined}><div className="hero-inner">
       <div className="detail-intro"><nav className="detail-breadcrumb" aria-label={t("m_6c3f7b6a12")} data-reading-ignore>{preview ? <Link className={cover?'hero-pill':'hero-pill--light'} to="/articles">{t("m_9bb68df2c1")}</Link> : <SiteBack className={cover?'hero-pill':'hero-pill--light'}/>}</nav><div className="detail-label"><Link className={cover?'hero-pill':'hero-pill--light'} to={post.category ? `/category/${encodeURIComponent(post.category)}` : '/articles'}>{post.category_display_name || post.category||t("m_7d5a89f6b1")}</Link></div></div>

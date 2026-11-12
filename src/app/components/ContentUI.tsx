@@ -260,7 +260,7 @@ export function SubscribeForm() {
       setMessage(result.message || t("m_700148ee4c"));
       setSubmitted(true);
     } catch (e: any) {
-      setMessage(e.message); notify.error(e.message);
+      setMessage(e.message);
     } finally {
       setBusy(false);
     }

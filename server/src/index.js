@@ -191,6 +191,7 @@ app.use('/api/admin/operations', require('./routes/operations'));
 app.use('/api/engagement', require('./routes/engagement'));
 app.use('/api/bookmark-folders', require('./routes/bookmarkFolders'));
 app.use('/api/bookmarks', require('./routes/bookmarks'));
+app.use('/api/article-likes', require('./routes/articleLikes'));
 app.use('/api/admin', adminRoutes);
 app.use('/api', contentPlatform.router);
 app.use('/api/admin', contentPlatform.admin);

@@ -74,7 +74,7 @@ export default function AdminCommentsPage() {
       notify.success(res.message || t("m_38de25e522"));
       list.reload();
     } catch (err: any) {
-      setMessage(err.message || t("m_0c3b4cf7aa")); notify.error(err.message || t("m_0c3b4cf7aa"));
+      setMessage(err.message || t("m_0c3b4cf7aa"));
     } finally { setBusyId(null); }
   };
 

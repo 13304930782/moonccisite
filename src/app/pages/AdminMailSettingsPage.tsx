@@ -62,7 +62,7 @@ export default function AdminMailSettingsPage() {
         setSaved(JSON.stringify({...defaultMail,...res.mail}));
       }
     } catch (err: any) {
-      setMessage(err.message || t("m_6309a3bb5b")); notify.error(err.message || t("m_6309a3bb5b"));
+      setMessage(err.message || t("m_6309a3bb5b"));
     } finally {
       setSaving(false);
     }
@@ -80,7 +80,7 @@ export default function AdminMailSettingsPage() {
 
       notify.success(res.message || t("m_cfb7989b7a"));
     } catch (err: any) {
-      setMessage(err.message || t("m_b37d713dcc")); notify.error(err.message || t("m_b37d713dcc"));
+      setMessage(err.message || t("m_b37d713dcc"));
     } finally {
       setTesting(false);
     }

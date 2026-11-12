@@ -1,0 +1,31 @@
+.account-content .account-settings-page { max-width: 880px; }
+.account-settings-page .account-page-heading { margin-bottom: 30px; }
+.account-settings-page .account-page-heading h1 { font-size: clamp(26px, 2.6vw, 32px); }
+.account-settings-page .account-page-heading p { max-width: 60ch; font-size: 15px; }
+.account-settings-stack { display: grid; gap: 16px; }
+.account-content .account-settings-page .account-section { display: block; margin: 0; padding: 28px 30px; border-radius: 16px; }
+.account-settings-page .account-section > :first-child { margin-bottom: 22px; }
+.account-settings-page .account-section h2 { margin: 0; font-size: 18px; font-weight: 650; }
+.account-settings-page .account-section > :first-child p { max-width: 68ch; margin: 7px 0 0; font-size: 14px; }
+.account-settings-page .account-section > form, .account-settings-page .account-section > div:nth-child(2) { max-width: 640px; min-width: 0; }
+.account-settings-page .account-fields { gap: 18px; }
+.account-settings-page .account-fields label { font-size: 14px; font-weight: 550; }
+.account-settings-page .account-fields :is(input:not([type=file]), .theme-select-trigger) { min-height: 44px; border-radius: 10px; }
+.account-settings-page .account-avatar-row { align-items: center; gap: 18px; flex-wrap: wrap; }
+.account-settings-page .account-avatar { width: 72px; height: 72px; border-radius: 12px; }
+.account-settings-page .account-upload small { display: block; margin-top: 8px; font-size: 13px; }
+.account-settings-page .account-fields button { min-height: 44px; }
+.account-settings-page .account-provider { gap: 16px; }
+.account-settings-page .account-provider:first-of-type { padding-top: 0; }
+.account-settings-page .account-provider:last-child { border-bottom: 0; padding-bottom: 0; }
+.account-settings-page .account-provider-actions { flex-wrap: wrap; align-items: center; }
+.account-settings-page .account-provider-actions button { min-height: 44px; }
+.account-settings-page .account-message { padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--muted); }
+@media (max-width: 760px) {
+ .account-settings-page .account-page-heading { margin-bottom: 24px; }
+ .account-content .account-settings-page .account-section { padding: 22px 20px; }
+ .account-settings-page .account-section > :first-child { margin-bottom: 18px; }
+ .account-settings-page .account-fields { gap: 16px; }
+ .account-settings-page .account-avatar { width: 64px; height: 64px; }
+ .account-settings-page .account-provider { align-items: flex-start; }
+}

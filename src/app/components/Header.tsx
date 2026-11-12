@@ -1,4 +1,7 @@
 import {splitLocalePath} from '../lib/locale';
+import {useNavigationMotion} from '../lib/floatingPreference';
+import {useLocale} from '../context/LocaleContext';
+import {reducedMotion} from '../lib/motionPreference';
 import { LanguageSwitch } from './LanguageSwitch';
 import { useI18n } from '../i18n';
 import { responsiveImage } from '../lib/responsiveImage';
@@ -17,6 +20,8 @@ import {focusableWithin,loopFocus} from '../lib/focusLoop';
 import '../../styles/navigation.css';
 export function Header() {
   const { t } = useI18n();
+  const navigationMotion=useNavigationMotion(),{uiLocale}=useLocale();
+  const [hidden,setHidden]=useState(false);
   const header = useRef<HTMLElement>(null);
   const menuButton=useRef<HTMLButtonElement>(null),menuPanel=useRef<HTMLDivElement>(null);
   const closeAccount = () => header.current?.querySelectorAll('details[open]').forEach(item => item.removeAttribute('open'));
@@ -54,10 +59,11 @@ export function Header() {
     return()=>{cancelAnimationFrame(frame);window.removeEventListener('keydown',keys);document.body.classList.remove('menu-open');};
   },[menu]);
   useEffect(()=>{
-    const update=()=>setScrolled(window.scrollY>8);
+    let previous=window.scrollY;
+    const update=()=>{const y=window.scrollY;setScrolled(y>8);if((navigationMotion&1)&&!reducedMotion()&&!menu&&!search&&Math.abs(y-previous)>3){setHidden(y>120&&y>previous);previous=y;}else if(!(navigationMotion&1)||reducedMotion()||menu||search)setHidden(false);};
     update();window.addEventListener('scroll',update,{passive:true});
     return()=>window.removeEventListener('scroll',update);
-  },[]);
+  },[navigationMotion,menu,search]);
   const navigate = useNavigate(),
     routerLocation = useLocation();
   const location={...routerLocation,pathname:splitLocalePath(routerLocation.pathname).pathname};
@@ -112,7 +118,7 @@ export function Header() {
               <Link to="/login">{t("m_e5533fd283")}</Link>
             ));
   return (
-    <header className={`site-header${scrolled?' is-scrolled':''}`} ref={header}>
+    <header className={`site-header${scrolled?' is-scrolled':''}${hidden?' nav-auto-hidden':''}`} ref={header}>
       <div className="site-container header-inner">
         <Link className="site-brand" to="/">
           {location.pathname === '/' && <FestivalSlot name="logo" />}
@@ -124,7 +130,7 @@ export function Header() {
         <nav className="desktop-nav" aria-label={t("m_9bae680405")}>
           {links.map(([to, label]) => (
             <Link key={to} to={to} className={location.pathname===to||location.pathname.startsWith(to+'/')?'active':''} aria-current={location.pathname===to||location.pathname.startsWith(to+'/')?'page':undefined} onPointerEnter={() => preloadPage(to)} onFocus={() => preloadPage(to)} onTouchStart={() => preloadPage(to)}>
-              {label}
+              {(navigationMotion&2)&&uiLocale==='zh-CN'&&to!=='https://cuegroveapp.com'?<span className="nav-roll" aria-label={label}><span className="nav-roll-line" aria-hidden="true">{Array.from(label).map((letter,i)=><span key={i} style={{transitionDelay:`${i*35}ms`}}>{letter}</span>)}</span><span className="nav-roll-line nav-roll-alt" aria-hidden="true">{Array.from(({ '/articles':'Articles','/updates':'Updates','/projects':'Projects','/electricity':'Electricity'} as Record<string,string>)[to]||label).map((letter,i)=><span key={i} style={{transitionDelay:`${i*35}ms`}}>{letter===' '?'\u00a0':letter}</span>)}</span></span>:label}
             </Link>
           ))}
         </nav>

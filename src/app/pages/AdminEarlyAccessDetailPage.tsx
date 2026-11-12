@@ -1,5 +1,4 @@
 import { useI18n } from '../i18n';
-import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -59,7 +58,7 @@ export default function AdminEarlyAccessDetailPage() {
         load();
       }
     } catch (error: any) {
-      setMessage(error.message || t("m_b3b75bd055")); notify.error(error.message || t("m_b3b75bd055"));
+      setMessage(error.message || t("m_b3b75bd055"));
     } finally {
       setWorking(false);
     }

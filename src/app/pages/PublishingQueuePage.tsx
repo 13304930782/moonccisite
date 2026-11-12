@@ -1,5 +1,4 @@
 import { useI18n } from '../i18n';
-import { notify } from '../lib/feedback';
 import {useContentListQuery} from '../lib/useContentListQuery';
 import {useEffect,useRef,useState} from 'react';
 import {Inbox,FileText,ArrowRight,CalendarClock} from 'lucide-react';
@@ -23,7 +22,7 @@ export default function PublishingQueuePage({plans=false}:{plans?:boolean}){
  const queryKey=state+':'+page,currentQuery=useRef(queryKey);currentQuery.current=queryKey;
  const load=async()=>{if(currentQuery.current!==queryKey)return;const version=++requestVersion.current;setLoading(true);setError('');try{const result=await api('/publishing/queue?state='+state+'&page='+page);if(version===requestVersion.current&&currentQuery.current===queryKey)setData(result);}catch(e:any){if(version===requestVersion.current&&currentQuery.current===queryKey)setError(e.message);}finally{if(version===requestVersion.current&&currentQuery.current===queryKey)setLoading(false);}};
  useEffect(()=>{setReviewOpen(false);setData(null);void load();return()=>{requestVersion.current++;};},[state,page]);
- async function action(kind:string){if(!reviewOpen||busy||!selected)return;setBusy(true);setError('');try{await api('/publishing/'+selected.draft_id+'/'+kind,{method:'POST',body:JSON.stringify({version:selected.draft_version,reason,scheduled_at:date?new Date(date+':00+08:00').toISOString():undefined})});setReason('');setMessage(({approve:t("m_1602e30295"),reject:t("m_978907703c"),publish:t("m_c0d1427d63"),schedule:t("m_0e3430221d"),cancel:t("m_a9212cc86d")} as Record<string,string>)[kind]||t("m_db8102ba6e"));if(kind==='approve'){setSelected({...selected,state:'approved'});}else{setReviewOpen(false);}await load();}catch(e:any){setError(e.message); notify.error(e.message);}finally{setBusy(false);}}
+ async function action(kind:string){if(!reviewOpen||busy||!selected)return;setBusy(true);setError('');try{await api('/publishing/'+selected.draft_id+'/'+kind,{method:'POST',body:JSON.stringify({version:selected.draft_version,reason,scheduled_at:date?new Date(date+':00+08:00').toISOString():undefined})});setReason('');setMessage(({approve:t("m_1602e30295"),reject:t("m_978907703c"),publish:t("m_c0d1427d63"),schedule:t("m_0e3430221d"),cancel:t("m_a9212cc86d")} as Record<string,string>)[kind]||t("m_db8102ba6e"));if(kind==='approve'){setSelected({...selected,state:'approved'});}else{setReviewOpen(false);}await load();}catch(e:any){setError(e.message);}finally{setBusy(false);}}
  const snapshot=selected?(typeof selected.snapshot==='string'?JSON.parse(selected.snapshot):selected.snapshot)||{}:{};
  return <section className="publishing-page queue-page"><header className="workspace-heading"><div><span className="workspace-eyebrow">{t("m_58ffbe8d7b")}</span><h1>{plans?t("m_7f43c0e706"):t("m_fd95a33a4e")}</h1><p>{plans?t("m_9e8a2ed18b"):t("m_14db159265")}</p></div></header>
  {message&&!reviewOpen&&<p className="workspace-alert" role="status">{t(message || '')}</p>}

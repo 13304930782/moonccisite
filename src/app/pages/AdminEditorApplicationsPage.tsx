@@ -78,7 +78,7 @@ export default function AdminEditorApplicationsPage() {
       setDecision(null);
       await loadApplications();
     } catch (err: any) {
-      setMessage(err.message || t("m_0c3b4cf7aa")); notify.error(err.message || t("m_0c3b4cf7aa"));
+      setMessage(err.message || t("m_0c3b4cf7aa"));
     } finally {
       setReviewing(null);
     }

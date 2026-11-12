@@ -34,7 +34,7 @@ function RoomElectricityRssSubscription({roomId}: {roomId: string}) {
       setData(response.data); setShown(false);
       if (action !== 'read') notify.success(action === 'reset' ? t("m_d2cd2e209c") : t("m_3611a663a5"));
     } catch {
-      if (alive.current) {setError(t("m_98c8cbc004")); notify.error(t("m_98c8cbc004"));}
+      if (alive.current) {setError(t("m_98c8cbc004"));}
     } finally {inFlight.current = false; if (alive.current) setBusy(false);}
   }
   async function copy() {

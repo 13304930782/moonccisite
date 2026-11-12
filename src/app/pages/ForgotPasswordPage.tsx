@@ -1,5 +1,6 @@
 import { useI18n } from '../i18n';
 import { FormInput } from '../components/FormInput';
+import { ActionProgress, waitActionSuccess } from '../components/ActionProgress';
 import { FormEvent, useEffect, useState } from 'react';
 import {authLink, loginDestination} from '../lib/loginDestination';
 import { useSearchParams } from 'react-router-dom';
@@ -18,6 +19,7 @@ export default function ForgotPasswordPage() {
   const [sentTo, setSentTo] = useState('');
   const [serverMessage, setServerMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
@@ -28,6 +30,7 @@ export default function ForgotPasswordPage() {
 
   const request = async (address: string) => {
     setLoading(true);
+    setCompleted(false);
     setError('');
 
     try {
@@ -36,6 +39,9 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email: address, return_to: destination }),
       });
 
+      setCompleted(true);
+      await waitActionSuccess();
+
       setServerMessage(res.message || t("m_5b07d704ed"));
       setSentTo(address);
       setCooldown(RESEND_SECONDS);
@@ -43,6 +49,7 @@ export default function ForgotPasswordPage() {
       setError(err.message || t("m_c57c7ed1ca"));
     } finally {
       setLoading(false);
+      setCompleted(false);
     }
   };
 
@@ -72,7 +79,7 @@ export default function ForgotPasswordPage() {
             <p>{t("m_2307df26f1")} <strong>{sentTo}</strong>{t("m_9f62a83d19")}</p>
             <div className="inline-actions">
               <button type="button" className="auth-secondary" disabled={loading || cooldown > 0} onClick={() => void request(sentTo)}>
-                {loading ? t("m_364970d816") : cooldown > 0 ? t("m_9b693f7b43", {v0: cooldown}) : t("m_9287ac799e")}
+                {loading && <ActionProgress success={completed} />}{completed ? t("m_60823aaec7") : loading ? t("m_364970d816") : cooldown > 0 ? t("m_9b693f7b43", {v0: cooldown}) : t("m_9287ac799e")}
               </button>
               <button type="button" className="auth-secondary" onClick={() => { setSentTo(''); setError(''); }}>{t("m_5eb350efbf")}</button>
             </div>
@@ -100,7 +107,7 @@ export default function ForgotPasswordPage() {
               disabled={loading}
               className="auth-submit disabled:opacity-60"
             >
-              {loading ? t("m_9d2ee1e4d8") : t("m_5bc3a26905")}
+              {loading && <ActionProgress success={completed} />}{completed ? t("m_60823aaec7") : loading ? t("m_9d2ee1e4d8") : t("m_5bc3a26905")}
             </button>
           </form>
         )}

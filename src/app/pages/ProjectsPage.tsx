@@ -17,6 +17,7 @@ import { MarkdownContent, headingsFor } from "../components/MarkdownContent";
 import { safeImageSrc, safeHref } from "../lib/safeUrl";
 import { projectIcon } from "../lib/projectBrand";
 import { dimensionsFor } from "../lib/imageDimensions";
+import { ImageLightbox } from '../components/ImageLightbox';
 import "../../styles/project-detail.css";
 export default function ProjectsPage() {
   const { t } = useI18n();
@@ -110,6 +111,7 @@ export function ProjectDetailPage() {
       <ResourceState resource={resource}>
         {p && (
           <article className="project-reading" ref={articleRef} data-reading-content>
+            <ImageLightbox rootRef={articleRef}/>
             <header className="project-detail-heading">
               <div className="project-detail-back-row" data-reading-ignore>
                 <SiteBack className="project-detail-pill" />
