@@ -45,3 +45,32 @@ test('sensitive routes bound requests even when mounted without the main applica
   for (let i = 0; i < 198; i++) assert.equal((await request('/posts', 'POST')).status, 400);
   assert.equal((await request('/posts/1', 'PUT')).status, 429);
 });
+
+test('publishing bounds invalid service-token lookups before authentication', async t => {
+  const crypto = require('node:crypto'), auth = require('../src/middleware/auth');
+  t.mock.method(auth, 'authRequired', (_req, _res, next) => next());
+  t.mock.method(auth, 'adminOnly', (_req, _res, next) => next());
+  const db = require('../src/db'), workflow = require('../src/services/articleWorkflow');
+  t.mock.method(workflow, 'enabled', () => true);
+  const valid = 'mst_' + 'A'.repeat(43), invalid = 'mst_' + 'B'.repeat(43);
+  const hash = crypto.createHash('sha256').update(valid).digest('hex');
+  let lookups = 0;
+  t.mock.method(db, 'query', async (sql, params) => {
+    if (sql.startsWith('SELECT id,name,token_hash')) { lookups++; return [params[0] === hash ? [{ id: 1, name: 'test', token_hash: hash, scopes: ['publishing:read'], revoked_at: null }] : []]; }
+    if (sql.startsWith('UPDATE service_tokens')) return [{ affectedRows: 1 }];
+    if (sql.startsWith('SELECT COUNT(')) return [[{ total: 0 }]];
+    return [[]];
+  });
+  delete require.cache[require.resolve('../src/routes/publishing')];
+  const app = express(); app.use('/publishing', require('../src/routes/publishing'));
+  const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}/publishing`;
+  const tokenRequest = token => fetch(`${base}/queue`, { headers: { 'x-service-token': token } });
+  assert.equal((await tokenRequest(valid)).status, 200, 'valid service scope retains access');
+  for (let i = 0; i < 119; i++) assert.equal((await tokenRequest(invalid)).status, 401);
+  assert.equal(lookups, 120);
+  assert.equal((await tokenRequest(invalid)).status, 429);
+  assert.equal(lookups, 120, 'blocked token never reaches the database');
+  assert.equal((await fetch(`${base}/config`)).status, 200, 'ordinary requests do not use the token budget');
+});
