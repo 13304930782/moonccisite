@@ -59,6 +59,8 @@ try{for(const[name,engine]of engines.filter(([name])=>!process.env.QA_BROWSER||n
  await page.goto(origin+'/article/shared-post');
  await page.waitForFunction(()=>document.querySelector('.neo-page')?.getAttribute('lang')==='en');
  const languageButton=page.locator('.language-trigger:visible').first();
+ await languageButton.waitFor({state:'visible'});assert.equal((await languageButton.innerText()).trim(),'English');
+ assert.equal(await languageButton.getAttribute('aria-label'),'Interface language');
  await languageButton.focus();await languageButton.press('ArrowDown');
  await page.getByRole('menuitemradio',{name:'English',exact:true}).waitFor({state:'visible'});
  await page.waitForFunction(()=>document.activeElement?.getAttribute('role')==='menuitemradio');
