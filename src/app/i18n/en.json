@@ -3349,6 +3349,7 @@
   "Early Access 下载地址必须是有效的 HTTPS URL。": "The Early Access download URL must be a valid HTTPS URL.",
   "登录请求过于频繁，请稍后重试。": "Too many sign-in requests. Try again later.",
   "请求过于频繁，请稍后重试。": "Too many requests. Try again later.",
+  "回答过于频繁，请稍后重试。": "Too many answers. Please try again later.",
   "保存过于频繁，请稍后重试。": "You are saving too frequently. Try again later.",
   "注册授权已过期，请重新选择第三方登录。": "Registration authorization expired. Choose a third-party sign-in option again.",
   "该邮箱请求过于频繁，请稍后重试。": "Too many requests for this email address. Try again later.",

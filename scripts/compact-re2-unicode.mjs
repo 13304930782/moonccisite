@@ -1,7 +1,16 @@
 // Losslessly pack the RE2JS Unicode tables at build time. The editor's regex
 // implementation and the tables themselves remain unchanged.
 const alphabet = Array.from({ length: 94 }, (_, i) => String.fromCharCode(i + 33))
-  .filter(c => !['"', "'", '\\', '`', '|'].includes(c)).slice(0, 85).join('');
+  .filter(c => !['"', "'", '\\', '`', '|', '<', '>'].includes(c)).slice(0, 85).join('');
+
+// Only these ASCII characters may occur inside generated string literals. In
+// particular, quotes, backslashes, line breaks and HTML delimiters are absent.
+const unsafeLiteralCharacters = /[^!#$%&()*+,\-./0-9:;=?@A-Z\[\]^_a-z{}~]/g;
+function safeLiteral(value) {
+  const safe = value.replace(unsafeLiteralCharacters, '');
+  if (safe !== value) throw new Error('Unsafe RE2 Unicode literal');
+  return safe;
+}
 
 export function compactRe2Unicode(code) {
   const pattern = /decode(?:Ranges|Orbit)\("([^"\\]+)"/g;
@@ -46,7 +55,7 @@ export function compactRe2Unicode(code) {
   }
   let index = 0;
   const result = code.replace(pattern, match => match.slice(0, match.indexOf('"')) + `__mooncciUnicodeTables[${index++}]`);
-  const decoder = `const __mooncciUnicodeTables=(()=>{const a=${JSON.stringify(alphabet)},s=${JSON.stringify(encoded)},b=[];for(let i=0;i<s.length;i+=5){let n=0;for(let j=0;j<5;j++)n=n*85+a.indexOf(s[i+j]);b.push(n>>>24,n>>>16&255,n>>>8&255,n&255)}b.length=${bytes.length};let p=0,o=[];while(p<b.length){const f=b[p++];for(let i=0;i<8&&p<b.length;i++){if(f&1<<i){const d=b[p++]*256+b[p++],n=b[p++];for(let j=0;j<n;j++)o.push(o[o.length-d])}else o.push(String.fromCharCode(b[p++]))}}return o.join('').split('|')})();\n`;
+  const decoder = `const __mooncciUnicodeTables=(()=>{const a="${safeLiteral(alphabet)}",s="${safeLiteral(encoded)}",b=[];for(let i=0;i<s.length;i+=5){let n=0;for(let j=0;j<5;j++)n=n*85+a.indexOf(s[i+j]);b.push(n>>>24,n>>>16&255,n>>>8&255,n&255)}b.length=${bytes.length};let p=0,o=[];while(p<b.length){const f=b[p++];for(let i=0;i<8&&p<b.length;i++){if(f&1<<i){const d=b[p++]*256+b[p++],n=b[p++];for(let j=0;j<n;j++)o.push(o[o.length-d])}else o.push(String.fromCharCode(b[p++]))}}return o.join('').split('|')})();\n`;
   return decoder + result;
 }
 

@@ -19,3 +19,16 @@ test('RE2 Unicode compression reconstructs all tables exactly', async () => {
   const decoded = vm.runInNewContext(`${packed};__mooncciUnicodeTables`);
   assert.equal(JSON.stringify(decoded), JSON.stringify(original));
 });
+
+test('RE2 table data cannot escape generated JavaScript string literals', async () => {
+  const { compactRe2Unicode } = await import('../scripts/compact-re2-unicode.mjs');
+  const payload = '</script><script>globalThis.injected=1</script>\n';
+  const source = Array.from({ length: 201 }, () => `decodeRanges("${payload}")`).join('\n');
+  const packed = compactRe2Unicode(source).split('\n', 1)[0];
+  const context = vm.createContext({});
+  const decoded = vm.runInContext(`${packed};__mooncciUnicodeTables`, context);
+  assert.equal(decoded.length, 201);
+  assert.equal(decoded[0], payload);
+  assert.equal(context.injected, undefined);
+  assert.doesNotMatch(packed, /<\/script>/i);
+});

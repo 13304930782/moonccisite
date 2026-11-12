@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const rateLimit = require('express-rate-limit');
 const asyncRouter = require('../lib/asyncRouter');
 const { authRequired, adminOnly, getUserFromRequest } = require('../middleware/auth');
 const { authCookieOptions } = require('../lib/authSession');
@@ -8,6 +9,8 @@ const fail = (status, message) => Object.assign(new Error(message), { status });
 
 function createDailyRouters({ db = require('../db'), getUser = getUserFromRequest, now = Date.now, secret = () => process.env.JWT_SECRET, notify = notifyOpenAnswer } = {}) {
   const router = asyncRouter(), admin = asyncRouter();
+  const readLimit = rateLimit({ windowMs: 60000, limit: 120, standardHeaders: true, legacyHeaders: false, message: { message: '请求过于频繁，请稍后重试。' } });
+  const answerLimit = rateLimit({ windowMs: 60000, limit: 20, standardHeaders: true, legacyHeaders: false, message: { message: '回答过于频繁，请稍后重试。' } });
   const noCache = (_req, res, next) => { res.set('Cache-Control', 'private, no-store'); res.vary('Cookie'); res.vary('Authorization'); next(); };
   router.use(noCache); admin.use(authRequired, adminOnly, noCache);
   const byDate = async (query, date, lock = false) => {
@@ -55,7 +58,7 @@ function createDailyRouters({ db = require('../db'), getUser = getUserFromReques
     const [[count]] = await query.query('SELECT COUNT(*) AS total FROM daily_answers WHERE question_id=?', [row.id]);
     return adminShape({ ...row, answer_count: count.total });
   }
-  router.get('/', async (req, res) => {
+  router.get('/', readLimit, async (req, res) => {
     const time = rules.shanghaiTime(now());
     if (time.hour < 10 || time.hour >= 23) return res.json({ active: false });
     const question = await byDate(db, time.date);
@@ -64,7 +67,7 @@ function createDailyRouters({ db = require('../db'), getUser = getUserFromReques
     const [rows] = await db.query('SELECT id FROM daily_answers WHERE question_id=? AND dedupe_key=? LIMIT 1', [question.id, key]);
     res.json({ active: true, ...rules.publicQuestion(question), answered: rows.length > 0 });
   });
-  router.post('/answers', async (req, res) => {
+  router.post('/answers', answerLimit, async (req, res) => {
     const time = rules.shanghaiTime(now());
     if (time.hour < 9 || time.hour >= 23) throw fail(403, '当前不在回答时间内。');
     const key = await identity(req, res, time);
@@ -89,7 +92,7 @@ function createDailyRouters({ db = require('../db'), getUser = getUserFromReques
     if (result.open) void notify().catch(() => console.error('[daily-question] 审核邮件发送失败。'));
     res.json({ accepted: true, preview: result.result });
   });
-  router.get('/preview', async (req, res) => {
+  router.get('/preview', readLimit, async (req, res) => {
     const time = rules.shanghaiTime(now()), question = await byDate(db, time.date);
     if (!question || !['published', 'closed'].includes(question.status)) throw fail(404, '今天没有可查看的回答。');
     const key = await identity(req, res, time);
@@ -97,7 +100,7 @@ function createDailyRouters({ db = require('../db'), getUser = getUserFromReques
     if (!rows.length) throw fail(403, '回答后才能查看汇总。');
     res.json({ preview: await publicPreview(db, question) });
   });
-  router.get('/summary', async (_req, res) => {
+  router.get('/summary', readLimit, async (_req, res) => {
     const question = await byDate(db, rules.previousDate(rules.shanghaiTime(now()).date));
     res.json({ summary: question?.summary_status === 'approved' && ['published', 'closed'].includes(question.status) ? question.summary : null });
   });
