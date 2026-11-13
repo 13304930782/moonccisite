@@ -19,6 +19,7 @@ import {
 } from '../components/ContentUI';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { ProjectCard } from '../components/ProjectCard';
+import { initialSiteSettings } from '../config/initialSiteSettings';
 import '../../styles/home-v2.css';
 
 function HeroLink({ to, label, primary = false }: { to: string; label: string; primary?: boolean }) {
@@ -50,7 +51,7 @@ function LatestNote({ latest }: { latest: ReturnType<typeof useResource> }) {
   </ResourceState>;
 }
 export default function HomePage() {
-  const { t , formatDate} = useI18n();
+  const { t , formatDate, locale} = useI18n();
   const settings = useSiteSettings(),
     now = useResource('/now'),
     activity = useResource('/activity?pageSize=6'),
@@ -58,6 +59,7 @@ export default function HomePage() {
     posts = useResource('/posts?pageSize=4'),
     projects = useResource('/projects?featured=true');
   const hero = settings.data?.hero || {};
+  const heroText = (value: string | undefined, fallback: string) => locale === 'en' && settings.data?.content_locale !== 'en' && value === fallback ? t(fallback) : value;
   const fallbackNoteId = now.data && !now.data.content?.trim() ? latest.data?.items?.[0]?.activity_id : null;
   const visibleActivity = (activity.data?.items || []).filter((item: any) => item.activity_id !== fallbackNoteId);
   return (
@@ -70,25 +72,25 @@ export default function HomePage() {
             <FestivalSlot name="home" />
             <ResourceState resource={settings}>
               <p className="eyebrow">
-                {hero.eyebrow ?? t("m_5cd0f9f9f6")}
+                {heroText(hero.eyebrow, initialSiteSettings.hero.eyebrow) ?? t("m_5cd0f9f9f6")}
               </p>
               <h1>
                 {hero.title ||
                   `${hero.title_before || ''}${hero.title_highlight || ''}${hero.title_after || ''}` || 'Explore the Programming'}
               </h1>
-              <p className="hero-description">{hero.subtitle}</p>
+              <p className="hero-description">{heroText(hero.subtitle, initialSiteSettings.hero.subtitle)}</p>
               <div className="home-hero-actions">
                 {hero.primary_text && (
                   <HeroLink
                     to={hero.primary_link || '/articles'}
-                    label={hero.primary_text}
+                    label={heroText(hero.primary_text, initialSiteSettings.hero.primary_text) || hero.primary_text}
                     primary
                   />
                 )}{' '}
                 {hero.secondary_text && (
                   <HeroLink
                     to={hero.secondary_link || '/categories'}
-                    label={hero.secondary_text}
+                    label={heroText(hero.secondary_text, initialSiteSettings.hero.secondary_text) || hero.secondary_text}
                   />
                 )}
               </div>

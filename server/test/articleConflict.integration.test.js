@@ -11,6 +11,8 @@ test('conflict resolution checks both observed versions and preserves replaced c
  const current={title:'Current browser content',content:'Browser text',slug:'conflict-post',tags:[]};
  let d=await ok('/article-drafts','POST',{id:crypto.randomUUID(),payload:current});d=await ok('/article-drafts/'+d.id+'/publish','POST',{version:d.version});
  await db.query('UPDATE posts SET content="New public text",version=version+1 WHERE id=?',[d.post_id]);
+ const [[publicVersion]]=await db.query('SELECT * FROM posts WHERE id=?',[d.post_id]);
+ await require('../src/lib/articleRevisions').record(db,{id:d.id,post_id:d.post_id},publicVersion,'publish',users.owner,publicVersion.version);
  let comparison=await ok('/article-drafts/'+d.id+'/conflict');assert.equal(comparison.post.payload.content,'New public text');assert.equal(comparison.draft.payload.content,'Browser text');
  assert.equal((await request('/article-drafts/'+d.id+'/conflict','GET',null,'user')).status,404);
  assert.equal((await request('/article-drafts/'+d.id+'/conflict','GET',null,null)).status,401);
@@ -20,7 +22,7 @@ test('conflict resolution checks both observed versions and preserves replaced c
  assert.equal((await request(route,'POST',{...choice,draft_version:undefined})).status,409);
  d=await ok(route,'POST',choice);let [[post]]=await db.query('SELECT * FROM posts WHERE id=?',[d.post_id]);assert.equal(post.content,'Chosen local text');assert.equal(d.base_version,post.version);
  assert.equal((await request(route,'POST',choice)).status,409);
- let [history]=await db.query('SELECT payload FROM article_revisions WHERE post_id=?',[d.post_id]);assert.ok(history.some(r=>JSON.parse(typeof r.payload==='string'?r.payload:JSON.stringify(r.payload)).content==='New public text'));
+ let [history]=await db.query('SELECT kind,published_version,payload FROM article_revisions WHERE post_id=?',[d.post_id]);assert.ok(history.some(r=>r.kind==='restore'&&r.published_version===null&&JSON.parse(typeof r.payload==='string'?r.payload:JSON.stringify(r.payload)).content==='New public text'));assert.equal(history.filter(r=>r.published_version===publicVersion.version).length,1);
  comparison=await ok('/article-drafts/'+d.id+'/conflict');const adopt={choice:'adopt-post',payload:{...current,content:'Unsaved browser text'},draft_version:comparison.draft.version,post_version:comparison.post.version};
  await db.query('UPDATE article_drafts SET version=version+1 WHERE id=?',[d.id]);assert.equal((await request(route,'POST',adopt)).status,409);
  comparison=await ok('/article-drafts/'+d.id+'/conflict');d=await ok(route,'POST',{...adopt,draft_version:comparison.draft.version});assert.equal(d.payload.content,'Chosen local text');

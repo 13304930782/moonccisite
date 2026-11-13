@@ -41,7 +41,7 @@ async function resolve(c,d,user,input) {
   await c.query('UPDATE article_drafts SET payload=?,source_hash=?,base_version=?,version=version+1,dirty=1,published_version=NULL WHERE id=?',[JSON.stringify(selected),sourceHash,base,d.id]);
   if (workflow.enabled()) await c.query("UPDATE article_workflows SET state='draft',reason='',scheduled_at=NULL WHERE draft_id=?",[d.id]);
   if (input.choice==='publish-current') {
-    if (post) await revisions.record(c,d,post,'restore',user.id,post.version);
+    if (post) await revisions.record(c,d,post,'restore',user.id);
     await publish(c,{...d,payload:selected,source_hash:sourceHash,version:d.version+1,base_version:base},user);
     if (workflow.enabled()) await c.query("UPDATE article_workflows SET state='published',reason='',scheduled_at=NULL WHERE draft_id=?",[d.id]);
   }
