@@ -25,7 +25,7 @@ const { chromium } = require('playwright');
           secondary_text: sample.custom ? '另一个入口' : sample.published ? 'Published categories' : '浏览分类',
           primary_link: '/articles', secondary_link: '/categories',
         } };
-        return route.fulfill({ json: url.pathname === '/api/settings/site' ? settings : { items: [], total: 0 } });
+        return route.fulfill({ json: url.pathname === '/api/settings/site' ? settings : url.pathname === '/api/posts' ? [] : { items: [], total: 0 } });
       });
       await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/${sample.locale === 'en' ? 'en' : ''}`);
       const links = page.locator('.home-hero-actions a');
