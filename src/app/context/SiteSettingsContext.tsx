@@ -17,6 +17,7 @@ type SiteSettings = {
   brand: Record<string, string>;
   hero: Record<string, string>;
   footer: Record<string, string>;
+  content_locale?: string;
 };
 type SettingsState = {
   data: SiteSettings | null;
