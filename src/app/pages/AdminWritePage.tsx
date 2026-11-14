@@ -2,7 +2,7 @@ import {SiteBack} from '../components/SiteBack';
 import { useI18n } from '../i18n';
 import { BilingualCompare } from '../components/BilingualCompare';
 import {LanguageSwitch} from '../components/LanguageSwitch';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, ChevronRight, Columns2, ImagePlus, Loader2, MoreHorizontal, Pencil, Eye, Settings2, Trash2, Upload, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -101,11 +101,17 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   const [coverAddress, setCoverAddress] = useState(false);
   const [wide, setWide] = useState(() => window.matchMedia('(min-width:1280px)').matches);
   const [phone, setPhone] = useState(() => window.matchMedia('(max-width:767px)').matches);
+  const compareActive = bilingualCompare && (!phone || uploads > 0);
+  const compareExitPending = useRef(false);
+  useEffect(() => {
+    if (!bilingualCompare) { compareExitPending.current = false; return; }
+    if (phone) compareExitPending.current = true;
+    if (compareExitPending.current && uploads === 0) setBilingualCompare(false);
+  }, [phone, bilingualCompare, uploads]);
   const [collapsed, setCollapsed] = useState(settingsCollapsed);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [keyboardToolbar, setKeyboardToolbar] = useState<{ top: number; left: number; width: number } | null>(null);
   const completion = useRef<HTMLHeadingElement>(null);
   const workspace = useRef<HTMLDivElement>(null);
   const titleInput = useRef<HTMLTextAreaElement>(null);
@@ -210,37 +216,6 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   }, [published, phone]);
   useEffect(() => { if (published) completion.current?.focus(); }, [published]);
   useEffect(() => {
-    const viewport = window.visualViewport, host = workspace.current;
-    if (!phone || !viewport || !host || preview || locked || showComparison || published) { setKeyboardToolbar(null); return; }
-    let baseline = Math.max(window.innerHeight, document.documentElement.clientHeight, Number.isFinite(viewport.height) ? viewport.height : 0), layoutWidth = window.innerWidth, frame = 0, editing = false;
-    const update = () => {
-      if (layoutWidth !== window.innerWidth) { layoutWidth = window.innerWidth; baseline = Math.max(window.innerHeight, document.documentElement.clientHeight, Number.isFinite(viewport.height) ? viewport.height : 0); }
-      const active = document.activeElement;
-      editing = active instanceof HTMLElement && host.contains(active) && (active.matches('.article-editor [contenteditable=true],textarea[data-markdown-editor]') || editing && !!active.closest('.editor-toolbar-frame,.article-source-toolbar'));
-      if (!editing && Number.isFinite(viewport.height)) baseline = Math.max(baseline, viewport.height);
-      const keyboardHeight = baseline - viewport.height - viewport.offsetTop, top = viewport.offsetTop + viewport.height - 44;
-      const editor = host.querySelector('.article-editor')?.getBoundingClientRect(), header = host.querySelector('.writing-topbar')?.getBoundingClientRect();
-      // Address-bar movement and pinch zoom are not a keyboard; retain normal sticky positioning.
-      if (!editing || ![viewport.height, viewport.width, viewport.offsetTop, viewport.offsetLeft, viewport.scale, baseline, keyboardHeight, top].every(Number.isFinite) || viewport.scale !== 1 || viewport.height <= 0 || viewport.width <= 0 || keyboardHeight < 150 || top < (header?.bottom || 56) || !editor) { setKeyboardToolbar(null); return; }
-      const left = Math.max(editor.left, viewport.offsetLeft), right = Math.min(editor.right, viewport.offsetLeft + viewport.width);
-      if (right <= left) { setKeyboardToolbar(null); return; }
-      const next = { top, left, width: right - left };
-      setKeyboardToolbar(previous => previous && previous.top === next.top && previous.left === next.left && previous.width === next.width ? previous : next);
-      const selection = window.getSelection();
-      if (active instanceof HTMLElement && active.isContentEditable && selection?.rangeCount && scroll) {
-        const caret = selection.getRangeAt(0).getBoundingClientRect();
-        if (caret.height && caret.bottom > top - 8) scroll.scrollBy({ top: caret.bottom - top + 8, behavior: 'instant' });
-      }
-    };
-    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(update); };
-    const scroll = host.closest('.admin-main') || document.scrollingElement;
-    const scrollEvents = host.closest('.admin-main') || window;
-    viewport.addEventListener('resize', schedule); viewport.addEventListener('scroll', schedule);
-    window.addEventListener('resize', schedule); document.addEventListener('focusin', schedule); document.addEventListener('focusout', schedule); document.addEventListener('selectionchange', schedule); scrollEvents.addEventListener('scroll', schedule, { passive: true });
-    update();
-    return () => { cancelAnimationFrame(frame); viewport.removeEventListener('resize', schedule); viewport.removeEventListener('scroll', schedule); window.removeEventListener('resize', schedule); document.removeEventListener('focusin', schedule); document.removeEventListener('focusout', schedule); document.removeEventListener('selectionchange', schedule); scrollEvents.removeEventListener('scroll', schedule); };
-  }, [phone, preview, locked, showComparison, published]);
-  useEffect(() => {
     if (!historyOpen) { historyHost?.querySelector<HTMLButtonElement>('.revision-history > button[aria-expanded="true"]')?.click(); return; }
     // Keep the existing history loader, comparison and guarded restoration flow.
     const frame = requestAnimationFrame(() => {
@@ -276,7 +251,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
     setPreview(false); setMode(lastEditMode.current);
     if (['summary', 'category', 'tags', 'slug', 'cover'].includes(field)) { if (wide) collapseSettings(false); else setSettingsOpen(true); }
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      const target = (field === 'title' && bilingualCompare && englishVersion ? document.getElementById('article-compare-title') : document.getElementById('article-' + field)) || (field === 'cover' ? document.querySelector<HTMLElement>('.writing-cover-drop,.writing-media-select') : null) || workspace.current?.querySelector<HTMLElement>('[data-markdown-editor], .article-editor [contenteditable="true"], .article-editor button');
+      const target = (field === 'title' && compareActive && englishVersion ? document.getElementById('article-compare-title') : document.getElementById('article-' + field)) || (field === 'cover' ? document.querySelector<HTMLElement>('.writing-cover-drop,.writing-media-select') : null) || workspace.current?.querySelector<HTMLElement>('[data-markdown-editor], .article-editor [contenteditable="true"], .article-editor button');
       target?.focus();
     }));
   };
@@ -311,7 +286,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   </div>;
 
   const openHistory = () => { historyOrigin.current = phone ? moreTrigger.current : historyTrigger.current; setHistoryOpen(true); };
-  const modeSwitch = !locked && !showComparison && <div className="writing-mode-switch writing-segment" role="group" aria-label={t("m_1e594397ca")}><button type="button" aria-pressed={!preview && editorMode === 'visual'} disabled={!d.ready || uploads > 0} onClick={() => { setPreview(false); setMode('visual'); }}><Pencil size={15} aria-hidden="true" />{t("m_c029ea24cb")}</button><button type="button" aria-pressed={!preview && editorMode === 'source'} disabled={!d.ready || uploads > 0 || isRichText(d.form.content)} onClick={() => { setPreview(false); setMode('source'); }}>{t("m_9380ef6f8d")}</button><button type="button" aria-pressed={preview || editorMode === 'preview'} disabled={!d.ready || uploads > 0} onClick={() => { setPreview(false); setMode('preview'); }}><Eye size={15} aria-hidden="true" />{t("m_64d4febdc0")}</button></div>;
+  const modeSwitch = !locked && !showComparison && <div className="writing-mode-switch writing-segment" role="group" aria-label={t("m_1e594397ca")}><button type="button" aria-pressed={!preview && editorMode === 'visual'} disabled={!d.ready || uploads > 0} onClick={() => { setPreview(false); setMode('visual'); }}><Pencil size={15} aria-hidden="true" />{t("m_c029ea24cb")}</button><button type="button" aria-label={t("m_9380ef6f8d")} aria-pressed={!preview && editorMode === 'source'} disabled={!d.ready || uploads > 0 || isRichText(d.form.content)} onClick={() => { setPreview(false); setMode('source'); }}>{phone ? (locale === 'en' ? 'Markdown' : t('源码')) : t("m_9380ef6f8d")}</button><button type="button" aria-label={t("m_64d4febdc0")} aria-pressed={preview || editorMode === 'preview'} disabled={!d.ready || uploads > 0} onClick={() => { setPreview(false); setMode('preview'); }}><Eye size={15} aria-hidden="true" />{phone && locale === 'en' ? 'Preview' : t("m_64d4febdc0")}</button></div>;
   const shortStatus = d.error ? t("m_831e8ae014") : d.busy ? t("m_ff509c9ba0") : d.dirty ? t("m_6a1be012c9") : d.ready ? t("m_1bd91a7d0c") : t("m_4927a53bcc");
 
   const draftActions = [
@@ -361,7 +336,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
     {framing && <CoverFramingDialog src={framing} value={d.form.cover_crop || null} onClose={() => setFraming(null)} onConfirm={value => { d.update((previous: any) => previous.cover_image === framing ? { ...previous, cover_crop: value } : previous); setFraming(null); }} />}
   </>;
 
-  return <div ref={workspace} data-keyboard-open={keyboardToolbar ? 'true' : undefined} style={keyboardToolbar ? { '--writing-keyboard-top': `${keyboardToolbar.top}px`, '--writing-keyboard-left': `${keyboardToolbar.left}px`, '--writing-keyboard-width': `${keyboardToolbar.width}px` } as CSSProperties : undefined} className={`admin-page article-workspace writing-workspace ui-v2${wide && !collapsed && !locked && !showComparison && !preview ? ' writing-with-settings' : ''}`}>
+  return <div ref={workspace} className={`admin-page article-workspace writing-workspace ui-v2${wide && !collapsed && !locked && !showComparison && !preview ? ' writing-with-settings' : ''}`}>
     <div className="writing-main">
       <header className={`writing-topbar${scrolled ? ' is-scrolled' : ''}`}>
         <div className="writing-topbar-meta"><SiteBack to={backTo} className="writing-back" label={account ? t("m_2b615e36a3") : t("m_7bd74080eb")}><ArrowLeft size={15} aria-hidden="true" /><span>{account ? t("m_2b615e36a3") : t("m_4e7cb68111")}</span></SiteBack><div className="writing-save-state" role="status" data-state={d.error ? 'error' : !d.ready ? 'loading' : d.busy ? 'saving' : d.dirty ? 'dirty' : 'saved'}><span className="writing-save-dot" aria-hidden="true" /><span className="writing-status-full">{d.status}</span><span className="writing-status-short">{!d.error ? shortStatus : <button type="button" className="writing-retry-short" disabled={d.busy || d.blocked} onClick={() => void save()}>{shortStatus}</button>}</span></div>{d.error && !d.blocked && <AdminButton type="button" variant="ghost" className="writing-retry-desktop" disabled={d.busy} onClick={() => void save()}>{t("m_b8784c8dd5")}</AdminButton>}</div>
@@ -378,13 +353,13 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
 
         </div>
       </header>
-      <div className={`writing-body${preview ? ' writing-body--preview' : ''}${bilingualCompare && englishVersion ? ' writing-body--bilingual' : ''}`}>
+      <div className={`writing-body${preview ? ' writing-body--preview' : ''}${compareActive && englishVersion ? ' writing-body--bilingual' : ''}`}>
       <section className="writing-content-language" aria-label={t("m_d562f79cd4")}><span className="writing-version-state" role="status"><span className="writing-version-label">{t("m_5f76b2bf82")}{locale === 'en' ? ' ' : ''}{t("m_6320b4a872")}{locale === 'en' ? ': ' : '：'}</span><span>{t(d.draft?.source_changed&&[d.form.title,d.form.content].some(value => String(value || "").trim())?t("m_133c7031a7"):versionPublished&&(d.dirty||Number(d.draft?.dirty))?t("m_41df60ffba"):versionPublished?t("m_d334724d6b"):d.draft?t("m_2a2fd29bd2"):t("m_bb1ea50f6a"))}</span></span>
         {englishVersion&&d.draft?.source_changed&&[d.form.title,d.form.content].some(value => String(value || '').trim())&&<button type="button" className="quiet-button" disabled={locked||d.busy||d.blocked||uploads>0||!d.draft.current_source_hash} onClick={()=>void d.reviewSource()}>{t("m_1f9e07738c")}</button>}
       </section>
 
         {languageError && <p role="alert" className="article-workspace-notice">{languageError}</p>}
-        <div className="writing-mode-position">{modeSwitch}{!locked && !showComparison && <div className="writing-compare-actions">{bilingualCompare && englishVersion && <label className="writing-compare-sync"><Switch checked={compareSync} onCheckedChange={setCompareSync} aria-label={t('同步滚动')} /><span>{t('同步滚动')}</span></label>}<button type="button" className="writing-compare-button" aria-label={t('中英文对照')} aria-pressed={bilingualCompare && englishVersion} disabled={!chinese.ready || chinese.busy || d.busy || uploads > 0} onClick={() => { void (async () => { if (bilingualCompare && englishVersion) { setBilingualCompare(false); return; } if (!sharedPostId && !await chinese.identity()) return; setEnglishOpened(true); setEditorLocale('en'); setPreview(false); setBilingualCompare(true); })(); }}><Columns2 size={16} aria-hidden="true" />{t('对照')}</button></div>}</div>
+        <div className="writing-mode-position">{modeSwitch}{!phone && !locked && !showComparison && <div className="writing-compare-actions">{compareActive && englishVersion && <label className="writing-compare-sync"><Switch checked={compareSync} onCheckedChange={setCompareSync} aria-label={t('同步滚动')} /><span>{t('同步滚动')}</span></label>}<button type="button" className="writing-compare-button" aria-label={t('中英文对照')} aria-pressed={compareActive && englishVersion} disabled={!chinese.ready || chinese.busy || d.busy || uploads > 0} onClick={() => { void (async () => { if (compareActive && englishVersion) { setBilingualCompare(false); return; } if (!sharedPostId && !await chinese.identity()) return; if (window.matchMedia('(max-width:767px)').matches) return; setEnglishOpened(true); setEditorLocale('en'); setPreview(false); setBilingualCompare(true); })(); }}><Columns2 size={16} aria-hidden="true" />{t('对照')}</button></div>}</div>
         <h1 className="sr-only">{locked ? lockedTitle : showComparison ? t("m_6af8a5c00e") : preview ? t("m_5fbee954c9") : postId || d.draft?.post_id ? t("m_12dfe39e2e") : t("m_13b195d6cc")}</h1>
         {locked && <div className="article-submission-bar"><p role="status">{lockedTitle}</p><small>{t("m_d0b966b9d9")}</small>{reviewState === 'scheduled' && <small>{t("m_64e1e8d8ce")} {new Date(Number(d.draft.workflow.scheduled_at)).toLocaleString(locale, { timeZone: 'Asia/Shanghai' })}</small>}</div>}
         {!locked && !d.localAvailable && <p role="alert">{t("m_572c660037")}</p>}
@@ -395,17 +370,17 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
         {preview && !locked && !showComparison && <section className="article-full-preview"><AdminButton type="button" variant="ghost" className="article-return-edit" disabled={d.busy} onClick={() => setPreview(false)}><ArrowLeft size={16} aria-hidden="true" />{t("m_16b38790d5")}</AdminButton><ArticleReview post={{ ...d.form, content_locale:editorLocale, author_name: t("m_bc23331f73") }} busy={d.busy || d.isRestoring || uploads > 0} disabled={d.blocked && !(conflictMode === 'review' && d.serverCopy)} publishLabel={conflictMode === 'review' ? t("m_7dd20b7a2c") : contributor ? t("m_34ef20b205") : versionPublished ? t("m_397ee4a9e4") : t("m_c8f73143f3")} onPublish={() => void (contributor ? submit() : publish())} /></section>}
         {locked && <article className="submission-document"><header><span className="account-eyebrow">{t("m_8cd59b0a18")}</span><h1>{d.form.title || t("m_0d29eaf3ac")}</h1><p className="submission-document-meta">{t("m_78b756d8eb")}</p></header><div className="submission-document-body">{cover && (d.form.cover_crop ? <CoverDisplayPreviews src={cover} crop={d.form.cover_crop} /> : <img className="content-image" src={cover} alt="" />)}<MarkdownContent content={d.form.content || ''} headingPrefix="submission-heading" /></div></article>}
         {d.summaryBusy && <p role="status">{t("m_227f4fa588")}</p>}
-        {englishVersion && !bilingualCompare && !preview && !locked && !showComparison && ![d.form.title,d.form.summary,d.form.content].some(value => String(value || '').trim()) && !blankEnglish && <><p className="writing-english-placeholder">English title</p><section className="writing-english-start" aria-live="polite">
+        {englishVersion && !compareActive && !preview && !locked && !showComparison && ![d.form.title,d.form.summary,d.form.content].some(value => String(value || '').trim()) && !blankEnglish && <><p className="writing-english-placeholder">English title</p><section className="writing-english-start" aria-live="polite">
           <h2>{t('English 版本还没有内容')}</h2><p>{t('可以从中文开始翻译，也可以从空白写作。')}</p>
           {(translationBusy || translationError) && <div className="writing-translation-status"><strong>{t(translationError ? 'm_a0a0a0a030' : 'm_a0a0a0a031')}</strong><p>{translationError || t('m_a0a0a0a008')}</p>{translationBusy && translationProgress.total > 0 && <progress value={translationProgress.completed} max={translationProgress.total} aria-label={t('m_a0a0a0a031')} />}{translationProgress.text && <div className="writing-translation-preview"><strong>{t('m_a0a0a0a032')}</strong><p>{translationProgress.text}</p></div>}</div>}
           <div className="writing-english-actions"><AdminButton type="button" disabled={translationBusy || !ai?.enabled} onClick={() => void translateEnglish()}>{translationError ? t('m_a0a0a0a009') : t('用 AI 翻译中文初稿')}</AdminButton><AdminButton type="button" variant="soft" disabled={translationBusy || !chinese.ready} onClick={() => { english.update((previous: any) => ({...previous,title:chinese.form.title,summary:chinese.form.summary,content:chinese.form.content,summary_mode:'manual',summary_receipt:''})); setTranslationError(''); setBlankEnglish(true); }}>{t('复制中文内容')}</AdminButton><AdminButton type="button" variant="ghost" onClick={() => { translationRequest.current?.abort(); translationRequest.current = null; setTranslationBusy(false); setBlankEnglish(true); setTranslationError(''); }}>{t('从空白开始')}</AdminButton></div>
           <p className="writing-english-help">{t('AI 翻译由 DeepSeek 生成，只作为初稿，发布前需要你检查。')}</p>
         </section></>}
-        {englishVersion && !preview && !locked && !showComparison && (blankEnglish || bilingualCompare) && (translationBusy || translationError) && <section className="writing-translation" aria-live="polite"><div className="writing-translation-head"><div><strong>{t(translationError ? 'm_a0a0a0a030' : 'm_a0a0a0a031')}</strong><p>{translationError || t('m_a0a0a0a008')}</p></div>{translationError && ai?.enabled && ![d.form.title,d.form.summary,d.form.content].some(value => String(value || '').trim()) && <AdminButton type="button" variant="soft" onClick={() => void translateEnglish()}>{t('m_a0a0a0a009')}</AdminButton>}</div>{translationProgress.text && <div className="writing-translation-preview"><strong>{t('m_a0a0a0a032')}</strong><p>{translationProgress.text}</p></div>}</section>}
-        {bilingualCompare && englishVersion && !preview && !locked && !showComparison && d.ready && <BilingualCompare chineseTitle={chinese.form.title || ''} chineseContent={chinese.form.content || ''} englishTitle={d.form.title || ''} englishContent={d.form.content || ''} sync={compareSync} onTitleChange={value => change('title', value)} onContentChange={value => change('content', value)} disabled={fieldsDisabled || uploads > 0} editorProps={{existing:!!postId || !!d.draft?.payload?.content, uploadImage:upload, onError:setUploadError, onBusy:setEditorPending, onMediaLibrary:() => setPicker('body'), mode:editorMode, onModeChange:setMode, hideModeControls:true, writingToolbar:true, registerImageInsert:fn => { insert.current = fn; }}} />}
-        <fieldset hidden={preview || locked || showComparison || (bilingualCompare && englishVersion) || (englishVersion && !blankEnglish && ![d.form.title,d.form.summary,d.form.content].some(value => String(value || '').trim()))} disabled={fieldsDisabled} className="writing-editor-fields">
+        {englishVersion && !preview && !locked && !showComparison && (blankEnglish || compareActive) && (translationBusy || translationError) && <section className="writing-translation" aria-live="polite"><div className="writing-translation-head"><div><strong>{t(translationError ? 'm_a0a0a0a030' : 'm_a0a0a0a031')}</strong><p>{translationError || t('m_a0a0a0a008')}</p></div>{translationError && ai?.enabled && ![d.form.title,d.form.summary,d.form.content].some(value => String(value || '').trim()) && <AdminButton type="button" variant="soft" onClick={() => void translateEnglish()}>{t('m_a0a0a0a009')}</AdminButton>}</div>{translationProgress.text && <div className="writing-translation-preview"><strong>{t('m_a0a0a0a032')}</strong><p>{translationProgress.text}</p></div>}</section>}
+        {compareActive && englishVersion && !preview && !locked && !showComparison && d.ready && <><div hidden={phone}><BilingualCompare chineseTitle={chinese.form.title || ''} chineseContent={chinese.form.content || ''} englishTitle={d.form.title || ''} englishContent={d.form.content || ''} sync={compareSync} onTitleChange={value => change('title', value)} onContentChange={value => change('content', value)} disabled={fieldsDisabled || uploads > 0} editorProps={{existing:!!postId || !!d.draft?.payload?.content, uploadImage:upload, onError:setUploadError, onBusy:setEditorPending, onMediaLibrary:() => setPicker('body'), mode:editorMode, onModeChange:setMode, hideModeControls:true, writingToolbar:true, registerImageInsert:fn => { insert.current = fn; }}} /></div>{phone && <p role="status">{t('图片上传中，完成后返回单语言编辑。')}</p>}</>}
+        <fieldset hidden={preview || locked || showComparison || (compareActive && englishVersion) || (englishVersion && !blankEnglish && ![d.form.title,d.form.summary,d.form.content].some(value => String(value || '').trim()))} disabled={fieldsDisabled} className="writing-editor-fields">
           <label className="writing-title"><span className="sr-only">{t("m_c3405f8c7d")}</span><textarea ref={titleInput} id="article-title" rows={1} value={d.form.title} maxLength={255} onChange={event => change('title', event.target.value.replace(/[\r\n]+/g, ' '))} placeholder={t("m_865f0a03ab")} /></label>
-          {d.ready && !(bilingualCompare && englishVersion && !preview && !locked && !showComparison) && <ArticleEditor key={editorLocale} writingToolbar mode={editorMode} onModeChange={setMode} hideModeControls onMediaLibrary={() => setPicker('body')} disabled={fieldsDisabled || uploads > 0} registerImageInsert={fn => { insert.current = fn; }} value={d.form.content} onChange={value => change('content', value)} existing={!!postId || !!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={setEditorPending} />}
+          {d.ready && !(compareActive && englishVersion && !preview && !locked && !showComparison) && <ArticleEditor key={editorLocale} writingToolbar mode={editorMode} onModeChange={setMode} hideModeControls onMediaLibrary={() => setPicker('body')} disabled={fieldsDisabled || uploads > 0} registerImageInsert={fn => { insert.current = fn; }} value={d.form.content} onChange={value => change('content', value)} existing={!!postId || !!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={setEditorPending} />}
         </fieldset>
         {uploadError && <p role="alert">{uploadError}</p>}{uploads > 0 && <p role="status">{t("m_831d255caa")}</p>}
       </div>

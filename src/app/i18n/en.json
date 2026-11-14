@@ -3803,5 +3803,7 @@
   "复制中文": "Copy Chinese",
   "翻译由 DeepSeek 生成，只作为初稿，请检查后再发布。": "DeepSeek translations are drafts. Review before publishing.",
   "请先填写中文简介。": "Please enter the Chinese summary first.",
-  "例如 mod-guide": "e.g. mod-guide"
+  "例如 mod-guide": "e.g. mod-guide",
+  "源码": "Source",
+  "图片上传中，完成后返回单语言编辑。": "Uploading image. Single-language editing will resume when it finishes."
 }

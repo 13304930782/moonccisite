@@ -53,6 +53,7 @@ const release={id:42,title:'版本记录回归',content:'原始发布内容。',
        for(const link of await page.locator('.project-reading-rail nav a').all())assert.equal(await page.locator(await link.getAttribute('href')).count(),1,'TOC target exists');
       }else{
        const card=page.locator('.project-card--compact');await card.waitFor().catch(async error=>{console.error({url:page.url(),text:await page.locator('main').innerText()});throw error});
+       if(width<=600) assert.ok(await card.evaluate(el=>parseFloat(getComputedStyle(el).paddingLeft))>=20,'mobile featured card keeps inner spacing');
        assert.equal((await card.locator('.project-card-icon').boundingBox()).width,48);
        assert.equal(await card.locator('h3').evaluate(el=>getComputedStyle(el).whiteSpace),'nowrap');
        const name=await card.locator('h3').boundingBox();assert.ok(name.x+name.width<=width,'complete name stays in viewport');

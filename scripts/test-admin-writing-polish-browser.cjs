@@ -231,31 +231,20 @@ async function scenario(name, width, dark, configure, task, { viewportMock = fal
       for(const name of ['加粗','斜体','设为标题'])assert(await page.getByRole('button',{name,exact:true}).isEnabled(),'Boundary toolbar initially disabled '+name);row.toolbar=await toolbarContract(page,768);await overflow(page);await shot('main-tools');
     });
     for(const dark of [false,true])await scenario(`keyboard-simulation-${dark?'dark':'light'}`,390,dark,seed,async({page,row,shot})=>{
-      const workspace=page.locator('.writing-workspace'),frame=page.locator('.editor-toolbar-frame');
-      const setViewport=(values,event='resize')=>page.evaluate(({values,event})=>window.__writingViewportSimulation.set(values,event),{values,event});
-      const closed=label=>until(()=>workspace.getAttribute('data-keyboard-open').then(value=>value!=='true'),label);
-      const snapshot=()=>page.evaluate(()=>{const scope=document.querySelector('.writing-workspace'),toolbar=document.querySelector('.editor-toolbar-frame'),content=document.querySelector('.simple-editor-content');return{viewport:window.__writingViewportSimulation.snapshot(),open:scope.dataset.keyboardOpen||false,position:getComputedStyle(toolbar).position,toolbar:toolbar.getBoundingClientRect().toJSON(),contentTop:content.getBoundingClientRect().top,editor:document.querySelector('.article-editor').getBoundingClientRect().toJSON(),variables:['--writing-keyboard-top','--writing-keyboard-left','--writing-keyboard-width'].map(key=>[key,scope.style.getPropertyValue(key)])};});
-      await editor(page).focus();row.before=await snapshot();await setViewport({height:620});await until(()=>workspace.getAttribute('data-keyboard-open').then(value=>value==='true'),'simulated keyboard opened');row.resized=await snapshot();assert.equal(row.resized.position,'fixed');assert(Math.abs(row.resized.toolbar.bottom-620)<1);assert(Math.abs(row.resized.contentTop-row.before.contentTop)<1,'Floating toolbar must retain flow space');
-      await setViewport({offsetTop:80},'scroll');await until(()=>frame.boundingBox().then(box=>Math.abs(box.y+box.height-700)<1),'visualViewport offset scroll');row.offsetScrolled=await snapshot();assert(row.offsetScrolled.toolbar.left>=row.offsetScrolled.editor.left);assert(row.offsetScrolled.toolbar.right<=row.offsetScrolled.editor.right);await shot('keyboard-open-simulated');
-      await imageTrigger(page).focus();await until(()=>workspace.getAttribute('data-keyboard-open').then(value=>value==='true'),'toolbar focus retains keyboard positioning');
-      await setViewport({scale:2});await closed('pinch zoom fallback');row.scaleFallback=await snapshot();assert.notEqual(row.scaleFallback.position,'fixed');
-      await editor(page).focus();await setViewport({scale:1,width:0});await closed('zero-width viewport fallback');
-      await setViewport({width:NaN});await closed('nonfinite-width viewport fallback');row.nonfiniteFallback=await snapshot();
-      await setViewport({width:390,offsetLeft:NaN});await closed('nonfinite-offset viewport fallback');
-      await setViewport({offsetLeft:0});await until(()=>workspace.getAttribute('data-keyboard-open').then(value=>value==='true'),'valid viewport restores positioning');
-      await page.locator('#article-title').focus();await closed('leaving editor restores sticky');row.blurred=await snapshot();assert.notEqual(row.blurred.position,'fixed');
-      await setViewport({height:1000,offsetTop:0});await closed('viewport restored');await overflow(page);
+      const frame=page.locator('.editor-toolbar-frame');
+      await editor(page).focus();
+      row.before=await frame.boundingBox();
+      await page.evaluate(()=>window.__writingViewportSimulation.set({height:620}));
+      assert.equal(await frame.evaluate(element=>getComputedStyle(element).position),'sticky','Keyboard must not move toolbar above the keyboard');
+      row.after=await frame.boundingBox();
+      assert(Math.abs(row.before.y-row.after.y)<1,'Toolbar moved after viewport change');
+      await shot('keyboard-open-simulated');
     },{viewportMock:true});
-    await scenario('keyboard-source-simulation',390,false,state=>state.resetDraft({title:'旧 Markdown 键盘回归',content:'# 保留旧源码\n\n源码正文在浮底前后保持同一位置。',summary:'源码模式键盘浮底占位检查。',category:'开发记录'}),async({page,row,shot})=>{
-      const textarea=page.getByRole('textbox',{name:'Markdown 正文',exact:true}),workspace=page.locator('.writing-workspace'),frame=page.locator('.article-source-toolbar');
-      const capture=async()=>({textarea:await textarea.boundingBox(),toolbar:await frame.boundingBox(),position:await frame.evaluate(element=>getComputedStyle(element).position),open:await workspace.getAttribute('data-keyboard-open')});
-      await textarea.focus();row.before=await capture();await page.evaluate(()=>window.__writingViewportSimulation.set({height:620}));await until(()=>workspace.getAttribute('data-keyboard-open').then(value=>value==='true'),'source keyboard opened');row.opened=await capture();assert.equal(row.opened.position,'fixed');assert(Math.abs(row.opened.toolbar.y+row.opened.toolbar.height-620)<1);assert(Math.abs(row.before.textarea.y-row.opened.textarea.y)<1,'Source textarea jumped when keyboard toolbar floated');await shot('keyboard-open-simulated');
-      await page.locator('#article-title').focus();await until(()=>workspace.getAttribute('data-keyboard-open').then(value=>value!=='true'),'source blur restores sticky');await page.evaluate(()=>window.__writingViewportSimulation.set({height:1000}));row.closed=await capture();assert.notEqual(row.closed.position,'fixed');assert(Math.abs(row.before.textarea.y-row.closed.textarea.y)<1,'Source textarea jumped after closing keyboard');
+    await scenario('keyboard-source-simulation',390,false,state=>state.resetDraft({title:'Markdown',content:'# 正文',summary:'',category:'开发记录'}),async({page})=>{
+      const textarea=page.getByRole('textbox',{name:'Markdown 正文',exact:true}),frame=page.locator('.article-source-toolbar');
+      await textarea.focus();await page.evaluate(()=>window.__writingViewportSimulation.set({height:620}));
+      assert.notEqual(await frame.evaluate(element=>getComputedStyle(element).position),'fixed','Source toolbar must not move above keyboard');
     },{viewportMock:true,legacySource:true});
-    for(const initial of [NaN,Infinity])await scenario('keyboard-initial-'+String(initial),390,false,seed,async({page,row})=>{
-      row.initialViewportHeight=await page.evaluate(()=>String(window.visualViewport.height));assert.equal(row.initialViewportHeight,String(initial),'Mock must retain its nonfinite initial value');const workspace=page.locator('.writing-workspace');await editor(page).focus();await page.evaluate(()=>window.__writingViewportSimulation.set({height:1000}));assert.notEqual(await workspace.getAttribute('data-keyboard-open'),'true','Full-height recovery from invalid initial viewport must remain sticky');
-      await page.evaluate(()=>window.__writingViewportSimulation.set({height:620}));await until(()=>workspace.getAttribute('data-keyboard-open').then(value=>value==='true'),'recovered initial viewport can float');await page.evaluate(()=>window.__writingViewportSimulation.set({height:1000}));await until(()=>workspace.getAttribute('data-keyboard-open').then(value=>value!=='true'),'recovered full height closes keyboard');row.recovered=true;
-    },{viewportMock:true,viewportInitialHeight:initial});
     }
     if(selectedCase)assert.equal(results.length,1,'Unknown WRITING_POLISH_CASE');assert.equal(distHash(),buildIndexSha256,'Build changed during acceptance');log(JSON.stringify({passed:results.every(row=>row.passed),scenarios:results.length,screenshots:results.flatMap(row=>row.screenshots).length,failed:results.filter(row=>!row.passed).map(row=>row.name),report:path.join(OUT,'report.json')},null,2));if(results.some(row=>!row.passed))process.exitCode=1;
   } finally {await browser.close();}
