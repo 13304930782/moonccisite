@@ -122,7 +122,7 @@ def validate_baseline(baseline):
         raise ValueError("Unexpected production baseline structure")
     if set(baseline["backend"]) != set(UNCHANGED_BACKEND + BACKEND_FILES) or set(baseline["prerequisites"]) != set(PREREQUISITES):
         raise ValueError("Unexpected backend baseline scope")
-    if set(baseline["main"]) != {"index", "asset_manifest", "runtime_document", "runtime_styles", "runtime_home_css"}:
+    if set(baseline["main"]) != {"index", "asset_manifest", "third_party_licenses", "runtime_document", "runtime_styles", "runtime_home_css"}:
         raise ValueError("Incomplete main entry baseline")
     if set(baseline["frontend_source"]) != set(SOURCES):
         raise ValueError("Unexpected frontend source baseline scope")

@@ -50,7 +50,7 @@ class EditorRelease(unittest.TestCase):
             "backend": {name: h for name in release.UNCHANGED_BACKEND + release.BACKEND_FILES},
             "prerequisites": {name: h for name in release.PREREQUISITES},
             "frontend_source": {name: h if name != "src/styles/project-detail.css" else None for name in release.SOURCES},
-            "main": {name: h for name in ["index", "asset_manifest", "runtime_document", "runtime_styles", "runtime_home_css"]},
+            "main": {name: h for name in ["index", "asset_manifest", "third_party_licenses", "runtime_document", "runtime_styles", "runtime_home_css"]},
             "verify_articles": [17, 18],
             "pm2": {name: {"max_memory_restart": budget * 1024 * 1024, "node_args": ["--max-old-space-size=256"],
                              "exec_interpreter": "/opt/mooncci-node-v24.20.0/bin/node", "pm_exec_path": "/server/index.js", "pm_cwd": "/server"}
@@ -123,11 +123,13 @@ class EditorRelease(unittest.TestCase):
 
     def test_only_reviewed_asset_manifest_may_replace_existing_file(self):
         self.write('dist/asset-manifest.json', '{"new":true}\n')
+        self.write('dist/THIRD_PARTY_LICENSES.txt', b'new-licenses')
         self.write('dist/favicon.ico', b'new-icon')
         self.baseline['main']['asset_manifest'] = release.sha(b'old-manifest')
+        self.baseline['main']['third_party_licenses'] = release.sha(b'old-licenses')
         _, package = self.package()
         live, web = self.root/'prod/server', self.root/'prod/web'
-        web.mkdir(parents=True); (web/'index.html').write_bytes(b'old\n');(web/'asset-manifest.json').write_bytes(b'old-manifest')
+        web.mkdir(parents=True); (web/'index.html').write_bytes(b'old\n');(web/'asset-manifest.json').write_bytes(b'old-manifest');(web/'THIRD_PARTY_LICENSES.txt').write_bytes(b'old-licenses')
         for name in [*release.UNCHANGED_BACKEND,*release.BACKEND_FILES,*release.PREREQUISITES]:
             target=live/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(b'old\n')
         for name in ['document.mjs','styles.json','home.css']:
@@ -136,6 +138,9 @@ class EditorRelease(unittest.TestCase):
         verifier=self.write('asset-verifier.cjs',(package/'verify.cjs').read_text().replace('function roots(live, web, target) {','function roots(live, web, target) { return;'))
         def check(): return subprocess.run(['node','-e',"require(process.argv[1]).verifyBaseline(...process.argv.slice(2))",str(verifier),str(package),str(live),str(web)],stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
         self.assertEqual(check().returncode,0)
+        (web/'THIRD_PARTY_LICENSES.txt').write_bytes(b'unreviewed')
+        self.assertNotEqual(check().returncode,0)
+        (web/'THIRD_PARTY_LICENSES.txt').write_bytes(b'old-licenses')
         (web/'asset-manifest.json').write_bytes(b'unreviewed')
         self.assertNotEqual(check().returncode,0)
         (web/'asset-manifest.json').write_bytes(b'old-manifest');(web/'favicon.ico').write_bytes(b'custom-icon')

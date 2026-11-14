@@ -82,7 +82,7 @@ function baselineSchema(baseline) {
   sameKeys(baseline, ['version', 'captured_at', 'backend', 'prerequisites', 'main', 'pm2', 'verify_articles', 'frontend_source']);
   if (baseline.version !== 1) throw Error('Baseline version mismatch');
   sameKeys(baseline.frontend_source, SOURCES); sameKeys(baseline.backend, [...UNCHANGED_BACKEND, ...BACKEND_FILES]); sameKeys(baseline.prerequisites, PREREQUISITES);
-  sameKeys(baseline.main, ['index', 'asset_manifest', 'runtime_document', 'runtime_styles', 'runtime_home_css']);
+  sameKeys(baseline.main, ['index', 'asset_manifest', 'third_party_licenses', 'runtime_document', 'runtime_styles', 'runtime_home_css']);
   sameKeys(baseline.pm2, ['mooncci-api', 'mooncci-worker']);
   for (const [name, config] of Object.entries(baseline.pm2)) {
     sameKeys(config, CONFIG);
@@ -149,7 +149,7 @@ function verifyBaseline(root, live, web) {
   if (digest(web, 'index.html') !== baseline.main.index) throw Error('Frontend entry drift');
   for (const name of files.filter(item => item.startsWith('dist/') && item !== 'dist/index.html')) {
     const existing = digest(web, name.slice(5));
-    if (existing !== null && existing !== digest(root, name) && !(name === 'dist/asset-manifest.json' && existing === baseline.main.asset_manifest)) throw Error('Existing frontend file differs: ' + name);
+    if (existing !== null && existing !== digest(root, name) && !(name === 'dist/asset-manifest.json' && existing === baseline.main.asset_manifest) && !(name === 'dist/THIRD_PARTY_LICENSES.txt' && existing === baseline.main.third_party_licenses)) throw Error('Existing frontend file differs: ' + name);
   }
   if (manifest.target === 'main') {
     for (const [name, hash] of Object.entries({...baseline.backend, ...baseline.prerequisites})) if (digest(live, name) !== hash) throw Error('Backend/prerequisite drift: ' + name);
