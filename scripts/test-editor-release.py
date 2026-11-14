@@ -294,6 +294,22 @@ const assert=require('node:assert/strict'),v=require(process.argv[1]);
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
+    def test_same_origin_article_redirects_are_bounded(self):
+        _, package = self.package()
+        code = """const {followArticleRedirect:follow}=require(process.argv[1]);
+(async()=>{
+ const routes=[];
+ const result=await follow('/article/18',1000,async (url,remaining)=>{routes.push([url,remaining]); return url==='/article/18'?{status:301,location:'https://moooncci.cn/article/cities-skylines-ii'}:{status:200,body:Buffer.from('ok')}});
+ if(result.toString()!=='ok'||routes.length!==2||routes[1][0]!=='/article/cities-skylines-ii') throw Error('redirect failed');
+ for (const location of ['https://evil.example/article/slug','//evil.example/article/slug','http://moooncci.cn/article/slug','https://moooncci.cn/admin','https://moooncci.cn/article/x?x=1']) {
+  let failed=false; try {await follow('/article/18',1000,async()=>({status:301,location}))} catch(e) {failed=true} if(!failed) throw Error('unsafe redirect accepted');
+ }
+ let count=0; try {await follow('/article/18',1000,async()=>{count++;return {status:301,location:'/article/again'}});throw Error('loop accepted')} catch(e) {if(count!==3) throw e}
+ let calls=0;try {await follow('/article/18',10,async()=>{calls++;return {status:301,location:'/article/test'}},()=>calls*11);throw Error('timeout accepted')} catch(e) {if(calls!==1)throw e}
+})().catch(e=>{console.error(e);process.exit(1)});"""
+        result = subprocess.run(['node','-e',code,str(package/'verify.cjs')],stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+
     def test_staged_ssr_checks_rendered_markup_and_payload(self):
         _, package = self.package()
         code = """const v=require(process.argv[1]);

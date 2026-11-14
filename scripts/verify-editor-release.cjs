@@ -303,7 +303,7 @@ function checkStagedDocument(url, doc) {
     throw Error('Staged SSR failed: ' + url);
   }
 }
-function requestDocument(url, _target, timeoutMs = 20000) {
+function requestOnce(url, timeoutMs) {
   return new Promise((resolve, reject) => {
     const request = https.get({hostname: 'moooncci.cn', servername: 'moooncci.cn', family: 4, port: 443, path: url,
       lookup: (_hostname, options, callback) => options.all
@@ -311,12 +311,36 @@ function requestDocument(url, _target, timeoutMs = 20000) {
         : callback(null, '127.0.0.1', 4)}, response => {
       const chunks = [];
       response.on('data', data => chunks.push(data)); response.on('error', reject);
-      response.on('end', () => response.statusCode === 200 ? resolve(Buffer.concat(chunks)) : reject(Error('Public document HTTP status: ' + response.statusCode)));
+      response.on('end', () => resolve({status: response.statusCode, location: response.headers.location, body: Buffer.concat(chunks)}));
     });
     const timer = setTimeout(() => request.destroy(Error('Public document timeout')), timeoutMs);
     request.once('close', () => clearTimeout(timer));
     request.on('error', reject);
   });
+}
+async function followArticleRedirect(url, timeoutMs, request = requestOnce, now = Date.now) {
+  const deadline = now() + timeoutMs;
+  let current = url;
+  for (let redirects = 0; ; redirects++) {
+    const remaining = deadline - now();
+    if (remaining <= 0) throw Error('Public document timeout');
+    const response = await request(current, remaining);
+    if (now() > deadline) throw Error('Public document timeout');
+    if (response.status === 200) return response.body;
+    if (![301, 302, 307, 308].includes(response.status) || redirects >= 2 ||
+        !/^\/article\/\d+$/.test(url) || typeof response.location !== 'string') {
+      throw Error('Public document HTTP status: ' + response.status);
+    }
+    const next = new URL(response.location, 'https://moooncci.cn' + current);
+    if (next.origin !== 'https://moooncci.cn' || next.username || next.password ||
+        !/^\/article\/[^/]+$/.test(next.pathname) || next.search || next.hash) {
+      throw Error('Unsafe article redirect');
+    }
+    current = next.pathname;
+  }
+}
+function requestDocument(url, _target, timeoutMs = 20000) {
+  return followArticleRedirect(url, timeoutMs);
 }
 async function publicChecks(root, live, web, folder) {
   const {baseline, manifest} = setup(root), assets = new Set();
@@ -357,13 +381,14 @@ async function matchingDocument(request, url, entries, validate, options = {}) {
   while (true) {
     const bytes = await request(url, Math.max(1, deadline - now())), html = bytes.toString('utf8');
     validate(html); // Invalid SSR structure is a real failure; never retry it.
+    if (now() > deadline) throw Error('SSR/frontend release entry timeout: ' + url);
     if (entries.every(ref => references(html).includes(ref))) return bytes;
     if (now() >= deadline) throw Error('SSR/frontend release entry mismatch after bounded cache wait: ' + url);
     await sleep(Math.min(2000, deadline - now()));
   }
 }
 function readJSONData(value) { return JSON.parse(value); }
-module.exports = {safeName, plainFile, baselineSchema, verifyPackage, digest, snapshot, restored, roots, verifyBaseline, removeNew, installed, guardRollback, matchingDocument, publicChecks, checkStagedDocument, runtimeState, managedRuntimeTree};
+module.exports = {safeName, plainFile, baselineSchema, verifyPackage, digest, snapshot, restored, roots, verifyBaseline, removeNew, installed, guardRollback, matchingDocument, publicChecks, checkStagedDocument, followArticleRedirect, runtimeState, managedRuntimeTree};
 if (require.main === module) {
   (async () => {
     const [command, ...args] = process.argv.slice(2);
