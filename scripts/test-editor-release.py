@@ -294,6 +294,18 @@ const assert=require('node:assert/strict'),v=require(process.argv[1]);
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
+    def test_staged_ssr_checks_rendered_markup_and_payload(self):
+        _, package = self.package()
+        code = """const v=require(process.argv[1]);
+const good=(html)=>({html,data:{status:200,resources:{}}});
+v.checkStagedDocument('/',good('<main class=\"home-hero\"></main>'));
+v.checkStagedDocument('/article/18',good('<article class=\"article-no-cover\"></article>'));
+for(const [url,doc] of [['/',good('mooncci-document-data')],['/article/18',good('home-hero')],['/',{html:'home-hero',data:{status:404,resources:{}}}]]) {
+  let failed=false;try {v.checkStagedDocument(url,doc)} catch(e) {failed=true} if(!failed) process.exit(2);
+}"""
+        result = subprocess.run(['node','-e',code,str(package/'verify.cjs')],stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+
     @unittest.skipUnless(sys.platform.startswith('linux'), 'Real shell/rsync fault injection requires Linux')
     def test_real_deploy_shell_failure_restores_managed_runtime(self):
         live=self.root/'live/server'; web=self.root/'web'; backups=self.root/'backup'; bindir=self.root/'bin'
@@ -310,7 +322,7 @@ const assert=require('node:assert/strict'),v=require(process.argv[1]);
         self.baseline['prerequisites']['src/lib/publicDocument.js']=release.sha(public.read_bytes())
         for name in ['document.mjs','styles.json','home.css']:(live/'runtime'/name).write_bytes(b'old\n')
         (live/'runtime/node_modules/jsdom/package.json').write_bytes(b'{"name":"jsdom","version":"26.1.0"}\n')
-        self.write('server/runtime/document.mjs',"export async function renderDocument(){return {html:'mooncci-document-data'}}\n")
+        self.write('server/runtime/document.mjs',"export async function renderDocument(url){return {html:url==='/'?'home-hero':'article-has-cover',data:{status:200,resources:{}}}}\n")
         fixture_pm=[{'name':name,'pm2_env':{'status':'online',**config}} for name,config in self.baseline['pm2'].items()]
         class Health(http.server.BaseHTTPRequestHandler):
             def do_GET(self): self.send_response(200); self.end_headers(); self.wfile.write(b'{"ok":true}')

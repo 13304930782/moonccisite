@@ -291,9 +291,17 @@ async function stage(root, live, runtime) {
   const {loadPublicResource} = require(path.join(live, 'src/lib/publicDocument.js'));
   for (const url of ['/', ...baseline.verify_articles.map(id => '/article/' + id)]) {
     const doc = await renderer.renderDocument(url, loadPublicResource);
-    if (!doc.html.includes('mooncci-document-data')) throw Error('Staged SSR failed: ' + url);
+    checkStagedDocument(url, doc);
   }
   console.log('PASS: staged homepage and article SSR');
+}
+function checkStagedDocument(url, doc) {
+  const validHtml = typeof doc?.html === 'string' && (url === '/'
+    ? doc.html.includes('home-hero')
+    : /article-(?:has|no)-cover/.test(doc.html));
+  if (!validHtml || doc?.data?.status !== 200 || !doc.data.resources || typeof doc.data.resources !== 'object') {
+    throw Error('Staged SSR failed: ' + url);
+  }
 }
 function requestDocument(url, _target, timeoutMs = 20000) {
   return new Promise((resolve, reject) => {
@@ -355,7 +363,7 @@ async function matchingDocument(request, url, entries, validate, options = {}) {
   }
 }
 function readJSONData(value) { return JSON.parse(value); }
-module.exports = {safeName, plainFile, baselineSchema, verifyPackage, digest, snapshot, restored, roots, verifyBaseline, removeNew, installed, guardRollback, matchingDocument, publicChecks, runtimeState, managedRuntimeTree};
+module.exports = {safeName, plainFile, baselineSchema, verifyPackage, digest, snapshot, restored, roots, verifyBaseline, removeNew, installed, guardRollback, matchingDocument, publicChecks, checkStagedDocument, runtimeState, managedRuntimeTree};
 if (require.main === module) {
   (async () => {
     const [command, ...args] = process.argv.slice(2);
