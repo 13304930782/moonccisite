@@ -7,7 +7,7 @@ const tags = ['p','br','h1','h2','h3','h4','h5','h6','strong','b','em','i','s','
 export function richTextFragment(value: string): DocumentFragment {
   const fragment = DOMPurify.sanitize(isRichText(value) ? value.slice(RICH_TEXT_MARKER.length) : value, {
     ALLOWED_TAGS: tags,
-    ALLOWED_ATTR: ['href','src','alt','title','style','start','colspan','rowspan','colwidth','data-type','data-checked','type','checked','class','width','data-image-align','data-image-layout','data-image-caption'],
+    ALLOWED_ATTR: ['href','src','alt','title','style','start','colspan','rowspan','colwidth','data-type','data-checked','data-color','type','checked','class','width','data-image-align','data-image-layout','data-image-caption'],
     ADD_ATTR: ['data-youtube-id', 'data-youtube-start'],
     ALLOW_DATA_ATTR: false, RETURN_DOM_FRAGMENT: true,
   });
@@ -26,10 +26,11 @@ export function richTextFragment(value: string): DocumentFragment {
     if (el.tagName === 'IMG' && caption) el.setAttribute('data-image-caption', caption);
     else el.removeAttribute('data-image-caption');
     const style = (el as HTMLElement).style;
-    const align = style.textAlign, color = style.backgroundColor;
+    const align = style.textAlign, color = el.getAttribute('data-color') || style.backgroundColor;
     el.removeAttribute('style');
+    el.removeAttribute('data-color');
     if (['left','center','right','justify'].includes(align)) style.textAlign = align;
-    if (el.tagName === 'MARK' && /^(#[0-9a-f]{3,8}|rgba?\([\d.,%\s]+\)|[a-z]+)$/i.test(color)) style.backgroundColor = color;
+    if (el.tagName === 'MARK' && /^(#[0-9a-f]{3,8}|rgba?\([\d.,%\s]+\)|[a-z]+|var\(--tt-color-highlight-(?:yellow|green|blue|purple|red|gray|brown|orange|pink)\))$/i.test(color)) { style.backgroundColor = color; el.setAttribute('data-color', color); }
     const cls = el.getAttribute('class') || '';
     el.removeAttribute('class');
     if (el.tagName === 'CODE' && /^language-[a-z0-9_+-]+$/i.test(cls)) el.setAttribute('class',cls);

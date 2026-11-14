@@ -3,6 +3,8 @@
 .rich-text-body li[data-type="taskItem"]>div {min-width:0;flex:1}
 .rich-text-body li[data-type="taskItem"]>label {flex:none}
 .rich-text-body mark {border-radius:3px;padding:0 .1em;color:inherit}
+.rich-text-body {--tt-color-highlight-yellow:#fef9c3;--tt-color-highlight-green:#dcfce7;--tt-color-highlight-blue:#e0f2fe;--tt-color-highlight-purple:#f3e8ff;--tt-color-highlight-red:#ffe4e6;--tt-color-highlight-gray:#f8f8f7;--tt-color-highlight-brown:#f4eeee;--tt-color-highlight-orange:#fbecdd;--tt-color-highlight-pink:#fcf1f6}
+.dark .rich-text-body {--tt-color-highlight-yellow:#6b6524;--tt-color-highlight-green:#509568;--tt-color-highlight-blue:#6e92aa;--tt-color-highlight-purple:#583e74;--tt-color-highlight-red:#743e42;--tt-color-highlight-gray:#2f2f2f;--tt-color-highlight-brown:#4a3228;--tt-color-highlight-orange:#5c3b23;--tt-color-highlight-pink:#4e2c3c}
 .rich-text-body pre,.rich-text-body table {max-width:100%}
 .rich-text-body img[data-image-align]{display:block;max-width:100%;height:auto}
 .rich-text-body img[data-image-align="center"]{margin-inline:auto}

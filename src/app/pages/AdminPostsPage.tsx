@@ -18,7 +18,7 @@ import { api } from '../lib/api';
 import '../../styles/admin-ui-v2.css';
 import '../../styles/admin-posts.css';
 
-type Post = { id: number; title: string; summary: string; category: string; author_name: string; status: string; has_unpublished: number | boolean };
+type Post = { id: number; title: string; summary: string; category: string; author_name: string; status: string; has_unpublished: number | boolean; has_unpublished_zh?: number | boolean; has_unpublished_en?: number | boolean };
 type Draft = { id: string; post_id: number | null; version: number; updated_at: string; payload: { title?: string } };
 type Filter = 'all' | 'published' | 'draft';
 const filters: { value: Filter; label: string }[] = [{ value: 'all', label: '全部' }, { value: 'published', label: '已发布' }, { value: 'draft', label: '草稿' }];
@@ -165,7 +165,9 @@ export default function AdminPostsPage() {
           return <article className="admin-posts-row" key={`post-${post.id}`}>
             <Link to={edit} className="admin-posts-main"><h2>{post.title}</h2><p className="admin-posts-meta">{t("m_f5179cc500")}{post.category || '-'} {t("m_1f4db8c236")}{post.author_name || '-'}</p>{post.summary && <p className="admin-posts-summary">{post.summary}</p>}</Link>
             <div className="admin-posts-row-end">
-              {Boolean(Number(post.has_unpublished)) && <span className="admin-posts-unpublished">{t("m_41df60ffba")}</span>}
+              {Boolean(Number(post.has_unpublished_zh)) && <span className="admin-posts-unpublished">{t(Number(post.has_unpublished_en) ? 'm_a0a0a0a014' : 'm_a0a0a0a015')}</span>}
+              {!Number(post.has_unpublished_zh) && Boolean(Number(post.has_unpublished_en)) && <span className="admin-posts-unpublished">{t('m_a0a0a0a016')}</span>}
+              {post.has_unpublished_zh === undefined && post.has_unpublished_en === undefined && Boolean(Number(post.has_unpublished)) && <span className="admin-posts-unpublished">{t("m_41df60ffba")}</span>}
               <span className="admin-posts-status" data-status={post.status}><span aria-hidden="true" className="admin-posts-status-dot" />{post.status === 'published' ? t("m_d334724d6b") : t("m_2a2fd29bd2")}</span>
               {rowActions(edit, post.title, `post-${post.id}`, () => void removePost(post.id), false, post.status === 'published' ? articlePath(post) : undefined)}
             </div>

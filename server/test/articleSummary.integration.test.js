@@ -3,17 +3,30 @@ test('AI configuration permissions, direct publishing, review snapshot, schedule
  const name='mooncci_qa_summary_'+process.pid;
  Object.assign(process.env,{DB_HOST:'127.0.0.1',DB_PORT:process.env.TEST_DB_PORT||'33079',DB_USER:'root',DB_PASSWORD:'',DB_NAME:name,JWT_SECRET:'summary-integration-test-secret-with-32-characters',SITE_URL:'https://mooncci.site',PUBLISHING_ENABLED:'true',MAIL_ENABLED:'false',ENGAGEMENT_ENABLED:'false'});
  const setup=await require('mysql2/promise').createConnection({host:'127.0.0.1',port:Number(process.env.DB_PORT),user:'root',multipleStatements:true});await setup.query('CREATE DATABASE '+name+' CHARACTER SET utf8mb4');await setup.query('USE '+name);await setup.query(fs.readFileSync(path.join(__dirname,'../database/schema.sql'),'utf8'));await setup.query(fs.readFileSync(path.join(__dirname,'../database/migrations/202609090002_auth_revocation.sql'),'utf8'));
- const db=require('../src/db'),jwt=require('jsonwebtoken'),users={};for(const role of ['owner','admin','user']){const [r]=await db.query('INSERT INTO users(username,email,password_hash,role) VALUES (?,?,?,?)',[role,role+'@example.test','unused',role]);users[role]=r.insertId;}
+ const db=require('../src/db'),jwt=require('jsonwebtoken'),users={};for(const role of ['owner','admin','editor','user']){const [r]=await db.query('INSERT INTO users(username,email,password_hash,role) VALUES (?,?,?,?)',[role,role+'@example.test','unused',role]);users[role]=r.insertId;}
  const server=require('../src/index').listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
- const realFetch=global.fetch;let calls=0,fail=false,hold=false,resolve,started;
+ const realFetch=global.fetch;let calls=0,fail=false,hold=false,resolve,started,translateRace;
  const summary='介绍 C 语言数组声明、使用循环读入数据与遍历输出的基本写法，结合比较和交换相邻元素的冒泡排序示例，记录数组下标、循环边界以及整数数组处理的课堂练习。';
- global.fetch=async(url,options)=>{if(String(url).startsWith('https://api.deepseek.com/')){calls++;if(hold){started?.();await new Promise(r=>resolve=r);}if(fail)return new Response('private upstream details',{status:402});return new Response(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({summary})}}]}),{headers:{'content-type':'application/json'}});}return realFetch(url,options);};
+ global.fetch=async(url,options)=>{if(String(url).startsWith('https://api.deepseek.com/')){const input=JSON.parse(options.body);if(input.messages[0].content.startsWith('Translate each item')){if(translateRace)await translateRace();return new Response(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({segments:JSON.parse(input.messages[1].content).segments.map(s=>s.replace(/[\p{Script=Han}]+/gu,'English'))})}}]}),{headers:{'content-type':'application/json'}});}calls++;if(hold){started?.();await new Promise(r=>resolve=r);}if(fail)return new Response('private upstream details',{status:402});return new Response(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({summary})}}]}),{headers:{'content-type':'application/json'}});}return realFetch(url,options);};
  t.after(async()=>{global.fetch=realFetch;await new Promise(r=>server.close(r));await db.end();await require('../src/platformDb').end();await setup.query('DROP DATABASE '+name);await setup.end();});
  const request=(url,method='GET',body,role='owner')=>realFetch('http://127.0.0.1:'+server.address().port+'/api'+url,{method,headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest',Origin:'https://mooncci.site',Cookie:role?'mooncci_token='+jwt.sign({id:users[role],sessionStartedAt:Date.now()},process.env.JWT_SECRET):''},...(body?{body:JSON.stringify(body)}:{})});
  async function ok(url,method,body,role){const r=await request(url,method,body,role),data=await r.json();assert.equal(r.status,200,JSON.stringify(data));return data;}
  assert.equal((await request('/article-seo/settings','GET',null,'')).status,401);assert.equal((await request('/article-seo/settings','PUT',{enabled:true,model:'deepseek-flash',api_key:'sk-only-a-test-fixture'},'admin')).status,403);
  await ok('/article-seo/settings','PUT',{enabled:true,model:'deepseek-flash',api_key:'sk-only-a-test-fixture'});
  assert.deepEqual(await ok('/article-seo/status','GET',null,'user'),{enabled:true,model:'deepseek-flash',has_key:true});
+ const translate={payload:{title:'中文标题',summary:'中文简介',content:'# 内容\n- 项目'}};
+ assert.equal((await request('/article-seo/translate','POST',translate,'')).status,401);
+ assert.equal((await request('/article-seo/translate','POST',translate,'user')).status,403);
+ const translated=await ok('/article-seo/translate','POST',translate,'editor');assert.deepEqual(translated,{title:'English',summary:'English',content:'# English\n- English'});
+ const [[translatedPosts]]=await db.query('SELECT COUNT(*) AS total FROM posts');assert.equal(Number(translatedPosts.total),0);
+ const [source]=await db.query('INSERT INTO posts(title,slug,content,status,author_id) VALUES (?,?,?,?,?)',['原文','translate-source','正文','published',users.owner]);
+ const sourced={...translate,sourcePostId:source.insertId,sourceBaseVersion:1};
+ assert.equal((await request('/article-seo/translate','POST',sourced,'editor')).status,404);
+ assert.equal((await request('/article-seo/translate','POST',{...sourced,sourceBaseVersion:2},'owner')).status,409);
+ assert.equal((await request('/article-seo/translate','POST',sourced,'admin')).status,200);
+ translateRace=async()=>{translateRace=null;await db.query('UPDATE posts SET version=version+1 WHERE id=?',[source.insertId]);};
+ assert.equal((await request('/article-seo/translate','POST',sourced,'admin')).status,409);
+ await db.query('DELETE FROM posts WHERE id=?',[source.insertId]);
  const [[stored]]=await db.query("SELECT setting_value FROM site_settings WHERE setting_key='article_ai'");assert.doesNotMatch(stored.setting_value,/sk-only/);
  const create=(role='owner',extra={})=>ok('/article-drafts','POST',{id:crypto.randomUUID(),payload:{title:'数组练习',content:'C 语言数组声明与整数输入，循环遍历、输出和冒泡排序的代码示例。',slug:'summary-'+crypto.randomUUID(),...extra}},role);
  let d=await create();d=await ok('/article-drafts/'+d.id+'/publish','POST',{version:d.version});assert.equal(d.payload.summary,summary);assert.equal((await ok('/posts/'+d.post_id,'GET',null,'')).summary,summary);assert.equal(calls,1);

@@ -22,7 +22,7 @@ test('translations retain one post identity across draft publication, review, re
  await setup.query('CREATE DATABASE '+name+' CHARACTER SET utf8mb4');await setup.query('USE '+name);await setup.query(fs.readFileSync(path.join(__dirname,'../database/schema.sql'),'utf8'));await setup.query(fs.readFileSync(path.join(__dirname,'../database/migrations/202609090002_auth_revocation.sql'),'utf8'));
  await require('../scripts/migrate-bilingual').migrate(setup);await require('../scripts/migrate-bilingual').migrate(setup);
  const db=require('../src/db'),jwt=require('jsonwebtoken'),users={};for(const role of ['owner','user','editor']){const [r]=await db.query('INSERT INTO users(username,email,password_hash,role) VALUES (?,?,?,?)',[role,role+'@example.test','unused',role]);users[role]=r.insertId;}
- const app=require('express')();app.use(require('express').json());app.use('/api/posts',require('../src/routes/posts'));app.use('/api/article-drafts',require('../src/routes/articleDrafts'));app.use((e,_req,res,_next)=>res.status(e.status||500).json({message:e.message}));
+ const app=require('express')();app.use(require('express').json());app.use('/api/posts',require('../src/routes/posts'));app.use('/api/article-drafts',require('../src/routes/articleDrafts'));app.use('/api/admin',require('../src/routes/admin'));app.use((e,_req,res,_next)=>res.status(e.status||500).json({message:e.message}));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(async()=>{await new Promise(r=>server.close(r));await db.end();await setup.query('DROP DATABASE '+name);await setup.end();});
  const request=async(url,method='GET',body,role='owner')=>{const response=await fetch('http://127.0.0.1:'+server.address().port+'/api'+url,{method,headers:{'Content-Type':'application/json',Authorization:role?'Bearer '+jwt.sign({id:users[role],sessionStartedAt:Date.now()},process.env.JWT_SECRET):''},...(body?{body:JSON.stringify(body)}:{})});return {status:response.status,data:await response.json()};};
  const ok=async(...args)=>{const r=await request(...args);assert.equal(r.status,200,JSON.stringify(r.data));return r.data;};
@@ -46,20 +46,34 @@ test('translations retain one post identity across draft publication, review, re
  await db.query('DELETE FROM article_drafts WHERE id=?',[second.id]);await db.query('DELETE FROM posts WHERE id=?',[second.post_id]);
 
  assert.equal((await request('/posts/'+originalId,'GET',null,null)).status,404);
- let en=await ok('/article-drafts','POST',{id:crypto.randomUUID(),post_id:originalId,locale:'en'});assert.equal(en.locale,'en');assert.equal(en.payload.slug,'');assert.equal(en.payload.content,'');assert.equal((await request('/article-drafts/'+en.id+'/withdraw','POST',{version:en.version})).status,409);const list=await ok('/article-drafts');assert.equal(list.total,1);assert.equal(list.items[0].locale,'zh-CN');
+ let en=await ok('/article-drafts','POST',{id:crypto.randomUUID(),post_id:originalId,locale:'en'});assert.equal(en.locale,'en');assert.equal(en.payload.slug,'');assert.equal(en.payload.content,'');assert.equal(en.dirty,0);assert.equal((await request('/article-drafts/'+en.id+'/withdraw','POST',{version:en.version})).status,409);const list=await ok('/article-drafts');assert.equal(list.total,1);assert.equal(list.items[0].locale,'zh-CN');
+ // Existing empty drafts incorrectly marked dirty are ignored without changing stored data.
+ await db.query('UPDATE article_drafts SET dirty=1 WHERE id=?',[en.id]);
+ let row=(await ok('/admin/posts')).find(post=>post.id===originalId);assert.equal(Number(row.has_unpublished_zh),1);assert.equal(Number(row.has_unpublished_en),0);assert.equal(Number(row.has_unpublished),1);
+ await db.query("UPDATE article_drafts SET payload=JSON_SET(payload,'$.title','null') WHERE id=?",[en.id]);
+ row=(await ok('/admin/posts')).find(post=>post.id===originalId);assert.equal(Number(row.has_unpublished_en),1,'literal null is authored content');
+ await db.query("UPDATE article_drafts SET payload=JSON_SET(payload,'$.title','') WHERE id=?",[en.id]);
+ const query=db.query;db.query=function(sql,...args){if(sql.includes('FROM post_translations t WHERE t.post_id=d.post_id'))return Promise.reject(Object.assign(new Error('missing translation table'),{code:'ER_NO_SUCH_TABLE',sqlMessage:"Table 'post_translations' doesn't exist"}));return query.call(this,sql,...args);};
+ try{row=(await ok('/admin/posts')).find(post=>post.id===originalId);assert.equal(Number(row.has_unpublished),1);}finally{db.query=query;}
+ await ok('/article-drafts/'+en.id,'DELETE',{version:en.version});en=await ok('/article-drafts/'+en.id);assert.equal(en.dirty,0);assert.equal(en.payload.content,'');
  en=await ok('/article-drafts/'+en.id,'PUT',{version:en.version,payload:{...en.payload,title:'English title',content:'Unique English searchword',summary:'English summary',summary_mode:'manual'},save_kind:'manual'});
+ row=(await ok('/admin/posts')).find(post=>post.id===originalId);assert.equal(Number(row.has_unpublished_en),1);
  assert.equal((await request('/posts/'+originalId+'?locale=en','GET',null,null)).status,404);
  assert.equal((await request('/article-drafts/'+en.id,'GET',null,'user')).status,404);
  const publicBefore=await ok('/posts?locale=en');assert.equal(publicBefore.length,0);assert.ok(!JSON.stringify(publicBefore).includes('Unique English searchword'));
  assert.equal((await request('/article-drafts/'+en.id+'/publish','POST',{version:en.version})).status,409);
  zh=await ok('/article-drafts/'+zh.id,'PUT',{version:zh.version,payload:{...zh.payload,slug:'shared-identity'},save_kind:'manual'});
  zh=await ok('/article-drafts/'+zh.id+'/publish','POST',{version:zh.version});
+ row=(await ok('/admin/posts')).find(post=>post.id===originalId);assert.equal(Number(row.has_unpublished_zh),0);assert.equal(Number(row.has_unpublished_en),1);assert.equal(Number(row.has_unpublished),1);
  const [aliases]=await db.query('SELECT slug FROM article_slug_aliases WHERE post_id=?',[originalId]);assert.ok(aliases.length);assert.ok(aliases.every(row=>!row.slug.startsWith('__draft-')));
  const [[onePost]]=await db.query('SELECT COUNT(*) total FROM posts');assert.equal(onePost.total,1);
  const originalBasis=en.source_hash;assert.equal(originalBasis.length,64);
  zh=await ok('/article-drafts/'+zh.id,'PUT',{version:zh.version,payload:{...zh.payload,content:'原文首次更新'},save_kind:'manual'});zh=await ok('/article-drafts/'+zh.id+'/publish','POST',{version:zh.version});
  en=await ok('/article-drafts/'+en.id);assert.equal(en.source_changed,true,'first unpublished translation must detect source changes');assert.equal(en.source_hash,originalBasis);
  en=await ok('/article-drafts/'+en.id+'/publish','POST',{version:en.version});
+ await db.query('UPDATE article_drafts SET payload=?,dirty=1 WHERE id=?',[JSON.stringify({...en.payload,title:'',summary:'',content:''}),en.id]);
+ row=(await ok('/admin/posts')).find(post=>post.id===originalId);assert.equal(Number(row.has_unpublished_en),1,'clearing an existing translation is a real edit');
+ await db.query('UPDATE article_drafts SET payload=?,dirty=0 WHERE id=?',[JSON.stringify(en.payload),en.id]);
  let english=await ok('/posts/shared-identity?locale=en','GET',null,null);assert.equal(english.id,originalId);assert.equal(english.content,'Unique English searchword');assert.equal((await ok('/posts/'+originalId)).content,'原文首次更新');
  assert.equal(en.source_changed,true,'publishing old translation must not imply source review');const [[publishedBasis]]=await db.query('SELECT source_hash FROM post_translations WHERE post_id=?',[originalId]);assert.equal(publishedBasis.source_hash,originalBasis);
  assert.equal((await request('/article-drafts/'+en.id,'PUT',{version:en.version,payload:en.payload,reviewed_source_hash:originalBasis})).status,409);

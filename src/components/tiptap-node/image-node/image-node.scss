@@ -75,10 +75,10 @@
   .editor-image-settings-close { display: grid; place-items: center; width: 44px; margin-right: -8px; background: transparent; border-radius: 8px; }
   .editor-image-settings-close:hover { background: var(--muted); }
   .editor-image-settings-section { display: grid; gap: 10px; margin-bottom: 18px; }
-  .editor-image-settings-label { display: block; color: var(--muted-foreground); font-size: 12px; }
-  .editor-image-segments { display: flex; padding: 3px; border-radius: 10px; background: var(--muted); }
-  .editor-image-segments button { flex: 1; min-width: 0; padding: 0 8px; border-radius: 7px; background: transparent; }
-  .editor-image-segments button[aria-pressed="true"] { background: var(--card); box-shadow: 0 1px 3px color-mix(in srgb, var(--foreground) 8%, transparent); }
+  .editor-image-settings-label { display: block; color: var(--foreground); font-size: 13px; font-weight: 600; }
+  .editor-image-segments { display: flex; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--muted); }
+  .editor-image-segments button { flex: 1; min-width: 0; padding: 0 8px; border-radius: 7px; background: transparent; color: var(--foreground); white-space: nowrap; }
+  .editor-image-segments button[aria-pressed="true"] { background: var(--foreground); color: var(--background); font-weight: 600; }
   .editor-image-segments button:hover:not(:disabled):not([aria-pressed="true"]) { background: color-mix(in srgb, var(--card) 50%, transparent); }
   .editor-image-width-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .editor-image-width-input { display: flex; align-items: center; gap: 8px; }
@@ -86,8 +86,8 @@
   input,textarea { box-sizing: border-box; min-height: 44px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--foreground); font: inherit; font-size: 16px; }
   input { width: 112px; padding: 8px 10px; }
   .editor-image-heading-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0; background: transparent; }
-  .editor-image-toggle-indicator { display: block; width: 32px; height: 20px; padding: 3px; border-radius: 12px; background: var(--muted); }
-  .editor-image-toggle-indicator::after { content: ""; display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--muted-foreground); }
+  .editor-image-toggle-indicator { display: block; width: 32px; height: 20px; padding: 3px; border-radius: 12px; background: color-mix(in srgb, var(--foreground) 48%, var(--card)); }
+  .editor-image-toggle-indicator::after { content: ""; display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--background); }
   .editor-image-heading-toggle[aria-pressed="true"] .editor-image-toggle-indicator { background: var(--foreground); }
   .editor-image-heading-toggle[aria-pressed="true"] .editor-image-toggle-indicator::after { transform: translateX(12px); background: var(--background); }
   .editor-image-caption-field { display: grid; gap: 10px; }

@@ -31,6 +31,13 @@ test('article drafts isolate public content, enforce versions and publish idempo
  assert.equal((await req(`/article-drafts/${id}`,'PUT',{version:1,payload:{title:'stale'}})).status,409);
  r=await req(`/article-drafts/${id}/publish`,'POST',{version:d.version});assert.equal(r.status,200);d=await r.json();assert.ok(d.post_id);
  const published=await (await req(`/posts/${d.post_id}`,'GET',null,'')).json();assert.equal(published.content,'First public body');assert.equal(published.aside,'这是旁白');
+ // Opening an untranslated English version alone is not an unpublished edit.
+ const englishId=crypto.randomUUID();let english=await (await req('/article-drafts','POST',{id:englishId,post_id:d.post_id,locale:'en'})).json();assert.equal(english.dirty,0);
+ let listing=(await (await req('/admin/posts')).json()).find(p=>p.id===d.post_id);assert.equal(Number(listing.has_unpublished),0);assert.equal(Number(listing.has_unpublished_en),0);
+ english=await (await req(`/article-drafts/${englishId}`,'PUT',{version:english.version,locale:'en',payload:{...english.payload,title:'Real English draft'}})).json();assert.equal(english.dirty,1);
+ listing=(await (await req('/admin/posts')).json()).find(p=>p.id===d.post_id);assert.equal(Number(listing.has_unpublished_en),1);
+ assert.equal((await req(`/article-drafts/${englishId}`,'DELETE',{version:english.version,locale:'en'})).status,200);
+ listing=(await (await req('/admin/posts')).json()).find(p=>p.id===d.post_id);assert.equal(Number(listing.has_unpublished),0);
  // Drafts written before the aside field existed inherit the public value.
  await db.query("UPDATE article_drafts SET payload=JSON_REMOVE(payload,'$.aside'),dirty=1,published_version=NULL WHERE id=?",[id]);
  d=await (await req(`/article-drafts/${id}`)).json();assert.equal(d.payload.aside,'这是旁白');

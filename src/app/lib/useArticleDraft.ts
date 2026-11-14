@@ -59,10 +59,12 @@ export function useArticleDraft(userId:number,postId?:string,locale:Locale='zh-C
  const action=async(kind:'publish'|'withdraw'|'submit')=>{if(kind!=='withdraw'&&!await generateSummary())return false;const d=await save();if(!d)return;setBusy(true);try{const result=await api(kind==='submit'?'/publishing/'+d.id+'/submit':`/article-drafts/${d.id}/${kind}`,{method:'POST',body:JSON.stringify({version:d.version,locale})});if(kind==='submit'){apply({...d,workflow:{...d.workflow,...result}});try{const fresh=await api('/article-drafts/'+d.id);apply(fresh);current.current=fresh.payload;setForm(fresh.payload);}catch{notify.error(t("m_12aadaa5cf"));}}else{apply(result);current.current=result.payload;setForm(result.payload);}setStatus(kind==='submit'?statusText("m_a13f5da574"):kind==='publish'?statusText("m_cda079bcd5"):statusText("m_99b0ee8aac"));setError('');setErrorStatus(0);return true;}catch(e:any){setError(e.message);setErrorStatus(e.status||0);if(e.status===409){blocked.current=true;autoPaused.current=true;setStatus(statusText("m_16e0548d1d"));}return false;}finally{setBusy(false);}};
  const discard=async()=>{
   if(!doc.current)return;blocked.current=true;clearTimeout(timer.current);setBusy(true);
+  let deleted=false;
   try{
    if(pending.current)await pending.current;
    const previous=doc.current;
    await api(`/article-drafts/${previous.id}`,{method:'DELETE',body:JSON.stringify({version:previous.version,locale})});
+   deleted=true;
    if(previous.post_id){
     let fresh;
     try{fresh=await api(`/article-drafts/${previous.id}`);}catch(e){if(!(e instanceof ApiError)||e.status!==404)throw e;fresh=await api('/article-drafts',{method:'POST',body:JSON.stringify({id:crypto.randomUUID(),post_id:previous.post_id,locale})});}
@@ -71,8 +73,8 @@ export function useArticleDraft(userId:number,postId?:string,locale:Locale='zh-C
     const url=new URL(location.href);url.searchParams.set(locale==='en'?'draft_en':'draft',fresh.id);
     navigate(url.pathname+url.search+url.hash,{replace:true,preventScrollReset:true,state:{...history.state?.usr,mooncciDraftIdentity:true}});
    }else{saved.current=draftSnapshot(current.current);setForm({...current.current});navigate(location.pathname.startsWith('/account')?'/account/submissions':'/admin/posts',{replace:true});}
-   setError('');setErrorStatus(0);setStatus(statusText("m_b3389c7359"));
-  }catch(e:any){setError(e.message);setErrorStatus(e.status||0);}finally{setBusy(false);}
+   setError('');setErrorStatus(0);setStatus(statusText("m_b3389c7359"));if(previous.post_id)notify.success(t(locale==='en'?'m_a0a0a0a017':'m_a0a0a0a018'));
+  }catch(e:any){setError(deleted||e?.uncertain?t('m_a0a0a0a019'):e.message);setErrorStatus(e.status||0);}finally{setBusy(false);}
  };
  const inspect=async()=>{blocked.current=true;autoPaused.current=true;clearTimeout(timer.current);setBusy(true);try{if(pending.current)await pending.current;const comparison=await api(`/article-drafts/${doc.current.id}/conflict`);if(!alive.current)return false;setServerCopy(comparison);return true;}catch(e:any){setError(e.message);setErrorStatus(e.status||0);return false;}finally{if(alive.current)setBusy(false);}};
  const resolveConflict=async(choice:'publish-current'|'keep-current'|'adopt-post'|'adopt-draft')=>{

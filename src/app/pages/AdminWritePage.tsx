@@ -82,6 +82,13 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   const [quality, setQuality] = useState('medium');
   const uploads = uploadCount + (editorPending ? 1 : 0);
   const [ai, setAi] = useState<any>(null);
+  const [translationBusy, setTranslationBusy] = useState(false);
+  const [translationError, setTranslationError] = useState('');
+  const translationAttempt = useRef('');
+  const skipTranslationAfterDiscard = useRef(false);
+  const translationRequest = useRef<AbortController | null>(null);
+  const translationState = useRef({chinese, english});
+  translationState.current = {chinese, english};
   const [tagInput, setTagInput] = useState('');
   const [coverAddress, setCoverAddress] = useState(false);
   const [wide, setWide] = useState(() => window.matchMedia('(min-width:1280px)').matches);
@@ -124,6 +131,39 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   }, [d.form.title, preview, locked, showComparison]);
 
   useEffect(() => { api('/article-seo/status').then(setAi).catch(() => setAi({ unavailable: true })); }, []);
+  const translateEnglish = async () => {
+    const {chinese: source, english: target} = translationState.current;
+    if (translationRequest.current || !target.ready || !target.draft || target.draft.translation_status === 'published') return;
+    const text = (form: any) => JSON.stringify([form.title || '', form.summary || '', form.content || '']);
+    if ([target.form.title, target.form.summary, target.form.content].some(value => String(value || '').trim())) return;
+    if (['submitted','approved','scheduled'].includes(target.draft.workflow?.state)) return;
+    if (source.blocked || source.isRestoring || source.recovery || target.blocked || target.isRestoring || target.recovery) { setTranslationError(t('m_a0a0a0a001')); return; }
+    if (source.draft?.post_status === 'published' && (source.dirty || Number(source.draft.dirty))) { setTranslationError(t('m_a0a0a0a002')); return; }
+    if (!String(source.form.content || '').trim()) { setTranslationError(t('m_a0a0a0a003')); return; }
+    const sourceSnapshot = text(source.form), sourceVersion = source.draft?.version, targetSnapshot = text(target.form), draftId = target.draft.id, draftVersion = target.draft.version;
+    const controller = new AbortController(); translationRequest.current = controller;
+    setTranslationBusy(true); setTranslationError('');
+    try {
+      const result = await api('/article-seo/translate', {method:'POST',body:JSON.stringify({payload:source.form,...(source.draft?.post_id ? {sourcePostId:source.draft.post_id,sourceBaseVersion:source.draft.base_version} : {})}),signal:controller.signal,timeoutMs:300000});
+      if (controller.signal.aborted) return;
+      const latest = translationState.current;
+      if (latest.english.draft?.id !== draftId || latest.english.draft?.version !== draftVersion || latest.english.draft?.translation_status === 'published' || ['submitted','approved','scheduled'].includes(latest.english.draft?.workflow?.state) || latest.english.busy || latest.english.blocked || latest.english.isRestoring || latest.english.recovery || latest.chinese.blocked || latest.chinese.isRestoring || latest.chinese.recovery || latest.chinese.draft?.version !== sourceVersion || text(latest.english.form) !== targetSnapshot || text(latest.chinese.form) !== sourceSnapshot) {
+        setTranslationError(t('m_a0a0a0a004')); return;
+      }
+      if (![result.title, result.summary, result.content].every(value => typeof value === 'string') || !result.title.trim() || !result.content.trim()) throw new Error(t('m_a0a0a0a005'));
+      latest.english.update((previous: any) => ({...previous,title:result.title,summary:result.summary,content:result.content,summary_mode:'manual',summary_receipt:''}));
+    } catch (error: any) { if (!controller.signal.aborted) setTranslationError(t(error.message || 'm_a0a0a0a006')); }
+    finally { if (translationRequest.current === controller) translationRequest.current = null; if (!controller.signal.aborted) setTranslationBusy(false); }
+  };
+  useEffect(() => {
+    if (!englishVersion || !chinese.ready || !english.ready || !english.draft || !ai || translationAttempt.current === english.draft.id) return;
+    if (english.draft.translation_status === 'published' || [english.form.title,english.form.summary,english.form.content].some(value => String(value || '').trim())) return;
+    translationAttempt.current = english.draft.id;
+    if (skipTranslationAfterDiscard.current) { skipTranslationAfterDiscard.current = false; return; }
+    if (ai.enabled) void translateEnglish();
+    else setTranslationError(t('m_a0a0a0a007'));
+  }, [englishVersion,chinese.ready,english.ready,english.draft?.id,ai]);
+  useEffect(() => () => { translationRequest.current?.abort(); }, []);
   useEffect(() => {
     if (!d.ready || initializedMode.current) return;
     initializedMode.current = true;
@@ -252,7 +292,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
     ...(publishing && !contributor ? [{ label: t("m_7ddb7d0fcc"), disabled: !d.ready || locked || d.busy || d.blocked || uploads > 0, run: () => void submit() }] : []),
     ...(!contributor && versionPublished ? [{ label: t("m_c91bcb8e27"), disabled: locked || d.busy || d.isRestoring || d.blocked, run: () => { void (async () => { if (await confirmAction(t("m_cf9bb94aa2"))) void d.action('withdraw'); })(); } }] : []),
     ...(versionPublished ? [{ label: t("m_f6beed2923"), disabled: false, run: () => navigate(articlePath({id:d.draft.post_id,slug:d.draft.payload.slug},editorLocale)) }] : []),
-    ...(d.draft ? [{ label: d.draft.post_id ? t("m_9ae8295a9b") : t("m_adb7015d2d"), danger: true, disabled: locked || d.busy || d.isRestoring || uploads > 0, run: () => { void (async () => { if (await confirmAction(d.draft.post_id ? t("m_6acaf74473") : t("m_fceb101c01"))) void d.discard(); })(); } }] : []),
+    ...(d.draft ? [{ label: d.draft.post_id ? t(englishVersion ? 'm_a0a0a0a010' : 'm_a0a0a0a011') : t("m_adb7015d2d"), danger: true, disabled: locked || d.busy || d.isRestoring || uploads > 0 || (versionPublished && !Number(d.draft.dirty) && !d.dirty), run: () => { void (async () => { if (await confirmAction(d.draft.post_id ? t(englishVersion ? 'm_a0a0a0a012' : 'm_a0a0a0a013') : t("m_fceb101c01"))) { if (englishVersion) skipTranslationAfterDiscard.current = true; void d.discard(); } })(); } }] : []),
   ];
 
   const settings = <fieldset disabled={fieldsDisabled} className="writing-settings-fields">
@@ -283,7 +323,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
       {!englishVersion && d.form.summary_mode === 'ai' && <p className="writing-ai-receipt" role="status">{d.form.summary_receipt ? t("m_299d4c0238") : t("m_63795bee11")}</p>}
       {d.summaryError && <p role="alert">{d.summaryError}  {t("m_3c447d3799")}</p>}
     </section>
-    <section className="writing-setting-section"><label htmlFor="article-aside">{t('旁白')}<input id="article-aside" className="ui-input" value={chinese.form.aside || ''} maxLength={40} placeholder={t('例如：这版图我改了三次')} aria-describedby="article-aside-hint" disabled={englishVersion || !chinese.ready} onChange={event => chinese.update((previous: any) => ({ ...previous, aside: event.target.value }))} /></label><p id="article-aside-hint" className="writing-ai-help">{t(englishVersion ? '旁白与中文版共享，请切换到中文版本编辑。' : '空着就不显示。不是摘要。')}</p></section>
+    <section className="writing-setting-section"><label htmlFor="article-aside">{t('旁白')}<input id="article-aside" className="ui-input" value={chinese.form.aside || ''} maxLength={40} placeholder={t('m_a0a0a0a020')} aria-describedby="article-aside-hint" disabled={englishVersion || !chinese.ready} onChange={event => chinese.update((previous: any) => ({ ...previous, aside: event.target.value }))} /></label><p id="article-aside-hint" className="writing-ai-help">{t(englishVersion ? 'm_a0a0a0a022' : 'm_a0a0a0a021')}</p></section>
     {phone && !locked && draftActions.length > 0 && <section className="writing-setting-section writing-draft-actions"><h2>{t("m_7437cbd046")}</h2>{draftActions.map(action => <AdminButton type="button" key={action.label} variant="ghost" className={""+ (('danger' in action ? 'writing-menu-danger ui-btn--danger' : undefined) || '')} disabled={action.disabled} onClick={action.run}>{'danger' in action && <Trash2 size={18} strokeWidth={1.8} aria-hidden="true" />}{action.label}</AdminButton>)}</section>}
     {d.form.source_url && <section className="writing-setting-section"><h2>{t("m_876df41c1d")}</h2><p>{d.form.source_url}</p><p>{t("m_624bd95d15")}{d.form.published_at}{t("m_434debb93e")}</p></section>}
   </fieldset>;
@@ -304,7 +344,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
           <div className="writing-interface-language"><span>{t("m_3d13868593")}</span><LanguageSwitch /></div>
           {!locked && <><AdminButton type="button" ref={historyTrigger} variant="soft" className="writing-history-trigger writing-secondary-action" disabled={!d.ready} onClick={openHistory}>{t("m_b11590c91f")}</AdminButton><AdminButton type="button" variant="soft" className="writing-save-trigger" disabled={locked || !d.ready || d.busy || d.blocked || d.isRestoring} onClick={() => void save()}>{d.busy ? t("m_ff509c9ba0") : t("m_5329e3f0ee")}</AdminButton></>}
           {!locked && !preview && !showComparison && (!wide || collapsed) && <AdminButton type="button" ref={settingsTrigger} variant="ghost" className="writing-settings-trigger" aria-label={t("m_89ae9a9ca1")} aria-expanded={wide ? !collapsed : settingsOpen} onClick={() => wide ? collapseSettings(false) : setSettingsOpen(true)}><Settings2 size={16} aria-hidden="true" /><span>{t("m_df3d58c7d8")}</span></AdminButton>}
-          {(!wide || (!locked && draftActions.length > 0)) && <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" ref={moreTrigger} variant="soft" size="icon" aria-label={t("m_1b0702d7cc")} className="writing-secondary-action"><MoreHorizontal size={18} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal ui-v2 writing-more-menu"><DropdownMenuSub><DropdownMenuSubTrigger className="writing-language-menu-entry">{t("m_3d13868593")}</DropdownMenuSubTrigger><DropdownMenuSubContent className="admin-portal ui-v2 writing-language-submenu"><DropdownMenuRadioGroup value={preference} onValueChange={value => setLocale(value as 'zh-CN' | 'en' | 'system')}><DropdownMenuRadioItem value="zh-CN">{t("m_72726d8818")}</DropdownMenuRadioItem><DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem><DropdownMenuRadioItem value="system">{t("m_217cfe7db1")}</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuSubContent></DropdownMenuSub><DropdownMenuSeparator className="writing-language-menu-entry" />{!locked && (phone ? <><DropdownMenuItem disabled={!d.ready || preview || showComparison} onSelect={() => setSettingsOpen(true)}>{t("m_89ae9a9ca1")}</DropdownMenuItem><DropdownMenuItem disabled={!d.ready} onSelect={openHistory}>{t("m_b11590c91f")}</DropdownMenuItem><DropdownMenuItem disabled={locked || !d.ready || d.busy || d.blocked || d.isRestoring} onSelect={() => void save()}>{t("m_5329e3f0ee")}</DropdownMenuItem></> : draftActions.map(action => <DropdownMenuItem key={action.label} className={'danger' in action ? 'writing-menu-danger' : undefined} disabled={action.disabled} onSelect={action.run}>{action.label}</DropdownMenuItem>))}</DropdownMenuContent></DropdownMenu>}
+          {(!wide || (!locked && draftActions.length > 0)) && <DropdownMenu modal={false}><DropdownMenuTrigger asChild><AdminButton type="button" ref={moreTrigger} variant="soft" size="icon" aria-label={t("m_1b0702d7cc")} className="writing-secondary-action"><MoreHorizontal size={18} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal ui-v2 writing-more-menu"><DropdownMenuSub><DropdownMenuSubTrigger className="writing-language-menu-entry">{t("m_3d13868593")}</DropdownMenuSubTrigger><DropdownMenuSubContent className="admin-portal ui-v2 writing-language-submenu"><DropdownMenuRadioGroup value={preference} onValueChange={value => setLocale(value as 'zh-CN' | 'en' | 'system')}><DropdownMenuRadioItem value="zh-CN">{t("m_72726d8818")}</DropdownMenuRadioItem><DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem><DropdownMenuRadioItem value="system">{t("m_217cfe7db1")}</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuSubContent></DropdownMenuSub><DropdownMenuSeparator className="writing-language-menu-entry" />{!locked && (phone ? <><DropdownMenuItem disabled={!d.ready || preview || showComparison} onSelect={() => setSettingsOpen(true)}>{t("m_89ae9a9ca1")}</DropdownMenuItem><DropdownMenuItem disabled={!d.ready} onSelect={openHistory}>{t("m_b11590c91f")}</DropdownMenuItem><DropdownMenuItem disabled={locked || !d.ready || d.busy || d.blocked || d.isRestoring} onSelect={() => void save()}>{t("m_5329e3f0ee")}</DropdownMenuItem></> : draftActions.map(action => <DropdownMenuItem key={action.label} className={'danger' in action ? 'writing-menu-danger' : undefined} disabled={action.disabled} onSelect={action.run}>{action.label}</DropdownMenuItem>))}</DropdownMenuContent></DropdownMenu>}
           {!locked && <AdminButton type="button" variant="solid" disabled={!d.ready || locked || d.busy || d.isRestoring || d.blocked || uploads > 0 || showComparison} onClick={() => void openPreview()} >{contributor ? t("m_14466a5bf0") : t("m_b61f333b91")}</AdminButton>}
 
         </div>
@@ -313,7 +353,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
       <section className="writing-content-language" aria-label={t("m_d562f79cd4")}><span className="writing-content-language-label">{t("m_d562f79cd4")}</span><div className="writing-segment" role="group" aria-label={t("m_d562f79cd4")}>
         <button type="button" className="quiet-button" aria-pressed={!englishVersion} disabled={d.busy||uploads>0} onClick={()=>setEditorLocale('zh-CN')}>{t("m_72726d8818")}</button>
         <button type="button" className="quiet-button" aria-pressed={englishVersion} disabled={!chinese.ready||chinese.busy||d.busy||uploads>0} onClick={()=>{void(async()=>{if(!sharedPostId&&!await chinese.identity())return;setEnglishOpened(true);setEditorLocale('en');})();}}>English</button>
-        </div><span className="writing-version-state" role="status"><span className="writing-version-label">{t("m_5f76b2bf82")}{locale === 'en' ? ' ' : ''}{t("m_6320b4a872")}{locale === 'en' ? ': ' : '：'}</span><span>{t(d.draft?.source_changed?t("m_133c7031a7"):d.draft?.translation_status==='published'?t("m_d334724d6b"):d.draft?t("m_2a2fd29bd2"):t("m_bb1ea50f6a"))}</span></span>
+        </div><span className="writing-version-state" role="status"><span className="writing-version-label">{t("m_5f76b2bf82")}{locale === 'en' ? ' ' : ''}{t("m_6320b4a872")}{locale === 'en' ? ': ' : '：'}</span><span>{t(d.draft?.source_changed?t("m_133c7031a7"):versionPublished&&(d.dirty||Number(d.draft?.dirty))?t("m_41df60ffba"):versionPublished?t("m_d334724d6b"):d.draft?t("m_2a2fd29bd2"):t("m_bb1ea50f6a"))}</span></span>
         {englishVersion&&d.draft?.source_changed&&<button type="button" className="quiet-button" disabled={locked||d.busy||d.blocked||uploads>0||!d.draft.current_source_hash} onClick={()=>void d.reviewSource()}>{t("m_1f9e07738c")}</button>}
       </section>
 
@@ -329,6 +369,8 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
         {preview && !locked && !showComparison && <section className="article-full-preview"><AdminButton type="button" variant="ghost" className="article-return-edit" disabled={d.busy} onClick={() => setPreview(false)}><ArrowLeft size={16} aria-hidden="true" />{t("m_16b38790d5")}</AdminButton><ArticleReview post={{ ...d.form, content_locale:editorLocale, author_name: t("m_bc23331f73") }} busy={d.busy || d.isRestoring || uploads > 0} disabled={d.blocked && !(conflictMode === 'review' && d.serverCopy)} publishLabel={conflictMode === 'review' ? t("m_7dd20b7a2c") : contributor ? t("m_34ef20b205") : versionPublished ? t("m_397ee4a9e4") : t("m_c8f73143f3")} onPublish={() => void (contributor ? submit() : publish())} /></section>}
         {locked && <article className="submission-document"><header><span className="account-eyebrow">{t("m_8cd59b0a18")}</span><h1>{d.form.title || t("m_0d29eaf3ac")}</h1><p className="submission-document-meta">{t("m_78b756d8eb")}</p></header><div className="submission-document-body">{cover && (d.form.cover_crop ? <CoverDisplayPreviews src={cover} crop={d.form.cover_crop} /> : <img className="content-image" src={cover} alt="" />)}<MarkdownContent content={d.form.content || ''} headingPrefix="submission-heading" /></div></article>}
         {d.summaryBusy && <p role="status">{t("m_227f4fa588")}</p>}
+        {englishVersion && !preview && !locked && !showComparison && translationBusy && <StatusNotice state="loading">{t('m_a0a0a0a008')}</StatusNotice>}
+        {englishVersion && !preview && !locked && !showComparison && translationError && <StatusNotice state="error" action={ai?.enabled && ![d.form.title,d.form.summary,d.form.content].some(value => String(value || '').trim()) ? <AdminButton type="button" variant="soft" disabled={translationBusy} onClick={() => void translateEnglish()}>{t('m_a0a0a0a009')}</AdminButton> : undefined}>{translationError}</StatusNotice>}
         <fieldset hidden={preview || locked || showComparison} disabled={fieldsDisabled} className="writing-editor-fields">
           <label className="writing-title"><span className="sr-only">{t("m_c3405f8c7d")}</span><textarea ref={titleInput} id="article-title" rows={1} value={d.form.title} maxLength={255} onChange={event => change('title', event.target.value.replace(/[\r\n]+/g, ' '))} placeholder={t("m_865f0a03ab")} /></label>
           {!isRichText(d.form.content) && !!d.form.content && <div className="writing-source-toggle"><button type="button" aria-pressed={editorMode === 'source'} disabled={fieldsDisabled || uploads > 0} onClick={() => setMode(editorMode === 'source' ? 'visual' : 'source')}>{t("m_9380ef6f8d")}</button></div>}

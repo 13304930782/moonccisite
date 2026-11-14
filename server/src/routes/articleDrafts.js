@@ -38,7 +38,7 @@ router.post('/',run(async(req,res)=>{
     if(req.body.post_id){const [[p]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[req.body.post_id]);if(!p||!allowed(user,p))throw error('文章不存在或无权限。',404);sourceHash=contentLocale==='en'?translations.sourceHash(p):'';post=contentLocale==='en'?await translations.published(c,p,true):p;if(contentLocale==='en'&&post.version)sourceHash=post.source_hash||'';if(contentLocale!=='en'||post.version)await revisions.baseline(c,post,user.id);const [[d]]=await c.query('SELECT id FROM article_drafts WHERE post_id=? AND locale=?',[p.id,contentLocale]);if(d)return get(c,d.id,user);}
     if(contentLocale==='en'&&!post)throw error('Save the original article before adding a translation.',409);
     let tags=[];try{tags=post?(Array.isArray(post.tags)?post.tags:JSON.parse(post.tags||'[]')):[];}catch{}
-    await c.query('INSERT INTO article_drafts(id,author_id,post_id,base_version,payload,dirty,locale,source_hash) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id',[id,post?.author_id||user.id,post?.id||null,post?.version||null,JSON.stringify(payload(post?{...withCoverCrop(post),slug:displayArticleSlug(post.slug),tags}:req.body.payload)),post?.status==='published'?0:1,contentLocale,sourceHash]);return get(c,id,user);
+    await c.query('INSERT INTO article_drafts(id,author_id,post_id,base_version,payload,dirty,locale,source_hash) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id',[id,post?.author_id||user.id,post?.id||null,post?.version||null,JSON.stringify(payload(post?{...withCoverCrop(post),slug:displayArticleSlug(post.slug),tags}:req.body.payload)),post?.status==='published'||(contentLocale==='en'&&post?.version===0)?0:1,contentLocale,sourceHash]);return get(c,id,user);
   });res.json(result);
 }));
 router.get('/:id',run(async(req,res)=>res.json(await get(db,req.params.id,req.user))));
@@ -111,9 +111,10 @@ router.delete('/:id',run(async(req,res)=>{
   await transaction(req,async(c,user)=>{const d=await get(c,req.params.id,user,true);if(workflow.enabled())await workflow.assertEditable(c,d);if(d.version!==req.body.version)throw error('草稿已变化，请刷新。',409);if(workflow.enabled()&&d.post_id){
  let [[post]]=await c.query('SELECT * FROM posts WHERE id=? FOR UPDATE',[d.post_id]);
  if(!post)throw error('文章不存在。',404);
+ const original=post;
  if(d.locale==='en')post=await translations.published(c,post,true);
  let tags=[];try{tags=Array.isArray(post.tags)?post.tags:JSON.parse(post.tags||'[]');}catch{}
- await c.query('UPDATE article_drafts SET payload=?,source_hash=?,base_version=?,version=version+1,dirty=?,published_version=? WHERE id=?',[JSON.stringify(payload({...withCoverCrop(post),tags})),post.source_hash||'',post.version,post.status==='published'?0:1,post.status==='published'?d.version+1:null,d.id]);
+ await c.query('UPDATE article_drafts SET payload=?,source_hash=?,base_version=?,version=version+1,dirty=?,published_version=? WHERE id=?',[JSON.stringify(payload({...withCoverCrop(post),tags})),d.locale==='en'&&post.version===0?translations.sourceHash(original):(post.source_hash||''),post.version,post.status==='published'||(d.locale==='en'&&post.version===0)?0:1,post.status==='published'?d.version+1:null,d.id]);
  await c.query("UPDATE article_workflows SET state=?,reason='',scheduled_at=NULL WHERE draft_id=?",[post.status==='published'?'published':'draft',d.id]);return;
  }if(!d.post_id)await c.query('DELETE FROM article_revisions WHERE draft_id=? AND post_id IS NULL',[d.id]);if(workflow.enabled())await c.query('DELETE FROM article_workflows WHERE draft_id=?',[d.id]);await c.query('DELETE FROM article_drafts WHERE id=?',[d.id]);});res.json({message:'未发布修改已丢弃，已有文章保持不变。'});
 }));

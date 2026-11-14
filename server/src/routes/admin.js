@@ -238,12 +238,29 @@ router.get('/posts', editorOrAdmin, async (req, res) => {
     total = Number(count.total);
     page = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
   }
-  const [rows] = await db.query(`
-    SELECT p.id,p.title,p.summary,p.status,p.category,p.author_id,p.updated_at,u.username AS author_name,EXISTS(SELECT 1 FROM article_drafts d WHERE d.post_id=p.id AND d.dirty=1) AS has_unpublished
+  // Older versions marked a newly opened, empty English draft as dirty.
+  const meaningfulDraft = `d.dirty=1 AND NOT (d.locale='en' AND COALESCE(d.base_version,0)=0
+    AND NOT EXISTS(SELECT 1 FROM post_translations t WHERE t.post_id=d.post_id AND t.locale='en')
+    AND TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(d.payload,'$.title')),''))=''
+    AND TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(d.payload,'$.summary')),''))=''
+    AND TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(d.payload,'$.content')),''))='')`;
+  let rows;
+  try { [rows] = await db.query(`
+    SELECT p.id,p.title,p.summary,p.status,p.category,p.author_id,p.updated_at,u.username AS author_name,
+      EXISTS(SELECT 1 FROM article_drafts d WHERE d.post_id=p.id AND ${meaningfulDraft}) AS has_unpublished,
+      EXISTS(SELECT 1 FROM article_drafts d WHERE d.post_id=p.id AND d.locale='zh-CN' AND ${meaningfulDraft}) AS has_unpublished_zh,
+      EXISTS(SELECT 1 FROM article_drafts d WHERE d.post_id=p.id AND d.locale='en' AND ${meaningfulDraft}) AS has_unpublished_en
     FROM posts p JOIN users u ON u.id=p.author_id
     ${where} ORDER BY p.updated_at DESC,p.id DESC
     ${paginated ? 'LIMIT ? OFFSET ?' : ''}
-  `, paginated ? [...params, pageSize, (page - 1) * pageSize] : params);
+  `, paginated ? [...params, pageSize, (page - 1) * pageSize] : params); }
+  catch (error) {
+    if (!(error.code === 'ER_NO_SUCH_TABLE' && /post_translations/.test(error.sqlMessage || '') || error.code === 'ER_BAD_FIELD_ERROR' && /d\.locale/.test(error.sqlMessage || ''))) throw error;
+    [rows] = await db.query(`SELECT p.id,p.title,p.summary,p.status,p.category,p.author_id,p.updated_at,u.username AS author_name,
+      EXISTS(SELECT 1 FROM article_drafts d WHERE d.post_id=p.id AND d.dirty=1) AS has_unpublished
+      FROM posts p JOIN users u ON u.id=p.author_id ${where} ORDER BY p.updated_at DESC,p.id DESC ${paginated ? 'LIMIT ? OFFSET ?' : ''}`,
+    paginated ? [...params, pageSize, (page - 1) * pageSize] : params);
+  }
   res.json(paginated ? { items: rows, total, page, pageSize } : rows);
 });
 

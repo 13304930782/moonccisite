@@ -51,7 +51,7 @@ export function AdminDailyQuestions() {
   useEffect(() => { void load(date); return () => { generation.current++; }; }, [date]);
   async function chooseDate(next: string) {
     if (!next || next === date) return;
-    if (dirty && !await confirmAction(t('当前题目有未保存的更改，切换日期将放弃这些更改。'))) return;
+    if (dirty && !await confirmAction(t('m_a0a0a0a024'))) return;
     setDate(next);
   }
   async function removeQuestion() {
@@ -86,7 +86,7 @@ export function AdminDailyQuestions() {
 
   const isDraft = !question || question.status === 'draft';
   return <section id="daily-questions" className="settings-section daily-question-admin">
-    <div className="settings-section-heading"><h2>{t('每日一问')}</h2><p>{t('提前写好题目并手动发布。回答与总结均需遵循北京时间。')}</p></div>
+    <div className="settings-section-heading"><h2>{t('每日一问')}</h2><p>{t('m_a0a0a0a023')}</p></div>
     <div className="daily-question-content">
       <div className="daily-question-note"><strong>{t('每天一题')}</strong><p>{t('09:00 开始接受回答，10:00 起向访客展示，23:00 截止。22:00 后可生成总结草稿。')}</p></div>
       <form className="daily-question-form" onSubmit={event => void perform('save', event)}>
@@ -100,7 +100,7 @@ export function AdminDailyQuestions() {
         <div className="daily-question-actions">{isDraft && <><AdminButton type="submit" variant="solid" disabled={busy || loading || !loaded || !dirty}>{t('保存草稿')}</AdminButton><AdminButton type="button" variant="soft" disabled={busy || loading || !loaded || !question || dirty} onClick={() => void perform('publish')}>{t('发布题目')}</AdminButton></>}{question && <AdminButton type="button" variant="soft" disabled={busy || loading} onClick={() => void removeQuestion()}>{t('删除题目')}</AdminButton>}</div>
         {isDraft && dirty && <p className="daily-question-hint">{t('请先保存草稿，再发布。')}</p>}
       </form>
-      {loaded && question && <section className="daily-question-summary"><div className="daily-question-form-heading"><h3>{t('总结审核')}</h3><span className="daily-question-badge">{t(summaryLabels[question.summary_status])}</span></div><p>{t('22:00 后可手动生成今日总结。审核仅决定是否公开总结，不影响题目。若截止前收到新回答，需重新生成并审核。')}</p>
+      {loaded && question && <section className="daily-question-summary"><div className="daily-question-form-heading"><h3>{t('总结审核')}</h3><span className="daily-question-badge">{t(summaryLabels[question.summary_status])}</span></div><p>{t('m_a0a0a0a025')}</p>
         {question.draft_summary ? <div className="daily-question-summary-copy"><strong>{t('总结草稿')}</strong><p>{question.draft_summary}</p></div> : question.summary && question.summary_status === 'approved' ? <div className="daily-question-summary-copy"><strong>{t('已通过的总结')}</strong><p>{question.summary}</p></div> : <p>{t('尚无总结草稿。')}</p>}
         <div className="daily-question-actions"><AdminButton type="button" variant="soft" disabled={busy || loading || date > beijingDate() || question.status === 'draft'} onClick={() => void perform('generate')}>{t('生成总结')}</AdminButton>{(question.summary_status === 'pending' || question.summary_status === 'rejected') && <AdminButton type="button" variant="solid" disabled={busy || loading} onClick={() => void perform('approve')}>{t('公开总结')}</AdminButton>}{question.summary_status === 'pending' && <AdminButton type="button" variant="soft" disabled={busy || loading} onClick={() => void perform('reject')}>{t('暂不公开')}</AdminButton>}</div>
       </section>}

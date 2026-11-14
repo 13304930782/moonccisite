@@ -65,9 +65,9 @@ function summaryText(choice){
  return text;
 }
 function charge(userId){const now=Date.now();for(const [id,b] of budgets)if(now-b.start>60000)budgets.delete(id);const b=budgets.get(userId)||{start:now,count:0};if(b.count>=3||budgets.size>=1000&&!budgets.has(userId))throw fail('AI 生成请求较多，请一分钟后重试。',429);b.count++;budgets.set(userId,b);}
-async function completion(c,messages,fetcher,manual){
+async function completion(c,messages,fetcher,manual,options={}){
  let response;
- try{response=await fetcher('https://api.deepseek.com/chat/completions',{method:'POST',headers:{Authorization:'Bearer '+open(c.sealed_key),'Content-Type':'application/json'},signal:AbortSignal.timeout(25000),body:JSON.stringify({model:c.model,thinking:{type:'disabled'},max_tokens:512,response_format:{type:'json_object'},messages})});}catch(e){if(e.status)throw e;throw fail('DeepSeek 连接失败或超时，请重试或'+manual+'。',503);}
+ try{response=await fetcher('https://api.deepseek.com/chat/completions',{method:'POST',headers:{Authorization:'Bearer '+open(c.sealed_key),'Content-Type':'application/json'},signal:options.signal?AbortSignal.any([options.signal,AbortSignal.timeout(options.timeoutMs||25000)]):AbortSignal.timeout(options.timeoutMs||25000),body:JSON.stringify({model:c.model,thinking:{type:'disabled'},max_tokens:options.maxTokens||512,response_format:{type:'json_object'},messages})});}catch(e){if(e.status)throw e;throw fail('DeepSeek 连接失败或超时，请重试或'+manual+'。',503);}
  if(!response.ok){const messages={401:'DeepSeek 密钥无效，请站长检查配置。',402:'DeepSeek 余额不足，请站长充值。',429:'DeepSeek 请求受限，请稍后重试。'};throw fail(messages[response.status]||'DeepSeek 服务暂时不可用，请重试或'+manual+'。',503);}
  let json;try{const raw=await response.text();if(Buffer.byteLength(raw)>65536)throw Error();json=JSON.parse(raw);}catch{throw fail('DeepSeek 返回格式无效，请重试。',502);}
  return json?.choices?.[0];
@@ -116,4 +116,4 @@ async function prepare(db,p,userId,options={}){
  if(!c.enabled&&!options.force&&p.summary_mode!=='ai')return p;
  return generate(p,c,userId,options.fetcher);
 }
-module.exports={config,publicConfig,saveConfig,prepare,generate,generateSlug,articleText,summaryText,slugText,seal,open};
+module.exports={config,publicConfig,saveConfig,prepare,generate,generateSlug,articleText,summaryText,slugText,seal,open,completion,charge};

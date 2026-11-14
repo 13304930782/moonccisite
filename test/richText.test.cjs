@@ -19,6 +19,19 @@ test('native formatting survives safe serialization',()=>{
  assert.match(result,/text-align: center/);assert.match(result,/<u>underline/);assert.match(result,/<sup>2/);assert.match(result,/background-color/);assert.match(result,/colspan="2"/);assert.match(result,/language-js/);
  assert.equal(sanitizeRichText(result),result);
 });
+test('editor highlight colors survive sanitizing and reopening without allowing arbitrary variables',()=>{
+ const {Editor}=require('@tiptap/core');const {StarterKit}=require('@tiptap/starter-kit');const {Highlight}=require('@tiptap/extension-highlight');
+ for(const color of ['blue','yellow','green','purple','red']){
+  const value=`var(--tt-color-highlight-${color})`;
+  const html=sanitizeRichText(`<p><mark data-color="${value}" style="background-color:${value}">Text</mark></p>`);
+  assert.match(html,new RegExp(`data-color="var\\(--tt-color-highlight-${color}\\)"`));
+  assert.equal(sanitizeRichText(html),html);
+  const editor=new Editor({extensions:[StarterKit,Highlight.configure({multicolor:true})],content:html});
+  assert.match(editor.getHTML(),new RegExp(`--tt-color-highlight-${color}`));editor.destroy();
+ }
+ const unsafe=sanitizeRichText('<p data-color="red"><mark data-color="var(--attacker)" style="background-color:var(--attacker);position:fixed">bad</mark></p>');
+ assert.doesNotMatch(unsafe,/attacker|position|data-color/);
+});
 test('sanitizer removes active HTML, unsafe URLs and arbitrary CSS',()=>{
  const result=sanitizeRichText('<script>alert(1)</script><img src="javascript:alert(1)" onerror="evil()"><a href="javascript:evil()">bad</a><iframe src="https://example.com"></iframe><p class="overlay" style="position:fixed;background:url(https://bad);text-align:center">ok</p><input type="password" value="secret">');
  assert.doesNotMatch(result,/script|onerror|javascript|iframe|position|https:\/\/bad|password|secret|overlay/);

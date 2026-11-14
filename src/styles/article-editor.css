@@ -132,6 +132,7 @@
 .writing-toolbar-more .tiptap-toolbar[data-variant=floating] {display:grid;gap:4px;width:auto;max-width:100%;padding:0;border:0;background:transparent;box-shadow:none;}
 .writing-toolbar-more .tiptap-toolbar-group {gap:0;}
 .writing-toolbar-more .tiptap-button {position:relative;isolation:isolate;width:44px;min-width:44px;height:44px;min-height:44px;padding:10px;border:0;border-radius:8px;background:transparent;color:inherit;}
+.writing-toolbar-more .editor-youtube-trigger {width:auto;min-width:80px;padding-inline:10px;white-space:nowrap;}
 .writing-toolbar-more .tiptap-button::before {content:'';position:absolute;inset:4px;z-index:-1;border-radius:8px;}
 .writing-toolbar-more .tiptap-button:not(:disabled):is(:hover,[data-active-state=on])::before {background:var(--ui-fill-strong,var(--muted));}
 .writing-toolbar-more .tiptap-button:disabled {opacity:.4;}
