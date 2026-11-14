@@ -32,3 +32,16 @@ test('RE2 table data cannot escape generated JavaScript string literals', async 
   assert.equal(context.injected, undefined);
   assert.doesNotMatch(packed, /<\/script>/i);
 });
+
+test('RE2 compression preserves overlapping and long-distance matches', async () => {
+  const { compactRe2Unicode } = await import('../scripts/compact-re2-unicode.mjs');
+  let seed = 123456;
+  const noise = Array.from({ length: 40000 }, () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'[seed % 62];
+  }).join('');
+  const words = ['a'.repeat(300), 'ABCDE'.repeat(60), 'SENTINELshort', noise, 'SENTINELshort', ...Array(200).fill('tail')];
+  const source = words.map(word => `decodeRanges("${word}")`).join('\n');
+  const packed = compactRe2Unicode(source).split('\n', 1)[0];
+  assert.equal(JSON.stringify(vm.runInNewContext(`${packed};__mooncciUnicodeTables`)), JSON.stringify(words));
+});

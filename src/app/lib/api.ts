@@ -7,9 +7,9 @@ export class ApiError extends Error {
   }
 }
 // Some privacy-preserving queries use POST without changing stored data.
-export type ApiOptions = RequestInit & { timeoutMs?: number; readOnly?: boolean };
+export type ApiOptions = RequestInit & { timeoutMs?: number; readOnly?: boolean; onProgress?: (event: any) => void };
 export async function api(path: string, options: ApiOptions = {}) {
-  const { timeoutMs, readOnly = false, signal: callerSignal, ...request } = options;
+  const { timeoutMs, readOnly = false, onProgress, signal: callerSignal, ...request } = options;
   const writing = !readOnly && !['GET', 'HEAD'].includes((request.method || 'GET').toUpperCase());
   const controller = new AbortController();
   let timedOut = false;
@@ -17,6 +17,7 @@ export async function api(path: string, options: ApiOptions = {}) {
   if (callerSignal?.aborted) cancel(); else callerSignal?.addEventListener('abort', cancel, { once: true });
   const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs ?? (writing ? 60000 : 20000));
   const headers = new Headers(request.headers);
+  if (onProgress) headers.set('Accept', 'application/x-ndjson');
   headers.set('X-Requested-With', 'XMLHttpRequest');
   if (!(request.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   headers.delete('Authorization');
@@ -28,6 +29,24 @@ export async function api(path: string, options: ApiOptions = {}) {
     const res = await fetch(`/api${path}`, { ...request, credentials: request.credentials === 'omit' ? 'omit' : 'same-origin', headers, signal: controller.signal });
     diagnostic?.response(res);
     const contentType = res.headers.get('content-type') || '';
+    if (res.ok && onProgress && contentType.includes('application/x-ndjson') && res.body) {
+      const reader = res.body.getReader(), decoder = new TextDecoder();
+      let pending = '', result: any;
+      for (;;) {
+        const { value, done } = await reader.read();
+        pending += decoder.decode(value, { stream: !done });
+        const lines = pending.split('\n'); pending = done ? '' : lines.pop() || '';
+        for (const line of lines) if (line.trim()) {
+          const event = JSON.parse(line);
+          if (event.type === 'progress') onProgress(event);
+          if (event.type === 'error') throw new ApiError(event.message || '翻译失败，请重试。', 0);
+          if (event.type === 'complete') result = event.result;
+        }
+        if (done) break;
+      }
+      if (!result) throw new ApiError('翻译结果不完整，请重试。', 0, 'format');
+      return result;
+    }
     if (!contentType.includes('application/json')) {
       await res.body?.cancel();
       throw new ApiError(writing ? uncertainMessage : '暂时无法加载，请稍后重试。', res.status, 'format', writing);

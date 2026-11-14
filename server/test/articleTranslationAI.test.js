@@ -27,7 +27,8 @@ test('long prose is split without silent loss and incomplete or malformed replie
  assert.ok(calls>=3);assert.equal(result.content.length,4300);
  await assert.rejects(()=>service.translate(p,config,'truncated',async()=>({ok:true,text:async()=>JSON.stringify({choices:[{finish_reason:'length',message:{content:'{}'}}]})})),/未完成/);
  await assert.rejects(()=>service.translate(p,config,'missing',async()=>response([])),/不完整/);
- await assert.rejects(()=>service.translate(p,config,'injection',async(_url,options)=>response(JSON.parse(JSON.parse(options.body).messages[1].content).segments.map(()=>'<script>'))),/不完整/);
+ const safe=await service.translate(p,config,'injection',async(_url,options)=>response(JSON.parse(JSON.parse(options.body).messages[1].content).segments.map(()=>'<script>alert(1)</script>')));
+ assert.ok(safe.content.includes('\\<script\\>'));assert.ok(!safe.content.includes('<script>'));
  await assert.rejects(()=>service.translate({...p,content:'甲'.repeat(60001)},config,'too-long',async()=>{throw Error('unexpected')}),/6 万字/);
 });
 test('unsupported complex syntax is rejected before contacting the provider',async()=>{
@@ -40,4 +41,28 @@ test('cancelled translation does not call the provider and in-flight work is bou
  let release;const hold=new Promise(resolve=>release=resolve);let ready;const started=new Promise(resolve=>ready=resolve);
  const first=service.translate(p,config,'concurrent',async(_url,options)=>{ready();await hold;return response(JSON.parse(JSON.parse(options.body).messages[1].content).segments.map(()=> 'English'));});
  await started;await assert.rejects(()=>service.translate(p,config,'concurrent',async()=>{throw Error('unexpected')}),/正在进行/);release();await first;
+});
+
+test('accepts ordinary punctuation and streams validated batches as text',async()=>{
+ const progress=[];let calls=0;
+ const input={title:'标题',summary:'简介',content:'正文'.repeat(1200)};
+ const out=await service.translate(input,config,'stream',async(_url,options)=>{calls++;return response(JSON.parse(JSON.parse(options.body).messages[1].content).segments.map(()=> 'Line [one] & <two>_ok\nnext'));},undefined,item=>progress.push(item));
+ assert.ok(calls>=2);assert.equal(progress[0].completed,0);assert.equal(progress.at(-1).completed,progress.at(-1).total);
+ assert.ok(progress.slice(1).flatMap(batch=>batch.items).every(item=>item.field&&item.source&&item.translated==='Line [one] & <two>_ok next'));
+ assert.equal(out.title,'Line [one] & <two>_ok next');
+ assert.ok(out.content.includes('\\[one\\] &amp; \\<two\\>\\_ok next'));
+});
+test('escapes returned HTML text while retaining existing markup',async()=>{
+ const content='<!--mooncci-richtext:v1-->\n<p>中文</p>';
+ const out=await service.translate({title:'标题',summary:'',content},config,'safe-html',async(_url,options)=>response(JSON.parse(JSON.parse(options.body).messages[1].content).segments.map(()=>'<script>& X</script>')));
+ assert.ok(out.content.includes('<p>&lt;script&gt;&amp; X&lt;/script&gt;</p>'));
+});
+
+test('never emits an invalid batch as progress',async()=>{
+ const progress=[];let calls=0;
+ await assert.rejects(()=>service.translate({title:'标题',summary:'',content:'内容'.repeat(1500)},config,'stream-invalid',async(_url,options)=>{
+  calls++;const segments=JSON.parse(JSON.parse(options.body).messages[1].content).segments;
+  return response(calls===1?segments.map(()=>'Translated'):[]);
+ },undefined,event=>progress.push(event)),/不完整/);
+ assert.equal(progress.at(-1).completed,1);assert.ok(progress.every(event=>event.completed<=1));
 });

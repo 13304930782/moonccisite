@@ -1,3 +1,4 @@
+import { compactI18nKeys } from './scripts/compact-i18n-keys.mjs'
 import { licenseNotices } from './scripts/license-notices.mjs'
 import { compactSyntax } from './scripts/compact-syntax.mjs'
 import { compactGrokGeometryPlugin } from './scripts/compact-grok-geometry.mjs'
@@ -23,6 +24,7 @@ function figmaAssetResolver() {
 
 export default defineConfig({
   plugins: [
+    compactI18nKeys(),
     licenseNotices(),
     compactSyntax(),
     compactGrokGeometryPlugin(),

@@ -37,7 +37,18 @@ router.post('/translate',editorOrAdmin,run(async(req,res)=>{
  const controller=new AbortController();
  const cancel=()=>{if(!res.writableEnded)controller.abort();};
  res.on('close',cancel);
- try{await checkSource();const translated=await require('../services/articleTranslationAI').translate(p,await summary.config(db),req.user.id,fetch,AbortSignal.any([controller.signal,AbortSignal.timeout(180000)]));await checkSource();res.json(translated);}
- finally{res.off('close',cancel);}
+ try{
+  await checkSource();
+  const config=await summary.config(db), signal=AbortSignal.any([controller.signal,AbortSignal.timeout(180000)]);
+  const streaming=(req.get('Accept')||'').split(',').some(value=>value.trim().split(';')[0]==='application/x-ndjson');
+  if(!streaming){const translated=await require('../services/articleTranslationAI').translate(p,config,req.user.id,fetch,signal);await checkSource();return res.json(translated);}
+  res.set({'Content-Type':'application/x-ndjson; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no'});
+  const send=event=>{if(!res.destroyed&&!res.writableEnded)res.write(JSON.stringify(event)+'\n');};
+  try{
+   const translated=await require('../services/articleTranslationAI').translate(p,config,req.user.id,fetch,signal,progress=>send({type:'progress',...progress}));
+   await checkSource();send({type:'complete',result:translated});
+  }catch(e){send({type:'error',message:e.status?e.message:'AI 翻译暂时不可用，请重试。',status:e.status||500});}
+  if(!res.destroyed)res.end();
+ }finally{res.off('close',cancel);}
 }));
 module.exports=router;
