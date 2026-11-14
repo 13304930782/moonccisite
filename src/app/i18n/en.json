@@ -3797,5 +3797,11 @@
   "英文标题": "English title",
   "翻译未完成": "Translation incomplete",
   "正在翻译": "Translating",
-  "已翻译片段（预览）": "Translated excerpts (preview)"
+  "已翻译片段（预览）": "Translated excerpts (preview)",
+  "对照": "Compare",
+  "用 AI 翻译中文简介": "Translate Chinese summary with AI",
+  "复制中文": "Copy Chinese",
+  "翻译由 DeepSeek 生成，只作为初稿，请检查后再发布。": "DeepSeek translations are drafts. Review before publishing.",
+  "请先填写中文简介。": "Please enter the Chinese summary first.",
+  "例如 mod-guide": "e.g. mod-guide"
 }

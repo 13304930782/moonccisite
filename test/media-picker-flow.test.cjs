@@ -35,3 +35,18 @@ test('picker returns focus on cancellation but preserves editor insertion focus 
   }finally{if(root)await act(async()=>root.unmount());}
  }
 });
+
+test('picker keeps previous page available if the result count shrinks',async()=>{
+ const module={exports:{}};let root;
+ const code=ts.transpileModule(fs.readFileSync('src/app/components/ArticleMediaPicker.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+ const dialog=Object.fromEntries(['Root','Portal','Overlay','Content','Title','Description','Close'].map(k=>[k,k==='Close'?'button':'div']));
+ const mock=n=>i18nFixture(n)?i18nFixture(n):n==='lucide-react'?{Check:'svg'}:n==='react'?React:n==='react/jsx-runtime'?require(n):n.includes('react-dialog')?dialog:n.endsWith('/api')?{api:async path=>path.includes('page=2')?{items:[],total:1}:{items:[{filename:'one.png',url:'/one.png'}],total:21}}:{safeImageSrc:x=>x||''};
+ new Function('exports','require','AbortController',code)(module.exports,mock,AbortController);
+ await act(async()=>{root=create(React.createElement(module.exports.ArticleMediaPicker,{onSelect(){},onClose(){}}));});
+ const button=text=>root.root.findAllByType('button').find(b=>b.children.includes(text));
+ await act(async()=>button('下一页').props.onClick());
+ assert.equal(button('上一页').props.disabled,false);
+ await act(async()=>button('上一页').props.onClick());
+ assert.equal(button('下一页').props.disabled,false);
+ await act(async()=>root.unmount());
+});

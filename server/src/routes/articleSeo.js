@@ -34,6 +34,10 @@ router.post('/translate',editorOrAdmin,run(async(req,res)=>{
   if(Number(post.version)!==sourceBaseVersion)throw Object.assign(new Error('中文版文章已更新，请刷新并确认最新内容后再翻译。'),{status:409});
  };
  const p=require('../lib/articlePublishing').payload(req.body.payload);
+ const summaryOnly=req.body.summaryOnly===true;
+ if(summaryOnly&&!p.summary.trim())return res.status(400).json({message:'请先填写中文简介。'});
+ // Reuse the existing translator, but send only the summary as translatable text.
+ const input=summaryOnly?{...p,title:'.',summary:p.summary,content:'.'}:p;
  const controller=new AbortController();
  const cancel=()=>{if(!res.writableEnded)controller.abort();};
  res.on('close',cancel);
@@ -41,7 +45,7 @@ router.post('/translate',editorOrAdmin,run(async(req,res)=>{
   await checkSource();
   const config=await summary.config(db), signal=AbortSignal.any([controller.signal,AbortSignal.timeout(180000)]);
   const streaming=(req.get('Accept')||'').split(',').some(value=>value.trim().split(';')[0]==='application/x-ndjson');
-  if(!streaming){const translated=await require('../services/articleTranslationAI').translate(p,config,req.user.id,fetch,signal);await checkSource();return res.json(translated);}
+  if(summaryOnly||!streaming){const translated=await require('../services/articleTranslationAI').translate(input,config,req.user.id,fetch,signal);await checkSource();return res.json(summaryOnly?{summary:translated.summary}:translated);}
   res.set({'Content-Type':'application/x-ndjson; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no'});
   const send=event=>{if(!res.destroyed&&!res.writableEnded)res.write(JSON.stringify(event)+'\n');};
   try{

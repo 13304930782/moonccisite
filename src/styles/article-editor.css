@@ -52,7 +52,7 @@
 .writing-workspace .article-editor-tabs button[aria-pressed=true] {background:var(--background);color:inherit;font-weight:600;}
 .dark .writing-workspace .article-editor-tabs button[aria-pressed=true] {background:var(--ui-fill-strong,var(--muted));}
 .writing-workspace .article-editor-hint {color:var(--ui-text-muted,var(--muted-foreground));}
-.writing-workspace .article-editor > textarea {min-height:60vh;border:0;border-radius:0;padding:0;background:transparent;color:inherit;font-size:17px;line-height:1.85;}
+.writing-workspace .article-editor > textarea[data-markdown-editor][aria-label] {min-height:60vh;border:0;border-radius:0;padding:0;background:transparent;color:inherit;font-family:inherit;font-size:17px;line-height:1.85;}
 .writing-workspace .article-editor-preview {max-width:720px;margin:auto;padding:0;min-height:60vh;border:0;}
 .writing-workspace .article-editor-preview .markdown-body {font-size:17px;line-height:1.85;}
 .writing-workspace .article-editor :is(button,textarea):focus-visible,.article-image-dialog :is(button,input):focus-visible {outline:2px solid var(--ui-brand,var(--ring));outline-offset:2px;}
@@ -96,7 +96,7 @@
 .writing-workspace .article-editor :is(.tiptap,.article-editor-preview .markdown-body) blockquote {margin:1.2em 0;padding:12px 18px;border-left:3px solid var(--ui-text-muted,var(--muted-foreground));color:var(--ui-text-muted,var(--muted-foreground));background:var(--ui-fill,var(--muted));}
 .writing-workspace .article-editor :is(.tiptap,.article-editor-preview .markdown-body) pre {max-width:100%;overflow:auto;margin:1.2em 0;padding:18px;border-radius:8px;background:var(--ui-fill,var(--muted));font-size:14px;line-height:1.7;}
 .writing-workspace .article-editor :is(.tiptap,.article-editor-preview .markdown-body) :not(pre)>code {padding:2px 5px;border-radius:4px;background:var(--ui-fill,var(--muted));font-size:.88em;}
-@media(max-width:900px){.writing-workspace .article-editor > textarea,.article-image-dialog input {font-size:16px;}}
+@media(max-width:900px){.writing-workspace .article-editor > textarea[data-markdown-editor][aria-label],.writing-workspace .article-editor .mooncci-tiptap-editor .tiptap,.article-image-dialog input {font-size:16px;}}
 @media(max-width:767px){
  .writing-workspace .article-editor {--article-toolbar-top:var(--writing-toolbar-top,calc(56px + env(safe-area-inset-top,0px)));max-width:100%;}
  .writing-workspace .article-editor .mooncci-tiptap-editor .editor-toolbar-frame[data-view=main] .tiptap-toolbar {flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;max-width:100%;}

@@ -1,11 +1,16 @@
 .bilingual-compare { min-width:0; }
-.bilingual-compare-options { display:flex; justify-content:flex-end; margin-bottom:16px; }
-.bilingual-compare-options label { display:inline-flex; align-items:center; gap:8px; min-height:44px; color:var(--ui-text-body); }
 .bilingual-compare-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:28px; }
 .bilingual-compare-column { min-width:0; }
 .bilingual-compare-column header { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px; color:var(--ui-text-body); }
 .bilingual-compare-column header span { color:var(--ui-text-muted); font-size:13px; }
-.bilingual-compare-scroll { min-width:0; height:min(65vh,720px); overflow:auto; overscroll-behavior:contain; line-height:1.8; }
+.bilingual-compare-scroll { min-width:0; height:min(65vh,720px); overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; line-height:1.8; }
+.writing-workspace .bilingual-compare .article-editor .article-source-toolbar,
+.writing-workspace .bilingual-compare .article-editor .mooncci-tiptap-editor[data-writing-toolbar=true] .editor-toolbar-frame,
+.writing-workspace[data-keyboard-open=true] .bilingual-compare .article-editor .article-source-toolbar,
+.writing-workspace[data-keyboard-open=true] .bilingual-compare .article-editor .mooncci-tiptap-editor[data-writing-toolbar=true] .editor-toolbar-frame { position:relative; top:auto; left:auto; width:100%; z-index:1; }
+.writing-workspace[data-keyboard-open=true] .bilingual-compare .article-editor[data-mode=source]::before,
+.writing-workspace[data-keyboard-open=true] .bilingual-compare .mooncci-tiptap-editor[data-writing-toolbar=true]::before { display:none; }
+.writing-workspace .bilingual-compare .mooncci-tiptap-editor[data-writing-toolbar=true] .editor-toolbar-frame>.tiptap-toolbar { overflow-x:auto; scrollbar-width:none; }
 .bilingual-compare-scroll h2,.bilingual-compare-title textarea { margin:0 0 16px; font-size:24px; line-height:1.3; font-weight:600; }
 .bilingual-compare-title textarea { width:100%; min-height:44px; border:0; resize:vertical; background:transparent; color:var(--ui-text-body); font-family:inherit; }
 .bilingual-compare-scroll img { max-width:100%; height:auto; }

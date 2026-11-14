@@ -3,7 +3,7 @@ import { useI18n } from '../i18n';
 import { BilingualCompare } from '../components/BilingualCompare';
 import {LanguageSwitch} from '../components/LanguageSwitch';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { ArrowLeft, CheckCircle2, ChevronRight, ImagePlus, Loader2, MoreHorizontal, Pencil, Eye, Settings2, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, Columns2, ImagePlus, Loader2, MoreHorizontal, Pencil, Eye, Settings2, Trash2, Upload, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import {Link} from '../components/LocaleLink';
@@ -85,8 +85,12 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   const [ai, setAi] = useState<any>(null);
   const [translationBusy, setTranslationBusy] = useState(false);
   const [translationError, setTranslationError] = useState('');
+  const [summaryTranslationBusy, setSummaryTranslationBusy] = useState(false);
+  const [summaryTranslationError, setSummaryTranslationError] = useState('');
+  const summaryRequest = useRef<AbortController | null>(null);
   const [blankEnglish, setBlankEnglish] = useState(false);
   const [bilingualCompare, setBilingualCompare] = useState(false);
+  const [compareSync, setCompareSync] = useState(true);
   const [translationProgress, setTranslationProgress] = useState<{completed:number; total:number; text:string}>({completed:0,total:0,text:''});
   const translationAttempt = useRef('');
   const skipTranslationAfterDiscard = useRef(false);
@@ -135,6 +139,24 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   }, [d.form.title, preview, locked, showComparison]);
 
   useEffect(() => { api('/article-seo/status').then(setAi).catch(() => setAi({ unavailable: true })); }, []);
+  const translateSummary = async () => {
+    const {chinese: source, english: target} = translationState.current;
+    if (summaryRequest.current || !ai?.enabled || !source.form.summary.trim() || target.form.summary.trim() || !target.ready || !target.draft || target.busy || target.blocked || target.isRestoring || target.recovery) return;
+    if (source.blocked || source.isRestoring || source.recovery) { setSummaryTranslationError(t('m_a0a0a0a001')); return; }
+    if (source.draft?.post_status === 'published' && (source.dirty || Number(source.draft.dirty))) { setSummaryTranslationError(t('m_a0a0a0a002')); return; }
+    const sourceSummary = source.form.summary, sourceVersion = source.draft?.version, targetId = target.draft.id, targetVersion = target.draft.version;
+    const controller = new AbortController(); summaryRequest.current = controller;
+    setSummaryTranslationBusy(true); setSummaryTranslationError('');
+    try {
+      const result = await api('/article-seo/translate', {method:'POST', body:JSON.stringify({payload:source.form, summaryOnly:true, ...(source.draft?.post_id ? {sourcePostId:source.draft.post_id, sourceBaseVersion:source.draft.base_version} : {})}), signal:controller.signal, timeoutMs:300000, readOnly:true});
+      if (controller.signal.aborted) return;
+      const latest = translationState.current;
+      if (latest.chinese.form.summary !== sourceSummary || latest.chinese.draft?.version !== sourceVersion || latest.english.draft?.id !== targetId || latest.english.draft?.version !== targetVersion || latest.english.form.summary.trim() || latest.english.busy || latest.english.blocked || latest.english.isRestoring || latest.english.recovery) { setSummaryTranslationError(t('m_a0a0a0a004')); return; }
+      if (typeof result.summary !== 'string' || !result.summary.trim()) throw new Error(t('m_a0a0a0a005'));
+      latest.english.update((previous: any) => ({...previous, summary:result.summary, summary_mode:'manual', summary_receipt:''}));
+    } catch (error: any) { if (!controller.signal.aborted) setSummaryTranslationError(t(error.message || 'm_a0a0a0a006')); }
+    finally { if (summaryRequest.current === controller) summaryRequest.current = null; if (!controller.signal.aborted) setSummaryTranslationBusy(false); }
+  };
   const translateEnglish = async () => {
     const {chinese: source, english: target} = translationState.current;
     if (translationRequest.current || !target.ready || !target.draft || target.draft.translation_status === 'published') return;
@@ -167,7 +189,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
     if (ai.enabled) void translateEnglish();
     else setTranslationError(t('m_a0a0a0a007'));
   }, [englishVersion,chinese.ready,english.ready,english.draft?.id,ai]);
-  useEffect(() => () => { translationRequest.current?.abort(); }, []);
+  useEffect(() => () => { translationRequest.current?.abort(); summaryRequest.current?.abort(); }, []);
   useEffect(() => {
     if (!d.ready || initializedMode.current) return;
     initializedMode.current = true;
@@ -311,19 +333,19 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
     </section>
     <section className="writing-setting-section"><label htmlFor="article-category">{t("m_515559957f")}<input id="article-category" value={d.form.category} placeholder={t("m_26127f0906")} onChange={event => change('category', event.target.value)} className="ui-input" /></label></section>
     <section className="writing-setting-section"><div className="writing-summary-label"><label htmlFor="article-tags">{t("m_1d0fd5f933")}</label><span>{(d.form.tags || []).length}</span></div><TagInput id="article-tags" tags={d.form.tags||[]} value={tagInput} onInput={setTagInput} onCommit={commitTags} onRemove={index=>change('tags',d.form.tags.filter((_:string,position:number)=>position!==index))}/></section>
-    <section className="writing-setting-section"><div className="writing-summary-label"><label htmlFor="article-slug">{t("m_5503649ce1")}</label><span>{t('中英文共用')}</span></div><div className="writing-slug"><span>/article/</span><input id="article-slug" value={d.form.slug} maxLength={100} autoCapitalize="none" spellCheck={false} aria-describedby={slugReserved ? "article-slug-hint article-slug-error" : "article-slug-hint"} aria-invalid={slugReserved || undefined} placeholder={t("m_bd9be8f2ad")} onChange={event => change('slug', event.target.value)} className="ui-input" /><AdminButton type="button" variant="soft" className="writing-slug-generate" aria-label={t("m_57306b3469")} disabled={!ai?.enabled || !d.form.title.trim() || d.busy || d.blocked} onClick={() => { commitTags(); void d.generateSlug(); }}>{d.slugBusy ? <Loader2 className="writing-spinner" size={14} aria-hidden="true" /> : '✦'} {t('生成')}</AdminButton></div>
+    <section className="writing-setting-section"><div className="writing-summary-label"><label htmlFor="article-slug">{t("m_5503649ce1")}</label><span>{t('中英文共用')}</span></div><div className="writing-slug"><span>/article/</span><input id="article-slug" value={d.form.slug} maxLength={100} autoCapitalize="none" spellCheck={false} aria-describedby={slugReserved ? "article-slug-hint article-slug-error" : "article-slug-hint"} aria-invalid={slugReserved || undefined} placeholder={t('例如 mod-guide')} onChange={event => change('slug', event.target.value)} className="ui-input" /><AdminButton type="button" variant="soft" className="writing-slug-generate" aria-label={t("m_57306b3469")} disabled={!ai?.enabled || !d.form.title.trim() || d.busy || d.blocked} onClick={() => { commitTags(); void d.generateSlug(); }}>{d.slugBusy ? <Loader2 className="writing-spinner" size={14} aria-hidden="true" /> : '✦'} {t('生成')}</AdminButton></div>
       <p id="article-slug-hint" className="writing-ai-help">{t("m_d29fde4a50")}</p>
       {!ai?.enabled && <StatusNotice state={ai?.unavailable ? "error" : "info"}>{ai?.unavailable ? t("m_c822344a9a") : t("m_2369fa260a")}</StatusNotice>}
       {slugReserved && <p id="article-slug-error" role="alert">{t("m_32056c8bb5")}</p>}
       {d.slugError && <p role="alert">{d.slugError}  {t("m_7245bccb33")}</p>}
     </section>
     </fieldset>
-    <div className="writing-locale-card"><div className="writing-locale-card-head"><strong>{englishVersion ? 'English' : t("m_72726d8818")} {t('版本')}</strong><span>{t('正在编辑')}</span><button type="button" disabled={d.busy||uploads>0||!chinese.ready} onClick={()=>{if(englishVersion)setEditorLocale('zh-CN');else void(async()=>{if(!sharedPostId&&!await chinese.identity())return;setEnglishOpened(true);setEditorLocale('en')})()}}>{englishVersion ? t('切到中文') : t('切到 English')}</button></div>
+    <div className="writing-locale-card"><div className="writing-locale-card-head"><strong>{englishVersion ? 'English' : t("m_72726d8818")} {t('版本')}</strong><span data-draft={englishVersion && !versionPublished || undefined}>{t('正在编辑')}{englishVersion && !versionPublished ? ` · ${t('草稿')}` : ''}</span><button type="button" disabled={d.busy||uploads>0||!chinese.ready} onClick={()=>{if(englishVersion)setEditorLocale('zh-CN');else void(async()=>{if(!sharedPostId&&!await chinese.identity())return;setEnglishOpened(true);setEditorLocale('en')})()}}>{englishVersion ? t('切到中文') : t('切到 English')}</button></div>
     <section className="writing-setting-section writing-summary"><div className="writing-summary-label"><label htmlFor="article-summary">{t("m_8131eafd02")}</label><span title={t("m_0d25a40e88")} className={summaryLength > 140 ? 'writing-summary-warning' : undefined}>{summaryLength}  {t("m_64315e56d6")}</span></div><textarea id="article-summary" rows={4} value={summary} placeholder={t("m_417a1c538e")} aria-describedby="article-summary-mode-hint" onChange={event => change('summary', event.target.value)} className="ui-input" />
       {!englishVersion && <><div className="writing-summary-actions"><label className="writing-ai-switch"><Switch checked={automatic} aria-label={t("m_3a8e5f3da5")} onCheckedChange={checked => d.update((previous: any) => ({ ...previous, summary_mode: checked ? 'ai' : 'manual', summary_receipt: '' }))} /><span>{t("m_3a8e5f3da5")}</span></label><AdminButton type="button" variant="soft" className="writing-generate-summary" disabled={!ai?.enabled || d.busy || d.blocked} onClick={() => { commitTags(); void d.generateSummary(true); }}>{d.summaryBusy && <Loader2 className="writing-spinner" size={14} aria-hidden="true" />}{d.summaryBusy ? t("m_43d2661b36") : t("m_34cd059814")}</AdminButton></div>
       <div className="writing-ai-help" id="article-summary-mode-hint"><span>{ai?.unavailable ? t("m_e92543b224") : t("m_fa5522981b")}</span>{user?.role === 'owner' && <Link to="/admin/ai-settings">{t("m_d02656b388")}</Link>}</div>
       </>}
-      {englishVersion && <p>{t("m_581d752eaf")}</p>}
+      {englishVersion && <><div className="writing-summary-translation-actions"><AdminButton type="button" disabled={!ai?.enabled || !chinese.form.summary.trim() || !!summary.trim() || d.busy || d.blocked || summaryTranslationBusy || translationBusy} onClick={() => void translateSummary()}>{summaryTranslationBusy ? <Loader2 className="writing-spinner" size={14} aria-hidden="true" /> : '✦'} {t('用 AI 翻译中文简介')}</AdminButton><AdminButton type="button" variant="soft" disabled={!chinese.form.summary.trim() || !!summary.trim() || d.busy || d.blocked || summaryTranslationBusy || translationBusy} onClick={() => { english.update((previous: any) => ({...previous, summary:chinese.form.summary, summary_mode:'manual', summary_receipt:''})); setSummaryTranslationError(''); }}>{t('复制中文')}</AdminButton></div><p className="writing-ai-help" id="article-summary-mode-hint">{t('翻译由 DeepSeek 生成，只作为初稿，请检查后再发布。')}</p>{summaryTranslationError && <p role="alert">{summaryTranslationError}</p>}</>}
       {!englishVersion && d.form.summary_mode === 'ai' && <p className="writing-ai-receipt" role="status">{d.form.summary_receipt ? t("m_299d4c0238") : t("m_63795bee11")}</p>}
       {d.summaryError && <p role="alert">{d.summaryError}  {t("m_3c447d3799")}</p>}
     </section>
@@ -362,7 +384,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
       </section>
 
         {languageError && <p role="alert" className="article-workspace-notice">{languageError}</p>}
-        <div className="writing-mode-position">{modeSwitch}{!locked && !showComparison && <AdminButton type="button" variant="soft" aria-pressed={bilingualCompare && englishVersion} disabled={!chinese.ready || chinese.busy || d.busy || uploads > 0} onClick={() => { void (async () => { if (bilingualCompare && englishVersion) { setBilingualCompare(false); return; } if (!sharedPostId && !await chinese.identity()) return; setEnglishOpened(true); setEditorLocale('en'); setPreview(false); setBilingualCompare(true); })(); }}>{t('中英文对照')}</AdminButton>}</div>
+        <div className="writing-mode-position">{modeSwitch}{!locked && !showComparison && <div className="writing-compare-actions">{bilingualCompare && englishVersion && <label className="writing-compare-sync"><Switch checked={compareSync} onCheckedChange={setCompareSync} aria-label={t('同步滚动')} /><span>{t('同步滚动')}</span></label>}<button type="button" className="writing-compare-button" aria-label={t('中英文对照')} aria-pressed={bilingualCompare && englishVersion} disabled={!chinese.ready || chinese.busy || d.busy || uploads > 0} onClick={() => { void (async () => { if (bilingualCompare && englishVersion) { setBilingualCompare(false); return; } if (!sharedPostId && !await chinese.identity()) return; setEnglishOpened(true); setEditorLocale('en'); setPreview(false); setBilingualCompare(true); })(); }}><Columns2 size={16} aria-hidden="true" />{t('对照')}</button></div>}</div>
         <h1 className="sr-only">{locked ? lockedTitle : showComparison ? t("m_6af8a5c00e") : preview ? t("m_5fbee954c9") : postId || d.draft?.post_id ? t("m_12dfe39e2e") : t("m_13b195d6cc")}</h1>
         {locked && <div className="article-submission-bar"><p role="status">{lockedTitle}</p><small>{t("m_d0b966b9d9")}</small>{reviewState === 'scheduled' && <small>{t("m_64e1e8d8ce")} {new Date(Number(d.draft.workflow.scheduled_at)).toLocaleString(locale, { timeZone: 'Asia/Shanghai' })}</small>}</div>}
         {!locked && !d.localAvailable && <p role="alert">{t("m_572c660037")}</p>}
@@ -380,7 +402,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
           <p className="writing-english-help">{t('AI 翻译由 DeepSeek 生成，只作为初稿，发布前需要你检查。')}</p>
         </section></>}
         {englishVersion && !preview && !locked && !showComparison && (blankEnglish || bilingualCompare) && (translationBusy || translationError) && <section className="writing-translation" aria-live="polite"><div className="writing-translation-head"><div><strong>{t(translationError ? 'm_a0a0a0a030' : 'm_a0a0a0a031')}</strong><p>{translationError || t('m_a0a0a0a008')}</p></div>{translationError && ai?.enabled && ![d.form.title,d.form.summary,d.form.content].some(value => String(value || '').trim()) && <AdminButton type="button" variant="soft" onClick={() => void translateEnglish()}>{t('m_a0a0a0a009')}</AdminButton>}</div>{translationProgress.text && <div className="writing-translation-preview"><strong>{t('m_a0a0a0a032')}</strong><p>{translationProgress.text}</p></div>}</section>}
-        {bilingualCompare && englishVersion && !preview && !locked && !showComparison && d.ready && <BilingualCompare chineseTitle={chinese.form.title || ''} chineseContent={chinese.form.content || ''} englishTitle={d.form.title || ''} englishContent={d.form.content || ''} onTitleChange={value => change('title', value)} onContentChange={value => change('content', value)} disabled={fieldsDisabled || uploads > 0} editorProps={{existing:!!postId || !!d.draft?.payload?.content, uploadImage:upload, onError:setUploadError, onBusy:setEditorPending, onMediaLibrary:() => setPicker('body'), mode:editorMode, onModeChange:setMode, hideModeControls:true, writingToolbar:true, registerImageInsert:fn => { insert.current = fn; }}} />}
+        {bilingualCompare && englishVersion && !preview && !locked && !showComparison && d.ready && <BilingualCompare chineseTitle={chinese.form.title || ''} chineseContent={chinese.form.content || ''} englishTitle={d.form.title || ''} englishContent={d.form.content || ''} sync={compareSync} onTitleChange={value => change('title', value)} onContentChange={value => change('content', value)} disabled={fieldsDisabled || uploads > 0} editorProps={{existing:!!postId || !!d.draft?.payload?.content, uploadImage:upload, onError:setUploadError, onBusy:setEditorPending, onMediaLibrary:() => setPicker('body'), mode:editorMode, onModeChange:setMode, hideModeControls:true, writingToolbar:true, registerImageInsert:fn => { insert.current = fn; }}} />}
         <fieldset hidden={preview || locked || showComparison || (bilingualCompare && englishVersion) || (englishVersion && !blankEnglish && ![d.form.title,d.form.summary,d.form.content].some(value => String(value || '').trim()))} disabled={fieldsDisabled} className="writing-editor-fields">
           <label className="writing-title"><span className="sr-only">{t("m_c3405f8c7d")}</span><textarea ref={titleInput} id="article-title" rows={1} value={d.form.title} maxLength={255} onChange={event => change('title', event.target.value.replace(/[\r\n]+/g, ' '))} placeholder={t("m_865f0a03ab")} /></label>
           {d.ready && !(bilingualCompare && englishVersion && !preview && !locked && !showComparison) && <ArticleEditor key={editorLocale} writingToolbar mode={editorMode} onModeChange={setMode} hideModeControls onMediaLibrary={() => setPicker('body')} disabled={fieldsDisabled || uploads > 0} registerImageInsert={fn => { insert.current = fn; }} value={d.form.content} onChange={value => change('content', value)} existing={!!postId || !!d.draft?.payload?.content} uploadImage={upload} onError={setUploadError} onBusy={setEditorPending} />}

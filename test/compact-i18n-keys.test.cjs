@@ -25,7 +25,7 @@ test('compact catalog preserves zh and en translation mapping',async()=>{
 
 test('Vite hashes the transformed catalog content',async()=>{
  const {build}=await import('vite');const {compactI18nKeys}=await import('../scripts/compact-i18n-keys.mjs');
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'mooncci-short-catalog-'));
+ const root=fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()),'mooncci-short-catalog-'));
  try {
   fs.mkdirSync(path.join(root,'src/app/i18n'),{recursive:true});
   fs.writeFileSync(path.join(root,'index.html'),'<script type="module" src="/src/main.ts"></script>');
