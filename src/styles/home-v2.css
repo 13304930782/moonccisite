@@ -75,6 +75,7 @@
 
 .home-v2 .home-hero-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 32px;
 }
@@ -184,12 +185,14 @@
 }
 
 .home-v2 .home-section .section-heading {
+  align-items: baseline;
   margin-bottom: 16px;
   padding-inline: 0;
   gap: 12px;
 }
 
 .home-v2 .home-section .section-heading h2 {
+  min-width: 0;
   margin: 0;
   font-size: 28px;
   font-weight: 600;
@@ -321,6 +324,11 @@
   object-position: 50% 30%;
 }
 
+.home-v2 .project-card--compact h3.project-card-name--single {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .home-v2 .home-updates-more {
   display: flex;
   justify-content: center;
@@ -435,7 +443,15 @@
   }
 
   .home-v2 .home-updates {
-    padding-top: 44px;
+    padding-block: 44px 40px;
+  }
+
+  .home-v2 .home-hero-button:only-child {
+    grid-column: 1 / -1;
+  }
+
+  .home-v2 .home-updates-more {
+    margin-top: 24px;
   }
 
   .home-v2 .home-section .section-heading {
@@ -454,7 +470,7 @@
   .home-v2 .home-activity-row {
     gap: 16px;
     align-items: flex-start;
-    padding-inline: 0;
+    padding: 16px 0;
     margin-inline: 0;
   }
 
@@ -464,6 +480,7 @@
 
   .home-v2 .home-activity-excerpt {
     font-size: 14px;
+    line-height: 1.6;
   }
 
   .home-v2 .home-activity-thumbnail {
@@ -471,4 +488,9 @@
     width: 96px;
     aspect-ratio: 1;
   }
+}
+
+@media (max-width: 380px) {
+  .home-v2 .home-activity-row { gap: 12px; }
+  .home-v2 .home-activity-thumbnail { flex-basis: 80px; width: 80px; }
 }

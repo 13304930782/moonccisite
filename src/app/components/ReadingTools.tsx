@@ -1,5 +1,6 @@
 import { useI18n } from '../i18n';
 import {syncMotionPreference} from '../lib/motionPreference';
+import {splitLocalePath} from '../lib/locale';
 import {useEffect,useLayoutEffect,useRef,useState,type CSSProperties,type KeyboardEvent as ReactKeyboardEvent} from 'react';
 import {useLocation} from 'react-router-dom';
 import {useMoonTheme} from '../context/ThemeContext';
@@ -21,8 +22,9 @@ function load(){
 export default function ReadingTools(){
   const { t } = useI18n();
  const location=useLocation(),{setTheme}=useMoonTheme();
- const active=!/^\/(admin|login|register|account|auth|forgot-password|reset-password)(\/|$)/.test(location.pathname);
- const article=/^\/article\/[^/]+\/?$/.test(location.pathname);
+ const {pathname}=splitLocalePath(location.pathname);
+ const active=!/^\/(admin|login|register|account|auth|forgot-password|reset-password)(\/|$)/.test(pathname);
+ const article=/^\/article\/[^/]+\/?$/.test(pathname);
  const [prefs,setPrefs]=useState(load),[open,setOpen]=useState(false),[narrow,setNarrow]=useState(false);
  const [speech,setSpeech]=useState<'idle'|'speaking'|'paused'>('idle');
  const [message,setMessage]=useState(''),[progress,setProgress]=useState('');
@@ -89,6 +91,7 @@ export default function ReadingTools(){
   stop();setMessage('');
   const source=document.querySelector<HTMLElement>('[data-reading-content]');
   if(!source){setMessage(t("m_4b80cd7e30"));return;}
+  const language=source.querySelector<HTMLElement>('h1[lang]')?.lang||source.lang||'zh-CN';
   const parts=Array.from(source.querySelectorAll<HTMLElement>('h1,h2,h3,h4,p,li,blockquote'))
    .filter(el=>!el.closest('[data-reading-ignore],.eyebrow,nav,pre')&&el.getClientRects().length&&!el.querySelector('p,li,blockquote'))
    .map(el=>el.innerText.trim()).filter(Boolean);
@@ -99,7 +102,7 @@ export default function ReadingTools(){
    if(run!==generation.current)return;
    if(i>=chunks.length){setSpeech('idle');setProgress(t("m_a585630780"));return;}
    const item=new SpeechSynthesisUtterance(chunks[i]);utterance.current=item;
-   item.lang='zh-CN';item.rate=1;
+   item.lang=language;item.rate=1;
    item.onend=()=>next(i+1);
    item.onerror=()=>{if(run===generation.current){setSpeech('idle');setMessage(t("m_0e754a5ffc"));}};
    setSpeech('speaking');setProgress(`${i+1} / ${chunks.length}`);window.speechSynthesis.speak(item);
@@ -123,7 +126,7 @@ export default function ReadingTools(){
     </section>
     <section className="rs-color-section" aria-labelledby="rs-color-label">
      <div className="rs-label" id="rs-color-label">{t("m_e2ac03b110")}</div>
-     <div className="rs-swatches" role="radiogroup" aria-labelledby="rs-color-label" onKeyDown={colorKeys}>{colors.map(([color,label])=><button key={color} type="button" role="radio" aria-checked={prefs.color===color} tabIndex={prefs.color===color?0:-1} className="rs-swatch" data-color={color} onClick={()=>changeColor(color)}><span className="rs-color-sample" aria-hidden="true">Aa</span><span>{label}</span></button>)}</div>
+     <div className="rs-swatches" role="radiogroup" aria-labelledby="rs-color-label" onKeyDown={colorKeys}>{colors.map(([color,label])=><button key={color} type="button" role="radio" aria-checked={prefs.color===color} tabIndex={prefs.color===color?0:-1} className="rs-swatch" data-color={color} onClick={()=>changeColor(color)}><span className="rs-color-sample" aria-hidden="true">Aa</span><span>{t(label)}</span></button>)}</div>
     </section>
     <div className="rs-row-controls">
      <div className="rs-row"><div><div className="rs-row-title">{t("m_7a56d47cad")}</div><p className="rs-hint">{t("m_4ffcbb25ab")}</p></div><button className="rs-switch" type="button" role="switch" aria-label={t("m_7a56d47cad")} aria-checked={prefs.reduceMotion} onClick={()=>setPrefs(current=>({...current,reduceMotion:!current.reduceMotion}))}><span className="rs-switch-track"><span className="rs-switch-knob"/></span></button></div>

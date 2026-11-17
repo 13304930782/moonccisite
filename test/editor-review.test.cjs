@@ -5,13 +5,13 @@ const React=require('react'),{act,create}=require('react-test-renderer');
 // The review note is collected in an accessible dialog (not window.prompt).
 // Cancelling sends nothing, and an in-flight review disables every review action.
 test('editor review cancellation sends nothing and an in-flight review disables both actions',async()=>{
- let finish,fail;
+ let finish,fail,allowDiscard=false;
  const writes=[],alerts=[];
  const item={id:7,username:'本地申请人',email:'preview@example.invalid',status:'pending',reason:'测试申请'};
  const api=(path,options)=>options?(writes.push({path,...options}),new Promise((resolve,reject)=>{finish=resolve;fail=reject;})):Promise.resolve([item]);
  const code=ts.transpileModule(fs.readFileSync('src/app/pages/AdminEditorApplicationsPage.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const module={exports:{}};
- new Function('exports','require',code)(module.exports,name=>i18nFixture(name)?i18nFixture(name):name.endsWith('/api')?{api}:name.endsWith('/feedback')?{notify:{success:()=>{},error:message=>alerts.push(message)}}:name.endsWith('/AdminState')?{AdminEmpty:()=>null,AdminError:()=>null,AdminLoading:()=>null,AdminNotice:({children})=>React.createElement('p',{'data-notice':true},children)}:name.endsWith('.css')?{}:name.endsWith('/ThemeSelect')?{ThemeSelect:({children})=>React.createElement('select',null,children)}:name.endsWith('/LocaleLink')||name==='react-router-dom'?{Link:'a'}:name.endsWith('/dialog')?{Dialog:({open,children})=>open?children:null,DialogContent:'div',DialogTitle:'h2',DialogDescription:'p'}:require(name));
+ new Function('exports','require',code)(module.exports,name=>i18nFixture(name)?i18nFixture(name):name.endsWith('/AdminButton')?{AdminButton:({children,variant,...props})=>React.createElement('button',props,children)}:name.endsWith('/confirmAction')?{confirmAction:async()=>allowDiscard}:name.endsWith('/useUnsavedLeave')?{useUnsavedLeave:()=>{}}:name.endsWith('/api')?{api}:name.endsWith('/feedback')?{notify:{success:()=>{},error:message=>alerts.push(message)}}:name.endsWith('/AdminState')?{AdminEmpty:()=>null,AdminError:()=>null,AdminLoading:()=>null,AdminNotice:({children})=>React.createElement('p',{'data-notice':true},children)}:name.endsWith('.css')?{}:name.endsWith('/ThemeSelect')?{ThemeSelect:({children})=>React.createElement('select',null,children)}:name.endsWith('/LocaleLink')||name==='react-router-dom'?{Link:'a'}:name.endsWith('/dialog')?{Dialog:({open,children})=>open?children:null,DialogContent:'div',DialogTitle:'h2',DialogDescription:'p'}:require(name));
  let root;
  const text=node=>[].concat(node.props.children).join('');
  const button=match=>root.root.findAllByType('button').find(node=>match(String(node.props['aria-label']||''),text(node)));
@@ -33,6 +33,8 @@ test('editor review cancellation sends nothing and an in-flight review disables 
   await act(async()=>{rowApprove().props.onClick();});
   await act(async()=>{pending=confirm().props.onClick();});
   assert.ok(reviewButtons().every(node=>node.props.disabled));
+  await act(async()=>{confirm().props.onClick();});
+  assert.equal(writes.length,1,'A repeated confirmation while pending must send no new request');
   await act(async()=>{rowReject().props.onClick();});
   assert.equal(writes.length,1,'Only one review can run at a time');
   assert.deepEqual(JSON.parse(writes[0].body),{status:'approved',review_note:''});
@@ -49,6 +51,8 @@ test('editor review cancellation sends nothing and an in-flight review disables 
   assert.ok(root.root.findAll(node=>node.props['data-notice']&&node.props.children==='本地模拟失败').length);
   assert.ok(confirm(),'A failed review keeps the dialog open for retry');
   assert.equal(root.root.findByType('textarea').props.value,'补充理由','A failed review preserves the note');
+  await act(async()=>{cancel().props.onClick();});
+  assert.ok(confirm(),'Declining discard keeps the review note and dialog open');
   await act(async()=>{pending=confirm().props.onClick();});
   assert.equal(writes.length,3,'Retry sends one new review request');
   assert.deepEqual(JSON.parse(writes[2].body),{status:'rejected',review_note:'补充理由'});

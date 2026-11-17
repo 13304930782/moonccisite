@@ -86,6 +86,7 @@ jobs:
       - run: node scripts/test-google-button-browser.cjs
       - run: node scripts/test-admin-capacity-browser.cjs
       - run: node scripts/test-account-browser.cjs
+      - run: node scripts/test-account-navigation-browser.cjs
       - run: node scripts/test-site-design-account-browser.cjs
       - run: node scripts/test-about-browser.cjs
       - run: node scripts/test-festivals-browser.cjs

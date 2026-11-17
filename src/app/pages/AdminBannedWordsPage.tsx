@@ -3,10 +3,12 @@ import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
 import { ThemeSelect } from '../components/ThemeSelect';
 import { AdminEmpty, AdminError, AdminLoading, AdminNotice } from '../components/admin/AdminState';
+import { AdminButton } from '../components/admin/AdminButton';
+import { RefreshCw, Trash2 } from 'lucide-react';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 
-import {Link} from '../components/LocaleLink';
 import { api } from '../lib/api';
+import '../../styles/admin-ui-v2.css';
 import '../../styles/admin-banned-words.css';
 
 export default function AdminBannedWordsPage() {
@@ -80,22 +82,19 @@ export default function AdminBannedWordsPage() {
       notify.success(t("m_5223f91b96"));
       await loadWords();
     } catch (err: any) {
-      setMessage(err.message || t("m_c228558cf2"));
+      notify.error(err.message || t("m_c228558cf2"));
     } finally {
       setRemovingId(null);
     }
   };
 
   return (
-    <div className="admin-page banned-words-page">
+    <div className="admin-page banned-words-page ui-v2">
       <div className="admin-page-body">
-        <Link to="/admin" className="text-sm text-foreground hover:underline">{t("m_280dc8a5a1")}</Link>
-        <h1 className="admin-title">{t("m_e2c664697f")}</h1>
-        <p className="mt-2 mb-6 text-sm text-muted-foreground">{t("m_de951f24d5")}</p>
-
-        {message && <AdminNotice kind="error">{t(message || '')}</AdminNotice>}
+        <header className="banned-words-heading"><div><h1 className="admin-title">{t("m_e2c664697f")}</h1><p>{t("m_de951f24d5")}</p></div><AdminButton type="button" variant="soft" disabled={loading||adding||removingId!==null} onClick={()=>void loadWords()}><RefreshCw size={16} aria-hidden="true"/>{t('刷新')}</AdminButton></header>
 
         <form onSubmit={addWord} className="banned-word-form" aria-label={t("m_d409b26546")}>
+          <h2>{t("m_d409b26546")}</h2>
           <fieldset disabled={adding} className="banned-word-fields">
           <label className="banned-word-field"><span>{t("m_ddf210db3b")}</span>
           <input aria-label={t("m_ddf210db3b")} value={word} onChange={(e) => setWord(e.target.value)} placeholder={t("m_ddf210db3b")} maxLength={100}
@@ -108,13 +107,14 @@ export default function AdminBannedWordsPage() {
           </ThemeSelect></div>
 
           {action === 'replace'
-            ? <label className="banned-word-field"><span>{t('替换文本')}</span><input aria-label={t('替换文本')} value={replacement} onChange={(e) => setReplacement(e.target.value)} placeholder={t('替换文本')} maxLength={100}
+            ? <label className="banned-word-field banned-word-replacement"><span>{t('替换文本')}</span><input aria-label={t('替换文本')} value={replacement} onChange={(e) => setReplacement(e.target.value)} placeholder={t('替换文本')} maxLength={100}
                 className="min-h-11 rounded-[10px] border border-border px-4 py-2 bg-card" /></label>
             : null}
 
-          <button type="submit" disabled={adding || !word.trim()} className="neo-button banned-word-add">{adding ? t("m_f470193bcd") : t("m_7a8a11ead5")}</button>
+          <AdminButton type="submit" disabled={adding || !word.trim()} className="banned-word-add">{adding ? t("m_f470193bcd") : t("m_7a8a11ead5")}</AdminButton>
           </fieldset>
           {action === 'block' && <p className="banned-word-hint">{t("m_94639ec92e")}</p>}
+          {message && <AdminNotice kind="error">{t(message || '')}</AdminNotice>}
         </form>
 
         {loading && words.length === 0 && <AdminLoading label={t("m_55b475937b")} />}
@@ -123,21 +123,21 @@ export default function AdminBannedWordsPage() {
           <AdminEmpty title={t("m_eaf6ef8991")} hint={t("m_9e5d4763a3")} />
         )}
 
-        <div className="space-y-3" aria-busy={loading}>
+        {!!words.length&&<div className="banned-words-list-heading"><h2>{t('已添加词语')}</h2><span role="status">{t('共 {count} 项',{count:words.length})}</span></div>}
+        <div className="banned-words-list" aria-busy={loading}>
           {words.map((item) => (
-            <div key={item.id} className="admin-list-row flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <div className="font-medium text-foreground break-words">{item.word}</div>
-                <div className="text-sm text-muted-foreground">
-                   {t("m_2b71e8b25c")}{' '}{item.action === 'block' ? t("m_bf33347e3c") : t("m_17db915a50", {v0: item.replacement || '***'})}
-                </div>
+            <div key={item.id} className="banned-word-row">
+              <div className="banned-word-copy">
+                <strong>{item.word}</strong>
+                <p><span className="banned-word-kind">{item.action === 'block' ? t("m_bf33347e3c") : t("m_131b13aa26")}</span>{item.action === 'replace'&&<span className="banned-word-rule">{t("m_17db915a50", {v0: item.replacement || '***'})}</span>}</p>
               </div>
 
-              <div className="admin-row-actions">
-                <button type="button" data-tone="danger" disabled={removingId !== null} onClick={() => void removeWord(item)}
+              <div className="banned-word-row-actions">
+                <AdminButton type="button" variant="ghost" className="ui-btn--danger" disabled={removingId !== null} onClick={() => void removeWord(item)}
                   aria-label={t("m_725b214d8f", {v0: item.word})}>
+                  <Trash2 size={16} aria-hidden="true"/>
                   {removingId === item.id ? t("m_5e8e7af57a") : t("m_2f9daa8289")}
-                </button>
+                </AdminButton>
               </div>
             </div>
           ))}

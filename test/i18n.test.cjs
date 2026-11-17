@@ -14,3 +14,9 @@ test('new public English API errors translate to Chinese with only the source ca
 test('interpolated status messages translate in both directions without translating parameter values',()=>{const key=Object.keys(en).find(key=>en[key]==='Saved at {v0}');assert.ok(key);assert.equal(translate('zh-CN','Saved at 12:00'),key.replace('{v0}','12:00'));const source='已删除 {v0} 个媒体文件';const english=translate('en',source,{v0:'12'});assert.equal(translate('zh-CN',english),'已删除 12 个媒体文件');const withUser='评论包含违禁词：{v0}',value='用户原文 <b>unchanged</b>';const rendered=translate('en',withUser,{v0:value});assert.equal(translate('zh-CN',rendered),withUser.replace('{v0}',value));assert.equal(translate('zh-CN','结果 / 原因'),'结果 / 原因');});
 
 test('missing optional API labels render empty without crashing either locale',()=>{for(const locale of ['zh-CN','en'])for(const key of [undefined,null,''])assert.equal(translate(locale,key,{v0:'unused'}),'');assert.equal(translate('en','active'),'active');});
+test('already localized confirmations preserve Chinese user content on repeated translation',()=>{
+ const rendered=translate('en','确定删除违禁词“{v0}”吗？',{v0:'演示词'});
+ assert.equal(rendered,'Delete the blocked word “演示词”?');
+ assert.equal(translate('en',rendered),rendered);
+ assert.equal(translate('zh-CN',rendered),'确定删除违禁词“演示词”吗？');
+});

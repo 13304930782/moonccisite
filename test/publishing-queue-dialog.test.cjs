@@ -10,15 +10,18 @@ const cardImage=loadTs('src/app/components/CardCoverImage.tsx',{'../lib/safeUrl'
 const previews=loadTs('src/app/components/CoverDisplayPreviews.tsx',{'./CoverImage':image,'./CardCoverImage':cardImage,'../lib/coverCrop':crop});
 
 test('review dismissal retains manuscript during exit, blocks closing actions and opens the next draft',async()=>{
- const module={exports:{}},writes=[];
+ const module={exports:{}},writes=[];let acceptClose=false,pauseWrite=null,finishWrite;
  const drafts=[{draft_id:1,title:'第一稿',author_name:'作者一',draft_version:3,state:'submitted',snapshot:{content:'第一稿正文',cover_image:'/cover.png',cover_crop:{card:{x:.5,y:.8,zoom:1},detail:{x:.5,y:.7,zoom:1.2}}}},{draft_id:2,title:'第二稿',author_name:'作者二',draft_version:4,state:'submitted',snapshot:{content:'第二稿正文'}}];
  // Keep children mounted after open=false, as Radix Presence does while fading out.
  const Dialog=props=>React.createElement('dialog-shell',props,props.children);
  const mocks={'../lib/useContentListQuery':require('./helpers/content-list-query.cjs'),
   'react-router-dom':{useSearchParams:()=>[new URLSearchParams()]},
-  'lucide-react':{Inbox:'svg',FileText:'svg',ArrowRight:'svg',CalendarClock:'svg'},
-  '../lib/feedback':{notify:{error(){}}},
-  '../lib/api':{api:async(path,options)=>{if(options){writes.push(path);return {}}return {total:drafts.length,items:drafts}}},
+  'lucide-react':{Inbox:'svg',FileText:'svg',CalendarClock:'svg',RefreshCw:'svg'},
+  '../lib/feedback':{notify:{error(){},success(){}}},
+  '../lib/confirmAction':{confirmAction:async()=>acceptClose},
+  '../lib/useUnsavedLeave':{useUnsavedLeave(){}},
+  '../components/admin/AdminButton':{AdminButton:({children,variant,...props})=>React.createElement('button',props,children)},
+  '../lib/api':{api:async(path,options)=>{if(options){writes.push(path);return pauseWrite?await pauseWrite:{}}return {total:drafts.length,items:drafts}}},
   '../lib/safeUrl':{safeImageSrc:value=>value||''},
   '../components/CoverDisplayPreviews':previews,
   '../components/MarkdownContent':{MarkdownContent:({content})=>React.createElement('div',null,content)},
@@ -31,7 +34,7 @@ test('review dismissal retains manuscript during exit, blocks closing actions an
  let root;
  try{
   await act(async()=>{root=create(React.createElement(module.exports.default));});
-  const open=index=>root.root.findAllByType('button').filter(b=>b.children.includes('查看并处理'))[index].props.onClick();
+  const open=index=>root.root.findAllByType('button').filter(b=>b.children.includes('查看并处理'))[index].props.onClick({currentTarget:{isConnected:false}});
   await act(async()=>open(0));
   const dialog=()=>root.root.findByType(Dialog);
   assert.equal(dialog().props.open,true);
@@ -46,5 +49,16 @@ test('review dismissal retains manuscript during exit, blocks closing actions an
   assert.equal(dialog().props.open,true);
   assert.equal(root.root.findByType('dialog-content').findByType('header').findByType('h2').children[0],'第二稿');
   assert.match(JSON.stringify(root.toJSON()),/第二稿正文/);
+  await act(async()=>root.root.findByType('textarea').props.onChange({target:{value:'请补充说明'}}));
+  await act(async()=>dialog().props.onOpenChange(false));
+  assert.equal(dialog().props.open,true,'declining discard must keep the review open');
+  assert.equal(root.root.findByType('textarea').props.value,'请补充说明');
+  acceptClose=true;await act(async()=>dialog().props.onOpenChange(false));assert.equal(dialog().props.open,false);
+  await act(async()=>open(0));
+  pauseWrite=new Promise(resolve=>{finishWrite=resolve;});
+  await act(async()=>{const button=root.root.findAllByType('button').find(b=>b.children.includes('通过审核，安排发布'));button.props.onClick();button.props.onClick();});
+  assert.equal(writes.length,1,'rapid repeated actions must send only one request');
+  await act(async()=>dialog().props.onOpenChange(false));assert.equal(dialog().props.open,true,'pending actions must prevent dismissal');
+  await act(async()=>finishWrite({}));assert.equal(writes[0],'/publishing/1/approve');
  }finally{if(root)await act(async()=>root.unmount());}
 });

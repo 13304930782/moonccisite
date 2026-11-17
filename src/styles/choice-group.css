@@ -12,6 +12,10 @@
 .choice-options>button[aria-checked=true] .choice-mark{opacity:1;transform:translate(0,-50%) scale(1)}
 .choice-field .choice-native{display:block;width:100%;min-width:0;max-width:100%;min-height:44px;margin-block:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--input-background);color:var(--foreground);font:inherit;font-size:16px;line-height:1.4;appearance:auto}
 .choice-field .choice-native:disabled{opacity:.45;cursor:not-allowed}
+.choice-field .choice-dropdown-trigger{width:100%;min-height:44px;height:auto;border-radius:8px;font:inherit;box-shadow:none;}
+.choice-field .choice-dropdown-trigger:focus-visible,.choice-field .choice-dropdown-trigger[data-state=open]{outline:2px solid var(--ring);outline-offset:-2px;box-shadow:none;border-color:transparent;}
+.choice-dropdown-menu [data-radix-select-viewport]{width:100%!important;min-width:0!important;padding:0;}
+.choice-dropdown-menu .theme-select-option{min-height:44px;padding-left:8px;}
 .choice-empty,.choice-error{display:block;margin-top:8px;font-size:14px}.choice-error{color:var(--foreground)}
 .admin-toolbar>.choice-field{flex-basis:100%}
 .queue-toolbar:has(.choice-field){align-items:flex-start;flex-wrap:wrap}.queue-toolbar:has(.choice-field)>label{display:block;min-width:0;width:100%;margin:8px 0 0}

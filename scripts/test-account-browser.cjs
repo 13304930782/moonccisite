@@ -11,12 +11,15 @@ async function main() {
     const errors = []; page.on('pageerror', e => errors.push(e.message));
     let user = { id: 2, username: '测试读者', email: 'reader@example.test', role: 'user', status: 'active', can_comment: 1, version: 0 };
     let loggedIn = true;
+    let emailCodeRequests = 0;
+    let securityCodeRequests = 0;
     await page.route('**/api/**', async route => {
       const path = new URL(route.request().url()).pathname;
       let body = {};
       if (path === '/api/auth/session') body = { user: loggedIn ? { ...user, id: 1, role: 'owner' } : null };
       else if (path === '/api/auth/logout') { loggedIn = false; body = { message: '退出成功' }; }
-      else if (path === '/api/account/security-code') body = { challenge_id: 'local-fixture-only' };
+      else if (path === '/api/account/security-code') { securityCodeRequests++; body = { challenge_id: 'local-fixture-only' }; }
+      else if (path === '/api/account/email-code') { emailCodeRequests++; assert.equal(route.request().method(), 'POST'); assert.deepEqual(route.request().postDataJSON(), {email:'fresh@example.test'}); body = {challenge_id:'email-fixture-only',message:'验证码已发送。'}; }
       else if (path === '/api/admin/updates') body = {items:[],total:0,page:1,pageSize:20};
       else if (path === '/api/admin/users') body = { items: [user, { ...user, id: 3, username: 'long'.repeat(30), email: 'address'.repeat(20)+'@example.test' }], total: 2, page: 1, pageSize: 50 };
       else if (path === '/api/account' || path === '/api/admin/users/2/settings') {
@@ -34,6 +37,21 @@ async function main() {
         if (url === '/admin/users') await page.getByRole('main').getByText('测试读者', { exact: true }).waitFor();
         else await page.getByLabel('用户名', { exact: true }).waitFor();
         if (url !== '/admin/users') {
+          if (url === '/account/settings') {
+            assert.equal(await page.locator('.account-email input[type=email]').isVisible(), false, 'email editor starts collapsed');
+            assert.equal(await page.getByRole('button',{name:'换绑 Google',exact:true}).isVisible(), false, 'provider actions start collapsed');
+            await page.getByRole('button',{name:/^更换邮箱 /}).click();
+            await page.locator('.account-email input[type=email]').fill('invalid');
+            const before = emailCodeRequests;
+            await page.getByRole('button',{name:'发送验证码到新邮箱',exact:true}).click();
+            assert.equal(await page.locator('.account-email input[type=email]').getAttribute('aria-invalid'),'true');
+            assert.equal(emailCodeRequests,before,'native email validity prevents requests');
+            assert.equal(await page.getByLabel('新邮箱验证码',{exact:true}).isVisible(),false);
+            await page.locator('.account-email input[type=email]').fill('fresh@example.test');
+            await page.getByRole('button',{name:'发送验证码到新邮箱',exact:true}).click();
+            await page.getByLabel('新邮箱验证码',{exact:true}).waitFor();
+            assert.equal(emailCodeRequests,before+1);
+          }
           const labels = url.includes('/admin/') ? ['角色', '状态', '评论权限'] : ['确认身份的方式'];
           for (const dark of [false, true]) {
             await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark);
@@ -70,10 +88,18 @@ async function main() {
     await page.getByRole('button', { name: '保存资料', exact: true }).click();
     await page.getByText('资料已保存。', { exact: true }).waitFor();
     assert.equal(user.username, '修改后的名字');
+    await page.getByRole('button', { name: '管理登录方式 Google', exact: true }).click();
     await page.getByRole('button', { name: '换绑 Google', exact: true }).click();
     const verification = page.getByRole('dialog');
     await verification.getByLabel('邮箱验证码').waitFor();
     assert.ok(await verification.getByRole('button', { name: '验证并前往授权', exact: true }).isDisabled());
+    await verification.getByLabel('邮箱验证码').fill('123456');
+    const beforeReopen = securityCodeRequests;
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: '换绑 Google', exact: true }).click();
+    await verification.getByLabel('邮箱验证码').waitFor();
+    assert.equal(await verification.getByLabel('邮箱验证码').inputValue(),'','cancel clears code while retaining a usable challenge');
+    assert.equal(securityCodeRequests,beforeReopen,'reopening during cooldown reuses the current challenge');
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: '退出登录', exact: true }).click();
     await page.waitForURL('**/login');

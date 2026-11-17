@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n';
 import '../../styles/analytics.css';
-import '../../styles/analytics.css';
+import '../../styles/admin-period.css';
 import {useEffect,useState} from 'react';
 import {api} from '../lib/api';
 const number=(x:any)=>Number(x||0).toLocaleString('zh-CN');
@@ -12,7 +12,7 @@ export default function AdminAnalyticsPage(){
  const [days,setDays]=useState(30),[data,setData]=useState<any>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0);
  useEffect(()=>{let active=true;setData(null);setError('');api(`/admin/analytics?days=${days}`).then(x=>{if(active)setData(x);}).catch(e=>{if(active)setError(e.message||t("m_d1d044826a"));});return()=>{active=false;};},[days,attempt]);
  const trend=data?.trend||[],max=Math.max(1,...trend.map((x:any)=>x.views));
- return <div className="admin-page analytics-page"><header className="analytics-heading"><div><p className="eyebrow">{t("m_0e7e7ca5e5")}</p><h1 className="admin-title">{t("m_3943942fd1")}</h1><p className="muted">{t("m_7fa246bd07")}</p></div><div className="analytics-range" aria-label={t("m_80ee5ade81")}>{[7,30,90].map(n=><button key={n} aria-pressed={days===n} onClick={()=>setDays(n)}>{t("m_03aeb7c768")} {n}  {t("m_49da61ceee")}</button>)}</div></header>
+ return <div className="admin-page analytics-page"><header className="analytics-heading"><div><p className="eyebrow">{t("m_0e7e7ca5e5")}</p><h1 className="admin-title">{t("m_3943942fd1")}</h1><p className="muted">{t("m_7fa246bd07")}</p></div><div className="analytics-range admin-period-selector" role="group" aria-label={t("m_80ee5ade81")}>{[7,30,90].map(n=><button type="button" key={n} aria-pressed={days===n} onClick={()=>setDays(n)}>{t("m_03aeb7c768")} {n}  {t("m_49da61ceee")}</button>)}</div></header>
  {error?<div role="alert">{t(error || '')} <button className="text-link" onClick={()=>setAttempt(x=>x+1)}>{t("m_7bdd5ce1e2")}</button></div>:!data?<p role="status">{t("m_76d0853695")}</p>:<>
  <div className="analytics-metrics">{[[t("m_76f24e7f7c"),data.summary.views],[t("m_e7609409d3"),data.summary.visitors],[t("m_d4e280e036"),trend.reduce((sum:number,x:any)=>sum+x.registrations,0)],[t("m_e4aec3c852"),data.summary.totalViews]].map(([label,value])=><div key={label}><span className="muted">{label}</span><strong>{number(value)}</strong></div>)}</div>
  <section className="analytics-section"><div className="analytics-section-title"><h2>{t("m_4e64c7a559")}</h2><span className="muted">{data.start} — {data.end} · UTC</span></div><div className="analytics-chart" role="img" aria-label={t("m_db20074964", {v0: days})}>

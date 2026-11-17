@@ -38,9 +38,9 @@ test('legacy compact paint cannot override explicitly opted-in action buttons',(
  } finally {dom.window.close();}
 });
 
-test('the palette defines exactly the UI tokens referenced by the three page styles and editor',()=>{
+test('the palette defines exactly the UI tokens referenced by the approved admin styles and editor',()=>{
  const referenced=new Set(),declared=new Set();
- for(const file of ['admin-media.css','admin-posts.css','admin-writing.css','article-editor.css']) {
+ for(const file of ['admin-media.css','admin-posts.css','admin-writing.css','article-editor.css','admin-users.css','admin-publishing-queue.css','editor-applications.css','admin-banned-words.css','admin-series.css','admin-taxonomy.css']) {
   postcss.parse(fs.readFileSync('src/styles/'+file,'utf8')).walkDecls(decl=>{
    for(const match of decl.value.matchAll(/var\(\s*(--ui-[\w-]+)/g))referenced.add(match[1]);
   });
@@ -49,11 +49,9 @@ test('the palette defines exactly the UI tokens referenced by the three page sty
  assert.deepEqual([...declared].sort(),[...referenced].sort(),'Referenced UI tokens must all be scoped and defined without unused palette entries');
 });
 
-test('shared shell retains approved semantic navigation changes and theme keeps PR101 baseline',()=>{
- // Approved bilingual copy, locale-aware links and language switch; CSS pins are unchanged.
+test('theme keeps the original site baseline while shell navigation remains permission scoped',()=>{
  // Canonical LF Git blobs allow Windows checkouts and shallow CI without old commit history.
  const pins={
-  'src/app/components/admin/AdminShell.tsx':'3bac3e83a3a333bd24445d42837115969c22e678', // Adds the SEO administration entry.
   'src/styles/theme.css':'b9fda97bdfd03ede21c72edb3d1d0c1c0a5da68a',
  };
  for(const [file,pin] of Object.entries(pins)) {
@@ -61,10 +59,37 @@ test('shared shell retains approved semantic navigation changes and theme keeps 
   assert.equal(crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex'),pin,file);
  }
  for(const file of ['src/styles/admin-shell.css','test/admin-shell.test.cjs'])assert.equal(fs.existsSync(file),false,file+' did not exist in PR101');
+ const file='src/app/components/admin/AdminShell.tsx',source=fs.readFileSync(file,'utf8'),parsed=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+ const values=new Map(),icons=new Set();
+ function visit(node){
+  if(ts.isVariableDeclaration(node)&&ts.isIdentifier(node.name)&&node.initializer)values.set(node.name.text,node.initializer.getText(parsed));
+  if(ts.isPropertyAssignment(node)&&node.name.getText(parsed)==='icon'&&ts.isIdentifier(node.initializer))icons.add(node.initializer.text);
+  ts.forEachChild(node,visit);
+ }
+ visit(parsed);
+ const names=['role','owner','manager','writer','dashboard','commonItems','menuGroups'];
+ const readNavigation=new Function('user','publishing','operations','t',...icons,names.map(name=>`const ${name}=${values.get(name)};`).join('')+'return {commonItems,menuGroups};');
+ const navigation=(role,publishing=true,operations=true)=>readNavigation({role},publishing,operations,text=>text,...[...icons].map(()=>null));
+ const paths=nav=>[...nav.commonItems,...nav.menuGroups.flatMap(group=>group.items)].map(item=>item.to);
+ const ownerOnly=['/admin/mailbox','/admin/mailbox-requests','/admin/newsletter','/admin/login-settings','/admin/ai-settings','/admin/node-monitor','/admin/electricity'];
+ const owner=navigation('owner'),ownerPaths=paths(owner),routes=fs.readFileSync('src/app/RoutePages.tsx','utf8');
+ assert.deepEqual(owner.menuGroups.map(group=>group.id),['content','publishing','users','mail','site','system']);
+ assert.equal(new Set(ownerPaths).size,ownerPaths.length,'Every destination must have one navigation entry');
+ for(const path of ownerPaths)assert.ok(routes.includes(`path="${path}"`),path+' must remain an actual route');
+ for(const path of ['/admin/users','/admin/editor-applications','/admin/banned-words','/admin/reviews','/admin/schedules'])assert.ok(ownerPaths.includes(path),path);
+ const adminPaths=paths(navigation('admin'));
+ for(const path of ownerOnly){assert.ok(ownerPaths.includes(path),path);assert.equal(adminPaths.includes(path),false,path+' must remain owner only');}
+ assert.ok(adminPaths.includes('/admin/users'),'Administrators retain user management');
+ assert.deepEqual(paths(navigation('editor')),['/admin','/admin/posts']);
+ for(const role of ['user','teacher'])assert.deepEqual(paths(navigation(role)),['/admin/editor-apply']);
+ const disabled=paths(navigation('owner',false,false));
+ for(const path of ['/admin/reviews','/admin/schedules','/admin/series'])assert.equal(disabled.includes(path),false,path+' respects the publishing feature');
+ assert.ok(disabled.includes('/admin'),'Disabled operations return to the existing dashboard');
 });
 
-test('only the three approved pages import the palette and opt in their roots and portals',()=>{
- const pages={AdminMediaPage:'admin-media-page',AdminPostsPage:'admin-posts-page',AdminWritePage:'writing-workspace'};
+test('only approved admin pages import the palette and opt in their roots and detached controls',()=>{
+ const pages={AdminMediaPage:'admin-media-page',AdminPostsPage:'admin-posts-page',AdminWritePage:'writing-workspace',AdminTaxonomyPage:'taxonomy-page',AdminSeriesPage:'series-admin-page',AdminUsersPage:'admin-users-page',AdminUserSettingsPage:'admin-user-settings',AdminBannedWordsPage:'banned-words-page',AdminEditorApplicationsPage:'editor-applications-page',EditorApplyPage:'editor-apply-page',PublishingQueuePage:'queue-page'};
+ const withPortals=new Set(['AdminMediaPage','AdminPostsPage','AdminWritePage','AdminTaxonomyPage','AdminEditorApplicationsPage','PublishingQueuePage']);
  for(const filename of fs.readdirSync('src/app/pages').filter(name=>name.endsWith('.tsx'))) {
   const file='src/app/pages/'+filename,source=fs.readFileSync(file,'utf8'),name=filename.slice(0,-4);
   const parsed=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
@@ -76,14 +101,14 @@ test('only the three approved pages import the palette and opt in their roots an
    if(ts.isJsxOpeningElement(node)||ts.isJsxSelfClosingElement(node)) {
     const attribute=node.attributes.properties.find(prop=>ts.isJsxAttribute(prop)&&prop.name.text==='className');
     const classes=attribute?.initializer?.getText(parsed)||'';
-    if(classes.includes(pages[name]))roots.push(classes);
+    if(classes.split(/[\s"'`{}]+/).includes(pages[name]))roots.push(classes);
     if(['DialogContent','SheetContent','DropdownMenuContent'].includes(node.tagName.getText(parsed)))portals.push(classes);
    }
    ts.forEachChild(node,visit);
   }
   visit(parsed);
   assert.equal(roots.length,name==='AdminWritePage'?2:1,file+' root count');
-  assert.ok(portals.length,file+' detached portals');
+  if(withPortals.has(name))assert.ok(portals.length,file+' detached portals');
   for(const classes of [...roots,...portals])assert.match(classes,/\bui-v2\b/,file+' '+classes);
   assert.doesNotMatch(source,/admin-shell\.css/);
  }

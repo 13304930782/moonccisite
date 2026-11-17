@@ -4,8 +4,10 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import {Link} from '../components/LocaleLink';
 import { ArrowLeft, ArrowUpRight, Check, Copy, Eye, EyeOff, Inbox, KeyRound, Mail, RefreshCw, Send } from 'lucide-react';
 import { api } from '../lib/api';
+import { confirmAction } from '../lib/confirmAction';
 import { visibleDiagnostic } from '../lib/browserDiagnostics';
 import { useAuth } from '../context/AuthContext';
+import { useUnsavedLeave } from '../lib/useUnsavedLeave';
 import '../../styles/mailbox.css';
 
 type Access = { status: 'pending' | 'provisioning' | 'active' | 'rejected' | 'revoked'; mailbox_address: string | null; daily_limit: number; review_note: string | null; password_change_status?: 'idle' | 'pending' | 'claimed' | 'review' | 'complete' };
@@ -47,6 +49,7 @@ function MailboxContent() {
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
+  useUnsavedLeave(Boolean(to || subject || content));
   const [view, setView] = useState<Folder | 'compose'>('inbox');
   const [mailList, setMailList] = useState<MailList | null>(null);
   const [selected, setSelected] = useState<Message | null>(null);
@@ -191,6 +194,14 @@ function MailboxContent() {
     setPassword(''); setNotice(result.message);
   }); };
   const sendInFlight = useRef(false);
+  const reply = async () => {
+    if (!selected?.replyTo || sendInFlight.current) return;
+    const version = folderVersion.current;
+    if ((to || subject || content) && !await confirmAction(t('m_a7d6b5c401'), t('m_a7d6b5c402'))) return;
+    if (!mounted.current || version !== folderVersion.current || sendInFlight.current) return;
+    setTo(selected.replyTo); setSubject(/^Re:/i.test(selected.subject) ? selected.subject : `Re: ${selected.subject}`); setContent('');
+    changeView('compose');
+  };
   const send = async (event: FormEvent) => {
     event.preventDefault(); if (sendInFlight.current) return;
     sendInFlight.current = true; setBusy(true); setNotice('');
@@ -289,15 +300,15 @@ function MailboxContent() {
               <pre className="mailbox-letter-body">{selected.text || t("m_f0a22c359f")}</pre>
               {!!selected.attachments?.length && <p className="mailbox-attachment-note">{t("m_bfa49584f7")}{selected.attachments.map(item => item.filename).join('、')}{t("m_c172587668")}</p>}
             </>}
-            {view === 'inbox' && selected.replyTo && <button type="button" className="mailbox-primary" onClick={() => { setTo(selected.replyTo || ''); setSubject(/^Re:/i.test(selected.subject) ? selected.subject : `Re: ${selected.subject}`); changeView('compose'); }}>{t("m_cf945e21dd")}</button>}
+            {view === 'inbox' && selected.replyTo && <button type="button" className="mailbox-primary" disabled={busy} onClick={() => void reply()}>{t("m_cf945e21dd")}</button>}
           </article> : mailLoading && !mailList ? <p className="mailbox-empty">{t("m_3deb616d34")}</p> : !mailList?.folderAvailable ? <p className="mailbox-empty">{t("m_d89b28a464")}</p> : !mailList.messages.length ? <p className="mailbox-empty">{view === 'inbox' ? t("m_1631539c78") : t("m_0c1879ca29")}</p> : <ul className="mailbox-letter-list">{mailList.messages.map(item => <li key={item.uid}><button type="button" disabled={mailLoading} onClick={() => void openMessage(item)} className={item.unread ? 'mailbox-letter-unread' : ''}>
             <span className="mailbox-letter-correspondent">{view === 'inbox' ? item.from : item.to}</span><span className="mailbox-letter-subject">{item.subject}</span><time>{item.date ? new Date(item.date).toLocaleString(locale,{timeZone:'Asia/Shanghai'}) : ''}</time></button></li>)}</ul>}
           {!selected && mailList && mailList.total > mailList.pageSize && <div className="mailbox-list-pages"><span>{t("m_af50a0fe2a")} {mailList.page}  {t("m_d24d3c9946")}</span><div><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page <= 1} onClick={() => void loadFolder(view, mailList.page - 1)}>{t("m_c9b9ae7a61")}</button><button type="button" className="mailbox-secondary" disabled={mailLoading || mailList.page * mailList.pageSize >= mailList.total} onClick={() => void loadFolder(view, mailList.page + 1)}>{t("m_8a8542f696")}</button></div></div>}
         </section>}
         {!['pending','claimed','review'].includes(access.password_change_status || '') && view === 'compose' && <section className="mailbox-panel" aria-labelledby="mail-compose-title"><div className="mailbox-panel-head"><span className="mailbox-icon"><Send size={20} aria-hidden="true" /></span><div><h2 id="mail-compose-title">{t("m_2ef8275490")}</h2><p>{t("m_f4f0c2b190")}{access.mailbox_address}</p></div></div>
-          <form onSubmit={send} className="mailbox-form"><label htmlFor="mail-to">{t("m_c237b665a6")}</label><input id="mail-to" type="email" value={to} onChange={event => setTo(event.target.value)} required placeholder="name@example.com" />
-            <label htmlFor="mail-subject">{t("m_c3405f8c7d")}</label><input id="mail-subject" value={subject} onChange={event => setSubject(event.target.value)} required maxLength={120} />
-            <label htmlFor="mail-body">{t("m_d661c3d96d")}</label><textarea id="mail-body" value={content} onChange={event => setContent(event.target.value)} rows={9} required maxLength={10000} />
+          <form onSubmit={send} className="mailbox-form"><label htmlFor="mail-to">{t("m_c237b665a6")}</label><input id="mail-to" type="email" value={to} disabled={busy} onChange={event => setTo(event.target.value)} required placeholder="name@example.com" />
+            <label htmlFor="mail-subject">{t("m_c3405f8c7d")}</label><input id="mail-subject" value={subject} disabled={busy} onChange={event => setSubject(event.target.value)} required maxLength={120} />
+            <label htmlFor="mail-body">{t("m_d661c3d96d")}</label><textarea id="mail-body" value={content} disabled={busy} onChange={event => setContent(event.target.value)} rows={9} required maxLength={10000} />
             <div className="mailbox-form-footer"><p>{t("m_67b8fdfb4f")}</p><button className="mailbox-primary" disabled={busy}>{busy ? t("m_364970d816") : t("m_c268c1b1ce")}</button></div></form></section>}</>}
       {access?.status === 'active' && view === 'sent' && <details className="mailbox-panel mailbox-history" onToggle={event => { if (event.currentTarget.open && !historyLoaded.current) void refreshHistory(); }}><summary id="mail-history-title">{t("m_1ac3bf196d")}</summary><p className="mailbox-footnote">{t("m_7c5f13c106")}</p>
         {historyError && <p className="mailbox-error" role="alert">{historyError}<button type="button" className="mailbox-text-button" onClick={() => void refreshHistory()}>{t("m_621e17c543")}</button></p>}

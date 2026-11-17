@@ -1,3 +1,4 @@
+import {ThemeSelect} from '../components/ThemeSelect';
 import {TranslationFields} from '../components/ContentTranslationEditor';
 import { useI18n } from '../i18n';
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
@@ -130,7 +131,12 @@ function ImageSetting({
 }
 export default function AdminSiteSettingsPage() {
   const { locale,  t } = useI18n();
-  const sectionIds = ['brand', 'hero', 'now', 'footer', 'weather-companion'];
+  const sections = [
+          ['brand', t("m_a6939b5922")], ['hero', t("m_3615b0afff")],
+          ['now', t("m_9a6c6ad76b")], ['footer', t("m_17cb1bbb81")],
+          ['weather-companion', t("m_acf6ef3f39")],
+        ];
+  const sectionIds = sections.map(([id]) => id);
   const hashSection = () => {
     const id = typeof window === 'undefined' ? '' : window.location?.hash?.slice(1);
     return id && sectionIds.includes(id) ? id : 'brand';
@@ -305,12 +311,9 @@ export default function AdminSiteSettingsPage() {
         <Link className="text-link" to="/" target="_blank">
            {t("m_f951dedda9")} </Link>
       </header>
+      <label className="settings-mobile-section"><span>{t("m_dc0173c408")}</span><ThemeSelect compact value={activeSection} onValueChange={setActiveSection}>{sections.map(([id,label])=><option key={id} value={id}>{label}</option>)}</ThemeSelect></label>
       <nav className="settings-nav" aria-label={t("m_dc0173c408")}>
-        {[
-          ['brand', t("m_a6939b5922")], ['hero', t("m_3615b0afff")],
-          ['now', t("m_9a6c6ad76b")], ['footer', t("m_17cb1bbb81")],
-          ['weather-companion', t("m_acf6ef3f39")],
-        ].map(([id, label]) => <button key={id} type="button" aria-pressed={activeSection === id} aria-controls={id} onClick={() => setActiveSection(id)}>{label}{dirtySections[id] && <span className="settings-nav-dirty" aria-label={t("m_c2277872cd")} />}</button>)}
+        {sections.map(([id, label]) => <button key={id} type="button" aria-pressed={activeSection === id} aria-controls={id} onClick={() => setActiveSection(id)}>{label}{dirtySections[id] && <span className="settings-nav-dirty" aria-label={t("m_c2277872cd")} />}</button>)}
       </nav>
       {loading && <p role="status">{t("m_9ee6956371")}</p>}
       {error && (

@@ -132,6 +132,16 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
   const historyDisabled = locked || d.busy || d.blocked || d.isRestoring || uploads > 0;
 
   useEffect(() => {
+    const root = workspace.current, bar = root?.querySelector<HTMLElement>('.writing-topbar');
+    if (!root || !bar) return;
+    const measure = () => root.style.setProperty('--writing-toolbar-top', `${bar.getBoundingClientRect().height}px`);
+    const observer = new ResizeObserver(measure);
+    observer.observe(bar);
+    measure();
+    return () => { observer.disconnect(); root.style.removeProperty('--writing-toolbar-top'); };
+  }, [published]);
+
+  useEffect(() => {
     const title = titleInput.current;
     if (!title || preview || locked || showComparison) return;
     const resize = () => { title.style.height = '0px'; title.style.height = `${title.scrollHeight}px`; };
@@ -354,7 +364,7 @@ function Workspace({ userId, postId }: { userId: number; postId?: string }) {
         </div>
       </header>
       <div className={`writing-body${preview ? ' writing-body--preview' : ''}${compareActive && englishVersion ? ' writing-body--bilingual' : ''}`}>
-      <section className="writing-content-language" aria-label={t("m_d562f79cd4")}><span className="writing-version-state" role="status"><span className="writing-version-label">{t("m_5f76b2bf82")}{locale === 'en' ? ' ' : ''}{t("m_6320b4a872")}{locale === 'en' ? ': ' : '：'}</span><span>{t(d.draft?.source_changed&&[d.form.title,d.form.content].some(value => String(value || "").trim())?t("m_133c7031a7"):versionPublished&&(d.dirty||Number(d.draft?.dirty))?t("m_41df60ffba"):versionPublished?t("m_d334724d6b"):d.draft?t("m_2a2fd29bd2"):t("m_bb1ea50f6a"))}</span></span>
+      <section className="writing-content-language" aria-label={t("m_d562f79cd4")}><span className="writing-version-state" role="status"><span className="writing-version-label">{t('版本状态：')}</span><span>{t(d.draft?.source_changed&&[d.form.title,d.form.content].some(value => String(value || "").trim())?t("m_133c7031a7"):versionPublished&&(d.dirty||Number(d.draft?.dirty))?t("m_41df60ffba"):versionPublished?t("m_d334724d6b"):d.draft?t("m_2a2fd29bd2"):t("m_bb1ea50f6a"))}</span></span>
         {englishVersion&&d.draft?.source_changed&&[d.form.title,d.form.content].some(value => String(value || '').trim())&&<button type="button" className="quiet-button" disabled={locked||d.busy||d.blocked||uploads>0||!d.draft.current_source_hash} onClick={()=>void d.reviewSource()}>{t("m_1f9e07738c")}</button>}
       </section>
 

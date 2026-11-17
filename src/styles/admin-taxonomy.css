@@ -1,3 +1,42 @@
-.taxonomy-heading h1{margin:0 0 8px}.taxonomy-heading p,.taxonomy-empty{color:var(--muted-foreground);line-height:1.7}.taxonomy-tabs{display:flex;gap:8px;margin:24px 0 20px}.taxonomy-tabs button{min-height:44px;padding:10px 18px;border:1px solid var(--border);border-radius:10px;background:var(--background);color:var(--foreground)}.taxonomy-tabs button[aria-pressed=true]{background:var(--muted);border-color:var(--foreground);font-weight:600}.taxonomy-search{display:grid;gap:8px;max-width:480px;font-size:14px}.taxonomy-search input{min-height:44px;min-width:0;width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--background);color:var(--foreground);font:inherit}.taxonomy-list{list-style:none;margin:24px 0;padding:0;border:1px solid var(--border);border-radius:12px;overflow:hidden}.taxonomy-list li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px;background:var(--card)}.taxonomy-list li+li{border-top:1px solid var(--border)}.taxonomy-list li>span{min-width:0;overflow-wrap:anywhere}.taxonomy-list button{flex:none;min-height:44px;white-space:nowrap}.taxonomy-dialog{max-height:calc(100dvh - 32px);overflow-y:auto}.taxonomy-dialog .translation-fields{padding:0;margin:0}.taxonomy-page :is(button,input):focus-visible{outline:2px solid var(--ring);outline-offset:3px}@media(max-width:560px){.taxonomy-search input{font-size:16px}.taxonomy-list li{padding:10px 12px}.taxonomy-dialog{padding:20px;max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px)}}
-
-.taxonomy-list .admin-button{border:1px solid var(--border);background:var(--background);color:var(--foreground);padding:10px 16px;border-radius:10px}.taxonomy-dialog .translation-fields [role=status]{margin:12px 0;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--muted);font-size:14px}.taxonomy-dialog .translation-fields [role=alert]{margin:12px 0;padding:10px 12px;border:1px solid var(--destructive);border-radius:10px;color:var(--destructive);font-size:14px}
+.taxonomy-page .taxonomy-heading h1 { margin:0; font-size:28px; font-weight:700; line-height:1.3; letter-spacing:-.02em; }
+.taxonomy-heading p { margin:10px 0 0; max-width:64ch; color:var(--muted-foreground); font-size:14px; line-height:1.7; }
+.taxonomy-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:28px 0 24px; }
+.taxonomy-tabs { display:inline-grid; position:relative; isolation:isolate; grid-template-columns:repeat(2,minmax(72px,1fr)); flex:none; gap:4px; padding:3px; border-radius:10px; background:var(--muted); }
+.taxonomy-tabs::after { content:''; position:absolute; z-index:-1; pointer-events:none; left:3px; top:3px; bottom:3px; width:calc((100% - 10px)/2); border-radius:7px; background:var(--card); box-shadow:inset 0 0 0 1px var(--border); transform:translateX(0); }
+.taxonomy-tabs:has(>button:nth-child(2)[aria-pressed=true])::after { transform:translateX(calc(100% + 4px)); }
+.taxonomy-tabs button { position:relative; min-height:44px; min-width:72px; padding:10px 18px; border:0; border-radius:7px; background:transparent; color:var(--muted-foreground); font:inherit; font-size:14px; cursor:pointer; }
+.taxonomy-tabs button[aria-pressed=true] { color:var(--foreground); font-weight:600; }
+@media(prefers-reduced-motion:no-preference) {
+ html:not([data-reduced-motion=true]) .taxonomy-tabs::after { transition:transform 350ms cubic-bezier(.2,.8,.2,1.08); }
+}
+.taxonomy-search { display:block; width:min(100%,320px); min-width:0; }
+.taxonomy-search input { width:100%; min-width:0; min-height:44px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--background); color:var(--foreground); font:inherit; font-size:14px; }
+.taxonomy-search input::placeholder { color:var(--muted-foreground); opacity:1; }
+.taxonomy-results-heading { display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:12px; }
+.taxonomy-results-heading h2 { margin:0; font-size:15px; font-weight:600; }
+.taxonomy-results-heading>span { color:var(--muted-foreground); font-size:12px; font-variant-numeric:tabular-nums; }
+.taxonomy-list { list-style:none; margin:0; padding:0; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.taxonomy-list li { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 16px; background:var(--card); }
+.taxonomy-list li+li { border-top:1px solid var(--border); }
+.taxonomy-list li>span { min-width:0; overflow-wrap:anywhere; font-size:14px; line-height:1.6; }
+.taxonomy-list button { flex:none; min-height:44px; white-space:nowrap; }
+.taxonomy-empty { display:grid; justify-items:center; gap:16px; padding:48px 20px; border:1px solid var(--border); border-radius:12px; text-align:center; color:var(--muted-foreground); line-height:1.7; }
+.taxonomy-empty p { margin:0; }
+.taxonomy-dialog { max-height:calc(100dvh - 32px); overflow-y:auto; }
+.taxonomy-dialog .translation-fields { padding:0; margin:0; }
+.taxonomy-dialog h2 { font-size:22px; line-height:1.4; }
+.taxonomy-dialog .inline-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.taxonomy-dialog .inline-actions button { min-width:0; padding-inline:8px; font-size:13px; }
+.taxonomy-dialog .inline-actions .translation-publish,.taxonomy-dialog .inline-actions button:nth-child(4) { grid-column:1/-1; }
+.taxonomy-dialog .translation-fields [role=status] { margin:12px 0; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--muted); font-size:14px; }
+.taxonomy-dialog .translation-fields [role=alert] { margin:12px 0; padding:10px 12px; border:1px solid var(--destructive); border-radius:10px; color:var(--destructive); font-size:14px; }
+.taxonomy-page :is(button,input):focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+@media(max-width:560px) {
+ .taxonomy-page .taxonomy-heading h1 { font-size:25px; }
+ .taxonomy-toolbar { flex-wrap:wrap; gap:12px; margin-top:24px; }
+ .taxonomy-search { width:100%; }
+ .taxonomy-search input { font-size:16px; }
+ .taxonomy-list li { gap:12px; padding:10px 12px; }
+ .taxonomy-list .admin-button { padding-inline:12px; font-size:13px; }
+ .taxonomy-dialog { padding:20px; max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); }
+}

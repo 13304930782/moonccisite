@@ -31,23 +31,49 @@ const { chromium } = require('playwright');
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width} overflow`);
         await page.screenshot({ path: `.cache/admin-workspace-qa/overview-${width}-${theme}.png` });
       }
-      if (width === 375) await page.getByRole('button', { name: '打开后台菜单' }).click();
-      const navigation = page.locator(width === 375 ? '.admin-mobile-layer nav' : '.admin-sidebar nav');
-      await navigation.locator('details').evaluateAll(nodes => nodes.forEach(node => { node.open = true; }));
+      const mobile = width < 1024;
+      if (mobile) await page.getByRole('button', { name: '打开后台菜单' }).click();
+      const navigation = page.locator(mobile ? '.admin-mobile-layer nav' : '.admin-sidebar nav');
       const links = navigation.locator('a');
       assert.ok(await links.count() > 20);
-      assert.ok(await links.evaluateAll(nodes => nodes.every(node => node.getBoundingClientRect().height >= 44)), `${width} touch targets: ${JSON.stringify(await links.evaluateAll(nodes => nodes.filter(n => n.getBoundingClientRect().height < 44).map(n => ({text:n.textContent,height:n.getBoundingClientRect().height}))))}`);
+      assert.equal(await navigation.locator('a[aria-current="page"]').count(), 1, `${width} current page`);
+      const inspected = new Set();
+      const inspectVisibleLinks = async () => {
+        const visible = await navigation.locator('a:visible').evaluateAll(nodes => nodes.map(node => ({href:node.getAttribute('href'),height:node.getBoundingClientRect().height,text:node.textContent})));
+        assert.ok(visible.length > 0, `${width} visible navigation`);
+        assert.deepEqual(visible.filter(link => link.height < 44), [], `${width} touch targets`);
+        visible.forEach(link => inspected.add(link.href));
+      };
+      const toggles = navigation.locator('.admin-nav-group-toggle');
+      for (const toggle of await toggles.all()) if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+      await inspectVisibleLinks();
+      const opened = [], limit = mobile ? 1 : 2;
+      for (const toggle of await toggles.all()) {
+        const panelId = await toggle.getAttribute('aria-controls');
+        const panel = navigation.locator(`[id="${panelId}"]`);
+        assert.equal(await panel.count(), 1, `${width} group control target`);
+        assert.equal(await panel.isVisible(), false, `${width} collapsed group`);
+        await toggle.click(); await panel.waitFor({state:'visible'}); opened.push(panelId);
+        const expanded = await toggles.evaluateAll(nodes => nodes.filter(node => node.getAttribute('aria-expanded') === 'true').map(node => node.getAttribute('aria-controls')));
+        assert.deepEqual(expanded, opened.slice(-limit), `${width} only the latest ${limit} group(s) stay open`);
+        await inspectVisibleLinks();
+      }
+      assert.equal(inspected.size, await links.count(), `${width} every permitted destination was opened and checked`);
       const distinct = await navigation.locator('a svg').evaluateAll(nodes => new Set(nodes.map(node => node.innerHTML)).size);
       assert.ok(distinct >= 20, `${width} semantic icons`);
-      if (width === 375) { await page.keyboard.press('Escape'); await page.locator('.admin-mobile-layer').waitFor({ state: 'hidden' }); }
+      if (mobile) {
+        await page.keyboard.press('Escape'); await page.locator('.admin-mobile-layer').waitFor({ state: 'hidden' });
+        assert.equal(await page.getByRole('button', {name:'打开后台菜单'}).evaluate(node => node === document.activeElement), true, `${width} menu restores focus`);
+      }
     }
     await page.setViewportSize({width:1280,height:900});
     for (const nextRole of ['owner','admin','editor']) {
       role=nextRole;
       await page.goto('http://127.0.0.1:4995/admin');await page.locator('.admin-quick-links').waitFor();
-      const links=await page.locator('.admin-sidebar .admin-menu-group a').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('href')));
+      const links=await page.locator('.admin-sidebar .admin-menu a').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('href')));
       assert.equal(new Set(links).size,links.length,'menu destinations are unique');
-      assert.ok(links.includes('/admin/posts')&&links.includes('/admin/write'));
+      assert.ok(links.includes('/admin/posts'));
+      assert.equal(await page.locator('.admin-sidebar .admin-nav-write[href="/admin/write"]').isVisible(),true,'writing remains a direct header action');
       assert.equal(links.includes('/admin/node-monitor'),role==='owner');
       assert.equal(links.includes('/admin/users'),role!=='editor');
       assert.equal(links.includes('/admin/reviews'),role!=='editor');

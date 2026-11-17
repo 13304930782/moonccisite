@@ -9,6 +9,7 @@ import { ThemeSelect } from '../components/ThemeSelect';
 import { FormEvent, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { formatCommentTime } from '../lib/commentTime';
+import '../../styles/admin-list-polish.css';
 
 const statusText: Record<string, string> = {
   pending: '待审核',
@@ -87,9 +88,9 @@ export default function AdminCommentsPage() {
     );
 
   return (
-    <div className="admin-page">
+    <div className="admin-page admin-list-page admin-comments-page">
       <div className="py-2">
-        <div className="mb-8">
+        <div className="admin-list-heading">
           <h1 className="admin-title">{t("m_e7c87ea7ef")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
              {t("m_8a18e3c189")} </p>
@@ -97,9 +98,9 @@ export default function AdminCommentsPage() {
 
         {message && <AdminNotice>{t(message || '')}</AdminNotice>}
 
-        <form role="search" onSubmit={search} className="mb-6">
-          <fieldset disabled={busy} className="flex flex-col md:flex-row gap-3">
-            <ThemeSelect aria-label={t("m_7aa200337d")} value={filters.status} onValueChange={(status) => filter({ status })}>
+        <form role="search" onSubmit={search} className="admin-list-search">
+          <fieldset disabled={busy} className="admin-list-filters">
+            <ThemeSelect compact aria-label={t("m_7aa200337d")} value={filters.status} onValueChange={(status) => filter({ status })}>
               <option value="pending">{t("m_7bf25421c6")}</option>
               <option value="visible">{t("m_3fa9b68490")}</option>
               <option value="rejected">{t("m_4dbcdec869")}</option>
@@ -108,7 +109,7 @@ export default function AdminCommentsPage() {
               <option value="all">{t("m_5c55a67935")}</option>
             </ThemeSelect>
 
-            <ThemeSelect aria-label={t("m_148391759c")} value={filters.target} onValueChange={target => filter({ target })}>
+            <ThemeSelect compact aria-label={t("m_148391759c")} value={filters.target} onValueChange={target => filter({ target })}>
               <option value="all">{t("m_2edce57be5")}</option><option value="post">{t("m_c31c3c5290")}</option><option value="update">{t("m_eefaeb272a")}</option>
             </ThemeSelect>
             <input
@@ -123,7 +124,9 @@ export default function AdminCommentsPage() {
           </fieldset>
         </form>
 
-        {list.total > 0 && !list.error && <AdminPagination label={t("m_1873748f2d")} page={list.page} total={list.total} disabled={list.loading || busy} onPage={list.setPage} />}
+        {list.total > 0 && !list.error && (list.total <= 50 && list.page === 1
+          ? <p className="admin-list-count" role="status">{t("m_76e547a8fa")} {list.total} {t("m_f004f1d84c")}</p>
+          : <AdminPagination label={t("m_1873748f2d")} page={list.page} total={list.total} disabled={list.loading || busy} onPage={list.setPage} />)}
         {list.error && <AdminError message={list.error} onRetry={list.reload} />}
         {list.loading && <AdminLoading label={t("m_dded3fba07")} />}
         <div className={`space-y-4${!list.loading && !list.error && comments.length === 0 ? ' admin-comments-empty-result' : ''}`}>
@@ -136,25 +139,21 @@ export default function AdminCommentsPage() {
           )}
 
           {comments.map((item) => (
-            <article key={item.id} className="rounded-[10px] border border-border bg-card p-5" aria-label={t("m_928e4faf8d", {v0: item.id})}>
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                    <span>#{item.id}</span>
-                    <span>{t("m_377416bd80")}{item.post_title}</span>
-                    <span>{t("m_1a78d1d501")}{item.author_name}</span>
+            <article key={item.id} className="admin-comment" aria-label={t("m_928e4faf8d", {v0: item.id})}>
+              <div className="admin-comment-layout">
+                <div className="admin-comment-main">
+                  <div className="admin-comment-author">
+                    <strong>{t("m_1a78d1d501")}{item.author_name}</strong>
                     <span>{t("m_144030382e")}{item.author_email}</span>
                   </div>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <p className="admin-comment-content">{item.content}</p>
+                  <p className="admin-comment-target">{t("m_377416bd80")}{item.post_title}</p>
+                  <div className="admin-comment-meta">
                     <span className="admin-status-chip" data-status={item.status}>{t(statusText[item.status] || item.status)}</span>
+                    <span>#{item.id}</span>
                     <span>IP：{item.ip_address || item.ip_address_masked || '-'}</span>
                     <span>{t("m_2bfff95804")}{formatCommentTime(item.created_at, true)}{t("m_5eb76ad884")}</span>
                   </div>
-
-                  <p className="mt-4 whitespace-pre-wrap rounded-[10px] bg-muted px-4 py-3 leading-7 text-foreground">
-                    {item.content}
-                  </p>
                 </div>
 
                 <div className="admin-row-actions shrink-0">

@@ -47,7 +47,7 @@ export function FeedbackHost() {
   return <>
     <Toaster position="top-right" visibleToasts={2} expand offset={{ top: `max(${top}px, env(safe-area-inset-top))`, left: 'max(16px, env(safe-area-inset-left))', right: 'max(16px, env(safe-area-inset-right))' }} mobileOffset={{ top: `max(${top}px, env(safe-area-inset-top))`, left: 'max(16px, env(safe-area-inset-left))', right: 'max(16px, env(safe-area-inset-right))' }} containerAriaLabel={t("m_b87b880332")}/>
     <AlertDialog open={!!request} onOpenChange={open => { if (!open) finishConfirmation(false); }}>
-      <AlertDialogContent className="experience-confirm" onOpenAutoFocus={event => { event.preventDefault(); document.querySelector<HTMLButtonElement>('[data-confirm-cancel]')?.focus(); }} onCloseAutoFocus={event => { event.preventDefault(); if (trigger.current?.isConnected) trigger.current.focus(); }}>
+      <AlertDialogContent className="experience-confirm" overlayClassName="experience-confirm-overlay" onOpenAutoFocus={event => { event.preventDefault(); document.querySelector<HTMLButtonElement>('[data-confirm-cancel]')?.focus(); }} onCloseAutoFocus={event => { event.preventDefault(); if (trigger.current?.isConnected) trigger.current.focus(); }}>
         <AlertDialogTitle>{t("m_bc13f638d4")}</AlertDialogTitle>
         <AlertDialogDescription>{t(request?.message || '')}</AlertDialogDescription>
         <AlertDialogFooter><AlertDialogCancel data-confirm-cancel onClick={() => finishConfirmation(false)}>{t("m_2cd0f3be87")}</AlertDialogCancel><AlertDialogAction onClick={() => finishConfirmation(true)}>{t(request?.label || '')}</AlertDialogAction></AlertDialogFooter>

@@ -27,7 +27,7 @@ export default function AdminMailSettingsPage() {
   const [saved,setSaved] = useState('');
   const [loadAttempt,setLoadAttempt] = useState(0);
   const [loadError,setLoadError] = useState('');
-  const dirty = saved !== JSON.stringify(mail);
+  const dirty = Boolean(saved) && saved !== JSON.stringify(mail);
   // Leaving with edited, unsaved mail settings should ask first (not while still loading).
   useUnsavedLeave(Boolean(saved) && dirty);
   const [message, setMessage] = useState('');
@@ -87,19 +87,13 @@ export default function AdminMailSettingsPage() {
   };
 
   return (
-    <div className="admin-page workflow-feedback">
+    <div className="admin-page workflow-feedback admin-mail-settings">
       <div className="py-2">
         <div className="mb-8">
           <h1 className="admin-title">{t("m_db4b458abf")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
              {t("m_d5f6de2b0d")} </p>
         </div>
-
-        {message && (
-          <div role="alert" className="mb-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
-            {t(message || '')}
-          </div>
-        )}
 
         {loadError&&<p role="alert">{t(loadError || '')}<button className="text-link" onClick={()=>setLoadAttempt(n=>n+1)}>{t("m_30de7fb357")}</button></p>}
         {!saved&&!loadError&&<p role="status">{t("m_2f9fc944ad")}</p>}
@@ -228,18 +222,19 @@ export default function AdminMailSettingsPage() {
           </div>
 
           <MailChannelSettings channels={mail.channels} defaultSender={mail.smtp_from||mail.smtp_user} canTest={!dirty&&!!saved} testing={testing} onTest={key=>void testMail(key)} onChange={(key,field,value)=>setMail(prev=>({...prev,channels:{...prev.channels,[key]:{...prev.channels[key],[field]:value,...(field==='address'?{password:'',has_password:false}:{})}}}))}/>
-          <p role="status">{dirty?t("m_3ce7622817"):t("m_778f233227")}</p>
-          <div className="flex flex-wrap gap-3">
+          {saved&&<footer className="admin-mail-savebar">
+            <span role="status">{saving?t("m_917b1c1f18"):dirty?t("m_6265f9d3f3"):t("m_1bd91a7d0c")}</span>
+            <div className="flex flex-wrap gap-3">
             <button
               onClick={save}
               disabled={saving || !dirty}
               className="workflow-button workflow-primary"
             >
-              {saving ? t("m_917b1c1f18") : t("m_bfcb5c4c7b")}
+              {saving ? t("m_917b1c1f18") : t("保存")}
             </button><button type="button" className="workflow-button" disabled={!dirty} onClick={() => { setMail(JSON.parse(saved)); setMessage(''); }}>{t("m_ef804eda90")}</button>
-
-
-          </div>
+            </div>
+            {message&&<p role="alert">{t(message)}</p>}
+          </footer>}
         </fieldset>
       </div>
     </div>

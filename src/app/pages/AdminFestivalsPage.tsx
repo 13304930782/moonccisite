@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { notify } from '../lib/feedback';
+import { useUnsavedLeave } from '../lib/useUnsavedLeave';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import Editor from './festivals-v2/Editor';
 import FestivalSelect from './festivals-v2/Select';
@@ -22,6 +23,7 @@ export default function AdminFestivalsPage() {
   const [previewId,setPreviewId]=useState('halloween'),[previewAt,setPreviewAt]=useState(()=>shanghaiInput(new Date().toISOString()));
   const form=useRef<HTMLFormElement>(null);
   const dirty=!!(config&&data&&JSON.stringify(config)!==JSON.stringify(data.config));
+  useUnsavedLeave(dirty);
   const siteName=settings?.brand?.site_title?.trim()||'mooncci';
   useEffect(()=>{const title=t("m_29c01244e3", {v0: siteName});const update=()=>{if(document.title!==title)document.title=title;};update();const observer=new MutationObserver(update);observer.observe(document.head,{childList:true,subtree:true,characterData:true});return()=>observer.disconnect();},[siteName]);
   async function load(){setError('');try{const result:Response=await api('/settings/festivals');setData(result);setConfig(result.config);}catch(e){setError((e as Error).message);}}
@@ -29,7 +31,6 @@ export default function AdminFestivalsPage() {
   useEffect(()=>{const controller=new AbortController();const timer=setInterval(()=>{void api('/settings/festivals',{signal:controller.signal,cache:'no-store'}).then((result:Response)=>setData(old=>old?{...old,state:result.state}:old)).catch(()=>{});},30000);return()=>{clearInterval(timer);controller.abort();};},[]);
   const saved= data?.config, year=data?shanghaiYear(data.state.serverTime):0;
   useEffect(()=>{if(!saved||!year)return;const controller=new AbortController();setTimelineError('');setWindows([]);void loadYearWindows(saved,year,(configuration,at)=>api('/settings/festivals/preview',{method:'POST',readOnly:true,signal:controller.signal,body:JSON.stringify({config:configuration,at})})).then(result=>{if(!controller.signal.aborted)setWindows(result);}).catch(()=>{if(!controller.signal.aborted)setTimelineError(t("m_ce46123517"));});return()=>controller.abort();},[saved,year]);
-  useEffect(()=>{if(!dirty)return;const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty]);
   async function save(event:FormEvent){event.preventDefault();if(!config||busy)return;setBusy(true);setError('');try{const result:Response=await api('/settings/festivals',{method:'PUT',body:JSON.stringify(config)});setData(result);setConfig(result.config);window.dispatchEvent(new Event('site-settings-updated'));window.dispatchEvent(new Event('mooncci:festivals-updated'));notify.success(t("m_1bd91a7d0c"));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
   async function preview(event:FormEvent){event.preventDefault();setBusy(true);setError('');try{const at=fromShanghai(previewAt);await api('/settings/festivals/preview',{method:'POST',readOnly:true,body:JSON.stringify({festivalId:previewId,at})});sessionStorage.setItem('mooncci-festival-preview',JSON.stringify({festivalId:previewId,at,expiresAt:Date.now()+1800000}));window.dispatchEvent(new Event('mooncci:festival-preview'));navigate('/');}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
   if(!data||!config)return <div className="fest-v2 fv-page"><h1>{t("m_85857d157f")}</h1>{error?<><p role="alert">{t(error || '')}</p><button className="fv-ghost" onClick={()=>void load()}>{t("m_7bdd5ce1e2")}</button></>:<div role="status" aria-label={t("m_ef2bc61202")} className="fv-skeleton"><div/><div/><div/></div>}</div>;
