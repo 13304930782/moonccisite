@@ -56,6 +56,14 @@ async function main() {
           for (const dark of [false, true]) {
             await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark);
             for (const label of labels) {
+              if (label === '角色') {
+                const choices = page.getByRole('combobox', {name: label, exact: true});
+                await choices.click();
+                assert.ok(await page.getByRole('option').count() > 0);
+                assert.equal(await page.getByRole('option', {selected: true}).count(), 1);
+                await page.keyboard.press('Escape');
+                continue;
+              }
               const choices = page.getByRole('radiogroup', {name: label, exact: true});
               await choices.waitFor();
               assert.ok(await choices.getByRole('radio').count() > 0);

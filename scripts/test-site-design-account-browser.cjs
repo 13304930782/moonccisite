@@ -58,7 +58,7 @@ const {chromium} = require('playwright');
     assert.equal(await page.evaluate(() => document.activeElement.textContent), limits.first);
     await page.keyboard.press('Shift+Tab');
     assert.equal(await page.evaluate(() => document.activeElement.textContent), limits.last);
-    for (const locator of await menu.locator('summary,a').all()) if (await locator.isVisible()) {
+    for (const locator of await menu.locator('.admin-nav-group-toggle,a').all()) if (await locator.isVisible()) {
       const box = await locator.boundingBox(); assert.ok(box.height >= 44, 'menu row height: ' + await locator.textContent());
     }
     await target(menu.getByRole('button',{name:'关闭后台菜单',exact:true}));
