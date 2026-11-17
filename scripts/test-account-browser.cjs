@@ -104,11 +104,13 @@ async function main() {
     await verification.getByLabel('邮箱验证码').fill('123456');
     const beforeReopen = securityCodeRequests;
     await page.keyboard.press('Escape');
+    await verification.waitFor({state:'hidden'});
     await page.getByRole('button', { name: '换绑 Google', exact: true }).click();
     await verification.getByLabel('邮箱验证码').waitFor();
     assert.equal(await verification.getByLabel('邮箱验证码').inputValue(),'','cancel clears code while retaining a usable challenge');
     assert.equal(securityCodeRequests,beforeReopen,'reopening during cooldown reuses the current challenge');
-    await page.keyboard.press('Escape');
+    await verification.getByRole('button', {name:'关闭弹窗',exact:true}).click();
+    await verification.waitFor({state:'hidden'});
     await page.getByRole('button', { name: '退出登录', exact: true }).click();
     await page.waitForURL('**/login');
     assert.equal(loggedIn, false); assert.deepEqual(errors, []);
