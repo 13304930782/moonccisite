@@ -76,7 +76,7 @@ const { catalog, defaults, validate, evaluate } = require('../server/src/lib/fes
 
     await go('/admin/festivals');
     await row().waitFor();
-    assert.ok(await page.locator('.admin-sidebar').getByRole('link', { name: '节日管理', exact: true }).isVisible());
+    assert.ok(await page.locator('.admin-sidebar').getByRole('link', { name: '节日动效', exact: true }).isVisible());
     assert.equal(await page.getByRole('radio', { name: '自动', exact: true }).getAttribute('aria-checked'), 'true');
     await page.getByRole('radio', { name: '全部关闭', exact: true }).click();
     await save().waitFor();
@@ -154,11 +154,11 @@ const { catalog, defaults, validate, evaluate } = require('../server/src/lib/fes
     const admin = await makePage('admin');
     await admin.goto('http://127.0.0.1:4997/admin/festivals');
     await admin.getByRole('button', { name: '编辑万圣节排期', exact: true }).waitFor();
-    assert.ok(await admin.locator('.admin-sidebar').getByRole('link', { name: '节日管理', exact: true }).isVisible());
+    assert.ok(await admin.locator('.admin-sidebar').getByRole('link', { name: '节日动效', exact: true }).isVisible());
     const editor = await makePage('editor');
     await editor.goto('http://127.0.0.1:4997/admin');
     await editor.locator('.admin-sidebar').waitFor();
-    assert.equal(await editor.getByRole('link', { name: '节日管理', exact: true }).count(), 0);
+    assert.equal(await editor.getByRole('link', { name: '节日动效', exact: true }).count(), 0);
     await editor.goto('http://127.0.0.1:4997/admin/festivals');
     await editor.getByRole('heading', { name: '当前账号无法访问此页面', exact: true }).waitFor();
     assert.equal(requests.filter(item => item.role === 'editor' && item.path.startsWith('/api/settings/festivals')).length, 0);
