@@ -1,9 +1,9 @@
 name: Site checks
 on:
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
-    branches: [main, codex/full-site-bilingual]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -13,6 +13,8 @@ jobs:
   build-and-unit:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      FULL_CI: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,40 +35,32 @@ jobs:
       - run: node scripts/test-document.mjs
       - run: npm run test:bilingual:ssr
       - run: npm run check:bundle
-      - run: python3 scripts/test_indexnow.py
-      - run: python3 scripts/test_refresh_sitemap.py
-      - run: python3 scripts/test-offline-release.py
-      - run: python3 scripts/test-security-alerts-release.py
-      - run: python3 -m py_compile scripts/build-cover-framing-release.py
-      - run: python3 scripts/test-cover-focus-release.py
-      - run: python3 scripts/test-works-release.py
-      - run: python3 -m py_compile scripts/build-works-release.py
-      - run: bash -n scripts/deploy-works.sh scripts/rollback-works.sh scripts/stage-works-reader-assets.sh
-      - run: python3 -m py_compile scripts/build-cover-focus-release.py
-      - run: bash -n scripts/deploy-cover-focus.sh scripts/rollback-cover-focus.sh
-      - run: bash -n scripts/deploy-cover-framing.sh scripts/rollback-cover-framing.sh
-      - run: python3 scripts/test-us-http2.py
-      - run: python3 ops/geo-gateway-preview/test_install_image_cache.py
-      - run: bash -n scripts/deploy-social-login.sh
-      - run: bash -n scripts/deploy-google-login.sh
-      - run: bash -n scripts/deploy-oauth-diagnostics.sh
-      - run: bash -n scripts/deploy-analytics.sh
-      - run: bash -n scripts/deploy-admin-lists.sh
-      - run: bash -n scripts/deploy-offline-frontend.sh
-      - run: bash -n scripts/deploy-audit.sh
-      - run: bash -n scripts/deploy-media-capacity.sh
-      - name: Install browser dependencies
+      - name: Install Playwright browsers and dependencies
         timeout-minutes: 8
         run: |
           sudo sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
           # Hosted runners also select mirrors through this indirection.
           printf 'https://archive.ubuntu.com/ubuntu/\n' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
           printf 'Acquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::Retries "2";\n' | sudo tee /etc/apt/apt.conf.d/80-mooncci-ci-timeouts >/dev/null
-          npx playwright install --with-deps chromium webkit
+          if [[ "$FULL_CI" == 'true' ]]; then
+            npx playwright install --with-deps chromium webkit
+          else
+            npx playwright install --with-deps --only-shell chromium
+          fi
+      - name: Check homepage and recent updates
+        timeout-minutes: 2
+        run: node scripts/test-updates-browser.cjs
+      - name: Check login and session handling
+        timeout-minutes: 2
+        run: node scripts/test-browser.cjs
+      - name: Check writing and draft recovery
+        timeout-minutes: 2
+        run: node scripts/test-article-drafts-browser.cjs
       - name: Verify bilingual history and editing in isolated browsers
+        if: env.FULL_CI == 'true'
         run: npm run test:bilingual:browser
       - name: Preserve bilingual browser evidence
-        if: always()
+        if: always() && env.FULL_CI == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: bilingual-browser-evidence
@@ -77,49 +71,87 @@ jobs:
             .cache/public-history-results.json
             .cache/bilingual-hydration-results.json
             .cache/public-history-*-375.png
-      - run: node test/mobile-inputs.browser.cjs
-      - run: node scripts/test-daily-question-history-browser.cjs
-      - run: node scripts/test-browser.cjs
-      - run: node scripts/test-experience-fixes-browser.cjs
-      - run: node scripts/test-ai-summary-browser.cjs
-      - run: node scripts/test-updates-browser.cjs
-      - run: node scripts/test-google-button-browser.cjs
-      - run: node scripts/test-admin-capacity-browser.cjs
-      - run: node scripts/test-account-browser.cjs
-      - run: node scripts/test-account-navigation-browser.cjs
-      - run: node scripts/test-site-design-account-browser.cjs
-      - run: node scripts/test-about-browser.cjs
-      - run: node scripts/test-festivals-browser.cjs
-      - run: node scripts/test-admin-workspace-browser.cjs
-      - run: node scripts/test-admin-settings-browser.cjs
-      - run: node scripts/test-content-admin-browser.cjs
-      - run: node scripts/test-content-discovery-browser.cjs
-      - run: node scripts/test-publication-health-browser.cjs
-      - run: node scripts/test-article-drafts-browser.cjs
-      - run: node scripts/test-article-slug-browser.cjs
-      - run: node scripts/test-article-revisions-browser.cjs
-      - run: node scripts/test-bookmarks-browser.cjs
-      - run: node scripts/test-reading-browser.cjs
-      - run: node scripts/test-detail-browser.cjs
-      - run: node scripts/test-works-browser.cjs
-      - run: node scripts/test-update-journal-browser.cjs
-      - run: node scripts/test-analytics-browser.cjs
-      - run: node scripts/test-ux-unification.cjs
-      - run: node scripts/test-image-retry-browser.cjs
-      - run: node scripts/test-article-preview-cards-browser.cjs
-      - run: node scripts/test-mail-setup-browser.cjs
-      - run: node scripts/test-mailbox-send-feedback.cjs
-      - run: node scripts/test-mailbox-navigation.cjs
-      - run: node scripts/test-browser-diagnostics.cjs
-      - run: bash -n scripts/deploy-site-diagnostics.sh scripts/rollback-site-diagnostics.sh
-      - run: sudo apt-get update && sudo apt-get install -y nginx
-      - run: python3 ops/mail-setup/test_nginx.py
-      - run: node scripts/test-media-dialog-browser.cjs
-      - run: node scripts/test-article-images-browser.cjs
-      - run: bash -n scripts/deploy-article-images.sh scripts/rollback-article-images.sh
-      - run: npm audit --audit-level=moderate
-      - run: npm audit --prefix server --audit-level=moderate
+      - name: Check site scripts and release tooling
+        if: env.FULL_CI == 'true'
+        run: |
+          python3 scripts/test_indexnow.py
+          python3 scripts/test_refresh_sitemap.py
+          python3 scripts/test-offline-release.py
+          python3 scripts/test-security-alerts-release.py
+          python3 -m py_compile scripts/build-cover-framing-release.py
+          python3 scripts/test-cover-focus-release.py
+          python3 scripts/test-works-release.py
+          python3 -m py_compile scripts/build-works-release.py
+          bash -n scripts/deploy-works.sh scripts/rollback-works.sh scripts/stage-works-reader-assets.sh
+          python3 -m py_compile scripts/build-cover-focus-release.py
+          bash -n scripts/deploy-cover-focus.sh scripts/rollback-cover-focus.sh
+          bash -n scripts/deploy-cover-framing.sh scripts/rollback-cover-framing.sh
+          python3 scripts/test-us-http2.py
+          python3 ops/geo-gateway-preview/test_install_image_cache.py
+          bash -n scripts/deploy-social-login.sh
+          bash -n scripts/deploy-google-login.sh
+          bash -n scripts/deploy-oauth-diagnostics.sh
+          bash -n scripts/deploy-analytics.sh
+          bash -n scripts/deploy-admin-lists.sh
+          bash -n scripts/deploy-offline-frontend.sh
+          bash -n scripts/deploy-audit.sh
+          bash -n scripts/deploy-media-capacity.sh
+          bash -n scripts/deploy-site-diagnostics.sh scripts/rollback-site-diagnostics.sh
+          bash -n scripts/deploy-article-images.sh scripts/rollback-article-images.sh
+      - name: Check public pages and account settings in Chromium
+        if: env.FULL_CI == 'true'
+        run: |
+          node test/mobile-inputs.browser.cjs
+          node scripts/test-daily-question-history-browser.cjs
+          node scripts/test-experience-fixes-browser.cjs
+          node scripts/test-ai-summary-browser.cjs
+          node scripts/test-google-button-browser.cjs
+          node scripts/test-admin-capacity-browser.cjs
+          node scripts/test-account-browser.cjs
+          node scripts/test-account-navigation-browser.cjs
+          node scripts/test-site-design-account-browser.cjs
+          node scripts/test-about-browser.cjs
+          node scripts/test-festivals-browser.cjs
+          node scripts/test-admin-workspace-browser.cjs
+          node scripts/test-admin-settings-browser.cjs
+      - name: Check management and publishing workflows in Chromium
+        if: env.FULL_CI == 'true'
+        run: |
+          node scripts/test-content-admin-browser.cjs
+          node scripts/test-content-discovery-browser.cjs
+          node scripts/test-publication-health-browser.cjs
+          node scripts/test-article-slug-browser.cjs
+          node scripts/test-article-revisions-browser.cjs
+          node scripts/test-bookmarks-browser.cjs
+          node scripts/test-reading-browser.cjs
+          node scripts/test-detail-browser.cjs
+          node scripts/test-works-browser.cjs
+          node scripts/test-update-journal-browser.cjs
+      - name: Check remaining browser regressions in Chromium
+        if: env.FULL_CI == 'true'
+        run: |
+          node scripts/test-analytics-browser.cjs
+          node scripts/test-ux-unification.cjs
+          node scripts/test-image-retry-browser.cjs
+          node scripts/test-article-preview-cards-browser.cjs
+          node scripts/test-mail-setup-browser.cjs
+          node scripts/test-mailbox-send-feedback.cjs
+          node scripts/test-mailbox-navigation.cjs
+          node scripts/test-browser-diagnostics.cjs
+          node scripts/test-media-dialog-browser.cjs
+          node scripts/test-article-images-browser.cjs
+      - name: Verify Nginx mail configuration
+        if: env.FULL_CI == 'true'
+        run: |
+          sudo apt-get update && sudo apt-get install -y nginx
+          python3 ops/mail-setup/test_nginx.py
+      - name: Audit npm dependencies
+        if: env.FULL_CI == 'true'
+        run: |
+          npm audit --audit-level=moderate
+          npm audit --prefix server --audit-level=moderate
   mysql-integration:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
