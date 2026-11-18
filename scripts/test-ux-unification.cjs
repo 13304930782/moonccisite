@@ -88,7 +88,7 @@ const { chromium, webkit } = require('playwright');
     await page.getByRole('button',{name:'查看全部通知'}).click();
     await page.getByRole('heading',{name:'暂时没有通知'}).waitFor();
     await page.goto('http://127.0.0.1:4252/admin/projects');
-    await page.getByRole('button',{name:'版本管理',exact:true}).click();
+    await page.getByRole('button',{name:'管理版本',exact:true}).click();
     await page.locator('.editor-panel').getByRole('button',{name:'重试',exact:true}).waitFor();
     releaseFail=false;await page.locator('.editor-panel').getByRole('button',{name:'重试',exact:true}).click();
     await page.getByRole('heading',{name:'暂无版本记录'}).waitFor();

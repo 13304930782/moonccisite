@@ -16,7 +16,7 @@ async function loadPage(name, request, options = {}) {
     ArticleMediaPicker: {ArticleMediaPicker: () => null},
     AdminWeatherCompanionSettings: {AdminWeatherCompanionSettings: () => null},
     feedback: {notify: {success() {}, error() {}}},
-    ThemeSelect: {ThemeSelect: ({children, onValueChange, ...props}) => React.createElement('select', {...props, onChange: e => onValueChange(e.target.value)}, children)},
+    ThemeSelect: {ThemeSelect: ({children, onValueChange, compact, ...props}) => React.createElement('select', {...props, onChange: e => onValueChange(e.target.value)}, children)},
   };
   const result = await require('esbuild').build({
     entryPoints: [`src/app/pages/${name}.tsx`], bundle: true, write: false,
@@ -114,7 +114,7 @@ test('mail discard clears edited secret and restores loaded settings without a s
   Renderer.act(() => button(tree, '放弃更改').props.onClick());
   assert.equal(secret().props.value, '');
   assert.equal(listeners.size, 0);
-  assert.equal(button(tree, '保存邮件设置').props.disabled, true);
+  assert.equal(button(tree, '保存').props.disabled, true);
   assert.equal(requests.length, 1);
   Renderer.act(() => tree.unmount());
 });

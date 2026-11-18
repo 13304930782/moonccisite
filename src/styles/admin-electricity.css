@@ -1,0 +1,157 @@
+.electricity-workspace {
+  container: electricity-workspace / inline-size;
+  --electricity-panel-padding: var(--space-6, 24px);
+}
+
+.electricity-workspace .electricity-admin-head { margin-bottom: 20px; }
+.electricity-workspace .electricity-admin-head h1 { margin-top: 0; font-weight: 650; letter-spacing: -.03em; }
+.electricity-workspace .electricity-admin-head p { max-width: 62ch; font-size: 14px; font-weight: 400; }
+.electricity-workspace .electricity-room-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  align-items: end;
+  gap: 8px 20px;
+  margin-bottom: 16px;
+  padding: 0;
+  border: 0;
+}
+.electricity-workspace .electricity-room-toolbar > label { min-width: 0; max-width: none; font-size: 13px; }
+.electricity-workspace .electricity-room-toolbar-actions { justify-content: flex-end; }
+.electricity-workspace .electricity-room-summary { grid-column: 1 / -1; margin: 0; gap: 4px 16px; font-size: 13px; }
+.electricity-workspace .electricity-room-panel-link { min-height: 44px; }
+.electricity-workspace .electricity-room-panel-link:hover { text-decoration: underline; text-underline-offset: .18em; }
+.electricity-workspace .electricity-room-settings { min-width: 0; }
+
+.electricity-workspace :is(.electricity-room-editor, .electricity-manage-overview, .electricity-room-settings > form) {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius, 16px);
+  padding: var(--electricity-panel-padding);
+}
+.electricity-workspace :is(.electricity-room-editor, .electricity-manage-overview) { margin-bottom: 20px; }
+.electricity-workspace .electricity-room-editor .electricity-manage-heading { margin-bottom: 12px; }
+.electricity-workspace .electricity-room-editor .electricity-manage-heading h2 { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.electricity-workspace .electricity-room-editor-actions { margin-top: 16px; }
+.electricity-workspace .electricity-room-editor .electricity-room-active { min-height: 44px; }
+.electricity-workspace .electricity-room-active input { width: 18px; min-height: 18px; padding: 0; accent-color: var(--primary); }
+.electricity-workspace .electricity-import-label { font-size: 14px; }
+.electricity-workspace .electricity-import-label textarea { border-radius: var(--control-radius, 10px); }
+.electricity-workspace .electricity-room-editor .electricity-import-preview { padding-top: 14px; border-top: 1px solid var(--border); }
+.electricity-workspace .electricity-import-preview > div:last-child { border-bottom: 0; padding-bottom: 0; }
+
+.electricity-workspace .electricity-manage-metrics { padding: 18px 0; gap: 16px 24px; }
+.electricity-workspace .electricity-manage-metrics > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.electricity-workspace .electricity-manage-metrics > div + div { padding-left: 16px; }
+.electricity-workspace .electricity-manage-metrics span { display: block; font-size: 14px; }
+.electricity-workspace .electricity-manage-metrics strong { margin-top: auto; overflow-wrap: anywhere; }
+.electricity-workspace .electricity-manage-tools { padding-top: 12px; }
+.electricity-workspace .electricity-manage-tools p { margin: 0; }
+.electricity-workspace :is(.electricity-manage-heading > span, .electricity-manage-help, .electricity-manage-tools p, .electricity-manage-save > span, .electricity-switch-row small) { font-size: 13px; }
+.electricity-workspace .electricity-switch-row { margin: 14px 0 16px; }
+.electricity-workspace .electricity-switch-row:has(input:not(:disabled)) { cursor: pointer; }
+.electricity-workspace .electricity-field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px 16px; margin-bottom: 16px; }
+.electricity-workspace .electricity-field-grid label { min-width: 0; font-size: 14px; }
+.electricity-workspace .electricity-field-grid small { color: var(--muted-foreground); font-size: 13px; }
+.electricity-workspace .electricity-field-grid input { min-width: 0; }
+.electricity-workspace :is(.electricity-field-grid input, .theme-select-trigger, .electricity-button, .electricity-schedule-remove) {
+  border-radius: var(--control-radius, 10px);
+}
+.electricity-workspace .electricity-button { max-width: 100%; white-space: normal; text-align: center; line-height: 1.4; }
+.electricity-workspace .electricity-button svg { flex: none; }
+.electricity-workspace .electricity-action-label { display: grid; }
+.electricity-workspace .electricity-action-label > span { grid-area: 1 / 1; }
+.electricity-workspace .electricity-button--primary:hover:not(:disabled) { opacity: .9; }
+.electricity-workspace :is(.electricity-room-toolbar, .electricity-schedule-list) .theme-select-trigger {
+  width: 100%;
+  min-height: 44px;
+  height: auto;
+  font-size: 14px;
+}
+.electricity-workspace .theme-select-trigger > [data-slot="select-value"] { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.electricity-workspace .electricity-schedule-labels,
+.electricity-workspace .electricity-manage-section .electricity-schedule-row {
+  display: grid;
+  grid-template-columns: minmax(74px, .55fr) minmax(0, 1.45fr) 44px;
+  align-items: center;
+  gap: 8px;
+}
+.electricity-workspace .electricity-manage-section .electricity-schedule-row:has(.choice-field) { display: grid; padding: 0; border: 0; }
+.electricity-workspace .electricity-schedule-labels { margin-bottom: 8px; font-size: 13px; }
+.electricity-workspace .electricity-schedule-list { gap: 8px; }
+.electricity-workspace .electricity-schedule-fixed { min-height: 44px; font-size: 14px; border-radius: var(--control-radius, 10px); }
+.electricity-workspace .electricity-schedule-remove { width: 44px; height: 44px; }
+.electricity-workspace .electricity-schedule-lock { font-size: 12px; }
+.electricity-workspace .electricity-manage-save { margin-top: 20px; padding: 16px 0 0; gap: 8px 12px; flex-wrap: wrap; }
+.electricity-workspace .electricity-admin-notice { margin: 12px 0 0; border-radius: var(--control-radius, 10px); overflow-wrap: anywhere; }
+.electricity-workspace > .electricity-admin-notice { margin: 0 0 16px; }
+.electricity-workspace .electricity-admin-notice svg { flex: 0 0 18px; }
+.electricity-workspace .electricity-admin-notice.is-error {
+  border-color: color-mix(in srgb, var(--destructive) 40%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 8%, var(--card));
+}
+
+.electricity-workspace .electricity-manage-status { margin-top: 12px; padding: 0; border-top: 0; }
+.electricity-workspace .electricity-manage-status summary,
+.electricity-workspace .electricity-manage-status summary > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.electricity-workspace .electricity-manage-status summary {
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 8px 0;
+  list-style: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.electricity-workspace .electricity-manage-status summary::-webkit-details-marker { display: none; }
+.electricity-workspace .electricity-manage-status summary svg { width: 16px; height: 16px; flex: none; }
+.electricity-workspace .electricity-manage-status[open] summary > svg { transform: rotate(180deg); }
+.electricity-workspace .electricity-status-body { padding: 12px 0 4px; border-top: 1px solid var(--border); }
+.electricity-workspace .electricity-manage-status dl { margin: 0; }
+.electricity-workspace .electricity-manage-status :is(dt, dd) { font-size: 13px; }
+.electricity-workspace :is(button, input, textarea, a, summary):focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-reduced-motion=true]) .electricity-workspace :is(.electricity-room-editor, .electricity-room-settings, .electricity-admin-notice, .electricity-import-preview, .electricity-manage-status[open] .electricity-status-body) {
+    animation: mooncci-fade var(--motion-content) var(--ease-feedback);
+  }
+  html:not([data-reduced-motion=true]) .electricity-workspace :is(.electricity-button, .electricity-schedule-remove) {
+    transition: background-color var(--motion-control) ease-out, border-color var(--motion-control) ease-out, opacity var(--motion-control) ease-out;
+  }
+  html:not([data-reduced-motion=true]) .electricity-workspace .electricity-manage-status summary > svg {
+    transition: transform var(--motion-enter) var(--ease-enter);
+  }
+  @supports (interpolate-size: allow-keywords) {
+    html:not([data-reduced-motion=true]) .electricity-workspace .electricity-manage-status::details-content {
+      interpolate-size: allow-keywords;
+      height: 0;
+      overflow: clip;
+      transition: height var(--motion-exit) var(--ease-exit), content-visibility var(--motion-exit) allow-discrete;
+    }
+    html:not([data-reduced-motion=true]) .electricity-workspace .electricity-manage-status[open]::details-content {
+      height: auto;
+      transition-duration: var(--motion-enter);
+      transition-timing-function: var(--ease-enter);
+    }
+  }
+}
+@container electricity-workspace (max-width: 760px) {
+  .electricity-workspace .electricity-room-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .electricity-workspace .electricity-room-toolbar-actions { justify-content: flex-start; }
+  .electricity-workspace .electricity-manage-columns { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .electricity-workspace .electricity-manage-section + .electricity-manage-section { padding: 16px 0 0; border: 0; border-top: 1px solid var(--border); }
+  .electricity-workspace :is(.electricity-room-editor, .electricity-manage-overview, .electricity-room-settings > form) { padding: 16px; }
+  .electricity-workspace .electricity-manage-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .electricity-workspace .electricity-manage-metrics > div + div { border-left: 0; padding-left: 0; }
+  .electricity-workspace .electricity-manage-status dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container electricity-workspace (max-width: 500px) {
+  .electricity-workspace .electricity-room-toolbar-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .electricity-workspace .electricity-room-toolbar-actions .electricity-button { padding-inline: 8px; }
+  .electricity-workspace .electricity-room-summary { justify-content: space-between; }
+  .electricity-workspace .electricity-room-editor .electricity-field-grid { grid-template-columns: minmax(0, 1fr); }
+  .electricity-workspace .electricity-manage-overview .electricity-manage-tools p { flex-basis: 100%; }
+}

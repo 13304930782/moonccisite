@@ -52,14 +52,20 @@ export default defineConfig({
   build: {
     // Keep the existing JS budget while adding the mail setup route.
     minify: 'terser',
-    terserOptions: { ecma: 2020, module: true, format: { comments: /^! Third-party notices: \/THIRD_PARTY_LICENSES\.txt $/ }, compress: { passes: 3, ecma: 2020 } },
+    terserOptions: { ecma: 2020, module: true, format: { comments: /^! Third-party notices: \/THIRD_PARTY_LICENSES\.txt $/ }, compress: { passes: 5, ecma: 2020, hoist_funs: true } },
     manifest: 'asset-manifest.json',
     rollupOptions: {
       output: {
+        // Preload tables and imports repeat these URLs. Keep names only where
+        // the admin lazy-load check and companion packer identify chunks by name.
+        chunkFileNames: chunk => /^(Admin|admin-management$|WeatherCompanion$)/.test(chunk.name)
+          ? 'assets/[name]-[hash].js' : 'assets/[hash].js',
         // Merge tiny shared fragments; preserve lazy route and editor boundaries.
         experimentalMinChunkSize: 5000,
         onlyExplicitManualChunks: true,
         manualChunks(id) {
+          // Share lazy-route icons without pulling their SVGs into the initial entry.
+          if (/[\\/]node_modules[\\/]lucide-react[\\/]dist[\\/]esm[\\/]icons[\\/](?:arrow-left|arrow-right|arrow-up|arrow-up-right|bell|bookmark|calendar-clock|chart-column|chevron-left|chevron-right|circle-check|cloud-sun|copy|ellipsis|eye|eye-off|file-text|history|image|inbox|key-round|library|lock|mail|message-circle|pen-line|plus|refresh-cw|send|settings|shield-check|trash-2|triangle-alert|user-round|users|zap)\.js$/.test(id)) return 'route-icons';
           if (/[\\/]src[\\/]app[\\/]pages[\\/](?:Admin(?:Posts|Content|SiteSettings|Electricity|Media|MailSettings|MailboxRequests|Comments|Series|Seo|UserSettings|LoginSettings|EditorApplications|Analytics|SendMail|BannedWords|Runtime|NodeMonitor|AiSettings|Taxonomy|Page)|Operations)Page\.tsx$/.test(id)) return 'admin-management';
           // Preserve account-route boundaries when merging small shared chunks.
           if (/[\\/]src[\\/]app[\\/]pages[\\/](?:CompleteRegistrationPage|EditorApplyPage)\.tsx$/.test(id)) return 'account-routes';

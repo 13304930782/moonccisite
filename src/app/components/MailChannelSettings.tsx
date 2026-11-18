@@ -1,10 +1,34 @@
 import { useI18n } from '../i18n';
 import definitions from '../../../server/src/lib/mailChannelDefinitions.json';
 import {ThemeSelect} from './ThemeSelect';
+import {AdminButton} from './admin/AdminButton';
+import {ChevronDown} from 'lucide-react';
 import '../../styles/workflow-feedback.css';
 export type MailProfile={mode:'inherit'|'custom';address:string;name:string;reply_to:string;password:string;has_password:boolean};
 export const defaultMailProfiles=Object.fromEntries(Object.entries(definitions).map(([key,d])=>[key,{...d,mode:'inherit',password:'',has_password:false}])) as Record<string,MailProfile>;
 export function MailChannelSettings({channels,onChange,onTest,canTest,testing,defaultSender}:{channels:Record<string,MailProfile>;onChange:(key:string,field:keyof MailProfile,value:string)=>void;onTest:(key:string)=>void;canTest:boolean;testing:boolean;defaultSender:string}){
   const { t } = useI18n();
- return <section className="admin-settings-section mail-channel-settings"><h2>{t("m_8561a6636c")}</h2><p className="mail-channel-hint">{t("m_917eb9b274")}</p>{Object.entries(definitions).map(([key,d])=>{const p=channels[key]||defaultMailProfiles[key];return <details className="mail-channel-card" key={key}><summary><span><strong>{t(d.label)}</strong><small>{p.mode==='custom'?p.address:t("m_d6f05e4ba3")}</small></span><span className="mail-channel-mode">{p.mode==='custom'?t("m_8f5ee0a5c2"):t("m_59a5a15147")}</span></summary><div className="mail-channel-body"><p className="mail-channel-hint">{t(d.description)}</p><label htmlFor={`channel-${key}-mode`}>{t("m_b5cbda2779")}</label><ThemeSelect aria-label={t("m_b5cbda2779")} id={`channel-${key}-mode`} value={p.mode} onValueChange={value=>onChange(key,'mode',value)}><option value="inherit">{t("m_17dbb4ed01")}</option><option value="custom">{t("m_f92b46e8b0")}</option></ThemeSelect>{p.mode==='custom'?<div className="mail-channel-fields">{([['address',t("m_e11892146d")],['password',t("m_2520182da2")],['name',t("m_544ab76df1")],['reply_to',t("m_fdcb12ea0c")]] as const).map(([field,label])=><label key={field}>{label}<input type={field==='password'?'password':field==='name'?'text':'email'} value={p[field]} autoComplete={field==='password'?'new-password':'off'} onChange={e=>onChange(key,field,e.target.value)} placeholder={field==='password'?(p.has_password?t("m_9475c68e11"):t("m_68aae43891")):d[field as 'address'|'name'|'reply_to']}/>{field==='password'&&<small>{t("m_90a9f6a666")}</small>}</label>)}</div>:<p className="mail-channel-hint">{t("m_913b3c4bca")}{defaultSender||t("m_83acc12892")}{t("m_b3ff69ac91")}</p>}<div className="mail-channel-test"><button className="workflow-button" disabled={!canTest||testing} onClick={()=>onTest(key)}>{testing?t("m_b7380e7a6b"):t("m_046561ee2b")}</button><span>{canTest?t("m_5ccf404afe"):t("m_b62875f8d0")}</span></div></div></details>;})}</section>;
+ return <section className="admin-settings-section mail-channel-settings">
+  <h2>{t("m_8561a6636c")}</h2>
+  <p className="mail-channel-hint">{t("m_917eb9b274")}</p>
+  <div className="mail-channel-list">{Object.entries(definitions).map(([key,d])=>{
+   const p=channels[key]||defaultMailProfiles[key];
+   return <details className="mail-channel-card" key={key}>
+    <summary>
+     <span><strong>{t(d.label)}</strong><small>{p.mode==='custom'?p.address:t("m_d6f05e4ba3")}</small></span>
+     <span className="mail-channel-mode">{p.mode==='custom'?t("m_8f5ee0a5c2"):t("m_59a5a15147")}</span>
+     <ChevronDown className="mail-channel-chevron" size={18} aria-hidden="true"/>
+    </summary>
+    <div className="mail-channel-body">
+     <p className="mail-channel-hint">{t(d.description)}</p>
+     <label htmlFor={`channel-${key}-mode`}>{t("m_b5cbda2779")}</label>
+     <ThemeSelect aria-label={t("m_b5cbda2779")} id={`channel-${key}-mode`} value={p.mode} onValueChange={value=>onChange(key,'mode',value)}>
+      <option value="inherit">{t("m_17dbb4ed01")}</option><option value="custom">{t("m_f92b46e8b0")}</option>
+     </ThemeSelect>
+     {p.mode==='custom'?<div className="mail-channel-fields">{([['address',t("m_e11892146d")],['password',t("m_2520182da2")],['name',t("m_544ab76df1")],['reply_to',t("m_fdcb12ea0c")]] as const).map(([field,label])=><label key={field}>{label}<input type={field==='password'?'password':field==='name'?'text':'email'} value={p[field]} autoComplete={field==='password'?'new-password':'off'} onChange={e=>onChange(key,field,e.target.value)} placeholder={field==='password'?(p.has_password?t("m_9475c68e11"):t("m_68aae43891")):d[field as 'address'|'name'|'reply_to']}/>{field==='password'&&<small>{t("m_90a9f6a666")}</small>}</label>)}</div>:<p className="mail-channel-hint">{t("m_913b3c4bca")}{defaultSender||t("m_83acc12892")}{t("m_b3ff69ac91")}</p>}
+     <div className="mail-channel-test"><AdminButton type="button" variant="soft" disabled={!canTest||testing} onClick={()=>onTest(key)}>{testing?t("m_b7380e7a6b"):t("m_046561ee2b")}</AdminButton><span>{canTest?t("m_5ccf404afe"):t("m_b62875f8d0")}</span></div>
+    </div>
+   </details>;
+  })}</div>
+ </section>;
 }

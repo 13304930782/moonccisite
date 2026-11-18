@@ -45,3 +45,9 @@
  .content-admin--projects .project-image-content { flex-direction:column; }
  .content-admin--projects .project-image-actions { width:100%; flex:auto; }
 }
+.project-image-field .image-field-library { border-top:1px solid var(--border); padding-top:12px; }
+.project-image-field .image-field-library-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:14px; }
+.project-image-field .image-field-library-heading button { min-height:44px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; }
+.project-image-field .media-picker { padding:3px; }
+.project-image-field .media-picker button { min-width:0; border:1px solid var(--border); border-radius:10px; background:var(--background); }
+.project-image-field .media-picker small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; margin-top:8px; }

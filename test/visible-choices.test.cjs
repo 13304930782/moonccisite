@@ -4,7 +4,8 @@ const React=require('react'),{act,create}=require('react-test-renderer');
 function loadSelect(){
  const module={exports:{}};
  const code=ts.transpileModule(fs.readFileSync('src/app/components/ThemeSelect.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- new Function('exports','require',code)(module.exports,name=>i18nFixture(name)?i18nFixture(name):name.endsWith('.css')?{}:name==='lucide-react'?{Check:'svg'}:require(name));
+ const dropdown={Select:props=>React.createElement('themed-select',props),SelectTrigger:props=>React.createElement('button',{role:'combobox',...props}),SelectValue:()=>null,SelectContent:({sideOffset,...props})=>React.createElement('div',props),SelectItem:props=>React.createElement('themed-option',props)};
+ new Function('exports','require',code)(module.exports,name=>i18nFixture(name)?i18nFixture(name):name.endsWith('.css')?{}:name==='./ui/select'?dropdown:name==='lucide-react'?{Check:'svg'}:require(name));
  return module.exports.ThemeSelect;
 }
 
@@ -30,7 +31,7 @@ test('visible choices retain explicit accessible names inside form labels and pr
  }finally{if(root)await act(async()=>root.unmount());}
 });
 
-test('many choices use one accessible native field, preserve form values and focus required errors',async()=>{
+test('native and themed choices preserve form values and focus required errors',async()=>{
  const {JSDOM}=require('jsdom');
  const dom=new JSDOM('<div id="host"></div>',{url:'http://localhost/',pretendToBeVisual:true}),saved=new Map();
  for(const [key,value]of Object.entries({window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,Node:dom.window.Node,IS_REACT_ACT_ENVIRONMENT:true})){
@@ -38,10 +39,10 @@ test('many choices use one accessible native field, preserve form values and foc
  }
  const {createRoot}=require('react-dom/client'),Select=loadSelect();let root;
  const changes=[];
- function Harness({allowEmpty=false,disabled=false,count=8}){
+ function Harness({allowEmpty=false,disabled=false,count=8,compact=false}){
   const [value,setValue]=React.useState('');
   return React.createElement('form',null,React.createElement('label',{htmlFor:'hour'},'时间'),React.createElement('p',{id:'hint'},'选择发布小时'),
-   React.createElement(Select,{id:'hour',name:'hour','aria-label':'发布小时','aria-describedby':'hint',value,allowEmpty,required:true,disabled,onValueChange:next=>{changes.push(next);setValue(next);}},
+   React.createElement(Select,{id:'hour',name:'hour','aria-label':'发布小时','aria-describedby':'hint',value,allowEmpty,required:true,disabled,compact,onValueChange:next=>{changes.push(next);setValue(next);}},
     [React.createElement('option',{key:'empty',value:''},'请选择'),...Array.from({length:count},(_,i)=>React.createElement('option',{key:i,value:String(i),disabled:i===3},i+'时'))]));
  }
  const render=props=>React.act(async()=>root.render(React.createElement(Harness,props)));
@@ -64,6 +65,17 @@ test('many choices use one accessible native field, preserve form values and foc
   const press=key=>React.act(async()=>document.activeElement.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key,bubbles:true,cancelable:true})));
   await press('End');assert.equal(new dom.window.FormData(form).get('hour'),'6');
   await press('ArrowLeft');await press('ArrowLeft');await press('ArrowLeft');assert.equal(new dom.window.FormData(form).get('hour'),'2','arrow navigation skips the disabled option');
+  await render({count:3,compact:true});
+  let trigger=document.querySelector('button[role=combobox]');select=document.querySelector('select');
+  assert.equal(trigger.id,'hour');assert.equal(trigger.getAttribute('aria-label'),'发布小时');
+  assert.equal(document.querySelectorAll('[role=radio]').length,0);assert.ok(document.querySelector('.theme-select-menu'));
+  await React.act(async()=>{select.value='';select.dispatchEvent(new dom.window.Event('change',{bubbles:true}));});
+  await React.act(async()=>assert.equal(form.reportValidity(),false));assert.equal(document.activeElement,trigger);
+  assert.equal(trigger.getAttribute('aria-invalid'),'true');
+  await React.act(async()=>{select.value='1';select.dispatchEvent(new dom.window.Event('change',{bubbles:true}));});
+  assert.equal(new dom.window.FormData(form).get('hour'),'1','themed dropdowns must submit raw form values');
+  assert.equal(trigger.getAttribute('aria-invalid'),null);
+  await render({count:3,compact:true,disabled:true});assert.equal(new dom.window.FormData(form).has('hour'),false);
  }finally{
   if(root)await React.act(async()=>root.unmount());dom.window.close();
   for(const [key,descriptor]of saved){if(descriptor)Object.defineProperty(global,key,descriptor);else delete global[key];}

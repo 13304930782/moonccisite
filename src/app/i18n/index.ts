@@ -12,7 +12,7 @@ const missing = new Set<string>();
 let chinese: Messages = {};
 let templates: Partial<Record<UiLocale, ReturnType<typeof compileMessages>>> = {};
 function compileMessages(messages: Messages) {
- return Object.entries(messages).filter(([key]) => /\{\w+\}/.test(key)&&/[a-z\p{Script=Han}]/iu.test(key.replace(/\{\w+\}/g,''))).map(([key,value]) => {
+ return Object.entries(messages).filter(([key]) => /\{\w+\}/.test(key)&&/[a-z\p{Script=Han}]/iu.test(key.replace(/\{\w+\}/g,''))).sort(([a],[b])=>b.replace(/\{\w+\}/g,'').length-a.replace(/\{\w+\}/g,'').length).map(([key,value]) => {
   const names: string[] = [];
   const pattern=key.replace(/\{(\w+)\}|[.*+?^${}()|[\]\\]/g,(part,name)=>{
    if(name){names.push(name);return '([\\s\\S]*?)';}return '\\'+part;
@@ -49,6 +49,8 @@ export function translate(locale:UiLocale,key:string,params?:MessageParams):stri
   const match=template.pattern.exec(key);
   if(match){message=template.value.replace(/\{(\w+)\}/g,(whole,name)=>{const index=template.names.indexOf(name);return index<0?whole:match[index+1];});break;}
  }
+ // Feedback may receive an already localized template containing a Chinese name or word.
+ if(!message&&locale==='en'&&templates['zh-CN']?.some(template=>template.pattern.test(key)))message=key;
  if(!message){
   message=key;
   if(locale==='en'&&/\p{Script=Han}/u.test(key)){

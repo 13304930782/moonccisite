@@ -14,7 +14,7 @@ else if(p==='/api/engagement/notifications/unread')body={unread:0};
 else if(p==='/api/publishing/config'||p==='/api/engagement/config')body={enabled:true};
 await route.fulfill({json:body});});
 const base=process.env.SETTINGS_PREVIEW_URL||'http://127.0.0.1:4996';await fs.mkdir('.cache/settings-qa',{recursive:true});
-for(const [path,selector] of [['login-settings','.provider-settings-card'],['node-monitor','.node-save'],['ai-settings','.ai-save-actions'],['mail-settings','.workflow-primary'],['site-settings','#brand']]){
+for(const [path,selector] of [['login-settings','.provider-settings-card'],['node-monitor','.node-save'],['ai-settings','.ai-save-actions'],['mail-settings','.admin-mail-savebar'],['site-settings','#brand']]){
  for(const width of [1920,1280,1024,768,375])for(const theme of ['light','dark']){
  await page.setViewportSize({width,height:1000});await page.goto(`${base}/admin/${path}`);await page.locator(selector).first().waitFor();
  if(await page.locator('html').getAttribute('data-moon-theme')!==theme) await page.getByRole('button',{name:theme==='dark'?'切换深色主题':'切换浅色主题',exact:true}).click();

@@ -1,5 +1,6 @@
 import { useI18n } from '../../i18n';
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
+import { X } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Alert from '@radix-ui/react-alert-dialog';
 import { Sheet, SheetTitle, SheetDescription } from '../../components/ui/sheet';
@@ -9,7 +10,7 @@ import type { Catalog, ModuleConfig, Rule } from './model';
 
 const levels = { major: '大型主题', decoration: '局部装饰', easterEgg: '简单彩蛋' };
 const dateText = (value: string | number, locale = 'zh-CN') => new Intl.DateTimeFormat(locale, {
-  timeZone: 'Asia/Shanghai', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  timeZone: 'Asia/Shanghai', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
 }).format(new Date(value));
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -32,6 +33,7 @@ export default function Editor({ item, current, saved, status, coverageLabel, on
   const [exceptionMode, setExceptionMode] = useState<'date' | 'off'>('date');
   const [exceptionDate, setExceptionDate] = useState('');
   const [exceptionError, setExceptionError] = useState('');
+  const scheduleId = useId();
   const dirty = JSON.stringify(draft) !== JSON.stringify(current);
   useEffect(() => {
     if (!dirty) return;
@@ -58,6 +60,7 @@ export default function Editor({ item, current, saved, status, coverageLabel, on
   const next = status?.nextStart && Number.isFinite(Date.parse(status.nextStart)) ? status.nextStart : null;
   const savedConfig = saved || current;
   const nextEnd = next ? Date.parse(next) + (savedConfig.rule.durationDays + savedConfig.warmupDays + savedConfig.extensionDays) * 86400000 - 1 : null;
+  const name = t(item.name);
   return <Sheet open onOpenChange={open => { if (!open) requestClose(); }}>
     <Dialog.Portal>
       <Dialog.Overlay className="fest-v2 fv-overlay" />
@@ -67,17 +70,22 @@ export default function Editor({ item, current, saved, status, coverageLabel, on
         onPointerDownOutside={event => { event.preventDefault(); if (!confirm) requestClose(); }}
         onInteractOutside={event => event.preventDefault()}>
         <header className="fv-drawer-head">
-          <div><SheetTitle>{item.name}</SheetTitle>{!item.implemented && <span className="fv-pill">{t("m_48a0eefb85")}</span>}</div>
-          <button type="button" className="fv-icon-button" aria-label={t("m_7a00095652")} onClick={requestClose}>×</button>
-          <SheetDescription className="fv-sr-only">{t("m_0518365699")}{item.name}{t("m_3c412c78fc")}</SheetDescription>
+          <div><SheetTitle>{name}</SheetTitle>
+            <SheetDescription className="fv-muted">{t("修改暂存于此页。保存节日设置后才会生效。")}</SheetDescription>
+          </div>
+          <button type="button" className="fv-icon-button" aria-label={t("m_7a00095652")} onClick={requestClose}><X size={18} aria-hidden="true"/></button>
         </header>
         <form className="fv-drawer-form" onSubmit={save}>
           <div className="fv-drawer-body">
             {(!item.implemented || next) && <div className="fv-note">
               {!item.implemented && <p>{t("m_0ce46620e5")}</p>}
-              {next && <p>{t("m_9a36a05d85")}<time dateTime={next}>{dateText(next,locale)}</time> – <time dateTime={new Date(nextEnd!).toISOString()}>{dateText(nextEnd!,locale)}</time>{t("m_142740e522")}</p>}
+              {next && <>
+                <p>{t("m_9a36a05d85")} <time dateTime={next}>{dateText(next,locale)}</time> – <time dateTime={new Date(nextEnd!).toISOString()}>{dateText(nextEnd!,locale)}</time></p>
+                <small className="fv-muted">{t("m_142740e522")}</small>
+              </>}
             </div>}
-            <div className="fv-switch-row"><span>{t("m_1dd41e0ef8")}</span><FestivalSwitch label={t("m_a3089a8184", {v0: item.name})} checked={draft.enabled} onChange={enabled => patch({ enabled })} /></div>
+            <div className="fv-editor-group">
+            <div className="fv-switch-row"><span>{t("m_1dd41e0ef8")}</span><FestivalSwitch label={t("m_a3089a8184", {v0: name})} checked={draft.enabled} onChange={enabled => patch({ enabled })} /></div>
             <div className="fv-grid-two">
               <Field label={t("m_08a94c1f4f")}><FestivalSelect aria-label={t("m_08a94c1f4f")} value={draft.level} onChange={event => patch({ level: event.target.value as ModuleConfig['level'] })}>
                 {Object.entries(levels).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
@@ -85,6 +93,9 @@ export default function Editor({ item, current, saved, status, coverageLabel, on
               <Field label={t("m_fff582e97f")}><input type="number" required min={0} max={1000} value={draft.priority} onChange={event => patch({ priority: Number(event.target.value) })} /></Field>
             </div>
             {item.implemented && <p className="fv-muted">{t("m_e9b4e994f5")}</p>}
+            </div>
+            <section className="fv-editor-group fv-editor-schedule" aria-labelledby={scheduleId}>
+            <h3 id={scheduleId}>{t("日期与排期")}</h3>
             <Field label={t("m_03b5b088d2")}><FestivalSelect aria-label={t("m_03b5b088d2")} value={draft.rule.type} onChange={event => updateRule(event.target.value === 'annual'
               ? { type: 'annual', kind: 'qingming', durationDays: draft.rule.durationDays }
               : event.target.value === 'floating' ? { type: 'floating', kind: 'easter', durationDays: draft.rule.durationDays }
@@ -106,15 +117,16 @@ export default function Editor({ item, current, saved, status, coverageLabel, on
                   onChange={event => key === 'durationDays' ? updateRule({ ...draft.rule, durationDays: Number(event.target.value) }) : patch({ [key]: Number(event.target.value) })} />
               </Field>)}</div>
             {draft.rule.type === 'lunar' && <p className="fv-muted">{t("m_20507921f8")} {coverageLabel}{t("m_0218f9ff38")}</p>}
-            <section className="fv-exceptions" aria-label={t("m_7d3061cad2")}>
+            </section>
+            <section className="fv-editor-group fv-exceptions" aria-label={t("m_7d3061cad2")}>
               <h3>{t("m_7d3061cad2")}</h3><p className="fv-muted">{t("m_d7c5eb4736")}</p>
-              <div className="fv-chips">{Object.entries(draft.exceptions).map(([exceptionYear, date]) =>
+              {!!Object.keys(draft.exceptions).length && <div className="fv-chips">{Object.entries(draft.exceptions).map(([exceptionYear, date]) =>
                 <div className="fv-chip" key={exceptionYear}>
                   <button type="button" aria-label={t("m_d2ac9b0ba6", {v0: exceptionYear})} onClick={() => { setYear(exceptionYear); setExceptionMode(date === null ? 'off' : 'date'); setExceptionDate(date || ''); setExceptionError(''); }}>
                     {exceptionYear} · {date === null ? t("m_e9cdb07e74") : t("m_aaefb12a23", {v0: Number(date.slice(5, 7)), v1: Number(date.slice(8, 10))})}
                   </button>
-                  <button type="button" aria-label={t("m_650162e150", {v0: exceptionYear})} onClick={() => { const exceptions = { ...draft.exceptions }; delete exceptions[exceptionYear]; patch({ exceptions }); }}>×</button>
-                </div>)}</div>
+                  <button type="button" aria-label={t("m_650162e150", {v0: exceptionYear})} onClick={() => { const exceptions = { ...draft.exceptions }; delete exceptions[exceptionYear]; patch({ exceptions }); }}><X size={14} aria-hidden="true"/></button>
+                </div>)}</div>}
               <div className="fv-grid-two">
                 <Field label={t("m_249503898f")}><input type="number" min={2025} max={2200} value={year} onChange={event => { setYear(event.target.value); setExceptionDate(''); }} /></Field>
                 <Field label={t("m_9e50ce3d5a")}><FestivalSelect aria-label={t("m_9e50ce3d5a")} value={exceptionMode} onChange={event => setExceptionMode(event.target.value as 'date' | 'off')}><option value="date">{t("m_ca5f8f9006")}</option><option value="off">{t("m_e9cdb07e74")}</option></FestivalSelect></Field>
@@ -123,7 +135,7 @@ export default function Editor({ item, current, saved, status, coverageLabel, on
               {exceptionError && <p role="alert" className="fv-error">{exceptionError}</p>}
               <button type="button" className="fv-ghost" onClick={addException}>{existingYear ? t("m_44344b905f") : t("m_79a43fd3f0")}</button>
             </section>
-            {!!item.options.length && <section className="fv-options" aria-label={t("m_b893513e19")}>
+            {!!item.options.length && <section className="fv-editor-group fv-options" aria-label={t("m_b893513e19")}>
               <h3>{t("m_b893513e19")}</h3>{item.options.map(option => <label className="fv-option" key={option.id}>
                 <input type="checkbox" disabled={option.id === 'pageAccent' || !levelAllows(option.id)} checked={draft.options[option.id] !== false}
                   onChange={event => patch({ options: { ...draft.options, [option.id]: event.target.checked } })} />

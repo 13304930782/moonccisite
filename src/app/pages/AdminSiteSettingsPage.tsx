@@ -1,14 +1,16 @@
+import {ThemeSelect} from '../components/ThemeSelect';
 import {TranslationFields} from '../components/ContentTranslationEditor';
 import { useI18n } from '../i18n';
-import { FormEvent, ReactNode, useEffect, useState } from 'react';
+import { CSSProperties, FormEvent, ReactNode, useEffect, useState } from 'react';
 
 import {Link} from '../components/LocaleLink';
-import { UploadCloud } from 'lucide-react';
+import { ChevronDown, UploadCloud } from 'lucide-react';
 import { api } from '../lib/api';
 import { useUnsavedLeave } from '../lib/useUnsavedLeave';
 import { safeImageSrc } from '../lib/safeUrl';
 import { MarkdownContent } from '../components/MarkdownContent';
 import { ArticleMediaPicker } from '../components/ArticleMediaPicker';
+import { AdminError, AdminLoading, AdminNotice } from '../components/admin/AdminState';
 import '../../styles/article-workspace.css';
 import '../../styles/site-settings.css';
 import '../../styles/admin-site-settings.css';
@@ -70,7 +72,7 @@ function ImageSetting({
   onError: (message: string) => void;
   onChoose?: () => void;
 }) {
-  const { locale,  t } = useI18n();
+  const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
   async function upload(file?: File) {
     if (!file) return;
@@ -130,7 +132,12 @@ function ImageSetting({
 }
 export default function AdminSiteSettingsPage() {
   const { locale,  t } = useI18n();
-  const sectionIds = ['brand', 'hero', 'now', 'footer', 'weather-companion'];
+  const sections = [
+          ['brand', t("m_a6939b5922")], ['hero', t("m_3615b0afff")],
+          ['now', t("m_9a6c6ad76b")], ['footer', t("m_17cb1bbb81")],
+          ['weather-companion', t("m_acf6ef3f39")],
+        ];
+  const sectionIds = sections.map(([id]) => id);
   const hashSection = () => {
     const id = typeof window === 'undefined' ? '' : window.location?.hash?.slice(1);
     return id && sectionIds.includes(id) ? id : 'brand';
@@ -278,13 +285,9 @@ export default function AdminSiteSettingsPage() {
       <div className="site-settings-page site-settings-editor">
         <h1 className="admin-title">{t("m_f0cac3fe1a")}</h1>
         {loading ? (
-          <p role="status">{t("m_9ee6956371")}</p>
+          <AdminLoading label="m_9ee6956371" />
         ) : (
-          <div role="alert">
-            <p>{t(error || '')}</p>
-            <button className="quiet-button" onClick={load}>
-               {t("m_7bdd5ce1e2")} </button>
-          </div>
+          <AdminError message={error} onRetry={load} />
         )}
       </div>
     );
@@ -297,7 +300,6 @@ export default function AdminSiteSettingsPage() {
     <div className="site-settings-page site-settings-editor">
       <header className="settings-heading">
         <div>
-          <p className="eyebrow">{t("m_0e7e7ca5e5")}</p>
           <h1 className="admin-title">{t("m_f0cac3fe1a")}</h1>
           <p className="muted">
              {t("m_da8c1392f2")} </p>
@@ -305,22 +307,11 @@ export default function AdminSiteSettingsPage() {
         <Link className="text-link" to="/" target="_blank">
            {t("m_f951dedda9")} </Link>
       </header>
-      <nav className="settings-nav" aria-label={t("m_dc0173c408")}>
-        {[
-          ['brand', t("m_a6939b5922")], ['hero', t("m_3615b0afff")],
-          ['now', t("m_9a6c6ad76b")], ['footer', t("m_17cb1bbb81")],
-          ['weather-companion', t("m_acf6ef3f39")],
-        ].map(([id, label]) => <button key={id} type="button" aria-pressed={activeSection === id} aria-controls={id} onClick={() => setActiveSection(id)}>{label}{dirtySections[id] && <span className="settings-nav-dirty" aria-label={t("m_c2277872cd")} />}</button>)}
+      <label className="settings-mobile-section"><span>{t("m_dc0173c408")}</span><ThemeSelect compact aria-label={t("m_dc0173c408")} value={activeSection} onValueChange={setActiveSection}>{sections.map(([id,label])=><option key={id} value={id}>{dirtySections[id] ? `${label} · ${t("m_c2277872cd")}` : label}</option>)}</ThemeSelect></label>
+      <nav className="settings-nav" aria-label={t("m_dc0173c408")} style={{'--section-index':sectionIds.indexOf(activeSection)} as CSSProperties}>
+        {sections.map(([id, label]) => <button key={id} type="button" aria-pressed={activeSection === id} aria-controls={id === 'weather-companion' ? 'weather-companion-panel' : id} onClick={() => setActiveSection(id)}>{label}{dirtySections[id] && <span className="settings-nav-dirty" aria-label={t("m_c2277872cd")} />}</button>)}
       </nav>
-      {loading && <p role="status">{t("m_9ee6956371")}</p>}
-      {error && (
-        <p role="alert">
-          {t(error || '')}{' '}
-          <button type="button" onClick={load}>
-             {t("m_7bdd5ce1e2")} </button>
-        </p>
-      )}
-      {messages.upload && <p role="alert">{messages.upload}</p>}
+      {messages.upload && <AdminNotice>{messages.upload}</AdminNotice>}
       {section(
         'brand',
         t("m_a6939b5922"),
@@ -332,19 +323,21 @@ export default function AdminSiteSettingsPage() {
             onChange={(v) => setBrand({ ...brand, site_title: v })}
             required
           />
-          <ImageSetting
-            label={t("m_1b39c2f4f2")}
-            value={brand.logo_url}
-            onChange={(v) => setBrand({ ...brand, logo_url: v })}
-            {...imageProps}
-          />
-          <ImageSetting
-            label={t("m_5c72bd7844")}
-            value={brand.favicon_url}
-            onChoose={() => setFaviconPickerOpen(true)}
-            onChange={(v) => setBrand({ ...brand, favicon_url: v })}
-            {...imageProps}
-          />
+          <div className="settings-image-pair">
+            <ImageSetting
+              label={t("m_1b39c2f4f2")}
+              value={brand.logo_url}
+              onChange={(v) => setBrand({ ...brand, logo_url: v })}
+              {...imageProps}
+            />
+            <ImageSetting
+              label={t("m_5c72bd7844")}
+              value={brand.favicon_url}
+              onChoose={() => setFaviconPickerOpen(true)}
+              onChange={(v) => setBrand({ ...brand, favicon_url: v })}
+              {...imageProps}
+            />
+          </div>
           <p className="settings-hint">
              {t("m_10d932c4bf")} </p>
         </>,
@@ -396,13 +389,15 @@ export default function AdminSiteSettingsPage() {
           </div>
           <p className="settings-hint">{t("m_948b688540")}</p>
           <details className="settings-preview">
-            <summary>{t("m_6b22eb1a19")}</summary>
-            <p className="eyebrow">{hero.eyebrow}</p>
-            <h2>{hero.title}</h2>
-            <p>{hero.subtitle}</p>
-            <div className="inline-actions">
-              <span>{hero.primary_text}</span>
-              <span>{hero.secondary_text}</span>
+            <summary>{t("m_6b22eb1a19")}<ChevronDown size={16} aria-hidden="true" /></summary>
+            <div className="settings-preview-content settings-hero-preview">
+              {hero.eyebrow && <p className="muted">{hero.eyebrow}</p>}
+              <h3>{hero.title}</h3>
+              <p>{hero.subtitle}</p>
+              <div className="inline-actions">
+                {hero.primary_text && <span>{hero.primary_text}</span>}
+                {hero.secondary_text && <span>{hero.secondary_text}</span>}
+              </div>
             </div>
           </details>
         </>,
@@ -433,8 +428,8 @@ export default function AdminSiteSettingsPage() {
           )}
           {now.content && (
             <details className="settings-preview">
-              <summary>{t("m_6bb4a6fc9f")}</summary>
-              <MarkdownContent content={now.content} />
+              <summary>{t("m_6bb4a6fc9f")}<ChevronDown size={16} aria-hidden="true" /></summary>
+              <div className="settings-preview-content"><MarkdownContent content={now.content} /></div>
             </details>
           )}
         </>,
@@ -493,7 +488,7 @@ export default function AdminSiteSettingsPage() {
         <h2 className="settings-translation-title">{t('当前近况 · 英文版')}</h2>
         <TranslationFields type="now" id="1" source={now}/>
       </section>
-      <div hidden={activeSection !== 'weather-companion'}><AdminWeatherCompanionSettings /><AdminDailyQuestions /></div>
+      <div id="weather-companion-panel" className="settings-companion-stack" hidden={activeSection !== 'weather-companion'}><AdminWeatherCompanionSettings /><AdminDailyQuestions /></div>
     </div>
   );
 }

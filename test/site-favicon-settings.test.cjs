@@ -13,8 +13,9 @@ test('favicon media selection is a draft until saved, cancellation preserves it 
  function Picker(){return null;}
  const code=ts.transpileModule(fs.readFileSync('src/app/pages/AdminSiteSettingsPage.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const module={exports:{}};
- const mock=name=>i18nFixture(name)?i18nFixture(name):name.endsWith('.css')?{}:name.endsWith('/api')?{api}:name.endsWith('/useUnsavedLeave')?{useUnsavedLeave(){}}:name.endsWith('/safeUrl')?{safeImageSrc:x=>x||''}:name.endsWith('/ArticleMediaPicker')?{ArticleMediaPicker:Picker}:name.endsWith('/MarkdownContent')?{MarkdownContent:()=>null}:name.endsWith('/AdminWeatherCompanionSettings')?{AdminWeatherCompanionSettings:()=>null}:name.endsWith('/AdminDailyQuestions')?{AdminDailyQuestions:()=>null}:name==='react-router-dom'?{Link:'a'}:require(name);
- new Function('exports','require','window',code)(module.exports,mock,{dispatchEvent(){},addEventListener(){},removeEventListener(){},location:{hash:""}});
+ const adminState={AdminLoading:()=>null,AdminError:()=>null,AdminNotice:()=>null};
+ const mock=name=>i18nFixture(name)?i18nFixture(name):name.endsWith('.css')?{}:name.endsWith('/ThemeSelect')?{ThemeSelect:({children,compact,onValueChange,...props})=>React.createElement('select',{...props,onChange:event=>onValueChange(event.target.value)},children)}:name.endsWith('/api')?{api}:name.endsWith('/useUnsavedLeave')?{useUnsavedLeave(){}}:name.endsWith('/safeUrl')?{safeImageSrc:x=>x||''}:name.endsWith('/ArticleMediaPicker')?{ArticleMediaPicker:Picker}:name.endsWith('/MarkdownContent')?{MarkdownContent:()=>null}:name.endsWith('/AdminWeatherCompanionSettings')?{AdminWeatherCompanionSettings:()=>null}:name.endsWith('/AdminDailyQuestions')?{AdminDailyQuestions:()=>null}:name==='react-router-dom'?{Link:'a'}:require(name);
+ new Function('exports','require','window',code)(module.exports,name=>name.endsWith('/admin/AdminState')?adminState:mock(name),{dispatchEvent(){},addEventListener(){},removeEventListener(){},location:{hash:""}});
  const open=()=>root.root.findAllByType('button').find(b=>b.children.includes('从媒体库选择')).props.onClick();
  const value=()=>root.root.findByProps({'aria-label':'网页图标地址'}).props.value;
  const save=()=>root.root.findByProps({id:'brand'}).props.onSubmit({preventDefault(){}});

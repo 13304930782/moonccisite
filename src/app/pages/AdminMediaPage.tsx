@@ -81,7 +81,7 @@ async function copyText(text: string) {
 }
 
 function QualityMenu({ value, onChange, upload = false, disabled = false }: { value: string; onChange: (value: string) => void; upload?: boolean; disabled?: boolean }) {
-  const { locale,  t } = useI18n();
+  const { t } = useI18n();
   const names: Record<string, string> = { low: t("m_aa9e366f68"), medium: t("m_a567bdaa11"), high: t("m_b1c27820fe"), original: t("m_4b1db520af") };
   return <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" variant="ghost" disabled={disabled} aria-label={upload ? t("m_35bf0ca5b1") : t("m_9f52b1da16")} className="media-quality-trigger">{upload ? t("m_279e0b7903") : t("m_dc9c099507")}：{names[value]}<ChevronDown size={14} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal ui-v2 media-quality-menu"><DropdownMenuRadioGroup value={value} onValueChange={onChange}>{[['low', t("m_4bee13b9c9")], ['medium', t("m_59efa81244")], ['high', t("m_5d421b6eef")], ...(upload ? [['original', t("m_4b1db520af")]] : [])].map(([key, label]) => <DropdownMenuRadioItem key={key} value={key}>{label}</DropdownMenuRadioItem>)}</DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>;
 }
@@ -103,6 +103,7 @@ export default function AdminMediaPage() {
   const [imageQuality, setImageQuality] = useState('medium');
   const [selected, setSelected] = useState<MediaItem | null>(null);
   const detailTrigger = useRef<HTMLButtonElement | null>(null);
+  const closingDetail = useRef(false);
   const batchMenuTrigger = useRef<HTMLButtonElement | null>(null);
   const [selectedFilenames, setSelectedFilenames] = useState<string[]>([]);
   const [manualSelection, setManualSelection] = useState(false);
@@ -189,6 +190,17 @@ export default function AdminMediaPage() {
     setRenameTo(item.filename);
   };
 
+  const closeDetail = async () => {
+    if (!selected || saving || closingDetail.current) return;
+    closingDetail.current = true;
+    try {
+      const dirty = displayName !== (selected.display_name || '') || altText !== (selected.alt_text || '') || renameTo !== selected.filename;
+      if (!dirty || await confirmAction(t('放弃未保存的修改？'), t('m_ef804eda90'))) setSelected(null);
+    } finally {
+      closingDetail.current = false;
+    }
+  };
+
   const toggleOne = (filename: string) => {
     if (saving) return;
     setSelectedFilenames((current) => {
@@ -222,8 +234,8 @@ export default function AdminMediaPage() {
 
     try {
       const result = await uploadImage(file, imageQuality);
-      setMessage(t("m_34dd3d16f0", {v0: result.url}));
       await load();
+      notify.success(t("m_34dd3d16f0", {v0: result.url}));
     } catch (err: any) {
       setMessage(err.message || t("m_2a1aa07b1f"));
     } finally {
@@ -234,7 +246,7 @@ export default function AdminMediaPage() {
   const handleCopy = async (text: string, label: string) => {
     try {
       await copyText(text);
-      setMessage(t("m_01e4bff251", {v0: label}));
+      notify.success(t("m_01e4bff251", {v0: label}));
     } catch {
       setMessage(t("m_97f4308501"));
     }
@@ -468,7 +480,7 @@ export default function AdminMediaPage() {
   return (
     <div className={`admin-media-page ui-v2${selecting ? ' is-selecting' : ''}${selectedCount ? ' has-selection' : ''}`}>
       <header className="media-page-header">
-        <div className="media-page-heading"><h1>{t("m_d771576fc0")}</h1>{!loading && !loadError && <span>{search ? t("m_82aed126bc", {v0: total}) : t("m_40c477a816", {v0: total})}</span>}</div>
+        <div className="media-page-intro"><div className="media-page-heading"><h1>{t("m_d771576fc0")}</h1>{!loading && !loadError && <span>{search ? t("m_82aed126bc", {v0: total}) : t("m_40c477a816", {v0: total})}</span>}</div><p>{t('管理上传图片和文章配图。')}</p></div>
         <div className="media-page-actions">
           {(loading || loadError || search || status !== 'active' || total > 0) && <AdminButton type="button" disabled={uploading} onClick={() => uploadInput.current?.click()} className="media-upload-primary">{uploading ? t("m_ce1c9d6156") : t("m_9fbb4750bb")}</AdminButton>}
           <QualityMenu value={imageQuality} onChange={setImageQuality} upload disabled={uploading} />
@@ -479,15 +491,15 @@ export default function AdminMediaPage() {
 
       <div className="media-page-toolbar">
         <div className="media-status-tabs" role="group" aria-label={t("m_1dc7ec1b31")}>
-          <button type="button" aria-pressed={status === 'active'} disabled={saving} onClick={() => { updateQuery({ page: '', status: '' }); }} className="ui-btn ui-btn--ghost">{t("m_9cb8d4d526")}{status === 'active' && !search && !loading && !loadError && <span>{total}</span>}</button>
-          <button type="button" aria-pressed={status === 'trashed'} disabled={saving} onClick={() => { updateQuery({ page: '', status: 'trashed' }); }} className="ui-btn ui-btn--ghost">{t("m_ba35dc23b2")}{status === 'trashed' && !search && !loading && !loadError && <span>{total}</span>}</button>
+          <button type="button" aria-pressed={status === 'active'} disabled={saving} onClick={() => { updateQuery({ page: '', status: '' }); }} className="ui-btn ui-btn--ghost">{t("m_9cb8d4d526")}</button>
+          <button type="button" aria-pressed={status === 'trashed'} disabled={saving} onClick={() => { updateQuery({ page: '', status: 'trashed' }); }} className="ui-btn ui-btn--ghost">{t("m_ba35dc23b2")}</button>
         </div>
         <div className="media-search-field"><input ref={searchInput} aria-label={t("m_d6269d2cb0")} value={keyword} onChange={event => setKeyword(event.target.value)} placeholder={t("m_67d68d84b6")} className="ui-input" />{keyword && <button type="button" className="media-search-clear ui-btn ui-btn--ghost ui-btn--icon" aria-label={t("m_ee32f25f70")} onClick={clearSearch}><X size={16} aria-hidden="true" /></button>}</div>
-        <DropdownMenu><DropdownMenuTrigger asChild><AdminButton type="button" variant="ghost" className="media-sort-trigger">{t("m_b067526e73")}<ChevronDown size={14} aria-hidden="true" /></AdminButton></DropdownMenuTrigger><DropdownMenuContent align="end" className="admin-portal ui-v2 media-list-menu"><DropdownMenuRadioGroup value="updated"><DropdownMenuRadioItem value="updated">{t("m_b067526e73")}</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>
+        <span className="media-sort-note">{t("m_b067526e73")}</span>
         <AdminButton type="button" variant="ghost" size="icon" className="media-refresh" aria-label={t("m_0114937f5d")} disabled={loading || saving} onClick={() => void load()}><RefreshCw size={16} strokeWidth={1.8} aria-hidden="true" /></AdminButton>
       </div>
 
-      <div className="media-list-content">
+      <div className="media-list-content" aria-busy={loading}>
       {message && !selected && <p role="alert" className="media-notice">{t(message || '')}</p>}
       {loadError && <AdminError message={items.length ? `${t("m_5eeaf6dc35")}：${t(loadError)}` : t(loadError)} onRetry={loading ? undefined : () => void load()} />}
       {loading && !filtered.length ? <AdminLoading label={t("m_ca1a598c1f")} /> : filtered.length === 0 && !loadError ? <div className={`admin-empty-result${status === 'trashed' ? ' media-trash-empty' : ''}`}><AdminEmpty
@@ -520,7 +532,7 @@ export default function AdminMediaPage() {
         </div>
       </div>}
 
-      {selected && <Dialog open onOpenChange={open => { if (!open && !saving) setSelected(null); }}>
+      {selected && <Dialog open onOpenChange={open => { if (!open) void closeDetail(); }}>
         <DialogContent className="admin-portal ui-v2 media-detail-drawer" onCloseAutoFocus={event => { if (detailTrigger.current?.isConnected) { event.preventDefault(); detailTrigger.current.focus(); } }}>
           <header className="media-detail-heading"><DialogTitle>{mediaName(selected)}</DialogTitle><DialogDescription>{selected.filename}</DialogDescription></header>
           <form className="media-detail-form" onSubmit={event => { event.preventDefault(); void saveDetails(); }}>
@@ -529,14 +541,19 @@ export default function AdminMediaPage() {
               <div className="media-detail-links"><AdminButton type="button" variant="soft" onClick={() => void handleCopy(selected.url, t("m_5146a7b223"))} >{t("m_8e86f9b1d5")}</AdminButton><AdminButton type="button" variant="soft" onClick={() => void handleCopy(`![${altText || mediaName(selected)}](${selected.url})`, 'Markdown')} >{t("m_f9c71ee4c4")}</AdminButton>{safeImageSrc(selected.url) && <AdminButton type="button" variant="soft" asChild ><a href={safeImageSrc(selected.url)} target="_blank" rel="noopener noreferrer">{t("m_f75e08cc28")}</a></AdminButton>}</div>
               {message && <p role="alert" className="media-notice">{t(message || '')}</p>}
               <fieldset disabled={saving} className="media-detail-fields">
+                <legend>{t('图片信息')}</legend>
                 <label>{t("m_55b6a747e6")}<input value={displayName} onChange={event => setDisplayName(event.target.value)} placeholder={t("m_c581467ad5")} className="ui-input" /></label>
                 <label>{t("m_47a92882b8")}<input value={altText} onChange={event => setAltText(event.target.value)} placeholder={t("m_e7a8511ded")} className="ui-input" /></label>
-                <label>{t("m_a6e48adc26")}<input value={renameTo} readOnly={selected.status === 'trashed'} onChange={event => setRenameTo(event.target.value)} placeholder={selected.filename} aria-describedby="media-rename-hint" className="ui-input" /></label>
-                <p id="media-rename-hint">{selected.status === 'trashed' ? t("m_da81d58c57") : t("m_163481919e")}</p>
               </fieldset>
-              <div className="media-detail-compression"><div className="media-detail-metadata">{selected.size_text} · {selected.mime || selected.ext} · {selected.width && selected.height ? `${selected.width} × ${selected.height}` : '-'}<br />{formatTime(selected.uploaded_at,locale)}</div>{selected.status !== 'trashed' && <div className="media-compression-actions"><QualityMenu value={recompressQuality} onChange={setRecompressQuality} disabled={saving} /><AdminButton type="button" variant="soft" disabled={saving} onClick={() => void recompress()} >{t("m_9e60334e72")}</AdminButton></div>}</div>
+              <details className="media-file-options"><summary>{t('文件与压缩')}<ChevronDown size={16} aria-hidden="true" /></summary>
+                <fieldset disabled={saving} className="media-detail-fields media-file-fields">
+                  <label>{t("m_a6e48adc26")}<input value={renameTo} readOnly={selected.status === 'trashed'} onChange={event => setRenameTo(event.target.value)} placeholder={selected.filename} aria-describedby="media-rename-hint" className="ui-input" /></label>
+                  <p id="media-rename-hint">{selected.status === 'trashed' ? t("m_da81d58c57") : t("m_163481919e")}</p>
+                </fieldset>
+                <div className="media-detail-compression"><div className="media-detail-metadata">{selected.size_text} · {selected.mime || selected.ext} · {selected.width && selected.height ? `${selected.width} × ${selected.height}` : '-'}<br />{formatTime(selected.uploaded_at,locale)}</div>{selected.status !== 'trashed' && <div className="media-compression-actions"><QualityMenu value={recompressQuality} onChange={setRecompressQuality} disabled={saving} /><AdminButton type="button" variant="soft" disabled={saving} onClick={() => void recompress()} >{t("m_9e60334e72")}</AdminButton></div>}</div>
+              </details>
             </div>
-            <footer className="media-detail-footer"><div>{selected.status !== 'trashed' ? <AdminButton type="button" variant="ghost" className="media-danger   ui-btn--danger" disabled={saving} onClick={() => void deleteFile(false)}>{t("m_fdf084d637")}</AdminButton> : <><AdminButton type="button" variant="ghost" disabled={saving} onClick={() => void restoreFile()} >{t("m_e0534b8a4e")}</AdminButton><AdminButton type="button" variant="ghost" className="media-danger   ui-btn--danger" disabled={saving} onClick={() => void permanentDelete()}>{t("m_7aa6d0ef5f")}</AdminButton></>}</div><div><AdminButton type="button" variant="ghost" disabled={saving} onClick={() => setSelected(null)} >{t("m_2cd0f3be87")}</AdminButton><AdminButton type="submit" disabled={saving} aria-label={t("m_da70a6690e")} >{saving ? t("m_ff509c9ba0") : t("m_a3030bf8f1")}</AdminButton></div></footer>
+            <footer className="media-detail-footer"><div>{selected.status !== 'trashed' ? <AdminButton type="button" variant="ghost" className="media-danger   ui-btn--danger" disabled={saving} onClick={() => void deleteFile(false)}>{t("m_fdf084d637")}</AdminButton> : <><AdminButton type="button" variant="ghost" disabled={saving} onClick={() => void restoreFile()} >{t("m_e0534b8a4e")}</AdminButton><AdminButton type="button" variant="ghost" className="media-danger   ui-btn--danger" disabled={saving} onClick={() => void permanentDelete()}>{t("m_7aa6d0ef5f")}</AdminButton></>}</div><div><AdminButton type="button" variant="ghost" disabled={saving} onClick={() => void closeDetail()} >{t("m_2cd0f3be87")}</AdminButton><AdminButton type="submit" disabled={saving} aria-label={t("m_da70a6690e")} >{saving ? t("m_ff509c9ba0") : t("m_a3030bf8f1")}</AdminButton></div></footer>
           </form>
         </DialogContent>
       </Dialog>}

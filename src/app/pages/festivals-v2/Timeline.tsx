@@ -1,5 +1,6 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { useI18n } from '../../i18n';
+import { reducedMotion } from '../../lib/motionPreference';
 import { dateOnly, shanghaiYear, timelinePosition, type Response, type Window as FestivalWindow } from './model';
 import { layoutTimelineLabels } from './timelineLayout';
 import '../../../styles/festival-timeline.css';
@@ -11,6 +12,8 @@ export default function Timeline({ windows, data, error }: { windows: FestivalWi
   const { t, locale } = useI18n();
   const english = locale === 'en';
   const descriptionId = useId();
+  const headingId = useId();
+  const scroll = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
   const labels = useRef<(HTMLSpanElement | null)[]>([]);
   const [layout, setLayout] = useState<{ key: string; positions: ReturnType<typeof layoutTimelineLabels> }>();
@@ -55,7 +58,16 @@ export default function Timeline({ windows, data, error }: { windows: FestivalWi
   const lanes = Math.max(1, ...positions.map(position => position.lane + 1));
   const trackTop = lanes * LANE_HEIGHT + 12;
   return <div className="fv-year-timeline">
-    <div className="fv-year-scroll" tabIndex={0} role="region" aria-label={english ? `${year} festival timeline` : `${year} 年节日时间轴`} aria-describedby={descriptionId}>
+    <div className="fv-year-heading">
+      <h3 id={headingId}>{t("{v0} 年节日时间轴", {v0: year})}</h3>
+      <button type="button" className="fv-year-jump fv-ghost" onClick={() => {
+        const viewport = scroll.current, marker = canvas.current?.querySelector('.fv-year-today');
+        if (!viewport || !marker) return;
+        const left = viewport.scrollLeft + marker.getBoundingClientRect().left - viewport.getBoundingClientRect().left - viewport.clientWidth / 2;
+        viewport.scrollTo({ left, behavior: reducedMotion() ? 'instant' : 'smooth' });
+      }}>{t("查看今天")}</button>
+    </div>
+    <div ref={scroll} className="fv-year-scroll" tabIndex={0} role="region" aria-labelledby={headingId} aria-describedby={descriptionId}>
       <div className="fv-year-space">
         <div ref={canvas} className="fv-year-canvas" style={{ height: trackTop + 100 }} aria-hidden="true">
           {rows.map((row, index) => positions[index] && <span

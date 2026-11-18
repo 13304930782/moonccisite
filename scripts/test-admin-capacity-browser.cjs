@@ -87,7 +87,8 @@ async function main() {
     await confirmation.getByRole('button', { name: '通过评论', exact: true }).click();
     await page.getByText('comment-page-1', { exact: true }).waitFor();
     const requestUpdate = page.waitForRequest(r => new URL(r.url()).searchParams.get('target') === 'update');
-    await page.getByRole('radiogroup', { name: '筛选评论来源' }).getByRole('radio', { name: '近况评论', exact: true }).click();
+    await page.getByRole('combobox', { name: '筛选评论来源' }).click();
+    await page.getByRole('option', { name: '近况评论', exact: true }).click();
     await requestUpdate;
     assert.deepEqual(errors, []);
     console.log('PASS: dashboard counts, media/post pagination, debounced search and stale response isolation.');

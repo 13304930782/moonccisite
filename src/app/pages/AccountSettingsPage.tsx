@@ -1,7 +1,7 @@
 import { useI18n } from '../i18n';
 import {useEffect,useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
-import {Link} from '../components/LocaleLink';
+import {ChevronDown} from 'lucide-react';
 import {useAuth} from '../context/AuthContext';
 import {api} from '../lib/api';
 import {AccountProfileForm,AccountProfile} from '../components/AccountProfileForm';
@@ -16,7 +16,7 @@ export default function AccountSettingsPage(){
   const { t } = useI18n();
  const {refreshUser}=useAuth(),[params]=useSearchParams();
  const [user,setUser]=useState<AccountProfile|null>(null),[providers,setProviders]=useState<Provider[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false);
- const [passwordMessage,setPasswordMessage]=useState(''),[socialMessage,setSocialMessage]=useState('');
+ const [passwordMessage,setPasswordMessage]=useState(''),[socialMessage,setSocialMessage]=useState(''),[socialProvider,setSocialProvider]=useState(''),[managedProvider,setManagedProvider]=useState<string|null>(null);
  const [target,setTarget]=useState<{provider:Provider;mode:'replace'|'unlink'}|null>(null),[challenge,setChallenge]=useState(''),[code,setCode]=useState(''),[dialogMessage,setDialogMessage]=useState(''),[dialogError,setDialogError]=useState(''),[resendAt,setResendAt]=useState(0),[now,setNow]=useState(Date.now());
  const callbackMessage=params.get('email')==='updated'?t("m_83ec2b550d"):params.get('oauth')==='bound'?t("m_a30ec369af"):params.get('oauth')==='failed'?(oauthReasons[params.get('reason')||'']||t("m_3104f8a6ff")):'';
  const load=async()=>{try{const [p,c]=await Promise.all([api('/account'),api('/auth/connections')]);setUser(p.user);setProviders(c.providers);setError('');}catch(e:any){setError(e.message);}};
@@ -24,26 +24,34 @@ export default function AccountSettingsPage(){
  useEffect(()=>{if(!target)return;const timer=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer);},[target]);
  async function sendCode(){setBusy(true);setDialogError('');try{const r=await api('/account/security-code',{method:'POST'});setChallenge(r.challenge_id);setCode('');setDialogMessage(t("m_f84eaf2621")+user?.email+t("m_3be5b82719"));setResendAt(Date.now()+60000);setNow(Date.now());}catch(e:any){setDialogError(e.message);}finally{setBusy(false);}}
  async function start(p:Provider,mode:'bind'|'replace'|'unlink'){
-  setSocialMessage('');
-  if(mode!=='bind'){setTarget({provider:p,mode});setCode('');setChallenge('');setDialogMessage('');setDialogError('');if(resendAt<=Date.now())await sendCode();else setDialogMessage(t("m_3cb2f410cb"));return;}
+  setSocialMessage('');setSocialProvider(p.provider);
+  if(mode!=='bind'){setTarget({provider:p,mode});setCode('');setDialogError('');setNow(Date.now());if(challenge&&resendAt>Date.now())setDialogMessage(t("m_f84eaf2621")+user?.email+t("m_3be5b82719"));else{setChallenge('');setDialogMessage('');await sendCode();}return;}
   setBusy(true);try{const r=await api('/auth/'+p.provider+'/start',{method:'POST',body:JSON.stringify({mode})});window.location.assign(r.url);}catch(e:any){setSocialMessage(e.message);}finally{setBusy(false);}
  }
  async function confirmChange(){if(!target)return;setBusy(true);setDialogError('');try{const body={mode:target.mode,challenge_id:challenge,old_code:code};
-  if(target.mode==='unlink'){const r=await api('/account/connections/'+target.provider.provider,{method:'DELETE',body:JSON.stringify(body)});setSocialMessage(r.message||target.provider.name+t("m_af1670f2b6"));setTarget(null);setCode('');setChallenge('');await load();}
+  if(target.mode==='unlink'){const r=await api('/account/connections/'+target.provider.provider,{method:'DELETE',body:JSON.stringify(body)});setSocialMessage(r.message||target.provider.name+t("m_af1670f2b6"));setTarget(null);setManagedProvider(null);setCode('');setChallenge('');await load();}
   else{const r=await api('/auth/'+target.provider.provider+'/start',{method:'POST',body:JSON.stringify(body)});window.location.assign(r.url);}
  }catch(e:any){setDialogError(e.message);}finally{setBusy(false);}}
  async function resetPassword(){setBusy(true);setPasswordMessage('');try{const r=await api('/account/password-reset',{method:'POST'});setPasswordMessage((r.message||t("m_77691636d8"))+t("m_099b98c292"));}catch(e:any){setPasswordMessage(e.message);}finally{setBusy(false);}}
- return <section className="account-page account-settings-page"><header className="account-page-heading"><div><span className="account-eyebrow">{t("m_3c07271224")}</span><h1>{t("m_5ce662ac8d")}</h1><p>{t("m_a5fb1014c9")}</p></div></header>
- {callbackMessage&&<p className="account-message" role="status">{callbackMessage}</p>}
+ return <section className="account-page account-settings-page"><header className="account-page-heading"><h1>{t("m_5ce662ac8d")}</h1><p>{t("m_a5fb1014c9")}</p></header>
+ {callbackMessage&&<p className="account-update-notice" role="status">{callbackMessage}</p>}
  {error?<p role="alert">{t(error || '')}<button className="text-link" onClick={()=>void load()}>{t("m_b8784c8dd5")}</button></p>:!user?<p role="status">{t("m_503bfab44b")}</p>:<>
  <div className="account-settings-stack">
- <AccountProfileForm user={user} base="/account" onSaved={p=>{setUser(p);void refreshUser();}}/>
+ <AccountProfileForm inlineFeedback user={user} base="/account" onSaved={p=>{setUser(p);void refreshUser();}}/>
+ <section className="account-section account-security" aria-labelledby="account-security-title"><h2 className="account-security-heading" id="account-security-title">{t('m_2c8e3acef6')}</h2>
  <AccountEmailForm user={user} providers={providers} onSaved={p=>{setUser(p);void refreshUser();}}/>
- <section className="account-section"><div><h2>{t("m_a621ab606d")}</h2><p>{t("m_572517bd43")}</p></div><div><button className="neo-button" disabled={busy} onClick={()=>void resetPassword()}>{t("m_5c8cf9b49f")}</button>{passwordMessage&&<p className="account-message" role="status">{passwordMessage}</p>}</div></section>
- <section className="account-section"><div><h2>{t("m_94b52a856b")}</h2><p>{t("m_9659613ee2")}</p></div><div>{socialMessage&&<p className="account-message" role="status">{socialMessage}</p>}
- {providers.map(p=><div className="account-provider" key={p.provider}><div><strong>{p.name}</strong><p>{p.bound?t("m_f70c0007f3"):p.enabled?t("m_e026c6693d"):t("m_98c9b122a6")}</p></div><div className="account-provider-actions">{p.enabled&&<button className="text-link" disabled={busy} onClick={()=>void start(p,p.bound?'replace':'bind')}>{p.bound?t("m_eaf366b778"):t("m_3dd97f4d27")} {p.name}</button>}{p.bound&&<button className="text-link account-danger" disabled={busy} onClick={()=>void start(p,'unlink')}>{t("m_3ba0a291df")} {p.name}</button>}</div></div>)}
+ <div className="account-security-item"><div className="account-security-row"><div className="account-security-copy"><h3>{t("m_a621ab606d")}</h3><p>{t("m_5cfbd1ba4b")}</p></div><button className="neo-button" disabled={busy} onClick={()=>void resetPassword()}>{busy&&!target?t('m_364970d816'):t('m_99a9f47997')}</button></div>{passwordMessage&&<p className="account-message" role="status">{passwordMessage}</p>}</div>
+ <div className="account-security-item"><h3 className="account-providers-title">{t("m_94b52a856b")}</h3>
+ {providers.map(p=>{
+ const status=p.bound?t("m_f70c0007f3"):p.enabled?t("m_e026c6693d"):t("m_98c9b122a6");
+ const feedback=socialProvider===p.provider&&socialMessage&&<p className="account-message" role="status">{socialMessage}</p>;
+ const row=<><span className="account-security-copy"><strong>{p.name}</strong><span className="account-security-value">{status}</span></span>{p.bound?<span className="neo-button account-disclosure-trigger">{t(managedProvider===p.provider?'m_a5f56064c3':'m_4989b5cf94')}<ChevronDown size={15} aria-hidden="true"/></span>:p.enabled&&<button className="neo-button" disabled={busy} onClick={()=>void start(p,'bind')}>{t("m_3dd97f4d27")} {p.name}</button>}</>;
+ return p.bound?<details className="account-provider account-disclosure" key={p.provider} open={managedProvider===p.provider} onToggle={event=>{if(event.currentTarget.open!==(managedProvider===p.provider)&&!busy)setManagedProvider(event.currentTarget.open?p.provider:null);}}><summary role="button" className="account-security-row" aria-label={t('m_23d5d39e9e')+' '+p.name} aria-disabled={busy} onClick={event=>{event.preventDefault();if(!busy)setManagedProvider(managedProvider===p.provider?null:p.provider);}}>{row}</summary><div className="account-provider-detail"><p>{t("m_9659613ee2")}</p><div className="account-provider-actions">{p.enabled&&<button className="neo-button" disabled={busy} onClick={()=>void start(p,'replace')}>{t("m_eaf366b778")} {p.name}</button>}<button className="text-link account-danger" disabled={busy} onClick={()=>void start(p,'unlink')}>{t("m_3ba0a291df")} {p.name}</button></div>{feedback}</div></details>:<div className="account-provider" key={p.provider}><div className="account-security-row">{row}</div>{feedback}</div>;
+ })}
+
  </div></section></div></>}
- <Dialog open={!!target} onOpenChange={open=>{if(!open&&!busy)setTarget(null);}}><DialogContent className="workspace-form-dialog"><DialogTitle>{target?.mode==='replace'?t("m_eaf366b778"):t("m_3ba0a291df")} {target?.provider.name}</DialogTitle><DialogDescription>{target?.mode==='replace'?t("m_60c246375b"):t("m_c9afae0d29")}</DialogDescription>{dialogMessage&&<p role="status">{dialogMessage}</p>}{dialogError&&<p role="alert">{dialogError}</p>}
+
+ <Dialog open={!!target} onOpenChange={open=>{if(!open&&!busy){setTarget(null);setCode('');}}}><DialogContent className="workspace-form-dialog"><DialogTitle>{target?.mode==='replace'?t("m_eaf366b778"):t("m_3ba0a291df")} {target?.provider.name}</DialogTitle><DialogDescription>{target?.mode==='replace'?t("m_60c246375b"):t("m_c9afae0d29")}</DialogDescription>{dialogMessage&&<p role="status">{dialogMessage}</p>}{dialogError&&<p role="alert">{dialogError}</p>}
  {challenge&&<label>{t("m_3acdd163e6")}<input autoFocus autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,''))} placeholder={t("m_a8d7dd5511")}/></label>}
  <div className="inline-actions"><button className="account-primary-button" disabled={busy||!challenge||code.length!==6} onClick={()=>void confirmChange()}>{busy?t("m_574ec7517d"):target?.mode==='replace'?t("m_5a8e57877a"):t("m_40806d9407")}</button><button className="neo-button" disabled={busy||resendAt>now} onClick={()=>void sendCode()}>{resendAt>now?Math.ceil((resendAt-now)/1000)+t("m_1a8c93622c"):challenge?t("m_e9dce4eec6"):t("m_4656fed515")}</button></div></DialogContent></Dialog>
  </section>;

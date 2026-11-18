@@ -1,11 +1,14 @@
 import { useI18n } from '../i18n';
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 import {Link} from '../components/LocaleLink';
 import { ArrowLeft, ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
 import { AdminError, AdminLoading } from '../components/admin/AdminState';
+import { ThemeSelect } from '../components/ThemeSelect';
 import { api } from '../lib/api';
+import {Dialog,DialogContent,DialogTitle,DialogDescription} from '../components/ui/dialog';
 import '../../styles/mailbox.css';
+import '../../styles/mailbox-polish.css';
 
 type Status = 'pending' | 'provisioning' | 'active' | 'rejected' | 'revoked' | 'all';
 type Request = { user_id: number; username: string; account_email: string; requested_local_part: string; reason: string;
@@ -34,7 +37,6 @@ export default function AdminMailboxRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const loadSequence = useRef(0);
-  const confirmRef = useRef<HTMLDivElement>(null);
   const load = useCallback(async () => {
     const sequence = ++loadSequence.current;
     setLoading(true); setLoadError(''); setSelected([]);
@@ -50,14 +52,13 @@ export default function AdminMailboxRequestsPage() {
     }
   }, [status, query, page]);
   useEffect(() => { void load(); return () => { loadSequence.current += 1; }; }, [load]);
-  useEffect(() => { if (confirm) confirmRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, [confirm]);
   const chooseStatus = (next: Status) => { setStatus(next); setPage(1); setConfirm(null); setSelected([]); };
   const search = (event: FormEvent) => { event.preventDefault(); setQuery(searchText.trim()); setPage(1); setConfirm(null); };
   const toggle = (id: number) => setSelected(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
   const pending = result?.requests.filter(item => item.status === 'pending') || [];
   const allPendingSelected = pending.length > 0 && pending.every(item => selected.includes(item.user_id));
-  const openApproval = (ids: number[]) => { setLimitInput('10'); setUnlimited(false); setConfirm({ ids, action: 'approve' }); };
-  const openLimit = (item: Request) => { setLimitInput(String(item.daily_limit || 10)); setUnlimited(item.daily_limit === 0); setConfirm({ ids: [item.user_id], action: 'limit' }); };
+  const openApproval = (ids: number[]) => { setNotice(''); setLimitInput('10'); setUnlimited(false); setConfirm({ ids, action: 'approve' }); };
+  const openLimit = (item: Request) => { setNotice(''); setLimitInput(String(item.daily_limit || 10)); setUnlimited(item.daily_limit === 0); setConfirm({ ids: [item.user_id], action: 'limit' }); };
   const act = async () => {
     if (!confirm) return;
     const dailyLimit = unlimited ? 0 : Number(limitInput);
@@ -79,40 +80,43 @@ export default function AdminMailboxRequestsPage() {
     finally { setBusy(false); }
   };
   const confirmItems = confirm?.ids.map(id => result?.requests.find(item => item.user_id === id)).filter(Boolean) as Request[] | undefined;
-  return <main className="mailbox-review-page">
-    <header className="mailbox-heading"><div><p className="mailbox-eyebrow">mooncci / MAIL</p><h1>{t("m_41f3c254fe")}</h1>
+  return <section className="mailbox-review-page mailbox-review-polish">
+    <header className="mailbox-heading"><div><h1>{t("m_41f3c254fe")}</h1>
       <p>{t("m_8152ddc63f")}</p></div>
       <Link className="mailbox-review-link" to="/admin/mailbox"><ArrowLeft size={16} aria-hidden="true" />{t("m_75936108bd")}</Link></header>
-    {notice && <p role="status" aria-live="polite" className="mailbox-notice">{t(notice)}</p>}
-    <nav className="mailbox-review-tabs" aria-label={t("m_9dd3ccef49")}>{tabs.map(tab => <button key={tab.value} type="button" aria-current={status === tab.value ? 'page' : undefined}
-      onClick={() => chooseStatus(tab.value)}>{t(tab.label)}<span>{tab.value === 'all' ? Object.values(result?.counts || {}).reduce((sum, count) => sum + count, 0) : result?.counts?.[tab.value] || 0}</span></button>)}</nav>
+    {notice && !confirm && <p role="status" aria-live="polite" className="mailbox-notice">{t(notice)}</p>}
+    <label className="mailbox-review-mobile-filter"><span>{t('m_6320b4a872')}</span><ThemeSelect compact aria-label={t('m_9dd3ccef49')} value={status} onValueChange={value=>chooseStatus(value as Status)}>
+      {tabs.map(tab=><option key={tab.value} value={tab.value}>{t(tab.value==='provisioning'?'待核对':tab.label)} · {tab.value==='all'?Object.values(result?.counts||{}).reduce((sum,count)=>sum+count,0):result?.counts?.[tab.value]||0}</option>)}
+    </ThemeSelect></label>
+    <nav className="mailbox-review-tabs" aria-label={t("m_9dd3ccef49")}><div className="mailbox-review-tab-track" style={{'--mailbox-tab-index':tabs.findIndex(tab=>tab.value===status)} as CSSProperties}>{tabs.map(tab => <button key={tab.value} type="button" aria-current={status === tab.value ? 'page' : undefined}
+      onClick={() => chooseStatus(tab.value)}>{t(tab.value==='provisioning'?'待核对':tab.label)}<span>{tab.value === 'all' ? Object.values(result?.counts || {}).reduce((sum, count) => sum + count, 0) : result?.counts?.[tab.value] || 0}</span></button>)}</div></nav>
     <section className="mailbox-panel mailbox-review-panel" aria-label={t("m_d4c14ecb34")}>
       <div className="mailbox-review-toolbar"><form onSubmit={search} role="search"><label className="sr-only" htmlFor="mailbox-review-search">{t("m_bccf631e99")}</label>
         <Search size={17} aria-hidden="true" /><input id="mailbox-review-search" value={searchText} onChange={event => setSearchText(event.target.value)} placeholder={t("m_977700549d")} />
         <button className="mailbox-secondary">{t("m_44ce7ae909")}</button></form><button className="mailbox-secondary" type="button" disabled={loading || busy} onClick={() => void load()}><RefreshCw size={16} aria-hidden="true" />{t("m_aee8874341")}</button></div>
       {selected.length > 0 && <div className="mailbox-selection-bar"><span>{t("m_3f4ebc4aad")} {selected.length}  {t("m_49ccde43a1")}</span>
         <button className="mailbox-primary" disabled={busy} onClick={() => openApproval(selected)}>{t("m_a484f1969e")}</button>
-        <button className="mailbox-secondary" disabled={busy} onClick={() => setConfirm({ ids: selected, action: 'reject' })}>{t("m_136de7a8c4")}</button>
+        <button className="mailbox-secondary" disabled={busy} onClick={() => {setNotice('');setConfirm({ ids: selected, action: 'reject' });}}>{t("m_136de7a8c4")}</button>
         <button className="mailbox-text-button" onClick={() => setSelected([])}>{t("m_5288519d85")}</button></div>}
-      {confirm && <div ref={confirmRef} className="mailbox-confirm" role="group" aria-label={t("m_4b397f31f2")}><strong>{confirm.action === 'approve' ? t("m_c4993e9643", {v0: confirm.ids.length}) : confirm.action === 'reject' ? t("m_13f470c6d9", {v0: confirm.ids.length}) : confirm.action === 'limit' ? t("m_18fd3a75f0") : t("m_6c6d9857b9")}</strong>
-        <p>{confirm.action === 'approve' ? t("m_a59f42f827") : confirm.action === 'limit' ? t("m_546b283526") : confirm.action === 'revoke' ? t("m_4cef685c80") : t("m_82a432f561")}</p>
-        <p className="mailbox-confirm-addresses">{confirmItems?.map(item => `${item.requested_local_part}@mooncci.site`).join('、')}</p>
+      <Dialog open={!!confirm} onOpenChange={open=>{if(!open&&!busy)setConfirm(null);}}><DialogContent className="mailbox-confirm mailbox-review-confirm" aria-busy={busy}><DialogTitle>{!confirm?t("m_4b397f31f2"):confirm.action === 'approve' ? t("m_c4993e9643", {v0: confirm.ids.length}) : confirm.action === 'reject' ? t("m_13f470c6d9", {v0: confirm.ids.length}) : confirm.action === 'limit' ? t("m_18fd3a75f0") : t("m_6c6d9857b9")}</DialogTitle>
+        {confirm&&<><DialogDescription>{confirm.action === 'approve' ? t("m_a59f42f827") : confirm.action === 'limit' ? t("m_546b283526") : confirm.action === 'revoke' ? t("m_4cef685c80") : t("m_82a432f561")}</DialogDescription>
+        <ul className="mailbox-confirm-targets">{confirmItems?.map(item=><li key={item.user_id}><strong>{item.mailbox_address||`${item.requested_local_part}@mooncci.site`}</strong><span>{item.username}</span><p>{item.reason}</p></li>)}</ul>
         {(confirm.action === 'approve' || confirm.action === 'limit') && <div className="mailbox-limit-editor"><label htmlFor="mailbox-daily-limit">{t("m_ae26b58f32")}</label><input id="mailbox-daily-limit" type="number" min="1" max="1000" step="1" inputMode="numeric" value={limitInput} disabled={unlimited || busy} onChange={event => setLimitInput(event.target.value)} /><span>{t("m_fabe7310ec")}</span><label className="mailbox-unlimited"><input type="checkbox" checked={unlimited} disabled={busy} onChange={event => setUnlimited(event.target.checked)} />{t("m_b94cae1341")}</label></div>}
-        <div><button className="mailbox-primary" disabled={busy} onClick={() => void act()}>{busy ? t("m_d3d21191f3") : t("m_f8347f9a9d")}</button><button className="mailbox-secondary" disabled={busy} onClick={() => setConfirm(null)}>{t("m_2cd0f3be87")}</button></div></div>}
+        {notice&&<p className="mailbox-error" role="alert">{t(notice)}</p>}<div className="mailbox-confirm-actions"><button className="mailbox-primary" disabled={busy} onClick={() => void act()}>{busy ? t("m_d3d21191f3") : t("m_f8347f9a9d")}</button><button type="button" data-dialog-cancel className="mailbox-secondary" disabled={busy} onClick={() => setConfirm(null)}>{t("m_2cd0f3be87")}</button></div></>}</DialogContent></Dialog>
       {loading ? <AdminLoading label={t("m_f1f2f12bd8")} /> : loadError ? <AdminError message={t(loadError || '')} onRetry={() => void load()} /> : !result?.requests.length ? <div className="mailbox-review-empty"><strong>{query ? t("m_a76fddcc77") : status === 'pending' ? t("m_21d91e9da1") : t("m_b23407c9f1")}</strong>
         <p>{query ? t("m_7fdf438407") : status === 'pending' ? t("m_5d33ba93bf") : t("m_a3ed97856b")}</p>
-        {status === 'pending' && (result?.counts.active || 0) > 0 && <button type="button" className="mailbox-secondary" onClick={() => chooseStatus('active')}>{t("m_9082cce3f2")}</button>}</div> : <>
+        {status === 'pending' && (result?.counts.active || 0) > 0 && <button type="button" className="mailbox-secondary" onClick={() => chooseStatus('active')}>{t("m_9082cce3f2")}</button>}</div> : <div className="mailbox-review-rows">
         <div className="mailbox-review-table-head"><label className="mailbox-review-check">{pending.length > 0 && <input type="checkbox" aria-label={t("m_e25c93aaa1")} checked={allPendingSelected}
           onChange={() => setSelected(allPendingSelected ? [] : pending.map(item => item.user_id))} />}</label><span>{t("m_ca630a7c52")}</span><span>{t("m_05b36669c4")}</span><span>{t("m_4e78d5108b")}</span><span>{t("m_ed31fbb483")}</span></div>
-        <div className="mailbox-review-rows">{result.requests.map(item => <article className="mailbox-review-row" key={item.user_id}>
+        {result.requests.map(item => <article className="mailbox-review-row" key={item.user_id}>
           <label className="mailbox-review-check">{item.status === 'pending' && <input type="checkbox" aria-label={t("m_a33ac02000", {v0: item.requested_local_part})} checked={selected.includes(item.user_id)} onChange={() => toggle(item.user_id)} />}</label>
           <div className="mailbox-review-identity"><strong>{item.requested_local_part}@mooncci.site</strong><span>{item.username} · {item.account_email}</span></div>
-          <p title={item.reason}>{item.reason}</p><div className="mailbox-review-meta"><span className="mailbox-review-status">{label(item.status)}</span>{item.status === 'active' && <span>{item.daily_limit === 0 ? t("m_b94cae1341") : t("m_5e1f03d40e", {v0: item.daily_limit})}</span>}<time dateTime={item.created_at}>{new Date(item.created_at).toLocaleDateString(locale,{timeZone:'Asia/Shanghai'})}</time></div>
-          <div className="mailbox-review-actions">{item.status === 'pending' && <><button type="button" onClick={() => openApproval([item.user_id])}>{t("m_8cbe697b15")}</button><button type="button" onClick={() => setConfirm({ ids: [item.user_id], action: 'reject' })}>{t("m_136de7a8c4")}</button></>}
-            {item.status === 'active' && <><button type="button" onClick={() => openLimit(item)}>{t("m_18262eecb2")}</button><button type="button" onClick={() => setConfirm({ ids: [item.user_id], action: 'revoke' })}>{t("m_334cf6d667")}</button></>}</div>
-        </article>)}</div></>}
+          <p title={item.reason}>{item.reason}</p><div className="mailbox-review-meta"><span className="mailbox-review-status" data-status={item.status}>{t(label(item.status))}</span>{item.status === 'active' && <span>{item.daily_limit === 0 ? t("m_b94cae1341") : t("m_5e1f03d40e", {v0: item.daily_limit})}</span>}<time dateTime={item.created_at}>{new Date(item.created_at).toLocaleDateString(locale,{timeZone:'Asia/Shanghai'})}</time></div>
+          <div className="mailbox-review-actions">{item.status === 'pending' && <><button type="button" onClick={() => openApproval([item.user_id])}>{t("m_8cbe697b15")}</button><button type="button" onClick={() => {setNotice('');setConfirm({ ids: [item.user_id], action: 'reject' });}}>{t("m_136de7a8c4")}</button></>}
+            {item.status === 'active' && <><button type="button" onClick={() => openLimit(item)}>{t("m_18262eecb2")}</button><button type="button" onClick={() => {setNotice('');setConfirm({ ids: [item.user_id], action: 'revoke' });}}>{t("m_334cf6d667")}</button></>}</div>
+        </article>)}</div>}
       {!loading && !loadError && !!result && result.total > result.limit && <footer className="mailbox-review-pagination"><span>{t("m_76e547a8fa")} {result.total}  {t("m_6c7d685285")} {result.page}  {t("m_d24d3c9946")}</span><div><button className="mailbox-secondary" disabled={page <= 1} onClick={() => setPage(value => value - 1)}><ChevronLeft size={16} aria-hidden="true" />{t("m_c9b9ae7a61")}</button>
         <button className="mailbox-secondary" disabled={page * result.limit >= result.total} onClick={() => setPage(value => value + 1)}>{t("m_8a8542f696")}<ChevronRight size={16} aria-hidden="true" /></button></div></footer>}
     </section>
-  </main>;
+  </section>;
 }

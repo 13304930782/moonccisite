@@ -55,8 +55,12 @@ const release={id:42,title:'版本记录回归',content:'原始发布内容。',
        const card=page.locator('.project-card--compact');await card.waitFor().catch(async error=>{console.error({url:page.url(),text:await page.locator('main').innerText()});throw error});
        if(width<=600) assert.ok(await card.evaluate(el=>parseFloat(getComputedStyle(el).paddingLeft))>=20,'mobile featured card keeps inner spacing');
        assert.equal((await card.locator('.project-card-icon').boundingBox()).width,48);
-       assert.equal(await card.locator('h3').evaluate(el=>getComputedStyle(el).whiteSpace),'nowrap');
-       const name=await card.locator('h3').boundingBox();assert.ok(name.x+name.width<=width,'complete name stays in viewport');
+       const name=await card.locator('h3').evaluate(el=>{
+        const text=document.createRange();text.selectNodeContents(el);
+        return Array.from(text.getClientRects(),rect=>({left:rect.left,right:rect.right}));
+       });
+       assert.equal(name.length,1,'short project name stays on one line');
+       assert.ok(name[0].left>=0&&name[0].right<=width,'complete name stays in viewport');
        assert.equal(await card.evaluate(el=>getComputedStyle(el).borderTopWidth),'0px');
       }
       if(width===1440||width===390)await page.screenshot({path:`.cache/works-${engine}-${width}-${dark}-${route.replace(/\W/g,'-')||'home'}.png`,fullPage:true});
@@ -92,20 +96,21 @@ const release={id:42,title:'版本记录回归',content:'原始发布内容。',
     await toc.getByRole('link',{name:'富文本章节',exact:true}).click();assert.equal(await toc.getAttribute('open'),null);
     assert.ok(page.url().endsWith('#project-heading-0'));
     await page.goto('http://127.0.0.1:4271/admin/projects');
-    await page.getByRole('button',{name:'编辑',exact:true}).first().click();
+    const editProject=page.getByRole('button',{name:'编辑作品',exact:true});
+    await editProject.click();
     const iconField=page.locator('.image-field--icon');await iconField.getByAltText('作品图标预览').waitFor();
     assert.equal(await iconField.locator('input[type=file]').evaluate(el=>getComputedStyle(el).opacity),'0','native file picker stays behind styled upload control');
     assert.ok((await iconField.locator('.project-image-upload').boundingBox()).height>=44);
     assert.equal(await iconField.locator('.project-image-url').getAttribute('open'),null,'URL is secondary by default');
     await iconField.locator('input[type=file]').setInputFiles('src/assets/projects/promptdock-icon.png');
-    await page.waitForFunction(()=>document.querySelector('button[type=submit],.editor-panel button:not([type])')?.disabled===true);
+    await iconField.locator('.project-image-upload[aria-disabled=true]').waitFor();
     assert.ok(await page.getByRole('button',{name:'保存作品',exact:true}).isDisabled(),'cannot save during upload');
     releaseUpload();await iconField.locator('.project-image-url summary').click();await iconField.getByRole('textbox',{name:'作品图标',exact:true}).waitFor();
     await page.waitForFunction(()=>document.querySelector('.image-field--icon input:not([type=file])').value==='/api/uploads/new-icon.png');
     await page.getByRole('button',{name:'保存作品',exact:true}).click();
     await page.locator('.projects-list-heading').waitFor();
     assert.equal(saved.icon_image,'/api/uploads/new-icon.png');assert.equal(saved.cover_image,'/api/uploads/cover.png');
-    await page.reload();await page.getByRole('button',{name:'编辑',exact:true}).first().click();
+    await page.reload();await editProject.click();
     await iconField.locator('.project-image-url summary').click();
     assert.equal(await iconField.getByRole('textbox',{name:'作品图标',exact:true}).inputValue(),'/api/uploads/new-icon.png');
     await iconField.getByRole('button',{name:'移除图标',exact:true}).click();

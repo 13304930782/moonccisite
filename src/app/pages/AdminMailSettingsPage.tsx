@@ -2,9 +2,12 @@ import { useI18n } from '../i18n';
 import {MailChannelSettings,defaultMailProfiles} from '../components/MailChannelSettings';
 import { notify } from '../lib/feedback';
 import { ThemeSelect } from '../components/ThemeSelect';
+import { AdminButton } from '../components/admin/AdminButton';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { useUnsavedLeave } from '../lib/useUnsavedLeave';
+import '../../styles/admin-ui-v2.css';
+import '../../styles/admin-mail-settings-polish.css';
 
 const defaultMail = {
   enabled: 'false',
@@ -27,7 +30,7 @@ export default function AdminMailSettingsPage() {
   const [saved,setSaved] = useState('');
   const [loadAttempt,setLoadAttempt] = useState(0);
   const [loadError,setLoadError] = useState('');
-  const dirty = saved !== JSON.stringify(mail);
+  const dirty = Boolean(saved) && saved !== JSON.stringify(mail);
   // Leaving with edited, unsaved mail settings should ask first (not while still loading).
   useUnsavedLeave(Boolean(saved) && dirty);
   const [message, setMessage] = useState('');
@@ -87,27 +90,21 @@ export default function AdminMailSettingsPage() {
   };
 
   return (
-    <div className="admin-page workflow-feedback">
+    <div className="admin-page ui-v2 workflow-feedback admin-mail-settings">
       <div className="py-2">
-        <div className="mb-8">
+        <div className="mail-settings-heading">
           <h1 className="admin-title">{t("m_db4b458abf")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
              {t("m_d5f6de2b0d")} </p>
         </div>
 
-        {message && (
-          <div role="alert" className="mb-5 rounded-[10px] bg-muted px-4 py-3 text-sm text-foreground">
-            {t(message || '')}
-          </div>
-        )}
-
-        {loadError&&<p role="alert">{t(loadError || '')}<button className="text-link" onClick={()=>setLoadAttempt(n=>n+1)}>{t("m_30de7fb357")}</button></p>}
+        {loadError&&<div className="mail-settings-load-error" role="alert"><p>{t(loadError || '')}</p><AdminButton variant="soft" onClick={()=>setLoadAttempt(n=>n+1)}>{t("m_30de7fb357")}</AdminButton></div>}
         {!saved&&!loadError&&<p role="status">{t("m_2f9fc944ad")}</p>}
-        <fieldset disabled={!saved||saving||testing} className="space-y-6">
-          <div className="admin-settings-section">
+        <fieldset disabled={!saved||saving||testing} className="mail-settings-form" aria-busy={!saved&&!loadError||saving||testing}>
+          <div className="admin-settings-section mail-settings-enable">
             <h2 className="text-xl font-medium text-foreground">{t("m_d3573ff6ef")}</h2>
 
-            <div className="mt-5">
+            <div className="mail-settings-enable-control">
               <label className="block mb-2 text-sm font-medium text-foreground">{t("m_682632a212")}</label>
               <ThemeSelect aria-label={t("m_b8c3d9bf8d")}
                 value={mail.enabled}
@@ -125,7 +122,7 @@ export default function AdminMailSettingsPage() {
             <p className="mt-1 text-sm text-muted-foreground">
                {t("m_b0a7662f54")} </p>
 
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="mail-settings-grid">
               <div>
                 <label htmlFor="mail-setting-smtp_host" className="block mb-2 text-sm font-medium text-foreground">{t("m_6a85554c14")}</label>
                 <input
@@ -150,7 +147,7 @@ export default function AdminMailSettingsPage() {
 
               <div>
                 <label className="block mb-2 text-sm font-medium text-foreground">{t("m_475ebf9f8b")}</label>
-                <ThemeSelect aria-label={t("m_475ebf9f8b")}
+                <ThemeSelect compact aria-label={t("m_475ebf9f8b")}
                   value={mail.smtp_secure}
                   onValueChange={(nextValue) => update('smtp_secure', nextValue)}
 
@@ -190,7 +187,7 @@ export default function AdminMailSettingsPage() {
           <div className="admin-settings-section">
             <h2 className="text-xl font-medium text-foreground">{t("m_ece4e4830c")}</h2>
 
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="mail-settings-grid">
               <div>
                 <label htmlFor="mail-setting-smtp_from" className="block mb-2 text-sm font-medium text-foreground">{t("m_e8b1db1473")}</label>
                 <input
@@ -228,18 +225,19 @@ export default function AdminMailSettingsPage() {
           </div>
 
           <MailChannelSettings channels={mail.channels} defaultSender={mail.smtp_from||mail.smtp_user} canTest={!dirty&&!!saved} testing={testing} onTest={key=>void testMail(key)} onChange={(key,field,value)=>setMail(prev=>({...prev,channels:{...prev.channels,[key]:{...prev.channels[key],[field]:value,...(field==='address'?{password:'',has_password:false}:{})}}}))}/>
-          <p role="status">{dirty?t("m_3ce7622817"):t("m_778f233227")}</p>
-          <div className="flex flex-wrap gap-3">
-            <button
+          {saved&&<footer className="admin-mail-savebar" data-dirty={dirty}>
+            <span role="status">{saving?t("m_917b1c1f18"):dirty?t("m_6265f9d3f3"):t("m_1bd91a7d0c")}</span>
+            <div className="flex flex-wrap gap-3">
+            <AdminButton
+              type="button"
               onClick={save}
               disabled={saving || !dirty}
-              className="workflow-button workflow-primary"
             >
-              {saving ? t("m_917b1c1f18") : t("m_bfcb5c4c7b")}
-            </button><button type="button" className="workflow-button" disabled={!dirty} onClick={() => { setMail(JSON.parse(saved)); setMessage(''); }}>{t("m_ef804eda90")}</button>
-
-
-          </div>
+              {saving ? t("m_917b1c1f18") : t("保存")}
+            </AdminButton><AdminButton type="button" variant="ghost" disabled={!dirty} onClick={() => { setMail(JSON.parse(saved)); setMessage(''); }}>{t("m_ef804eda90")}</AdminButton>
+            </div>
+            {message&&<p role="alert">{t(message)}</p>}
+          </footer>}
         </fieldset>
       </div>
     </div>

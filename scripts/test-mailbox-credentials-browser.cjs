@@ -32,12 +32,15 @@ const { chromium } = require('playwright');
       await route.fulfill({ json: body });
     });
     await page.goto('http://127.0.0.1:4281/account/mailbox');
-    await page.getByRole('heading', { name: '在邮件客户端使用' }).waitFor();
+    const clientSettings = page.locator('.mailbox-credentials > summary');
+    await clientSettings.waitFor();
     for (const width of [390, 768, 1280, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `overflow at ${width}px`);
       await page.screenshot({ path: `.cache/mailbox-credentials-qa/mailbox-${width}.png`, fullPage: true, animations: 'disabled' });
     }
+    assert.equal(await page.getByRole('button', { name: '查看并复制密码' }).isVisible(), false);
+    await clientSettings.click();
     await page.getByRole('button', { name: '查看并复制密码' }).click();
     await page.getByLabel('邮件验证码').fill('123456');
     await page.getByRole('button', { name: '验证并查看' }).click();

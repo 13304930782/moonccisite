@@ -121,7 +121,7 @@ test('trash detail forbids rename/recompression, restores singly and guards perm
 test('general media upload accepts a 6MB image, sends quality and leaves the 12MB size limit to the backend',async()=>{
  let reject=false;const f=await fixture({handle:call=>{if(call.url==='/upload/image'&&reject)throw Object.assign(Error('图片不能超过 12 MB'),{status:413});}});try{
   const quality=f.root.root.findByProps({className:'media-page-actions'}).findByType('select');await act(async()=>quality.props.onChange({target:{value:'original'}}));const upload=()=>f.root.root.findByProps({'aria-label':'上传图片文件'}),file=new File([new Uint8Array(6*1024*1024)],'six-meg.png',{type:'image/png'});
-  await act(async()=>upload().props.onChange({target:{files:[file],value:'six-meg.png'}}));assert.equal(f.writes().length,1);assert.equal(f.writes()[0].url,'/upload/image');assert.equal(f.writes()[0].body.get('quality'),'original');assert.equal(f.writes()[0].body.get('image').size,6*1024*1024);assert.equal(f.notices.some(note=>note.kind==='error'),false);
+  await act(async()=>upload().props.onChange({target:{files:[file],value:'six-meg.png'}}));assert.equal(f.writes().length,1);assert.equal(f.writes()[0].url,'/upload/image');assert.equal(f.writes()[0].body.get('quality'),'original');assert.equal(f.writes()[0].body.get('image').size,6*1024*1024);assert.equal(f.notices.some(note=>note.kind==='error'),false);assert(f.notices.some(note=>note.kind==='success'&&/上传成功/.test(note.value)),'upload success survives the list refresh');
   reject=true;await act(async()=>upload().props.onChange({target:{files:[new File([new Uint8Array(13*1024*1024)],'large.png',{type:'image/png'})],value:'large.png'}}));assert.equal(f.writes().length,2);assert.match(text(f.root.toJSON()),/图片不能超过 12 MB/);assert.equal(f.button('上传图片').props.disabled,false);
  }finally{await f.close();}
 });
@@ -217,8 +217,42 @@ for (const touch of [false,true]) test(`unified ${touch?'touch':'desktop'} batch
  }finally{await f.close();}
 });
 
-test('sort dropdown exposes only the existing recent-update order without adding unsupported API parameters',async()=>{
+test('media order is a quiet label, without a single-option menu or unsupported API parameters',async()=>{
  const f=await fixture();try{
-  const toolbar=f.root.root.findByProps({className:'media-page-toolbar'}),sort=toolbar.findByType('select');assert.equal(sort.props.value,'updated');assert.deepEqual(sort.findAllByType('option').map(node=>({value:node.props.value,text:text(node)})),[{value:'updated',text:'最近更新'}]);assert.equal(sort.props.onChange,undefined);assert.equal(f.root.root.findAllByType('button').filter(node=>node.props.className?.split(/\s+/).includes('media-sort-trigger')).length,1);await act(async()=>f.timers.tick(300));assert.equal(f.calls.length,1);assert.deepEqual([...new URL(f.calls[0].url,'https://local.invalid').searchParams.keys()].sort(),['page','pageSize','q','status']);
+  const toolbar=f.root.root.findByProps({className:'media-page-toolbar'});assert.equal(text(toolbar.findByProps({className:'media-sort-note'})),'最近更新');assert.equal(toolbar.findAllByType('select').length,0);assert.equal(f.root.root.findAllByType('button').filter(node=>node.props.className?.split(/\s+/).includes('media-sort-trigger')).length,0);await act(async()=>f.timers.tick(300));assert.equal(f.calls.length,1);assert.deepEqual([...new URL(f.calls[0].url,'https://local.invalid').searchParams.keys()].sort(),['page','pageSize','q','status']);
+ }finally{await f.close();}
+});
+
+for(const closeBy of ['cancel','dialog']) for(const field of ['链接显示名','Alt 文本','文件名']) test(`dirty media ${field} survives cancelled ${closeBy} and closes only after discard`,async()=>{
+ const f=await fixture();try{
+  const details=()=>f.root.root.findAllByProps({className:'media-detail-form'});
+  const close=()=>closeBy==='cancel'?f.click('取消'):act(async()=>f.root.root.findAllByType('fixture-box').find(node=>node.props.onOpenChange).props.onOpenChange(false));
+  await f.open();await f.edit(field,'unsaved.png');f.answers.push(false);await close();assert.equal(details().length,1);assert.equal(f.input(field).props.value,'unsaved.png');assert.deepEqual(f.confirms,['放弃未保存的修改？']);assert.equal(f.writes().length,0);
+  const content=f.root.root.findByProps({className:'admin-portal ui-v2 media-detail-drawer'});let prevented=false;content.props.onCloseAutoFocus({preventDefault(){prevented=true;}});assert.equal(prevented,true,'closing must retain the existing connected detail-trigger focus restoration');
+  f.answers.push(true);await close();assert.equal(details().length,0);assert.equal(f.confirms.length,2);assert.equal(f.writes().length,0);
+ }finally{await f.close();}
+});
+
+test('media clean opening, reverted edits and successfully saved details close without false dirty prompts',async()=>{
+ const f=await fixture();try{
+  await f.open();await f.click('取消');assert.equal(f.confirms.length,0);
+  await f.open();const original=f.input('链接显示名').props.value;await f.edit('链接显示名','temporary');await f.edit('链接显示名',original);await f.click('取消');assert.equal(f.confirms.length,0);
+  await f.open();await f.edit('链接显示名','saved name');await f.edit('Alt 文本','saved alt');await f.edit('文件名','saved.png');await f.submit();await f.click('取消');assert.equal(f.confirms.length,0);assert.equal(f.root.root.findAllByProps({className:'media-detail-form'}).length,0);
+ }finally{await f.close();}
+});
+
+test('saving blocks every media dismissal and repeated close attempts share one confirmation',async()=>{
+ const pending=deferred(),answer=deferred();let first=true;const f=await fixture({handle:call=>{if(call.method==='PUT'&&first){first=false;return pending.promise;}}});try{
+  const dismiss=()=>act(async()=>f.root.root.findAllByType('fixture-box').find(node=>node.props.onOpenChange).props.onOpenChange(false));
+  await f.open();await f.edit('Alt 文本','pending');await f.submit();assert.equal(f.button('取消').props.disabled,true);await f.click('取消');await dismiss();assert.equal(f.confirms.length,0);assert.equal(f.root.root.findAllByProps({className:'media-detail-form'}).length,1);
+  await act(async()=>pending.resolve({...media(),alt_text:'pending'}));await f.edit('文件名','unsaved.png');f.answers.push(answer.promise);await dismiss();await dismiss();await f.click('取消');assert.equal(f.confirms.length,1);await act(async()=>answer.resolve(false));assert.equal(f.input('文件名').props.value,'unsaved.png');
+ }finally{await f.close();}
+});
+
+test('partial metadata save and recompression keep pending rename dirty against the persisted filename',async()=>{
+ const f=await fixture({handle:call=>{if(call.url.endsWith('/rename'))throw Error('目标文件名冲突');}});try{
+  await f.open();await f.edit('链接显示名','saved metadata');await f.edit('文件名','pending.png');await f.submit();f.answers.push(false);await f.click('取消');assert.equal(f.input('文件名').props.value,'pending.png');assert.equal(f.confirms.length,1);
+  await f.edit('文件名','image.png');await f.click('取消');assert.equal(f.confirms.length,1,'persisted metadata must become the clean baseline even when rename failed');
+  await f.open();await f.edit('Alt 文本','still unsaved');await f.click('二次压缩');f.answers.push(false);await f.click('取消');assert.equal(f.input('Alt 文本').props.value,'still unsaved');assert.equal(f.input('文件名').props.value,'compressed.webp');assert.equal(f.confirms.length,2);
  }finally{await f.close();}
 });

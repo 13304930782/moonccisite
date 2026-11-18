@@ -5,7 +5,10 @@ import {FormEvent,useRef,useState} from 'react';
 import {CheckCircle2,CircleAlert,Send} from 'lucide-react';
 import {useUnsavedLeave} from '../lib/useUnsavedLeave';
 import {api,ApiError} from '../lib/api';
+import {AdminButton} from '../components/admin/AdminButton';
 import '../../styles/workflow-feedback.css';
+import '../../styles/admin-ui-v2.css';
+import '../../styles/admin-send-mail.css';
 type Fields={to:string;subject:string;content:string};
 type Result={kind:'success'|'error'|'uncertain';message:string;to:string;subject:string;time:string};
 const labels:Record<keyof Fields,string>={to:'收件人邮箱',subject:'邮件标题',content:'邮件内容'};
@@ -28,7 +31,32 @@ export default function AdminSendMailPage(){
   catch(error){const err=error as ApiError;const message=err.uncertain?t("m_104c8e0bd5"):messages[err.message]||err.message||t("m_ac9cc8827e");setResult({kind:err.uncertain?'uncertain':'error',message,...snapshot});}
   finally{pending.current=false;setSending(false);setCompleted(false);}
  }
- return <div className="admin-page"><section className="mail-compose workflow-feedback"><header><h1 className="admin-title">{t("m_2ea2bbfe61")}</h1><p>{t("m_469210f5a9")}</p></header>
- {result&&<section className="workflow-result" role={result.kind==='success'?'status':'alert'}>{result.kind==='success'?<CheckCircle2 size={20} aria-hidden="true"/>:<CircleAlert size={20} aria-hidden="true"/>}<div className="workflow-result-body"><h2>{result.kind==='success'?t("m_b8b321583f"):result.kind==='uncertain'?t("m_59a6195bd5"):t("m_911a652b2c")}</h2><p>{result.message}</p><p>{t("m_6bc760d059")}{result.to}<br/>{t("m_c08ae19b28")}{result.subject}<br/>{t("m_d022443974")}{result.time}</p>{result.kind==='uncertain'&&<><details className="workflow-warning-details"><summary>{t("m_e5f090a508")}</summary><p>{t("m_c30afb1596")}</p></details><label className="mail-recheck"><input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)}/>{t("m_9b611528eb")}</label></>}</div></section>}
- <form ref={formRef} onSubmit={submit} noValidate aria-busy={sending}>{(Object.keys(labels) as (keyof Fields)[]).map(key=><div key={key}><label htmlFor={`mail-${key}`}>{t(labels[key])}</label>{key==='content'?<textarea id={`mail-${key}`} value={form[key]} onChange={e=>change(key,e.target.value)} rows={9} disabled={sending} aria-invalid={!!errors[key]} aria-describedby={errors[key]?`mail-${key}-error`:'mail-content-hint'}/>:<input id={`mail-${key}`} type={key==='to'?'email':'text'} autoComplete={key==='to'?'email':'off'} value={form[key]} onChange={e=>change(key,e.target.value)} disabled={sending} aria-invalid={!!errors[key]} aria-describedby={errors[key]?`mail-${key}-error`:key==='subject'?'mail-subject-hint':undefined}/>} {errors[key]&&<p className="mail-field-error" id={`mail-${key}-error`}><CircleAlert size={16} aria-hidden="true"/>{t(errors[key] || "")}</p>}{key!=='to'&&<p className="mail-hint" id={`mail-${key}-hint`}>{key==='subject'?t("m_c151991276"):t("m_bdf41666dd")}</p>}</div>)}<footer><p className="mail-hint" role="status">{sending?t("m_637a207e72"):t("m_92bd3ca990")}</p><button className="workflow-button workflow-primary" disabled={sending||(result?.kind==='uncertain'&&!checked)}>{sending?<ActionProgress success={completed}/>:<Send size={16} aria-hidden="true"/>}{completed?t("m_60823aaec7"):sending?t("m_22eb0f8779"):result?.kind==='uncertain'?t("m_29f412e564"):t("m_c268c1b1ce")}</button></footer></form></section></div>;
+ return <div className="admin-page ui-v2 admin-send-mail"><section className="mail-compose workflow-feedback">
+  <header><h1 className="admin-title">{t("m_2ea2bbfe61")}</h1><p>{t("m_469210f5a9")}</p></header>
+  {result&&<section className="workflow-result" data-kind={result.kind} role={result.kind==='success'?'status':'alert'}>
+   {result.kind==='success'?<CheckCircle2 size={20} aria-hidden="true"/>:<CircleAlert size={20} aria-hidden="true"/>}
+   <div className="workflow-result-body">
+    <h2>{result.kind==='success'?t("m_b8b321583f"):result.kind==='uncertain'?t("m_59a6195bd5"):t("m_911a652b2c")}</h2>
+    <p>{t(result.message)}</p>
+    <dl className="mail-send-receipt">
+     <div><dt>{t("m_6bc760d059")}</dt><dd>{result.to}</dd></div>
+     <div><dt>{t("m_c08ae19b28")}</dt><dd>{result.subject}</dd></div>
+     <div><dt>{t("m_d022443974")}</dt><dd>{result.time}</dd></div>
+    </dl>
+    {result.kind==='uncertain'&&<>
+     <details className="workflow-warning-details"><summary>{t("m_e5f090a508")}</summary><p>{t("m_c30afb1596")}</p></details>
+     <label className="mail-recheck"><input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)}/>{t("m_9b611528eb")}</label>
+    </>}
+   </div>
+  </section>}
+  <form ref={formRef} onSubmit={submit} noValidate aria-busy={sending}>
+   {(Object.keys(labels) as (keyof Fields)[]).map(key=><div className={`mail-compose-field mail-compose-field--${key}`} key={key}>
+    <label htmlFor={`mail-${key}`}>{t(labels[key])}</label>
+    {key==='content'?<textarea id={`mail-${key}`} value={form[key]} onChange={e=>change(key,e.target.value)} rows={9} disabled={sending} aria-invalid={!!errors[key]} aria-describedby={errors[key]?`mail-${key}-error`:'mail-content-hint'}/>:<input id={`mail-${key}`} type={key==='to'?'email':'text'} autoComplete={key==='to'?'email':'off'} value={form[key]} onChange={e=>change(key,e.target.value)} disabled={sending} aria-invalid={!!errors[key]} aria-describedby={errors[key]?`mail-${key}-error`:key==='subject'?'mail-subject-hint':undefined}/>}
+    {errors[key]&&<p className="mail-field-error" id={`mail-${key}-error`}><CircleAlert size={16} aria-hidden="true"/>{t(errors[key] || "")}</p>}
+    {key!=='to'&&<div className="mail-compose-field-meta"><p className="mail-hint" id={`mail-${key}-hint`}>{key==='subject'?t("m_c151991276"):t("m_bdf41666dd")}</p><span className="mail-character-count" aria-hidden="true" data-over-limit={form[key].length>(key==='subject'?120:5000)}>{form[key].length} / {key==='subject'?120:5000}</span></div>}
+   </div>)}
+   <footer><p className="mail-hint" role="status">{sending?t("m_637a207e72"):t("m_92bd3ca990")}</p><AdminButton type="submit" disabled={sending||(result?.kind==='uncertain'&&!checked)}>{sending?<ActionProgress success={completed}/>:<Send size={16} aria-hidden="true"/>}{completed?t("m_60823aaec7"):sending?t("m_22eb0f8779"):result?.kind==='uncertain'?t("m_29f412e564"):t("m_c268c1b1ce")}</AdminButton></footer>
+  </form>
+ </section></div>;
 }

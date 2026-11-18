@@ -4,7 +4,7 @@ import { hasUnsavedChanges } from '../lib/useUnsavedLeave';
 import { notify } from '../lib/feedback';
 import { ThemeSelect } from './ThemeSelect';
 import { AdminEmpty, AdminError, AdminLoading } from './admin/AdminState';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Plus, Users, Upload, X, ArrowUpRight } from 'lucide-react';
 import { api } from '../lib/api';
 export type ElectricityRoom = {
@@ -36,6 +36,9 @@ export function AdminElectricityRooms({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [message, setMessage] = useState('');
+  const editorTitle = useRef<HTMLHeadingElement>(null);
+  const pageTitle = useRef<HTMLHeadingElement>(null);
+  const opener = useRef<HTMLButtonElement | null>(null);
   const [draft, setDraft] = useState({
     name: '',
     account: '',
@@ -76,8 +79,16 @@ export function AdminElectricityRooms({
     finally { setLoading(false); }
   };
   useEffect(() => { void reloadRooms(); }, []);
-  const open = async (next: typeof mode) => {
+  useEffect(() => {
+    if (mode) editorTitle.current?.focus();
+    else if (opener.current) {
+      (opener.current.isConnected ? opener.current : pageTitle.current)?.focus();
+      opener.current = null;
+    }
+  }, [mode]);
+  const open = async (next: typeof mode, trigger?: HTMLButtonElement) => {
     if (!(await canChangeRoom())) return;
+    opener.current = trigger ?? null;
     setError('');
     setMessage('');
     setPreview(null);
@@ -168,19 +179,26 @@ export function AdminElectricityRooms({
       setBusy(false);
     }
   };
+  const closeEditor = () => {
+    setMode('');
+    setBulk('');
+    setPreview(null);
+    setError('');
+    setDraft((d) => ({ ...d, account: '', roomVerify: '' }));
+  };
   return (
-    <div className="electricity-admin electricity-admin-v2">
+    <div className="electricity-admin electricity-admin-v2 electricity-workspace">
       <header className="electricity-admin-head">
         <div>
-          <span>{t("m_d2232b15c8")}</span>
-          <h1>{t("m_af99c07be8")}</h1>
+          <h1 ref={pageTitle} tabIndex={-1}>{t("m_af99c07be8")}</h1>
           <p>{t("m_1efdcb27c0")}</p>
         </div>
       </header>
       {!loading && !loadError && rooms.length > 0 && <div className="electricity-room-toolbar">
         <label>
-          <span>{t("m_3f50589be1")}</span>
+          <span>{t("m_5059efe0ac")}</span>
           <ThemeSelect
+            compact
             aria-label={t("m_5059efe0ac")}
             value={selected}
             disabled={Boolean(mode) || busy || settingsBusy || !rooms.length}
@@ -191,7 +209,6 @@ export function AdminElectricityRooms({
               setError('');
             }}
           >
-            {!rooms.length && <option value="">{t("m_360a26014e")}</option>}
             {rooms.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
@@ -202,29 +219,44 @@ export function AdminElectricityRooms({
         </label>
         <div className="electricity-room-toolbar-actions">
           <button
+            type="button"
             className="electricity-button"
             disabled={busy || settingsBusy || Boolean(mode) || !room}
-            onClick={() => open('edit')}
+            aria-expanded={mode === 'edit'}
+            onClick={event => open('edit', event?.currentTarget)}
           >
             <Users />
              {t("m_353efbabce")} </button>
           <button
+            type="button"
             className="electricity-button"
             disabled={busy || settingsBusy || Boolean(mode)}
-            onClick={() => open('add')}
+            aria-expanded={mode === 'add'}
+            onClick={event => open('add', event?.currentTarget)}
           >
             <Plus />
              {t("m_ee4512c271")} </button>
           <button
+            type="button"
             className="electricity-button"
             disabled={busy || settingsBusy || Boolean(mode)}
-            onClick={() => open('import')}
+            aria-expanded={mode === 'import'}
+            onClick={event => open('import', event?.currentTarget)}
           >
             <Upload />
              {t("m_fd77192739")} </button>
         </div>
+        {room && !mode && <div className="electricity-room-summary">
+          <span>
+            {room.legacy ? t("m_e5cb8acdc4") : t("m_2377df5f36", {v0: room.memberCount})}
+            {!room.active ? t("m_4826482624") : ''}
+          </span>
+          <a className="electricity-room-panel-link" href={`/electricity?roomId=${room.id}`} target="_blank" rel="noreferrer">
+            {t("m_05941c46b0")} <ArrowUpRight size={16} aria-hidden="true" />
+          </a>
+        </div>}
       </div>}
-      {error && (
+      {error && !mode && (
         <div className="electricity-admin-notice is-error" role="alert">
           {t(error || '')}
         </div>
@@ -240,7 +272,7 @@ export function AdminElectricityRooms({
           aria-labelledby="room-editor-title"
         >
           <div className="electricity-manage-heading">
-            <h2 id="room-editor-title">
+            <h2 id="room-editor-title" ref={editorTitle} tabIndex={-1}>
               {mode === 'add'
                 ? t("m_ee4512c271")
                 : mode === 'edit'
@@ -248,15 +280,11 @@ export function AdminElectricityRooms({
                   : t("m_948b0a8748")}
             </h2>
             <button
+              type="button"
               className="electricity-schedule-remove"
               aria-label={t("m_34f75b9922")}
               disabled={busy}
-              onClick={() => {
-                setMode('');
-                setBulk('');
-                setPreview(null);
-                setDraft((d) => ({ ...d, account: '', roomVerify: '' }));
-              }}
+              onClick={closeEditor}
             >
               <X />
             </button>
@@ -340,9 +368,7 @@ export function AdminElectricityRooms({
                     )}
                   </label>
                   <label>
-                    <span>
-                       {t("m_9a8ddf1a5e")}{mode === 'edit' ? t("m_1fa5481dd5") : ''}
-                    </span>
+                    <span>{t("m_9a8ddf1a5e")}</span>
                     <input
                       type="password"
                       autoComplete="new-password"
@@ -353,11 +379,10 @@ export function AdminElectricityRooms({
                         setDraft({ ...draft, account: e.target.value })
                       }
                     />
+                    {mode === 'edit' && <small>{t("m_1fa5481dd5")}</small>}
                   </label>
                   <label>
-                    <span>
-                       {t("m_64f73f15ec")} {mode === 'edit' ? t("m_826bd0be54") : ''}
-                    </span>
+                    <span>{t("m_64f73f15ec")}</span>
                     <input
                       type="password"
                       autoComplete="new-password"
@@ -368,6 +393,7 @@ export function AdminElectricityRooms({
                         setDraft({ ...draft, roomVerify: e.target.value })
                       }
                     />
+                    {mode === 'edit' && <small>{t("m_826bd0be54")}</small>}
                   </label>
                   {mode === 'add' && (
                     <label>
@@ -396,6 +422,7 @@ export function AdminElectricityRooms({
                   )}
                 </div>
               )}
+              {error && <div className="electricity-admin-notice is-error" role="alert">{t(error)}</div>}
               <div className="electricity-room-editor-actions">
                 <button
                   className="electricity-button electricity-button--primary"
@@ -414,12 +441,7 @@ export function AdminElectricityRooms({
                 <button
                   className="electricity-button"
                   type="button"
-                  onClick={() => {
-                    setMode('');
-                    setBulk('');
-                    setPreview(null);
-                    setDraft((d) => ({ ...d, account: '', roomVerify: '' }));
-                  }}
+                  onClick={closeEditor}
                 >
                    {t("m_2cd0f3be87")} </button>
               </div>
@@ -433,20 +455,6 @@ export function AdminElectricityRooms({
         <AdminError message={loadError} onRetry={() => void reloadRooms()} />
       ) : room ? (
         <div hidden={Boolean(mode)}>
-          <div className="electricity-room-summary">
-            <span>
-              {room.legacy ? t("m_e5cb8acdc4") : t("m_2377df5f36", {v0: room.memberCount})}
-              {!room.active ? t("m_4826482624") : ''}
-            </span>
-            <a
-              className="electricity-room-panel-link"
-              href={`/electricity?roomId=${room.id}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-               {t("m_05941c46b0")} <ArrowUpRight size={14} />
-            </a>
-          </div>
           {children(room, setSettingsBusy)}
         </div>
       ) : (
@@ -454,8 +462,8 @@ export function AdminElectricityRooms({
           <section className="admin-empty-result electricity-room-empty">
             <AdminEmpty title={t("m_41004ae4d2")} hint={t("m_0268fcbc12")} action={
               <div className="electricity-room-empty-actions">
-                <button type="button" className="electricity-button electricity-button--primary" onClick={() => open('add')}><Plus />{t("m_ee4512c271")}</button>
-                <button type="button" className="electricity-button" onClick={() => open('import')}><Upload />{t("m_fd77192739")}</button>
+                <button type="button" className="electricity-button electricity-button--primary" onClick={event => open('add', event?.currentTarget)}><Plus />{t("m_ee4512c271")}</button>
+                <button type="button" className="electricity-button" onClick={event => open('import', event?.currentTarget)}><Upload />{t("m_fd77192739")}</button>
               </div>
             } />
           </section>

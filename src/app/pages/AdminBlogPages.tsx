@@ -1,6 +1,7 @@
-import {ContentTranslationEditor} from '../components/ContentTranslationEditor';
+import {TranslationFields} from '../components/ContentTranslationEditor';
 import { useI18n } from '../i18n';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useRef,useState,type CSSProperties} from 'react';
+import {Eye} from 'lucide-react';
 import {notify} from '../lib/feedback';
 import {api} from '../lib/api';
 import {useResource,ResourceState} from '../components/ContentUI';
@@ -18,7 +19,8 @@ import {useUnsavedLeave} from '../lib/useUnsavedLeave';
 import '../../styles/article-workspace.css';
 import '../../styles/admin-blog-pages.css';
 type Form={about:Omit<AboutData,'social'>&{social:SocialLink[]};links:FriendLink[]};
-type Tab='about'|'social'|'links';
+const tabs=['about','social','links','english'] as const;
+type Tab=(typeof tabs)[number];
 const emptyDraft={badges:'',technologies:''};
 function addTags(tags:string[],draft:string,limit:number){return [...new Set([...tags,...draft.split(/[,，]/).map(x=>x.trim()).filter(Boolean)])].slice(0,limit);}
 export default function AdminBlogPages(){
@@ -26,6 +28,7 @@ export default function AdminBlogPages(){
  const resource=useResource<Form>('/settings/blog-pages/manage');
  const [form,setForm]=useState<Form|null>(null),[saved,setSaved]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
  const [tab,setTab]=useState<Tab>('about'),[draft,setDraft]=useState(emptyDraft),[picker,setPicker]=useState<'avatar'|'story'|null>(null),[failedAvatar,setFailedAvatar]=useState('');
+ const [translationVisited,setTranslationVisited]=useState(false);
  const story=useRef<HTMLTextAreaElement>(null),formElement=useRef<HTMLFormElement>(null),selection=useRef({content:'',start:0,end:0});
  const rowKeys=useRef(new WeakMap<object,string>()),nextKey=useRef(0);
  const rowKey=(row:object)=>{let key=rowKeys.current.get(row);if(!key){key=`link-${++nextKey.current}`;rowKeys.current.set(row,key);}return key;};
@@ -45,6 +48,10 @@ export default function AdminBlogPages(){
  }
  function changeLink(kind:'links'|'social',index:number,key:string,value:unknown){setForm(current=>{if(!current)return current;const list=kind==='links'?current.links:current.about.social;const next=list.map((item,i)=>{if(i!==index)return item;const updated={...item,[key]:value};rowKeys.current.set(updated,rowKey(item));return updated;});return kind==='links'?{...current,links:next as FriendLink[]}:{...current,about:{...current.about,social:next}};});}
  function discard(){if(!saved)return;setForm(JSON.parse(saved));setDraft(emptyDraft);setMessage('');}
+ function selectTab(next:Tab){
+  if(next==='english')setTranslationVisited(true);
+  setTab(next);
+ }
  async function save(){
   if(!form||busy)return;
   const pending={...form,about:{...form.about,badges:addTags(form.about.badges||[],draft.badges,8),technologies:addTags(form.about.technologies||[],draft.technologies,30)}};
@@ -53,10 +60,29 @@ export default function AdminBlogPages(){
   catch(error){setMessage((error as Error).message);}finally{setBusy(false);}
  }
  return <section className="bp-editor">
-  <div className="bp-top"><SaveBar dirty={dirty} saving={busy} onDiscard={discard} onSave={()=>formElement.current?.requestSubmit()}/><div className="bp-tabs" role="tablist" aria-label={t("m_96a1e5685a")}>{(['about','social','links'] as const).map(kind=><button key={kind} id={`bp-tab-${kind}`} type="button" role="tab" aria-selected={tab===kind} aria-controls={`bp-panel-${kind}`} tabIndex={tab===kind?0:-1} onClick={()=>setTab(kind)} onKeyDown={event=>{const order:Tab[]=['about','social','links'];let next:Tab|undefined;if(event.key==='ArrowRight')next=order[(order.indexOf(kind)+1)%3];if(event.key==='ArrowLeft')next=order[(order.indexOf(kind)+2)%3];if(event.key==='Home')next='about';if(event.key==='End')next='links';if(next){event.preventDefault();setTab(next);document.getElementById(`bp-tab-${next}`)?.focus();}}}>{kind==='about'?t("m_89ae6c0fdf"):kind==='social'?t("m_a19d092e8f"):t("m_c2a2f8293d")}{kind!=='about'&&<span className="bp-count">{kind==='social'?form?.about.social.length||0:form?.links.length||0}</span>}</button>)}</div></div>
+  <header className="bp-heading"><h1>{t('页面与友链')}</h1><p>{t("m_837751f124")}</p></header>
+  <div className="bp-top">
+   <div className="bp-tabs" role="tablist" aria-label={t("m_96a1e5685a")} style={{'--bp-tab-index':tabs.indexOf(tab)} as CSSProperties}>
+    {tabs.map((kind,index)=><button key={kind} id={`bp-tab-${kind}`} type="button" role="tab" aria-selected={tab===kind} aria-controls={`bp-panel-${kind}`} tabIndex={tab===kind?0:-1}
+      onClick={()=>selectTab(kind)} onKeyDown={event=>{
+       let next:Tab|undefined;
+       if(event.key==='ArrowRight')next=tabs[(index+1)%tabs.length];
+       if(event.key==='ArrowLeft')next=tabs[(index+tabs.length-1)%tabs.length];
+       if(event.key==='Home')next=tabs[0];
+       if(event.key==='End')next=tabs[tabs.length-1];
+       if(next){event.preventDefault();selectTab(next);document.getElementById(`bp-tab-${next}`)?.focus();}
+      }}>
+     <span>{kind==='about'?t("m_89ae6c0fdf"):kind==='social'?t("m_a19d092e8f"):kind==='links'?t("m_c2a2f8293d"):<span lang="en">English</span>}</span>
+     {(kind==='social'||kind==='links')&&<span className="bp-count">{kind==='social'?form?.about.social.length||0:form?.links.length||0}</span>}
+    </button>)}
+   </div>
+   {tab!=='english'&&<SaveBar dirty={dirty} saving={busy} onDiscard={discard} onSave={()=>formElement.current?.requestSubmit()}/>}
+  </div>
   <ResourceState resource={resource}>{form&&<form ref={formElement} className="bp-form" onSubmit={event=>{event.preventDefault();void save();}} onInvalid={event=>{const panel=(event.target as HTMLElement).closest('[role="tabpanel"]');if(panel){setTab(panel.id.replace('bp-panel-','') as Tab);requestAnimationFrame(()=>(event.target as HTMLInputElement).focus());}}}>
    {message&&<p className="bp-error" role="alert">{t(message || '')}</p>}<fieldset className="bp-form-body" disabled={busy}><legend className="sr-only">{t("m_c4a1da22df")}</legend>
-   <div className="bp-panel" id="bp-panel-about" role="tabpanel" aria-labelledby="bp-tab-about" hidden={tab!=='about'}><div className="bp-about-grid"><div className="bp-stack">
+   <div className="bp-panel" id="bp-panel-about" role="tabpanel" aria-labelledby="bp-tab-about" hidden={tab!=='about'}>
+    <a className="bp-preview-jump" href="#bp-live-preview"><Eye size={16} aria-hidden="true"/>{t("m_a76fdaad75")}</a>
+    <div className="bp-about-grid"><div className="bp-stack">
     <section className="bp-card"><header className="bp-card-heading"><div><h2>{t("m_e8df058725")}</h2><p>{t("m_ff0730a9ec")}</p></div><span className="bp-public-switch">{t("m_db877564a3")}<Switch label={t("m_db877564a3")} checked={form.about.enabled} onChange={value=>about('enabled',value)}/></span></header>
      <div className="bp-identity-row"><div className="bp-avatar" aria-hidden="true">{safeImageSrc(form.about.avatar)&&failedAvatar!==form.about.avatar?<img src={safeImageSrc(form.about.avatar)} alt="" onError={()=>setFailedAvatar(form.about.avatar)}/>:Array.from(form.about.name.trim()||'?')[0]}</div><div className="bp-identity-fields"><div className="bp-fields"><label className="bp-field">{t("m_d44e9b3d3b")}<input maxLength={100} value={form.about.name} onChange={e=>about('name',e.target.value)}/></label><label className="bp-field">{t("m_8131eafd02")}<input maxLength={500} value={form.about.intro} onChange={e=>about('intro',e.target.value)}/></label></div><label className="bp-field" htmlFor="about-avatar">{t("m_65a4e63de6")}</label><div className="bp-inline"><input id="about-avatar" maxLength={2048} value={form.about.avatar} onChange={e=>about('avatar',e.target.value)}/><button type="button" onClick={()=>setPicker('avatar')}>{t("m_d771576fc0")}</button></div></div></div>
     </section>
@@ -64,9 +90,24 @@ export default function AdminBlogPages(){
     <section className="bp-card"><header className="bp-card-heading"><div><h2>{t("m_1d0fd5f933")}</h2><p>{t("m_d4c74634a0")}</p></div></header><div className="bp-tag-fields">{(['badges','technologies'] as const).map(key=><div key={key}><label className="bp-field" htmlFor={`about-${key}`}>{key==='badges'?t("m_99aebae1b2"):t("m_637e19d92b")}</label><TagInput id={`about-${key}`} tags={form.about[key]||[]} value={draft[key]} maxTags={key==='badges'?8:30} emptyBackspace onInput={value=>setDraft(previous=>({...previous,[key]:value}))} onCommit={value=>commitTags(key,value)} onRemove={index=>about(key,(form.about[key]||[]).filter((_,i)=>i!==index))}/></div>)}</div></section>
     <section className="bp-card"><header className="bp-card-heading"><div><h2>{t("m_87baa9611c")}</h2><p>{t("m_edf2426865")}</p></div></header><SortableList items={(form.about.moduleOrder||moduleKeys) as ModuleKey[]} getKey={key=>key} getLabel={key=>t(moduleLabels[key])} onReorder={order=>about('moduleOrder',order)} disabled={busy} className="bp-module-list">{(module,_index,handle)=><ModuleRow module={module} about={form.about} handle={handle} onChange={about}/>}</SortableList></section>
    </div><AboutPreview about={form.about}/></div></div>
-   {(['social','links'] as const).map(kind=>{const list=kind==='social'?form.about.social:form.links,title=kind==='social'?t("m_a19d092e8f"):t("m_c2a2f8293d");return <div className="bp-panel" id={`bp-panel-${kind}`} role="tabpanel" aria-labelledby={`bp-tab-${kind}`} hidden={tab!==kind} key={kind}><header className="bp-list-heading"><h2>{title}</h2><button type="button" disabled={list.length>=(kind==='social'?20:100)} onClick={()=>kind==='social'?about('social',[...form.about.social,{name:'',url:'',enabled:true}]):setForm({...form,links:[...form.links,{name:'',url:'',description:'',icon:'',enabled:true}]})}>{t("m_45cf7c95bf")}{kind==='social'?t("m_a19d092e8f"):t("m_4708474467")}</button></header>{!list.length&&<p className="bp-empty">{t("m_d2342efd86")}{title}{t("m_4090572de8")}</p>}<SortableList<SocialLink|FriendLink> items={list} getKey={rowKey} getLabel={row=>row.name||t("m_3fdc227200", {v0: title})} disabled={busy} className="bp-link-list" onReorder={next=>kind==='social'?about('social',next):setForm({...form,links:next as FriendLink[]})}>{(row,index,handle)=><LinkCard row={row} index={index} kind={kind} handle={handle} onChange={(key,value)=>changeLink(kind,index,key,value)} onRemove={()=>kind==='social'?about('social',form.about.social.filter((_,i)=>i!==index)):setForm({...form,links:form.links.filter((_,i)=>i!==index)})}/>}</SortableList></div>;})}
+   {(['social','links'] as const).map(kind=>{
+    const social=kind==='social';
+    const list=social?form.about.social:form.links;
+    const title=social?t("m_a19d092e8f"):t("m_c2a2f8293d");
+    return <div className="bp-panel" id={`bp-panel-${kind}`} role="tabpanel" aria-labelledby={`bp-tab-${kind}`} hidden={tab!==kind} key={kind}>
+     <header className="bp-list-heading"><h2>{title}</h2>
+      <button type="button" disabled={list.length>=(social?20:100)} onClick={()=>social?about('social',[...form.about.social,{name:'',url:'',enabled:true}]):setForm({...form,links:[...form.links,{name:'',url:'',description:'',icon:'',enabled:true}]})}>{social?t('＋ 添加社交链接'):t('＋ 添加友链')}</button>
+     </header>
+     {!list.length&&<p className="bp-empty">{social?t('还没有社交链接，添加后可在公开页面展示。'):t('还没有友情链接，添加后可在公开页面展示。')}</p>}
+     <SortableList<SocialLink|FriendLink> items={list} getKey={rowKey} getLabel={row=>row.name||t("m_3fdc227200", {v0: title})} disabled={busy} className="bp-link-list" onReorder={next=>social?about('social',next):setForm({...form,links:next as FriendLink[]})}>
+      {(row,index,handle)=><LinkCard row={row} index={index} kind={kind} handle={handle} onChange={(key,value)=>changeLink(kind,index,key,value)} onRemove={()=>social?about('social',form.about.social.filter((_,i)=>i!==index)):setForm({...form,links:form.links.filter((_,i)=>i!==index)})}/>}
+     </SortableList>
+    </div>;
+   })}
    </fieldset></form>}</ResourceState>
-  {form&&<ContentTranslationEditor type="blog_pages" id="1" source={form}/>}
+  <div className="bp-panel" id="bp-panel-english" role="tabpanel" aria-labelledby="bp-tab-english" hidden={tab!=='english'}>
+   {translationVisited&&form&&<section className="content-translation bp-translation"><h2>{t("m_d33b69c467")}</h2><TranslationFields type="blog_pages" id="1" source={form}/></section>}
+  </div>
   {picker&&<ArticleMediaPicker restoreFocus={picker!=='story'} onClose={()=>setPicker(null)} onSelect={(url,alt)=>picker==='avatar'?about('avatar',url):insertStoryImage(url,alt)}/>}
  </section>;
 }

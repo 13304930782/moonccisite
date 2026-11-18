@@ -25,7 +25,8 @@ html[data-reduced-motion="true"] .action-progress,html[data-reduced-motion="true
 .feedback-toast button:hover { background:var(--muted); }
 [data-sonner-toaster] { z-index:100; }
 [data-sonner-toast] { transition:transform var(--motion-feedback),opacity var(--motion-feedback),height var(--motion-feedback) !important; }
-.experience-confirm { border-radius:var(--panel-radius); }
+.experience-confirm-overlay { z-index:300; }
+.experience-confirm { z-index:301; border-radius:var(--panel-radius); }
 .experience-confirm [data-slot="alert-dialog-description"] { line-height:1.7; white-space:pre-line; }
 
 :is(.account-section,.queue-panel,.publishing-card,.workspace-empty) { border-radius:var(--panel-radius); }

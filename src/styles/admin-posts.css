@@ -61,6 +61,8 @@
  .admin-posts-row { align-items:stretch; flex-direction:column; gap:12px; padding:16px; }
  .admin-posts-row-end { justify-content:flex-start; flex-wrap:wrap; gap:10px; }
  .admin-posts-actions { margin-left:auto; }
+ .admin-posts-main h2 { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; white-space:normal; overflow-wrap:anywhere; }
+ .admin-posts-summary { display:none; }
  .admin-posts-import-dialog .article-import-input { flex-direction:column; }
  .admin-posts-pagination { gap:8px; }
 }
