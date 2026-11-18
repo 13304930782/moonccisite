@@ -148,8 +148,12 @@ jobs:
       - name: Audit npm dependencies
         if: env.FULL_CI == 'true'
         run: |
-          npm audit --audit-level=moderate
+          npm audit --omit=dev --audit-level=moderate
           npm audit --prefix server --audit-level=moderate
+          report="$RUNNER_TEMP/frontend-audit.json"
+          audit_status=0
+          npm audit --audit-level=moderate --json > "$report" || audit_status=$?
+          node scripts/check-frontend-audit.mjs "$report" "$audit_status"
   mysql-integration:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
