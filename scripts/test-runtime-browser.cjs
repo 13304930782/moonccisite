@@ -17,13 +17,19 @@ const {chromium}=require('playwright');
    await page.setViewportSize({width,height:960});await page.goto('http://127.0.0.1:4217/admin/runtime');
    await page.getByRole('heading',{name:'已执行迁移',exact:true}).waitFor();
    await page.evaluate(t=>document.documentElement.classList.toggle('dark',t==='dark'),theme);
+   await page.locator('.runtime-migrations summary').click();
+   await page.locator('.runtime-migration-list > li').waitFor();
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
    assert(await page.locator('.admin-content').evaluate(e=>e.scrollWidth<=e.clientWidth));
-   await page.getByRole('button',{name:'刷新状态',exact:true}).focus();await page.keyboard.press('Enter');await page.getByRole('button',{name:'刷新状态',exact:true}).waitFor();
+   await page.getByRole('button',{name:'刷新状态',exact:true}).focus();await page.keyboard.press('Enter');
+   await page.locator('.runtime-refresh[aria-busy=false]').waitFor();
    await page.screenshot({path:`.cache/runtime-${width}-${theme}.png`});
   }
-  fail=true;await page.getByRole('button',{name:'刷新状态',exact:true}).click();await page.getByText('运行信息暂时不可用',{exact:true}).waitFor();
-  fail=false;await page.getByRole('button',{name:'刷新状态',exact:true}).click();await page.getByRole('button',{name:'刷新状态',exact:true}).waitFor();
+  const collected=await page.locator('.runtime-collected time').getAttribute('datetime');
+  fail=true;await page.getByRole('button',{name:'刷新状态',exact:true}).click();await page.locator('.admin-state--error').waitFor();
+  assert.equal(await page.locator('.runtime-collected time').getAttribute('datetime'),collected);
+  fail=false;await page.getByRole('button',{name:'刷新状态',exact:true}).click();await page.locator('.runtime-refresh[aria-busy=false]').waitFor();
+  assert.equal(await page.locator('.admin-state--error').count(),0);
   assert.deepEqual(errors,[]);console.log('PASS runtime page: six viewports/themes, keyboard refresh, long identifiers and error recovery');
  }finally{await browser?.close();await server.httpServer.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

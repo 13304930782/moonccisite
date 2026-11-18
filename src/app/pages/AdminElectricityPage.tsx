@@ -1,6 +1,7 @@
 import { useI18n } from '../i18n';
 import '../../styles/electricity.css';
 import { useUnsavedLeave } from '../lib/useUnsavedLeave';
+import { AdminError, AdminLoading } from '../components/admin/AdminState';
 import { ThemeSelect } from '../components/ThemeSelect';
 import {
   AdminElectricityRooms,
@@ -10,6 +11,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   MailCheck,
   RefreshCw,
@@ -17,10 +19,10 @@ import {
   ShieldCheck,
   Plus,
   Trash2,
-  ArrowUpRight,
   Zap,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import '../../styles/admin-electricity.css';
 
 type ScheduleRow = {
   hour: number;
@@ -89,6 +91,13 @@ const dateTime = (value: string | null | undefined, locale = 'zh-CN') => {
   }).format(date);
 };
 
+function ActionLabel({ pending, label, busyLabel }: { pending: boolean; label: string; busyLabel: string }) {
+  return <span className="electricity-action-label">
+    <span style={{visibility: pending ? 'hidden' : 'visible'}}>{label}</span>
+    <span style={{visibility: pending ? 'visible' : 'hidden'}}>{busyLabel}</span>
+  </span>;
+}
+
 export default function AdminElectricityPage() {
   return (
     <AdminElectricityRooms>
@@ -109,12 +118,17 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
   useEffect(() => { onBusyChange(Boolean(busy)); return () => onBusyChange(false); }, [busy, onBusyChange]);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [feedbackSection, setFeedbackSection] = useState<'overview' | 'email' | 'save'>('overview');
   const [historyMessage, setHistoryMessage] = useState('');
   const [historyError, setHistoryError] = useState('');
 
   const syncHistory = async () => {
     if (busy) return;
     setBusy('history');
+    if (feedbackSection === 'overview') {
+      setNotice('');
+      setError('');
+    }
     setHistoryMessage('');
     setHistoryError('');
     try {
@@ -139,17 +153,24 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
     }
   };
 
-  useEffect(() => {
-    load().catch((err) => setError(err.message));
-  }, []);
+  const loadSettings = () => {
+    setError('');
+    return load().catch((err) => setError(err.message));
+  };
+  useEffect(() => { void loadSettings(); }, []);
 
   const run = async (
-    name: string,
+    name: 'save' | 'refresh' | 'email',
     action: () => Promise<any>,
     success: string,
   ) => {
     if (busy) return;
     setBusy(name);
+    setFeedbackSection(name === 'refresh' ? 'overview' : name);
+    if (name === 'refresh') {
+      setHistoryMessage('');
+      setHistoryError('');
+    }
     setError('');
     setNotice('');
     try {
@@ -199,18 +220,21 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
       });
   };
 
-  return (
-    <div className="electricity-admin electricity-admin-v2">
-      {(notice || error) && (
-        <div
-          className={`electricity-admin-notice ${error ? 'is-error' : ''}`}
-          role="status"
-        >
-          {error ? <AlertTriangle /> : <CheckCircle2 />}
-          {error || notice}
-        </div>
-      )}
+  if (!data) {
+    return error ? <AdminError message={error} onRetry={() => void loadSettings()} />
+      : <AdminLoading label="m_69ede7ee41" />;
+  }
 
+  const actionFeedback = (section: typeof feedbackSection) =>
+    feedbackSection === section && (notice || error) && (
+      <div className={`electricity-admin-notice${error ? ' is-error' : ''}`} role={error ? 'alert' : 'status'}>
+        {error ? <AlertTriangle aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
+        {t(error || notice)}
+      </div>
+    );
+
+  return (
+    <div className="electricity-room-settings">
       <section
         className="electricity-manage-overview"
         aria-labelledby="electricity-current-heading"
@@ -255,7 +279,7 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
             <RefreshCw
               className={busy === 'refresh' ? 'electricity-spin' : ''}
             />
-            {busy === 'refresh' ? t("m_d302f90b09") : t("m_acc5822fdb")}
+            <ActionLabel pending={busy === 'refresh'} label={t("m_acc5822fdb")} busyLabel={t("m_d302f90b09")} />
           </button>
           <button
             type="button"
@@ -264,16 +288,17 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
             onClick={syncHistory}
           >
             <Clock3 className={busy === 'history' ? 'electricity-spin' : ''} />
-            {busy === 'history' ? t("m_4e2238b74e") : t("m_23fecd8c5b")}
+            <ActionLabel pending={busy === 'history'} label={t("m_23fecd8c5b")} busyLabel={t("m_4e2238b74e")} />
           </button>
           <p>{t("m_cc9e39f49a")}</p>
         </div>
+        {actionFeedback('overview')}
         {(historyMessage || historyError) && (
           <div
             className={`electricity-admin-notice ${historyError ? 'is-error' : ''}`}
-            role="status"
+            role={historyError ? 'alert' : 'status'}
           >
-            {historyError || historyMessage}
+            {t(historyError || historyMessage)}
           </div>
         )}
       </section>
@@ -281,7 +306,7 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
       <form onSubmit={save}>
         <fieldset
           className="electricity-manage-fieldset"
-          disabled={!data || Boolean(busy)}
+          disabled={Boolean(busy)}
         >
           <div className="electricity-manage-columns">
             <section
@@ -329,6 +354,7 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                     ) : (
                       <>
                         <ThemeSelect
+                          compact
                           aria-label={t("m_e130e1d08d", {v0: index + 1})}
                           value={String(row.hour)}
                           onValueChange={(value) =>
@@ -353,6 +379,7 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                           )}
                         </ThemeSelect>
                         <ThemeSelect
+                          compact
                           aria-label={t("m_49a40dfe27", {v0: index + 1})}
                           value={row.type}
                           onValueChange={(value) =>
@@ -500,10 +527,11 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
                 }
               >
                 <MailCheck />
-                {busy === 'email' ? t("m_364970d816") : t("m_a660b3773b")}
+                <ActionLabel pending={busy === 'email'} label={t("m_a660b3773b")} busyLabel={t("m_364970d816")} />
               </button>
               <p className="electricity-manage-help">
                  {t("m_d6af654d45")} </p>
+              {actionFeedback('email')}
             </section>
           </div>
           <div className="electricity-manage-save">
@@ -513,64 +541,50 @@ function RoomSettings({ room, onBusyChange }: { room: ElectricityRoom; onBusyCha
               className="electricity-button electricity-button--primary"
             >
               <Save />
-              {busy === 'save' ? t("m_ff509c9ba0") : t("m_c8550237ba")}
+              <ActionLabel pending={busy === 'save'} label={t("m_c8550237ba")} busyLabel={t("m_ff509c9ba0")} />
             </button>
             <button type="button" className="electricity-button" disabled={!dirty} onClick={() => { if (saved) setForm(saved); setError(''); setNotice(''); }}>{t("m_ef804eda90")}</button>
-            <span role="status">{dirty ? t("m_6265f9d3f3") : t("m_1bd91a7d0c")}{t("m_035d101488")}</span>
+            <span role="status">{dirty ? t("m_6265f9d3f3") : t("m_1bd91a7d0c")}</span>
           </div>
+          {actionFeedback('save')}
         </fieldset>
       </form>
 
-      <section
+      <details
         className="electricity-manage-status"
         aria-labelledby="electricity-status-heading"
       >
-        <h2 id="electricity-status-heading">
-          <ShieldCheck />
-           {t("m_e8a4f7c09d")} </h2>
-        <dl>
-          <div>
-            <dt>{t("m_9a8ddf1a5e")}</dt>
-            <dd>
-              {!data
-                ? '—'
-                : data.credentials.accountConfigured
-                  ? t("m_de8184da1e")
-                  : t("m_80a57e03f0")}
-            </dd>
-          </div>
-          <div>
-            <dt>{t("m_ee3c2afa0b")}</dt>
-            <dd>
-              {!data
-                ? '—'
-                : data.credentials.roomVerifyConfigured
-                  ? t("m_de8184da1e")
-                  : t("m_80a57e03f0")}
-            </dd>
-          </div>
-          <div>
-            <dt>{t("m_b1fbb617f2")}</dt>
-            <dd>{dateTime(data?.state.lastSuccessAt,locale)}</dd>
-          </div>
-          <div>
-            <dt>{t("m_30abde581c")}</dt>
-            <dd>
-              {!data
-                ? '—'
-                : data.state.lowAlertActive
-                  ? t("m_88da0a06bb")
-                  : t("m_c4440e9511")}
-            </dd>
-          </div>
-        </dl>
-        {data?.state.lastErrorCode && (
-          <p className="electricity-manage-error">
-             {t("m_b5a4ed38fd")}{data.state.lastErrorCode} ·{' '}
-            {dateTime(data.state.lastErrorAt,locale)}
-          </p>
-        )}
-      </section>
+        <summary id="electricity-status-heading">
+          <span><ShieldCheck aria-hidden="true" />{t("m_e8a4f7c09d")}</span>
+          <ChevronDown aria-hidden="true" />
+        </summary>
+        <div className="electricity-status-body">
+          <dl>
+            <div>
+              <dt>{t("m_9a8ddf1a5e")}</dt>
+              <dd>{data.credentials.accountConfigured ? t("m_de8184da1e") : t("m_80a57e03f0")}</dd>
+            </div>
+            <div>
+              <dt>{t("m_ee3c2afa0b")}</dt>
+              <dd>{data.credentials.roomVerifyConfigured ? t("m_de8184da1e") : t("m_80a57e03f0")}</dd>
+            </div>
+            <div>
+              <dt>{t("m_b1fbb617f2")}</dt>
+              <dd>{dateTime(data.state.lastSuccessAt,locale)}</dd>
+            </div>
+            <div>
+              <dt>{t("m_30abde581c")}</dt>
+              <dd>{data.state.lowAlertActive ? t("m_88da0a06bb") : t("m_c4440e9511")}</dd>
+            </div>
+          </dl>
+          {data.state.lastErrorCode && (
+            <p className="electricity-manage-error">
+               {t("m_b5a4ed38fd")}{data.state.lastErrorCode} ·{' '}
+              {dateTime(data.state.lastErrorAt,locale)}
+            </p>
+          )}
+        </div>
+      </details>
     </div>
   );
 }

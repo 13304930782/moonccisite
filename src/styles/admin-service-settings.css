@@ -1,0 +1,109 @@
+.service-settings { max-width:880px; }
+.service-settings-heading { margin-bottom:20px; }
+.service-settings-heading .admin-title { margin:0 0 8px; }
+.service-settings-heading p,
+.service-settings .service-settings-hint {
+  max-width:72ch;
+  margin:0;
+  color:var(--muted-foreground);
+  font-size:14px;
+  line-height:1.65;
+  text-wrap:pretty;
+}
+.service-settings-heading p { font-size:15px; }
+.service-settings-card {
+  min-width:0;
+  padding:24px;
+  border:1px solid var(--border);
+  border-radius:var(--panel-radius,16px);
+  background:var(--card);
+}
+.service-settings-card[hidden] { display:none; }
+.service-settings-card > fieldset {
+  display:grid;
+  gap:16px;
+  min-width:0;
+  margin:0;
+  padding:0;
+  border:0;
+}
+.service-settings-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 20px; align-items:start; }
+.service-settings-field { display:grid; gap:8px; min-width:0; font-size:15px; font-weight:600; }
+.service-settings-field input {
+  width:100%;
+  min-width:0;
+  min-height:46px;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:var(--control-radius,10px);
+  background:var(--card);
+  color:var(--foreground);
+  font:inherit;
+  font-weight:400;
+}
+.service-settings-field small { color:var(--muted-foreground); font-size:14px; font-weight:400; line-height:1.55; }
+.service-settings .service-settings-toggle { display:flex; align-items:center; gap:10px; min-height:44px; width:fit-content; max-width:100%; font-size:15px; font-weight:600; cursor:pointer; }
+.service-settings .service-settings-toggle input { width:18px; height:18px; flex:none; margin:0; accent-color:var(--foreground); }
+.service-settings .service-settings-toggle:has(input:disabled) { cursor:wait; }
+.service-settings-details { min-width:0; border-top:1px solid var(--border); }
+.service-settings-details > summary {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-height:44px;
+  border-radius:6px;
+  list-style:none;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+}
+.service-settings-details > summary::-webkit-details-marker { display:none; }
+.service-settings-details > summary > svg { flex:none; color:var(--muted-foreground); }
+.service-settings-details[open] > summary > svg { transform:rotate(180deg); }
+.service-settings-detail-content { display:grid; gap:8px; padding:0 0 4px; color:var(--muted-foreground); font-size:14px; line-height:1.65; overflow-wrap:anywhere; }
+.service-settings-detail-content p { margin:0; max-width:72ch; }
+.service-settings-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding-top:16px; border-top:1px solid var(--border); }
+.service-settings-actions > [role=status] {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex:1 1 128px;
+  min-height:24px;
+  color:var(--muted-foreground);
+  font-size:14px;
+  line-height:1.45;
+}
+.service-settings-actions > [role=status]::before { content:""; width:6px; height:6px; flex:none; border-radius:50%; background:currentColor; }
+.service-settings-actions > [data-state=dirty] { color:var(--foreground); font-weight:600; }
+.service-settings-actions > [data-state=saving]::before { background:var(--foreground); }
+.service-settings .neo-button { min-height:44px; border-radius:var(--control-radius,10px); white-space:normal; }
+.service-settings .neo-button-dark:hover:not(:disabled) { background:var(--primary); opacity:.88; }
+.service-settings .neo-button:disabled { opacity:.48; cursor:not-allowed; }
+.service-settings :is(button,input,summary):focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+.service-settings .admin-notice { margin:0; }
+
+@media (max-width:640px) {
+  .service-settings-card { padding:18px 16px; }
+  .service-settings-grid { grid-template-columns:minmax(0,1fr); gap:14px; }
+  .service-settings .service-settings-field input { font-size:16px; }
+  .service-settings-actions > [role=status] { flex-basis:100%; }
+}
+
+@media (prefers-reduced-motion:no-preference) {
+  html:not([data-reduced-motion=true]) .service-settings-details > summary > svg {
+    transition:transform var(--motion-feedback) var(--ease-enter);
+  }
+  html:not([data-reduced-motion=true]) .service-settings .admin-notice {
+    animation:mooncci-fade var(--motion-feedback) var(--ease-feedback);
+  }
+  @supports (interpolate-size:allow-keywords) and selector(::details-content) {
+    html:not([data-reduced-motion=true]) .service-settings-details::details-content {
+      interpolate-size:allow-keywords;
+      height:0;
+      overflow:clip;
+      transition:height var(--motion-exit) var(--ease-enter),content-visibility var(--motion-exit) allow-discrete;
+    }
+    html:not([data-reduced-motion=true]) .service-settings-details[open]::details-content { height:auto; }
+  }
+}

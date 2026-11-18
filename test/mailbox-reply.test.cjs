@@ -11,11 +11,11 @@ const code = ts.transpileModule(fs.readFileSync('src/app/pages/MailboxPage.tsx',
 }).outputText;
 const text = node => typeof node === 'string' ? node : Array.isArray(node) ? node.map(text).join('') : node?.children ? text(node.children) : '';
 
-async function fixture(confirm = async () => true, messageSubject = 'Received subject') {
+async function fixture(confirm = async () => true, messageSubject = 'Received subject', passwordChangeStatus = 'idle') {
   const confirmations = [], sends = [];
   const message = {uid: 1, from: 'Sender', to: 'reader@mooncci.site', replyTo: 'sender@example.invalid', subject: messageSubject, text: 'Received body', unread: false};
   const api = async (url, options = {}) => {
-    if (url === '/mailboxes/me') return {access: {status: 'active', mailbox_address: 'reader@mooncci.site', daily_limit: 10}};
+    if (url === '/mailboxes/me') return {access: {status: 'active', mailbox_address: 'reader@mooncci.site', daily_limit: 10, password_change_status: passwordChangeStatus}};
     if (url === '/mailboxes/send') { sends.push(JSON.parse(options.body)); return {id: 'sent', message: 'accepted'}; }
     if (url.startsWith('/mailboxes/folders/inbox/')) return {message};
     if (url.startsWith('/mailboxes/folders/')) return {messages: [message], total: 1, page: 1, pageSize: 25, uidValidity: '1', folderAvailable: true};
@@ -31,7 +31,7 @@ async function fixture(confirm = async () => true, messageSubject = 'Received su
   const mod = {exports: {}};
   new Function('exports', 'require', 'window', 'requestAnimationFrame', 'cancelAnimationFrame', code)(mod.exports,
     name => i18nFixture(name) || (name.endsWith('.css') ? {} : mocks[name] || require(name)),
-    {scrollY: 0, scrollTo() {}}, () => 1, () => {});
+    {scrollY: 0, scrollTo() {}, setInterval: () => 1, clearInterval() {}}, () => 1, () => {});
   let root;
   await act(async () => { root = create(React.createElement(mod.exports.default)); });
   const button = name => {
@@ -47,6 +47,20 @@ async function fixture(confirm = async () => true, messageSubject = 'Received su
 }
 
 const unsent = {'mail-to': 'previous@example.invalid', 'mail-subject': 'Private draft', 'mail-body': 'Unrelated private body'};
+
+test('password-change blocking reasons stay outside the collapsed client settings', async () => {
+  for (const status of ['pending', 'claimed', 'review']) {
+    const f = await fixture(async () => true, 'Received subject', status);
+    try {
+      const notices = f.root.root.findAll(node => node.props.className?.includes('mailbox-blocking-status'));
+      assert.equal(notices.length, 1);
+      assert.equal(notices[0].props.role, status === 'review' ? 'alert' : 'status');
+      assert.ok(text(notices[0]).length > 0);
+      for (let node = notices[0].parent; node; node = node.parent) assert.notEqual(node.type, 'details');
+      assert.equal(f.root.root.findAll(node => node.props.className === 'mailbox-view-tabs').length, 0);
+    } finally { await f.close(); }
+  }
+});
 
 test('cancelled reply preserves all unsent fields, confirmed reply starts empty and sends only new writing', async () => {
   let accepted = false;

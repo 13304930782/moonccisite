@@ -14,7 +14,7 @@ else if(p==='/api/engagement/notifications/unread')body={unread:0};
 else if(p==='/api/publishing/config'||p==='/api/engagement/config')body={enabled:true};
 await route.fulfill({json:body});});
 const base=process.env.SETTINGS_PREVIEW_URL||'http://127.0.0.1:4996';await fs.mkdir('.cache/settings-qa',{recursive:true});
-for(const [path,selector] of [['login-settings','.provider-settings-card'],['node-monitor','.node-save'],['ai-settings','.ai-save-actions'],['mail-settings','.workflow-primary'],['site-settings','#brand']]){
+for(const [path,selector] of [['login-settings','.provider-settings-card'],['node-monitor','.node-save'],['ai-settings','.ai-save-actions'],['mail-settings','.admin-mail-savebar'],['site-settings','#brand']]){
  for(const width of [1920,1280,1024,768,375])for(const theme of ['light','dark']){
  await page.setViewportSize({width,height:1000});await page.goto(`${base}/admin/${path}`);await page.locator(selector).first().waitFor();
  if(await page.locator('html').getAttribute('data-moon-theme')!==theme) await page.getByRole('button',{name:theme==='dark'?'切换深色主题':'切换浅色主题',exact:true}).click();
@@ -25,6 +25,6 @@ for(const [path,selector] of [['login-settings','.provider-settings-card'],['nod
  await page.screenshot({path:`.cache/settings-qa/${path}-${width}-${theme}.png`,fullPage:true});
  }
 }
-await page.goto(`${base}/admin/ai-settings`);const key=page.getByLabel('DeepSeek API Key',{exact:true});await key.waitFor();await key.fill('test-key');fail=true;await page.getByRole('button',{name:'保存 AI 设置',exact:true}).click();await page.getByRole('alert').filter({hasText:'测试保存失败'}).waitFor();assert.equal(await key.inputValue(),'test-key');await page.getByRole('button',{name:'放弃更改',exact:true}).click();assert.equal(await key.inputValue(),'');assert.ok(await page.getByRole('button',{name:'保存 AI 设置',exact:true}).isDisabled());
+await page.goto(`${base}/admin/ai-settings`);const key=page.getByLabel('DeepSeek API Key',{exact:true});await key.waitFor();await key.fill('test-key');fail=true;await page.getByRole('button',{name:'保存 AI 设置',exact:true}).click();await page.getByRole('alert').filter({hasText:'尚未确认操作结果'}).waitFor();assert.equal(await key.inputValue(),'test-key');await page.getByRole('button',{name:'放弃更改',exact:true}).click();assert.equal(await key.inputValue(),'');assert.ok(await page.getByRole('button',{name:'保存 AI 设置',exact:true}).isDisabled());
 assert.deepEqual(errors,[]);console.log('PASS settings 5 pages × 5 widths × light/dark; no horizontal overflow; AI failure retention/discard; no real sends.');
 }finally{if(browser)await browser.close();if(server)await new Promise(resolve=>server.httpServer.close(resolve));}})().catch(e=>{console.error(e);process.exitCode=1;});

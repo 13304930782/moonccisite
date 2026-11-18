@@ -88,7 +88,7 @@ test('theme keeps the original site baseline while shell navigation remains perm
 });
 
 test('only approved admin pages import the palette and opt in their roots and detached controls',()=>{
- const pages={AdminMediaPage:'admin-media-page',AdminPostsPage:'admin-posts-page',AdminWritePage:'writing-workspace',AdminTaxonomyPage:'taxonomy-page',AdminSeriesPage:'series-admin-page',AdminUsersPage:'admin-users-page',AdminUserSettingsPage:'admin-user-settings',AdminBannedWordsPage:'banned-words-page',AdminEditorApplicationsPage:'editor-applications-page',EditorApplyPage:'editor-apply-page',PublishingQueuePage:'queue-page'};
+ const pages={AdminMediaPage:'admin-media-page',AdminPostsPage:'admin-posts-page',AdminWritePage:'writing-workspace',AdminTaxonomyPage:'taxonomy-page',AdminSeriesPage:'series-admin-page',AdminUsersPage:'admin-users-page',AdminUserSettingsPage:'admin-user-settings',AdminBannedWordsPage:'banned-words-page',AdminEditorApplicationsPage:'editor-applications-page',EditorApplyPage:'editor-apply-page',PublishingQueuePage:'queue-page',AdminMailSettingsPage:'admin-mail-settings',AdminSendMailPage:'admin-send-mail',AdminContentPage:'newsletter-admin'};
  const withPortals=new Set(['AdminMediaPage','AdminPostsPage','AdminWritePage','AdminTaxonomyPage','AdminEditorApplicationsPage','PublishingQueuePage']);
  for(const filename of fs.readdirSync('src/app/pages').filter(name=>name.endsWith('.tsx'))) {
   const file='src/app/pages/'+filename,source=fs.readFileSync(file,'utf8'),name=filename.slice(0,-4);

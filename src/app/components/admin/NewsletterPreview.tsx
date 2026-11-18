@@ -29,14 +29,14 @@ export function NewsletterPreview({ data, reload }: { data: NewsletterDraft; rel
   }
   return <>
     <div className="newsletter-draft-summary">
-      <p>{t("m_c7f8eebc9b")} {new Date(data.period.scheduledAt).toLocaleString(locale, { timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })} {t("m_5eb76ad884")}</p>
-      <p>{t("m_7ecf1cde64")} {count} / {data.items.length}  {t("m_5186bcf6e1")}</p>
+      <p className="newsletter-draft-schedule"><span>{t("m_c7f8eebc9b")}</span><strong>{new Date(data.period.scheduledAt).toLocaleString(locale, { timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })} <span>{t("m_5eb76ad884")}</span></strong></p>
+      <p className="newsletter-draft-selection">{t("m_7ecf1cde64")} <strong>{count} / {data.items.length}</strong> {t("m_5186bcf6e1")}</p>
     </div>
     {!data.editable && <AdminNotice kind="info">{t("m_8fc0f0e72f")}</AdminNotice>}
     {error && <AdminNotice>{t(error || '')}</AdminNotice>}
     <p className="newsletter-save-status" role="status">{busy ? t("m_ff509c9ba0") : message}</p>
     <div className="newsletter-draft-list">
-      {data.items.map(item => <article key={item.activity_id} className={included(item) ? '' : 'newsletter-excluded'}>
+      {data.items.map(item => <article key={item.activity_id} className={included(item) ? '' : 'newsletter-excluded'} aria-busy={busy === item.activity_id}>
         <div className="newsletter-draft-copy">
           <small>{t(types[item.type] || item.type)} · {new Date(item.published_at).toLocaleDateString(locale, { timeZone: 'Asia/Shanghai' })}</small>
           <h3><a href={safeHref(item.path)} target="_blank" rel="noopener noreferrer">{item.title}</a></h3>

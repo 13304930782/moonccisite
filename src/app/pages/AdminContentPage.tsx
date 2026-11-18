@@ -7,6 +7,9 @@ import { useI18n } from '../i18n';
 import { useContentListQuery } from '../lib/useContentListQuery';
 import '../../styles/admin-settings-layout.css';
 import '../../styles/admin-newsletter.css';
+import '../../styles/admin-newsletter-polish.css';
+import '../../styles/admin-ui-v2.css';
+import { AdminButton } from '../components/admin/AdminButton';
 import { notify } from '../lib/feedback';
 import { confirmAction } from '../lib/confirmAction';
 import {useUnsavedLeave} from '../lib/useUnsavedLeave';
@@ -435,8 +438,8 @@ export function AdminNewsletterPage() {
     }
   }
   return (
-    <div className="content-admin newsletter-admin">
-      <PageHeading eyebrow="NEWSLETTER" title={t("m_87594d4a43")} />
+    <div className="content-admin newsletter-admin ui-v2">
+      <header className="newsletter-page-heading"><h1 className="admin-title">{t("m_87594d4a43")}</h1><p>{t('管理每周内容、投递记录和订阅者。')}</p></header>
       {message&&<AdminNotice>{t(message)}</AdminNotice>}
       <ResourceState resource={r}>
         {r.data && (
@@ -444,23 +447,23 @@ export function AdminNewsletterPage() {
             <section className="newsletter-overview" aria-labelledby="newsletter-overview-title">
               <div className="newsletter-overview-heading">
                 <div><h2 id="newsletter-overview-title">{t("m_8dffc16214")}</h2><p className="newsletter-schedule">{t("m_e8d61e9429")}</p></div>
-                <span className="newsletter-status"><span aria-hidden="true" />{t(!r.data.deliveryConfigured ? '服务器投递未启用' : r.data.enabled ? '周报已启用' : '周报已暂停')}</span>
+                <span className="newsletter-status" role="status"><span aria-hidden="true" />{t(!r.data.deliveryConfigured ? '服务器投递未启用' : r.data.enabled ? '周报已启用' : '周报已暂停')}</span>
               </div>
               <p className="newsletter-description">{t("m_62b9b76eea")}</p>
               {!r.data.deliveryConfigured && <AdminNotice kind="info">
                 <strong>{t('启用服务器投递后才能开启周报')}</strong>
                 <p>{t('先检查邮件与任务服务，完成配置后重新检查。')}</p>
                 <div className="newsletter-actions">
-                  <Link to="/admin/mail-settings">{t("m_3739038fa7")}</Link>
-                  <Link to="/admin/runtime">{t("m_74ad4dbcf0")}</Link>
-                  <button type="button" onClick={r.reload} disabled={r.loading}>{t('重新检查')}</button>
+                  <AdminButton asChild variant="soft"><Link to="/admin/mail-settings">{t("m_3739038fa7")}</Link></AdminButton>
+                  <AdminButton asChild variant="soft"><Link to="/admin/runtime">{t("m_74ad4dbcf0")}</Link></AdminButton>
+                  <AdminButton type="button" variant="soft" onClick={r.reload} disabled={r.loading}>{t('重新检查')}</AdminButton>
                 </div>
                 <details className="newsletter-config"><summary>{t('服务器配置说明')}</summary><p>{t("m_b33a7717ae")}</p></details>
               </AdminNotice>}
               <div className="newsletter-overview-footer">
-                <button className="newsletter-primary" disabled={busy || (!r.data.deliveryConfigured && !r.data.enabled)} onClick={() => put('/admin/newsletter', { enabled: !r.data.enabled })}>
-                  {r.data.enabled ? t("m_864b8d3731") : t("m_7e0e58cf82")}
-                </button>
+                <AdminButton type="button" variant={r.data.enabled ? 'soft' : 'solid'} disabled={busy || (!r.data.deliveryConfigured && !r.data.enabled)} onClick={() => put('/admin/newsletter', { enabled: !r.data.enabled })}>
+                  {busy ? t('m_ff509c9ba0') : r.data.enabled ? t("m_864b8d3731") : t("m_7e0e58cf82")}
+                </AdminButton>
                 <div className="newsletter-counts">
                   {r.data.counts.map((c: any) => <p key={c.status}><strong>{c.total}</strong><span>{c.status === 'active' ? t("m_62b43de9d3") : t(labels[c.status])}</span></p>)}
                 </div>
@@ -508,17 +511,17 @@ export function AdminNewsletterPage() {
                 <tbody>
                   {r.data.deliveries.items.map((d: any) => (
                     <tr key={d.id}>
-                      <td>{d.email}</td>
+                      <td className="newsletter-email">{d.email}</td>
                       <td>{formatDate(d.week_start)}</td>
                       <td>
-                        {t(labels[d.status])}
-                        <small className="block">{d.error}</small>
+                        <span className="admin-status-chip">{t(labels[d.status])}</span>
+                        {d.error && <small className="newsletter-delivery-error">{d.error}</small>}
                       </td>
                       <td>{d.attempts}</td>
                       <td>
                         {d.status === 'uncertain' && (
-                          <>
-                            <button
+                          <div className="newsletter-row-actions">
+                            <AdminButton type="button" variant="soft"
                               disabled={busy}
                               onClick={() =>
                                 put(`/admin/newsletter/deliveries/${d.id}`, {
@@ -526,8 +529,8 @@ export function AdminNewsletterPage() {
                                 })
                               }
                             >
-                               {t("m_8df38dc381")} </button>
-                            <button
+                               {t("m_8df38dc381")} </AdminButton>
+                            <AdminButton type="button" variant="ghost"
                               disabled={busy}
                               onClick={() =>
                                 put(`/admin/newsletter/deliveries/${d.id}`, {
@@ -535,8 +538,8 @@ export function AdminNewsletterPage() {
                                 })
                               }
                             >
-                               {t("m_fc50a99caa")} </button>
-                          </>
+                               {t("m_fc50a99caa")} </AdminButton>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -554,15 +557,12 @@ export function AdminNewsletterPage() {
       <ResourceState resource={sub}>
         {sub.data && (
           <>
-            <div className="admin-records">
+            <div className="admin-records newsletter-subscriber-records">
               {!sub.data.items.length&&<div className="admin-empty-result"><AdminEmpty title={t("m_bb18c45617")} /></div>}
               {sub.data.items.map((s: any) => (
                 <article key={s.id}>
-                  <p>
-                    {s.email} ·{' '}
-                    {s.status === 'active' ? t("m_5ac3c37374") : s.status === 'pending' ? t("m_6a49d88efa") : t(labels[s.status])}
-                  </p>
-                  <button
+                  <div className="newsletter-subscriber-copy"><p>{s.email}</p><span className="admin-status-chip">{s.status === 'active' ? t("m_5ac3c37374") : s.status === 'pending' ? t("m_6a49d88efa") : t(labels[s.status])}</span></div>
+                  <AdminButton type="button" variant="soft"
                     disabled={busy || s.status === 'unsubscribed'}
                     onClick={() =>
                       put(`/admin/subscribers/${s.id}`, {
@@ -570,7 +570,7 @@ export function AdminNewsletterPage() {
                       })
                     }
                   >
-                     {t("m_6af7023b9f")} </button>
+                     {t("m_6af7023b9f")} </AdminButton>
                 </article>
               ))}
             </div>

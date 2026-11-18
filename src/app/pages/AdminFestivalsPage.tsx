@@ -1,5 +1,6 @@
 import { useI18n } from '../i18n';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
+import { CalendarDays, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { notify } from '../lib/feedback';
@@ -8,13 +9,13 @@ import { useSiteSettings } from '../context/SiteSettingsContext';
 import Editor from './festivals-v2/Editor';
 import FestivalSelect from './festivals-v2/Select';
 import Timeline from './festivals-v2/Timeline';
-import { type Response, type Config, type Window as FestivalWindow, shanghaiInput, fromShanghai, dateOnly, monthDay, shanghaiYear, daysUntil, daysRemaining, parseWindowLabel, ruleSummary, loadYearWindows, nextFestival } from './festivals-v2/model';
+import { type Response, type Config, type Window as FestivalWindow, shanghaiInput, fromShanghai, dateOnly, shanghaiYear, daysUntil, daysRemaining, parseWindowLabel, ruleSummary, loadYearWindows, nextFestival } from './festivals-v2/model';
 import '../../styles/fest-v2.css';
 
 function Pumpkin() { return <svg className="fv-pumpkin" width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 14c-4-5-1-9 3-10" fill="none" stroke="var(--fest-green)" strokeWidth="4" strokeLinecap="round"/><ellipse cx="20" cy="38" rx="14" ry="19"/><ellipse cx="44" cy="38" rx="14" ry="19"/><ellipse className="fv-pumpkin-center" cx="32" cy="38" rx="11" ry="20"/><path className="fv-pumpkin-face" d="M20 33l5 6H15z M44 33l5 6H39z M20 47q12 8 24 0l-3-1-3 3-3-3-3 3-3-3-3 3-3-3z"/></svg>; }
 function Toggle({ label, value, disabled, onChange }: {label:string;value:boolean;disabled?:boolean;onChange:()=>void}) { const {t}=useI18n(); return <button type="button" className="fv-switch" role="switch" aria-label={t(label)} aria-checked={value} disabled={disabled} onClick={event=>{event.stopPropagation();onChange();}} onKeyDown={event=>event.stopPropagation()}><span/></button>; }
 export default function AdminFestivalsPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const navigate=useNavigate(), {data:settings}=useSiteSettings();
   const [data,setData]=useState<Response|null>(null), [config,setConfig]=useState<Config|null>(null);
   const [error,setError]=useState(''),[busy,setBusy]=useState(false);
@@ -25,7 +26,7 @@ export default function AdminFestivalsPage() {
   const dirty=!!(config&&data&&JSON.stringify(config)!==JSON.stringify(data.config));
   useUnsavedLeave(dirty);
   const siteName=settings?.brand?.site_title?.trim()||'mooncci';
-  useEffect(()=>{const title=t("m_29c01244e3", {v0: siteName});const update=()=>{if(document.title!==title)document.title=title;};update();const observer=new MutationObserver(update);observer.observe(document.head,{childList:true,subtree:true,characterData:true});return()=>observer.disconnect();},[siteName]);
+  useEffect(()=>{const title=t("m_29c01244e3", {v0: siteName});const update=()=>{if(document.title!==title)document.title=title;};update();const observer=new MutationObserver(update);observer.observe(document.head,{childList:true,subtree:true,characterData:true});return()=>observer.disconnect();},[siteName,locale]);
   async function load(){setError('');try{const result:Response=await api('/settings/festivals');setData(result);setConfig(result.config);}catch(e){setError((e as Error).message);}}
   useEffect(()=>{void load();},[]);
   useEffect(()=>{const controller=new AbortController();const timer=setInterval(()=>{void api('/settings/festivals',{signal:controller.signal,cache:'no-store'}).then((result:Response)=>setData(old=>old?{...old,state:result.state}:old)).catch(()=>{});},30000);return()=>{clearInterval(timer);controller.abort();};},[]);
@@ -41,14 +42,57 @@ export default function AdminFestivalsPage() {
   const coverage=data.catalog.find(item=>item.coverage)?.coverage;
   const modes=[['auto',t("m_7eb336e42c")],['off',t("m_34f7336d39")],['manual',t("m_3fafbd5dff")]] as const;
   const setMode=(mode:Config['mode'])=>setConfig({...config,mode,manual:mode==='manual'?config.manual||{id:data.catalog.find(item=>item.implemented)?.id||'halloween',expiresAt:''}:null});
+  const dateLabel = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', timeZone: 'Asia/Shanghai' });
   return <div className="fest-v2 fv-page">
     <header className="fv-heading"><h1>{t("m_85857d157f")}</h1><p>{t("m_2292c05326")}</p></header>
-    <section className="fv-status" aria-label={t("m_15acafd73b")}><div className="fv-status-top"><div><p className="fv-label">{t("m_1df57ceee6")}</p><div className="fv-current"><h2>{t(active?.name||'')||(off?t("m_34f7336d39"):t("m_b8b05e2e9f"))}</h2>{active?.id==='halloween'&&<Pumpkin/>}<span className={`fv-pill ${active?'fv-success':''}`}>{off?t("m_8a64fd3e69"):manual?t("m_57e74d6355", {v0: shanghaiInput(data.config.manual?.expiresAt||'').replace('T',' ')}):active?t("m_3c81a7cc9d"):t("m_6d6dc6d9d8")}</span></div><p className="fv-status-date">{currentWindow&&<>{t(monthDay(currentWindow.start))} – {t(monthDay(new Date(Date.parse(currentWindow.end)-1).toISOString()))} · </>}{end&&<>{t("m_4881997d6f")} {daysRemaining(end,data.state.serverTime)}  {t("m_9d59e4b566")} </>}{t("m_69c525db32")} <time dateTime={data.state.serverTime}>{shanghaiInput(data.state.serverTime).replaceAll('-','/').replace('T',' ')||'—'}</time>（Asia/Shanghai）</p></div><div className="fv-next"><p className="fv-label">{t("m_a898d7c3d7")}</p><h3>{t(next?.name||'—')}</h3>{next?<><p><time dateTime={next.start}>{t(monthDay(next.start))}</time>  {t("m_cc2ca4d1b7")} {daysUntil(next.start,data.state.serverTime)}  {t("m_49da61ceee")}</p>{!next.implemented&&<small>{t("m_42329b9af3")}</small>}</>:<p>{t("m_f05e4fac50")}</p>}</div></div><Timeline windows={windows} data={data} error={timelineError}/></section>
-    <div className="fv-cards"><section className="fv-card"><h2>{t("m_0bb505c5ac")}</h2><p className="fv-muted">{t("m_df47a86548")}</p><form id="fv-settings" ref={form} onSubmit={save}><fieldset disabled={busy}><div className="fv-segment" role="radiogroup" aria-label={t("m_0bb505c5ac")}>{modes.map(([mode,label],index)=><button key={mode} type="button" role="radio" aria-checked={config.mode===mode} tabIndex={config.mode===mode?0:-1} onClick={()=>setMode(mode)} onKeyDown={event=>{let target=index;if(['ArrowRight','ArrowDown'].includes(event.key))target=(index+1)%3;else if(['ArrowLeft','ArrowUp'].includes(event.key))target=(index+2)%3;else if(event.key==='Home')target=0;else if(event.key==='End')target=2;else return;event.preventDefault();setMode(modes[target][0]);(event.currentTarget.parentElement?.children[target] as HTMLElement)?.focus();}}>{label}</button>)}</div>{config.mode==='manual'&&<div className="fv-manual"><label className="fv-field"><span>{t("m_8c85b248dc")}</span><FestivalSelect aria-label={t("m_8c85b248dc")} value={config.manual?.id||'halloween'} onChange={event=>setConfig({...config,manual:{id:event.target.value,expiresAt:config.manual?.expiresAt||''}})}>{data.catalog.filter(item=>item.implemented).map(item=><option key={item.id} value={item.id}>{t(item.name)}</option>)}</FestivalSelect></label><label className="fv-field"><span>{t("m_8bc33564de")}</span><input type="datetime-local" required value={config.manual?.expiresAt?shanghaiInput(config.manual.expiresAt):''} min={shanghaiInput(data.state.serverTime)} onChange={event=>setConfig({...config,manual:{id:config.manual?.id||'halloween',expiresAt:fromShanghai(event.target.value)}})}/></label></div>}</fieldset></form></section>
+    <section className="fv-status" aria-label={t("m_15acafd73b")}>
+      <div className="fv-status-top">
+        <div>
+          <p className="fv-label">{t("m_1df57ceee6")}</p>
+          <div className="fv-current">
+            <h2>{active ? t(active.name) : off ? t("m_34f7336d39") : t("m_b8b05e2e9f")}</h2>
+            {active?.id==='halloween' && <Pumpkin/>}
+            {active && <span className="fv-pill fv-success">{manual ? t("m_57e74d6355", {v0: shanghaiInput(data.config.manual?.expiresAt||'').replace('T',' ')}) : t("m_3c81a7cc9d")}</span>}
+          </div>
+          {currentWindow && <p className="fv-status-date">{dateLabel.format(Date.parse(currentWindow.start))} – {dateLabel.format(Date.parse(currentWindow.end) - 1)}</p>}
+          {end && <p className="fv-status-date">{t("m_4881997d6f")} {daysRemaining(end,data.state.serverTime)} {t("m_49da61ceee")}</p>}
+        </div>
+        <div className="fv-next">
+          <p className="fv-label">{t("m_a898d7c3d7")}</p>
+          {next ? <>
+            <h3>{t(next.name)}</h3>
+            <p><time dateTime={next.start}>{dateLabel.format(Date.parse(next.start))}</time> {t("m_cc2ca4d1b7")} {daysUntil(next.start,data.state.serverTime)} {t("m_49da61ceee")}</p>
+            {!next.implemented && <small>{t("m_42329b9af3")}</small>}
+          </> : <p className="fv-next-empty">{t("m_f05e4fac50")}</p>}
+        </div>
+      </div>
+      <Timeline windows={windows} data={data} error={timelineError}/>
+      <p className="fv-status-date fv-status-clock">{t("m_69c525db32")} <time dateTime={data.state.serverTime}>{shanghaiInput(data.state.serverTime).replaceAll('-','/').replace('T',' ')||'—'}</time> · Asia/Shanghai</p>
+    </section>
+    <div className="fv-cards"><section className="fv-card"><h2>{t("m_0bb505c5ac")}</h2><p className="fv-muted">{t("m_df47a86548")}</p><form id="fv-settings" ref={form} onSubmit={save}><fieldset disabled={busy}><div className="fv-segment" role="radiogroup" aria-label={t("m_0bb505c5ac")} style={{'--fv-mode-index':modes.findIndex(([mode])=>mode===config.mode)} as CSSProperties}>{modes.map(([mode,label],index)=><button key={mode} type="button" role="radio" aria-checked={config.mode===mode} tabIndex={config.mode===mode?0:-1} onClick={()=>setMode(mode)} onKeyDown={event=>{let target=index;if(['ArrowRight','ArrowDown'].includes(event.key))target=(index+1)%3;else if(['ArrowLeft','ArrowUp'].includes(event.key))target=(index+2)%3;else if(event.key==='Home')target=0;else if(event.key==='End')target=2;else return;event.preventDefault();setMode(modes[target][0]);(event.currentTarget.parentElement?.children[target] as HTMLElement)?.focus();}}>{label}</button>)}</div>{config.mode==='manual'&&<div className="fv-manual"><label className="fv-field"><span>{t("m_8c85b248dc")}</span><FestivalSelect aria-label={t("m_8c85b248dc")} value={config.manual?.id||'halloween'} onChange={event=>setConfig({...config,manual:{id:event.target.value,expiresAt:config.manual?.expiresAt||''}})}>{data.catalog.filter(item=>item.implemented).map(item=><option key={item.id} value={item.id}>{t(item.name)}</option>)}</FestivalSelect></label><label className="fv-field"><span>{t("m_8bc33564de")}</span><input type="datetime-local" required value={config.manual?.expiresAt?shanghaiInput(config.manual.expiresAt):''} min={shanghaiInput(data.state.serverTime)} onChange={event=>setConfig({...config,manual:{id:config.manual?.id||'halloween',expiresAt:fromShanghai(event.target.value)}})}/></label></div>}</fieldset></form></section>
     <section className="fv-card"><h2>{t("m_13d61fea9f")}</h2><p className="fv-muted">{t("m_98b140619a")}</p><form onSubmit={preview}><fieldset className="fv-preview" disabled={busy}><label className="fv-field"><span>{t("m_4573d86391")}</span><FestivalSelect aria-label={t("m_4573d86391")} value={previewId} onChange={event=>setPreviewId(event.target.value)}>{data.catalog.filter(item=>item.implemented).map(item=><option key={item.id} value={item.id}>{t(item.name)}</option>)}</FestivalSelect></label><label className="fv-field"><span>{t("m_5e449a8a5c")}</span><input type="datetime-local" required value={previewAt} onChange={event=>setPreviewAt(event.target.value)}/></label><button type="submit" className="fv-solid" disabled={!previewAt}>{t("m_fbae1674bb")}</button></fieldset></form></section></div>
-    <section className="fv-catalog" aria-label={t("m_bec0668026")}><div className="fv-list-heading"><h2>{t("m_e0ba7ad3b8")} <span>{data.catalog.length}</span></h2><p>{t("m_325cc51fe0")}</p></div><div className="fv-list">{data.catalog.map(item=>{const current=config.modules[item.id];if(!current)return null;const status=data.state.modules.find(row=>row.id===item.id),showing=active?.id===item.id;return <div key={item.id} className={`fv-row ${showing?'is-active':''}`} role="button" tabIndex={busy?-1:0} aria-label={t("m_6392c09e95", {v0: t(item.name)})} aria-haspopup="dialog" onClick={event=>{if(!busy){trigger.current=event.currentTarget;setEditing(item.id);}}} onKeyDown={event=>{if(!busy&&event.target===event.currentTarget&&['Enter',' '].includes(event.key)){event.preventDefault();trigger.current=event.currentTarget;setEditing(item.id);}}}><span className="fv-icon">{item.id==='halloween'?<Pumpkin/>:<span className="fv-placeholder"/>}</span><div className="fv-row-name"><strong>{t(item.name)}</strong><p>{ruleSummary(current.rule,t)}</p></div><span className={`fv-row-status ${showing?'fv-success':''}`}>{showing?t("m_5725c7666b"):!current.enabled?t("m_6744b4c6a9"):!item.implemented?t("m_48a0eefb85"):t(status?.reason||'—')}</span><span className="fv-row-next">{showing?t("m_15a37d8cd3"):status?.nextStart?<>{t("m_6f7517d250")} <time dateTime={status.nextStart}>{dateOnly(status.nextStart)}</time></>:'—'}</span><Toggle label={t("m_a3089a8184", {v0: t(item.name)})} value={current.enabled} disabled={busy} onChange={()=>setConfig({...config,modules:{...config.modules,[item.id]:{...current,enabled:!current.enabled}}})}/><span className="fv-chevron" aria-hidden="true">›</span></div>;})}</div></section>
-    {error&&<p role="alert" className="fv-error">{t(error || '')}</p>}
-    {dirty&&<div className="fv-savebar" role="status"><span>{t("m_c2277872cd")}<small className="fv-save-note">{t("m_6308d045e7")}</small></span><button className="fv-ghost" disabled={busy} onClick={()=>{setConfig(structuredClone(data.config));setError('');}}>{t("m_e7f51b070e")}</button><button className="fv-solid" type="submit" form="fv-settings" disabled={busy}>{busy?t("m_ff509c9ba0"):t("m_fa5b145ab6")}</button></div>}
+    {error && !dirty && <p role="alert" className="fv-error">{t(error)}</p>}
+    <section className="fv-catalog" aria-label={t("m_bec0668026")}>
+      <div className="fv-list-heading"><h2>{t("m_e0ba7ad3b8")} <span>{data.catalog.length}</span></h2><p>{t("m_325cc51fe0")}</p></div>
+      <div className="fv-list">{data.catalog.map(item=>{
+        const current=config.modules[item.id];
+        if(!current)return null;
+        const name=t(item.name), status=data.state.modules.find(row=>row.id===item.id), showing=active?.id===item.id;
+        return <div key={item.id} className={`fv-row ${showing?'is-active':''}`}>
+          <button type="button" className="fv-row-open" aria-label={t("m_6392c09e95", {v0:name})} aria-haspopup="dialog" disabled={busy}
+            onClick={event=>{trigger.current=event.currentTarget;setEditing(item.id);}} />
+          <span className="fv-icon" aria-hidden="true">{item.id==='halloween'?<Pumpkin/>:<CalendarDays size={20}/>}</span>
+          <div className="fv-row-name"><strong>{name}</strong><p>{ruleSummary(current.rule,t)}</p></div>
+          <div className="fv-row-meta">
+            <span className={`fv-row-status ${showing?'fv-success':''}`}>{showing?t("m_5725c7666b"):!current.enabled?t("m_6744b4c6a9"):!item.implemented?t("m_48a0eefb85"):t(status?.reason||'—')}</span>
+            <span className="fv-row-next">{showing?t("m_15a37d8cd3"):status?.nextStart?<>{t("m_6f7517d250")} <time dateTime={status.nextStart}>{dateOnly(status.nextStart)}</time></>:null}</span>
+          </div>
+          <Toggle label={t("m_a3089a8184", {v0:name})} value={current.enabled} disabled={busy} onChange={()=>setConfig({...config,modules:{...config.modules,[item.id]:{...current,enabled:!current.enabled}}})}/>
+          <ChevronRight className="fv-chevron" size={16} aria-hidden="true"/>
+        </div>;
+      })}</div>
+    </section>
+    {dirty&&<div className="fv-savebar"><span role="status">{t("m_c2277872cd")}<small className="fv-save-note">{t("m_6308d045e7")}</small></span><button className="fv-ghost" disabled={busy} onClick={()=>{setConfig(structuredClone(data.config));setError('');}}>{t("m_e7f51b070e")}</button><button className="fv-solid" type="submit" form="fv-settings" disabled={busy}>{busy?t("m_ff509c9ba0"):t("m_fa5b145ab6")}</button>{error&&<p role="alert" className="fv-error">{t(error)}</p>}</div>}
     {editing&&<Editor key={editing} item={data.catalog.find(item=>item.id===editing)!} current={config.modules[editing]} saved={data.config.modules[editing]} status={data.state.modules.find(item=>item.id===editing)} coverageLabel={coverage?t("m_330e814dfa", {v0: coverage.from, v1: coverage.to}):t("m_7ab5cd56d5")} trigger={trigger.current} onClose={()=>setEditing(null)} onSave={module=>{setConfig({...config,modules:{...config.modules,[editing]:module}});setEditing(null);}}/>}
   </div>;
 }
