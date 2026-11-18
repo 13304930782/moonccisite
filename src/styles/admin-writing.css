@@ -105,7 +105,8 @@
  .writing-topbar { display:flex; height:calc(56px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) 12px 0; gap:8px; }
  .writing-topbar-meta { gap:8px; }
  .writing-back { width:44px; height:44px; justify-content:center; }
- .writing-back span,.writing-status-full,.writing-mode-desktop,.writing-topbar .writing-history-trigger,.writing-topbar .writing-save-trigger,.writing-topbar .writing-settings-trigger,.writing-retry-desktop { display:none; }
+ .writing-back span,.writing-status-full,.writing-mode-desktop { display:none; }
+ .writing-workspace .writing-topbar :is(.writing-history-trigger,.writing-save-trigger,.writing-settings-trigger,.writing-retry-desktop) { display:none; }
  .writing-status-short { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
  .writing-save-state { flex:1; font-size:12px; }
  .writing-topbar-meta > .admin-button { padding-inline:4px; }
