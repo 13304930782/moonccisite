@@ -57,8 +57,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Preload tables and imports repeat these URLs. Keep names only where
-        // the admin lazy-load check and companion packer identify chunks by name.
-        chunkFileNames: chunk => /^(Admin|admin-management$|WeatherCompanion$)/.test(chunk.name)
+        // browser checks and the companion packer identify chunks by name.
+        chunkFileNames: chunk => /^(Admin|admin-management$|LanguageMenu$|RoutePages$|WeatherCompanion$)/.test(chunk.name)
           ? 'assets/[name]-[hash].js' : 'assets/[hash].js',
         // Merge tiny shared fragments; preserve lazy route and editor boundaries.
         experimentalMinChunkSize: 5000,
