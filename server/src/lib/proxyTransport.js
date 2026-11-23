@@ -1,4 +1,5 @@
 const https = require('node:https');
+const { isIP } = require('node:net');
 function ipv4Options(value, env = process.env) {
   try {
     const url = new URL(value);
@@ -16,10 +17,13 @@ function ipv4Options(value, env = process.env) {
 // DNS changes, TLS bypass, redirects, retries or replay of OAuth token exchange.
 function fetchScoped(value, options = {}) {
   const network = ipv4Options(value);
-  if (!network.family) return globalThis.fetch(value, options);
+  const { onPhase, ...requestOptions } = options;
+  if (!network.family) return globalThis.fetch(value, requestOptions);
   return new Promise((resolve, reject) => {
     const signal = options.signal || AbortSignal.timeout(10000);
+    if (onPhase) onPhase(isIP(new URL(value).hostname) ? 'tcp' : 'dns');
     const req = https.request(value, { ...network, method: options.method || 'GET', headers: Object.fromEntries(new Headers(options.headers)), signal, agent: false }, res => {
+      onPhase?.('body');
       const chunks = []; let size = 0;
       res.on('error', reject);
       res.on('aborted', () => reject(Object.assign(new Error('Proxy response interrupted'), {code:'ECONNRESET'})));
@@ -36,6 +40,14 @@ function fetchScoped(value, options = {}) {
         try { resolve(new Response([204,205,304].includes(res.statusCode) ? null : Buffer.concat(chunks), {status:res.statusCode,headers})); } catch (error) { reject(error); }
       });
     });
+    if (onPhase) {
+      req.once('socket', socket => {
+        socket.once('lookup', error => { if (!error) onPhase('tcp'); });
+        socket.once('connect', () => onPhase('tls'));
+        socket.once('secureConnect', () => onPhase('first_byte'));
+        socket.prependOnceListener('data', () => onPhase('headers'));
+      });
+    }
     req.on('error', reject);
     req.end(options.body);
   });

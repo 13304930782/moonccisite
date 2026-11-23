@@ -7,7 +7,13 @@ function fixture(t,replies){
  t.mock.method(https,'request',(url,options,callback)=>{
   const req=new EventEmitter();req.destroy=()=>{};
   req.end=body=>{calls.push({url,options,body});queueMicrotask(()=>{
-   const value=replies.shift();if(value.error){req.emit('error',value.error);return;}
+   const value=replies.shift();
+   if (value.socketEvents) {
+    const socket = new EventEmitter();
+    req.emit('socket', socket);
+    for (const event of value.socketEvents) socket.emit(event);
+   }
+   if(value.error){req.emit('error',value.error);return;}
    const res=new PassThrough();res.statusCode=value.status||200;res.headers=value.headers||{};res.complete=true;callback(res);res.end(value.body||'{}');
   });};return req;
  });return calls;
@@ -38,4 +44,17 @@ test('actual GitHub exchange routes all three operations through IPv4',async t=>
 test('health probes use the same IPv4 transport and preserve success criteria',async t=>{
  const calls=fixture(t,[{status:401,headers:{'x-mooncci-proxy-diagnostic':'upstream_http_401','x-mooncci-proxy-version':'3'}}]);
  const result=await require('../src/lib/dependencyHealth').createDependencyHealth({env:{GITHUB_OAUTH_PROXY_URL:'https://proxy.example',GITHUB_OAUTH_PROXY_KEY:'a'.repeat(64)}})('github');assert.equal(result.ok,true);assert.equal(calls[0].options.family,4);
+});
+test('probe transport distinguishes DNS, TCP, TLS, first byte and incomplete headers', async t => {
+ const events = ['lookup', 'connect', 'secureConnect', 'data'];
+ const expected = ['dns', 'tcp', 'tls', 'first_byte', 'headers'];
+ const error = Object.assign(Error('fixture timeout'), { code: 'ETIMEDOUT' });
+ fixture(t, expected.map((_, i) => ({ error, socketEvents: events.slice(0, i) })));
+ for (const phase of expected) {
+  let lastPhase;
+  await assert.rejects(transport.fetch('https://proxy.example/user', {
+   onPhase: value => { lastPhase = value; },
+  }), { code: 'ETIMEDOUT' });
+  assert.equal(lastPhase, phase);
+ }
 });
