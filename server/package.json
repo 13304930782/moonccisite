@@ -24,7 +24,7 @@
     "mailparser": "^3.9.33",
     "multer": "^2.5.0",
     "mysql2": "^3.15.3",
-    "nodemailer": "^10.1.4",
+    "nodemailer": "^10.3.1",
     "sharp": "^0.35.4",
     "turndown": "^7.2.0"
   },
