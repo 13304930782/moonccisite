@@ -121,6 +121,39 @@ test('transient GET failure retries once and records recovery without exposing c
  assert.equal(logs[0].event,'retry_succeeded');assert.equal(logs[0].retries,1);
 });
 
+test('Google and GitHub allow six seconds on the first try and use the original deadline for retry', async t => {
+ const original = AbortSignal.timeout;
+ const deadlines = [];
+ t.mock.method(AbortSignal, 'timeout', ms => {
+  const signal = original(ms);
+  deadlines.push({ ms, signal });
+  return signal;
+ });
+ const pem = require('node:tls').rootCertificates[0];
+ for (const service of ['google','github']) {
+  deadlines.length = 0;
+  const signals = [];
+  const logs = [];
+  const check = createDependencyHealth({
+   env: proxyEnv, now: () => Date.parse(new X509Certificate(pem).validFrom) + 1000, logger: e => logs.push(e),
+   fetcher: async (_url, { signal, onPhase }) => {
+    signals.push(signal);
+    if (signals.length === 1) {
+     onPhase('tcp');
+     onPhase('sensitive unrecognized value');
+     throw new DOMException('First attempt expired', 'TimeoutError');
+    }
+    return service === 'google' ? reply({ key: pem }) : proxyResponse();
+   },
+  });
+  assert.equal((await check(service)).ok, true);
+  assert.deepEqual(deadlines.map(d => d.ms), [10000, 6000]);
+  assert.notEqual(signals[0], deadlines[0].signal);
+  assert.equal(signals[1], deadlines[0].signal);
+  assert.deepEqual(logs[0].failedAttempts, [{ phase: 'tcp', elapsedMs: 0 }]);
+ }
+});
+
 test('attempt timeout gets one fresh attempt and persistent transport failures stay unhealthy', async () => {
  let calls=0;
  const check=createDependencyHealth({env:proxyEnv,attemptTimeout:10,timeout:100,logger:()=>{},fetcher:async(_url,{signal})=>{

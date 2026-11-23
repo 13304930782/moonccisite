@@ -7,6 +7,7 @@ function diagnostic(value) {
   return /^(?:request_rejected|upstream_ok|upstream_http_[1-5][0-9]{2}|upstream_redirect_3[0-9]{2}_(?:missing_location|same_endpoint|github_api|github_web|other_origin|invalid_location)|(?:request_body|upstream_fetch|upstream_body)_(?:size_limit|timeout|cache_unsupported|signal_unsupported|redirect_error|type_error|exception))$/.test(value) ? value : 'unrecognized';
 }
 const networkCodes = new Set(['ENOTFOUND','EAI_AGAIN','ECONNRESET','ECONNREFUSED','ETIMEDOUT','UND_ERR_CONNECT_TIMEOUT','UND_ERR_HEADERS_TIMEOUT','UND_ERR_BODY_TIMEOUT','UND_ERR_SOCKET','CERT_HAS_EXPIRED','UNABLE_TO_VERIFY_LEAF_SIGNATURE','ERR_TLS_CERT_ALTNAME_INVALID']);
+const networkPhases = new Set(['dns', 'tcp', 'tls', 'first_byte', 'headers', 'body']);
 function httpsUrl(value) {
   let url; try { url = new URL(value); } catch { throw fail('config'); }
   if (url.protocol !== 'https:' || url.username || url.password || url.hash) throw fail('config');
@@ -20,11 +21,20 @@ async function json(response) {
   }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw fail('invalid_json'); }
 }
-function createDependencyHealth({ env = process.env, fetcher = (...args) => proxyTransport.fetch(...args), now = Date.now, ttl = 60000, failureTtl = 5000, attemptTimeout = 4000, timeout = 10000, logger = event => console.warn('[dependency-health]', JSON.stringify(event)) } = {}) {
+function createDependencyHealth({ env = process.env, fetcher = (...args) => proxyTransport.fetch(...args), now = Date.now, ttl = 60000, failureTtl = 5000, attemptTimeout, timeout = 10000, logger = event => console.warn('[dependency-health]', JSON.stringify(event)) } = {}) {
   const cache = new Map(); const pending = new Map(); const previous = new Map();
   async function probe(id) {
     const started = now(); const signal = AbortSignal.timeout(timeout);
     let stage = 'configuration', responseStatus = null, proxyDiagnostic = null, proxyVersion = null, retries = 0;
+    const attemptLimit = attemptTimeout ?? (id === 'microsoft' ? 4000 : 6000);
+    const failedAttempts = [];
+    let activeAttempt;
+    function recordFailedAttempt() {
+      if (!activeAttempt) return;
+      const { phase, started } = activeAttempt;
+      failedAttempts.push({ phase, elapsedMs: Math.max(0, now() - started) });
+      activeAttempt = undefined;
+    }
     const get = async (url, headers = {}) => {
       const target = httpsUrl(url);
       stage = id === 'github' ? 'proxy_request' : 'upstream_request';
@@ -32,12 +42,21 @@ function createDependencyHealth({ env = process.env, fetcher = (...args) => prox
       let response;
       for (let attempt = 0; attempt < 2; attempt++) {
         // GET probes only. Never replay OAuth exchanges or retry HTTP/auth errors.
-        const bounded = timeout > attemptTimeout;
-        const attemptSignal = bounded ? AbortSignal.any([signal, AbortSignal.timeout(attemptTimeout)]) : signal;
+        const bounded = timeout > attemptLimit;
+        const capAttempt = bounded && (attempt === 0 || id === 'microsoft');
+        const attemptSignal = capAttempt ? AbortSignal.any([signal, AbortSignal.timeout(attemptLimit)]) : signal;
+        const progress = { phase: 'unknown', started: now() };
+        activeAttempt = progress;
         try {
-          response = await fetcher(target, { signal: attemptSignal, redirect: 'error', headers: { Accept: 'application/json', 'User-Agent': 'mooncci-dependency-health', ...headers } });
+          response = await fetcher(target, {
+            signal: attemptSignal, redirect: 'error',
+            headers: { Accept: 'application/json', 'User-Agent': 'mooncci-dependency-health', ...headers },
+            onPhase: phase => { if (networkPhases.has(phase)) progress.phase = phase; },
+          });
+          activeAttempt = undefined;
           break;
         } catch (error) {
+          recordFailedAttempt();
           const code = error?.cause?.code || error?.code;
           const transient = ['EAI_AGAIN','ECONNRESET','ETIMEDOUT','UND_ERR_CONNECT_TIMEOUT','UND_ERR_SOCKET'].includes(code) || ['AbortError','TimeoutError'].includes(error?.name);
           if (attempt || !bounded || signal.aborted || !transient) throw error;
@@ -87,6 +106,7 @@ function createDependencyHealth({ env = process.env, fetcher = (...args) => prox
     try {
       await Promise.race([work(), new Promise((_, reject) => { timer = setTimeout(() => reject(fail('timeout')), timeout); })]); ok = true;
     } catch (error) {
+      recordFailedAttempt();
       const code = error?.cause?.code || error?.code;
       networkCode = networkCodes.has(code) ? code : null;
       reason = error instanceof ProbeError ? error.reason : ['AbortError','TimeoutError'].includes(error?.name) ? 'timeout' : networkCode ? 'network' : 'request_failed';
@@ -96,7 +116,7 @@ function createDependencyHealth({ env = process.env, fetcher = (...args) => prox
     // Log actual probes only, never cache hits. Whitelisted scalar fields only:
     // no request URL, headers, body, raw exception, proxy key or user token.
     if (!ok || previous.get(id) === false || retries) {
-      try { logger({ event: ok ? (previous.get(id) === false ? 'recovered' : 'retry_succeeded') : 'failed', ...result, stage, reason, responseStatus, proxyDiagnostic, proxyVersion, networkCode, retries }); } catch { /* Logging cannot change probe availability. */ }
+      try { logger({ event: ok ? (previous.get(id) === false ? 'recovered' : 'retry_succeeded') : 'failed', ...result, stage, reason, responseStatus, proxyDiagnostic, proxyVersion, networkCode, retries, failedAttempts }); } catch { /* Logging cannot change probe availability. */ }
     }
     previous.set(id, ok);
     return result;
